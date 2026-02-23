@@ -10,6 +10,8 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 import sys
 
 from src.docx_style_standard import (
@@ -511,9 +513,12 @@ def build_document(config: dict | None = None) -> Document:
     t = doc.add_table(rows=1 + len(risks), cols=len(headers))
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-    # header row
+    # header row — repeat on every page
     for j, h in enumerate(headers):
         format_header_cell(t.rows[0].cells[j], h)
+    tr = t.rows[0]._tr
+    trPr = tr.get_or_add_trPr()
+    trPr.append(parse_xml(f'<w:tblHeader {nsdecls("w")} w:val="true"/>'))
 
     # data rows
     for i, risk in enumerate(risks):
