@@ -13,6 +13,8 @@ Usage:
     )
 """
 
+import re
+
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -143,6 +145,27 @@ def add_body_cell(cell, text: str, bold: bool = False, size: int = 8) -> None:
     run.font.name = FONT_NAME
     run.font.size = Pt(size)
     run.font.color.rgb = BLACK
+
+
+# Pattern matching hierarchy-of-controls and stop-work labels in controls text
+_CONTROL_LABEL_RE = re.compile(
+    r"((?:Eliminate|Substitute|Isolate|Engineering|Admin|PPE|STOP WORK):)"
+)
+
+
+def add_controls_cell(cell, text: str, size: int = 8) -> None:
+    """Add controls text with bold category labels (Engineering:, Admin:, etc.)."""
+    p = cell.paragraphs[0]
+    parts = _CONTROL_LABEL_RE.split(text)
+    for part in parts:
+        if not part:
+            continue
+        run = p.add_run(part)
+        run.font.name = FONT_NAME
+        run.font.size = Pt(size)
+        run.font.color.rgb = BLACK
+        if _CONTROL_LABEL_RE.fullmatch(part):
+            run.bold = True
 
 
 def set_col_widths(table, widths: list) -> None:

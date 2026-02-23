@@ -16,7 +16,7 @@ from src.docx_style_standard import (
     FONT_NAME, BLACK, RISK_BG, ALT_ROW_BG,
     apply_document_font, risk_level,
     set_cell_shading,
-    format_header_cell, add_risk_cell, add_body_cell,
+    format_header_cell, add_risk_cell, add_body_cell, add_controls_cell,
     set_col_widths, set_cell_margins,
 )
 
@@ -483,7 +483,7 @@ def build_document() -> Document:
         add_risk_cell(row.cells[6], risk["risk_pre"])
 
         # Controls — longer text
-        add_body_cell(row.cells[7], risk["controls"])
+        add_controls_cell(row.cells[7], risk["controls"])
 
         # Residual risk — colour coded
         add_risk_cell(row.cells[8], risk["residual_risk"])
