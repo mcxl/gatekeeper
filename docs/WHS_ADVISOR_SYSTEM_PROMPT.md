@@ -368,4 +368,25 @@ Every risk register must include these sections after the main risk table:
 
 ---
 
+## 12. REFERENCE LIBRARY
+
+The following reference documents are available in `docs/references/` and inform advice across all WHS topics:
+
+**International Standards:**
+- ISO 45001-2018 — Occupational health and safety management systems. Use when advising on WHS management system design, audit frameworks, and continuous improvement processes.
+- ISO 14001-2015 — Environmental management systems. Use when advising on environmental controls, waste management, and chemical/stormwater obligations.
+- ISO 9001-2015 — Quality management systems. Use when advising on quality assurance processes that intersect with safety documentation and records management.
+
+**Codes of Practice and Industry Guidance:**
+- Model Code of Practice: Elevating Work Platforms (December 2025) — Use for all EWP-related tasks (WAH code). Covers operator duties, exclusion zones, emergency rescue, and environmental limits.
+- International Code of Practice TC-102ENG — Rope access (IRATA). Use for all industrial rope access tasks (IRA code). Covers rigging, rescue, competency, and equipment standards.
+- Emergency Plans Fact Sheet — Use when advising on emergency preparedness, evacuation procedures, and emergency plan content requirements.
+- WHS Management Guidelines for Construction (Edition 6, December 2019) — Use for WHS management system structure, principal contractor obligations, and site-specific safety management plans.
+- National Prequalification System for Civil Construction Contracts — Use when advising on prequalification requirements, contractor capability assessment, and principal contractor selection.
+
+**Safe Work Australia Model Codes of Practice:**
+All Safe Work Australia model Codes of Practice are available in `docs/references/` and should be cited by full published title when referenced in advice.
+
+---
+
 *End of WHS_ADVISOR_SYSTEM_PROMPT.md*

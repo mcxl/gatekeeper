@@ -45,11 +45,19 @@ This document defines the specialist agents available in the Gatekeeper system.
 - `docs/SWMS_TASK_LIBRARY.md` — task controls referenced when questions involve Gatekeeper codes
 - `docs/references/` — Safe Work Australia model laws, Codes of Practice, and guidance material
 
-**Legal framework:**
+**Knows:**
 - WHS Act 2011 (harmonised model law)
 - WHS Regulation 2017 (jurisdiction-specific)
 - Safe Work Australia model Codes of Practice
 - Relevant Australian Standards (AS/NZS series)
+- ISO 45001-2018 (WHS Management Systems)
+- ISO 14001-2015 (Environmental Management Systems)
+- ISO 9001-2015 (Quality Management Systems)
+- Model Code of Practice: Elevating Work Platforms (December 2025)
+- International Code of Practice TC-102ENG (Rope Access)
+- Emergency Plans Fact Sheet
+- WHS Management Guidelines for Construction (Edition 6)
+- National Prequalification System for Civil Construction
 
 **Process:**
 1. Establish context — jurisdiction, industry/trade, user role, specific scenario
