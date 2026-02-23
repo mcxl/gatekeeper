@@ -206,7 +206,7 @@ TASKS = [
         "resp": "Supervisor",
         "audit": "STD-4-2-TRF",
         "hazard_summary": "Struck by vehicles — public entering work zone during setup.",
-        "control_summary": "Barricade and signage, TPMP if required, schedule off-peak, spotter where needed.",
+        "control_summary": "Barricade and signage; TPMP if required; schedule off-peak; spotter where needed.",
     },
 
     # ── Add more tasks here ───────────────────────────────────────────────────
@@ -290,7 +290,7 @@ _SYS_TASK = {
     "resp": "Supervisor",
     "audit": "STD-1-1-SYS",
     "hazard_summary":  "Workers starting without site awareness or SWMS understanding.",
-    "control_summary": "Induct all workers day one, daily toolbox talk, sign SWMS before starting — no signature, no start.",
+    "control_summary": "Induct all workers day one; daily toolbox talk; sign SWMS before starting — no signature, no start.",
 }
 
 _EMR_TASK = {
@@ -326,7 +326,7 @@ _EMR_TASK = {
     "resp": "Supervisor",
     "audit": "STD-9-3-EMR",
     "hazard_summary":  "Medical emergency, fire, height rescue, chemical spill on site.",
-    "control_summary": "Call 000, first aid kit on site, emergency plan briefed daily, muster point confirmed, rescue plan in place.",
+    "control_summary": "Call 000; first aid kit on site; emergency plan briefed daily; muster point confirmed; rescue plan in place.",
 }
 
 
