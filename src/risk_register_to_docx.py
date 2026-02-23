@@ -44,18 +44,37 @@ RISKS = [
     },
     {
         "no": 2,
-        "task": "Drill chase slots into masonry, install Thor Helical bars, inject WHO-60 cementitious grout, finish flush",
+        "task": (
+            "Cut horizontal slots into mortar beds (25\u201335 mm deep, min 500 mm each side of crack, every 4\u20136 courses) "
+            "using grinder/chaser. Clean and flush slots. Inject WHO-60 cementitious grout, insert Thor Helical "
+            "stainless steel bars, encapsulate with second grout layer, repoint to match existing masonry. "
+            "Access via IRA, EWP, or ladder."
+        ),
         "code": "SIL",
-        "hazard": "Respirable crystalline silica (RCS) dust from masonry drilling; hand-arm vibration; noise >85 dB(A); chemical contact with WHO-60 grout; flying debris; manual handling at height",
+        "hazard": (
+            "Respirable crystalline silica (RCS) from slot cutting into mortar beds with grinder/chaser \u2014 "
+            "silicosis risk; flying debris from grinder disc and mortar chips; striking concealed services "
+            "during slot cutting (electrical, hydraulic, gas); hand-arm vibration from grinder; chemical "
+            "exposure from WHO-60 cementitious grout (alkaline \u2014 skin and eye irritant); noise >85 dB(A); "
+            "dropped tools or debris from height"
+        ),
         "likelihood_pre": "A \u2014 Almost Certain",
         "consequence_pre": "3 \u2014 Major",
         "risk_pre": "Critical (6)",
         "controls": (
-            "Eliminate: Use pre-cut bars where practicable to reduce drilling duration.\n"
-            "Engineering: H-class dust extraction at drill; wet suppression where extraction alone insufficient; RCD-protected power supply.\n"
-            "Admin: Air monitoring where drilling >30 min/shift; silica register; health monitoring \u2014 lung function baseline and periodic; "
-            "task rotation; SDS for WHO-60 reviewed and on site.\n"
-            "PPE: P2 respirator (fit-tested); safety glasses AS/NZS 1337; hearing protection (Class 5); nitrile gloves; anti-vibration gloves."
+            "Engineering: On-tool HEPA extraction or wet suppression at point of cut \u2014 no dry cutting "
+            "permitted; HEPA vacuum to clean slots before grouting; depth stop set to 25\u201335 mm on "
+            "grinder/chaser; services scan (CAT/Genny or equivalent) before cutting each new location; "
+            "RCD-protected power supply.\n"
+            "Admin: SDS for WHO-60 reviewed and on site; air monitoring where cutting >30 min/shift; "
+            "silica register; health monitoring \u2014 lung function baseline and periodic per WHS Reg Part 8.4; "
+            "task rotation to limit vibration exposure \u2014 maintain disc condition; flush slots before grouting "
+            "\u2014 contain wash-off water; exclusion zone below for falling debris; chemical-resistant gloves "
+            "mandatory for mixing, injection, and finishing.\n"
+            "PPE: P2 respirator (fit-tested); face shield AS/NZS 1337; hearing protection (Class 5); "
+            "chemical-resistant gloves; safety boots.\n"
+            "STOP WORK: Dust extraction/suppression fails; services detected in cut path; WHO-60 grout "
+            "SDS not on site."
         ),
         "residual_risk": "Medium (3)",
         "responsible": "Site Supervisor / Lead Technician",
@@ -275,6 +294,83 @@ RISKS = [
         "residual_risk": "Low (1)",
         "responsible": "Site Supervisor",
     },
+    {
+        "no": 15,
+        "task": "Industrial rope access — rigging, descent, work positioning, and ascent for façade remedial works",
+        "code": "WAH",
+        "hazard": (
+            "Fall from height due to anchor failure, rope failure, or equipment malfunction; "
+            "pendulum swing into structure or adjacent surfaces; falling objects — tools, materials, "
+            "or debris striking persons below; environmental hazards — wind causing rope tangle or worker "
+            "instability, wet ropes reducing device performance and increasing abrasion, heat stress and "
+            "UV degradation of ropes and equipment; contact with building edges causing rope abrasion or "
+            "severance; electrical hazard from proximity to overhead electric lines"
+        ),
+        "likelihood_pre": "B — Likely",
+        "consequence_pre": "3 — Major",
+        "risk_pre": "Critical (5)",
+        "controls": (
+            "Engineering: Two independent anchor points per worker — one for working line, one for safety line "
+            "(Safe Work Australia Guide to Industrial Rope Access Systems s4.5); all anchors and supporting "
+            "structure load tested to minimum 15 kN before first use and annually thereafter; anchor slings "
+            "minimum 22 kN (fibre) or 15 kN (steel/chain); permanent anchors marked with rated load, direction, "
+            "and inspection details; rope edge protection — davit arms, rollers, metal edge plates, or textile "
+            "sheaths at all contact points; exclusion zone established and barricaded below rope access work area "
+            "and above anchor points to prevent damage or trip hazards; all tools secured to harness via lanyards "
+            "or tool bags — bulky or heavy tools suspended on separately anchored line.\n"
+            "Admin: HOLD POINT — anchor installation certified by qualified engineer or competent person per "
+            "WHS Reg r213; all rope access workers hold current certificate of competency — verified before "
+            "commencement; supervisor competent in work planning, equipment inspection, and rope access techniques; "
+            "equipment inspection by competent person before and after each use — harnesses, lanyards, descenders, "
+            "back-up devices, ropes, slings, and anchor devices; equipment withdrawn from service immediately if "
+            "it has arrested a fall or shows defect; inspection records maintained per WHS Reg r213; ropes packed "
+            "away after each shift — not left rigged overnight; SWMS prepared — industrial rope access is high "
+            "risk construction work per WHS Reg r299; weather forecast checked before commencement and monitored "
+            "throughout — cease work if wind causes instability, rope tangle, or unsafe conditions; cease work if "
+            "ropes are wet and device performance is compromised; work scheduled to avoid peak UV and heat hours "
+            "where practicable; equipment stored protected from heat, UV, moisture, and chemicals.\n"
+            "PPE: Full body harness (AS/NZS 1891.4); helmet AS/NZS 1801; safety glasses; hi-vis vest; safety "
+            "boots; gloves; sunscreen and sun-protective clothing where UV exposure."
+        ),
+        "residual_risk": "Medium (3)",
+        "responsible": "Site Supervisor / Rope Access Supervisor / Qualified Engineer (anchors)",
+    },
+    {
+        "no": 16,
+        "task": "Industrial rope access — emergency rescue, suspension intolerance response, and environmental monitoring",
+        "code": "WAH",
+        "hazard": (
+            "Suspension intolerance (suspension trauma) — blood pooling in lower legs during harness suspension "
+            "reducing cardiac output, leading to fainting, renal failure, and death; delayed rescue of "
+            "incapacitated worker suspended on rope; worker isolation — inability to communicate distress; "
+            "environmental deterioration during work — sudden wind, rain, or electrical storm increasing "
+            "rescue difficulty"
+        ),
+        "likelihood_pre": "C — Possible",
+        "consequence_pre": "3 — Major",
+        "risk_pre": "High (4)",
+        "controls": (
+            "Engineering: Working and safety lines rigged for rescue — releasable anchors to allow lowering or "
+            "raising of injured worker without rescuer needing to descend (Safe Work Australia Guide s4.2); "
+            "rescue equipment present and rigged for immediate use at all times; additional anchor points "
+            "provided for emergency rescue operations; harness with suspension relief straps or footholds to "
+            "allow suspended worker to raise legs to near-horizontal.\n"
+            "Admin: Emergency rescue plan prepared, documented, and tested before rope access work commences — "
+            "plan covers rescue from any situation on site per WHS Reg r42; rope access workers never work alone "
+            "— minimum two workers with line-of-sight or communication at all times; all rope access workers and "
+            "supervisors trained in emergency procedures including rope rescue techniques; workers trained to "
+            "recognise suspension intolerance symptoms and to move legs, push against footholds, and adopt "
+            "near-horizontal position if suspended; rescue to be completed within 5 minutes where practicable — "
+            "if rescue likely to exceed 5 minutes, harness must allow leg-raise or worker must carry suspension "
+            "relief straps; first aid equipment accessible including first aid trained personnel on site; weather "
+            "monitored continuously — immediate descent if conditions deteriorate (wind, wet, lightning, extreme "
+            "heat); communication system confirmed operative before descent — radio or line-of-sight signals.\n"
+            "PPE: Full body harness with suspension relief capability; helmet; first aid kit accessible at anchor "
+            "station."
+        ),
+        "residual_risk": "Medium (3)",
+        "responsible": "Site Supervisor / Rope Access Supervisor / First Aid Officer",
+    },
 ]
 
 
@@ -421,8 +517,8 @@ def build_document() -> Document:
     st1 = doc.add_table(rows=5, cols=2)
     st1.alignment = WD_TABLE_ALIGNMENT.LEFT
     pre_data = [
-        ("Critical (5\u20136)", "7"),
-        ("High (4)", "4"),
+        ("Critical (5\u20136)", "8"),
+        ("High (4)", "5"),
         ("Medium (3)", "3"),
         ("Low (1\u20132)", "0"),
     ]
@@ -452,7 +548,7 @@ def build_document() -> Document:
     post_data = [
         ("Critical (5\u20136)", "0"),
         ("High (4)", "0"),
-        ("Medium (3)", "7"),
+        ("Medium (3)", "9"),
         ("Low (1\u20132)", "7"),
     ]
     format_header_cell(st2.rows[0].cells[0], "Risk Rating")
@@ -478,6 +574,7 @@ def build_document() -> Document:
         "Timber doors and frames \u2014 test for lead paint before abrading (WHS Reg Part 8.5)",
         "Brickwork reconstruction \u2014 structural removal sequence confirmed before commencement",
         "All silica-generating tasks \u2014 air monitoring and health surveillance required (WHS Reg Part 8.4)",
+        "Industrial rope access \u2014 anchor installation certified by qualified engineer, load tested to 15 kN minimum (WHS Reg r213)",
     ]
     for hp in hold_points:
         p = doc.add_paragraph(style="List Bullet")
@@ -505,6 +602,9 @@ def build_document() -> Document:
         "AS/NZS 1891.1 \u2014 Industrial fall-arrest systems and devices",
         "AS/NZS 1801 \u2014 Occupational protective helmets",
         "AS/NZS 1337 \u2014 Personal eye protection",
+        "Guide to Managing Risks of Industrial Rope Access Systems (Safe Work Australia, June 2022)",
+        "AS/NZS ISO 22846 \u2014 Rope access systems",
+        "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems and devices \u2014 Selection, use and maintenance",
     ]
     for ref in refs:
         p = doc.add_paragraph(style="List Bullet")
