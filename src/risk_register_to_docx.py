@@ -374,7 +374,57 @@ RISKS = [
 ]
 
 
-def build_document() -> Document:
+# ── Default project configuration ─────────────────────────────────
+DEFAULT_CONFIG = {
+    "project_name": "Remedial Building Works \u2014 18 Danks Street, Waterloo NSW 2017",
+    "pcbu": "Robertson\u2019s Remedial and Painting Pty Ltd",
+    "jurisdiction": "NSW \u2014 WHS Act 2011 (NSW), WHS Regulation 2017 (NSW)",
+    "date": "23 February 2026",
+    "prepared_by": "Gatekeeper Risk Assessment System",
+    "risks": RISKS,
+    "pre_summary": [
+        ("Critical (5\u20136)", "8"),
+        ("High (4)", "5"),
+        ("Medium (3)", "3"),
+        ("Low (1\u20132)", "0"),
+    ],
+    "post_summary": [
+        ("Critical (5\u20136)", "0"),
+        ("High (4)", "0"),
+        ("Medium (3)", "9"),
+        ("Low (1\u20132)", "7"),
+    ],
+    "hold_points": [
+        "Fibre cement boards \u2014 confirm asbestos status before any disturbance (WHS Reg Part 8.6)",
+        "Timber doors and frames \u2014 test for lead paint before abrading (WHS Reg Part 8.5)",
+        "Brickwork reconstruction \u2014 structural removal sequence confirmed before commencement",
+        "All silica-generating tasks \u2014 air monitoring and health surveillance required (WHS Reg Part 8.4)",
+        "Industrial rope access \u2014 anchor installation certified by qualified engineer, load tested to 15 kN minimum (WHS Reg r213)",
+    ],
+    "references": [
+        "Work Health and Safety Act 2011 (NSW) \u2014 s19, s28, s38",
+        "Work Health and Safety Regulation 2017 (NSW) \u2014 Part 3.1, Part 6.3, Part 6.4, Part 8.4, Part 8.5, Part 8.6",
+        "Code of Practice: Managing the Risk of Falls at Workplaces (Safe Work Australia)",
+        "Code of Practice: Managing Risks of Hazardous Chemicals in the Workplace (Safe Work Australia)",
+        "Code of Practice: How to Safely Remove Asbestos (Safe Work Australia)",
+        "Code of Practice: How to Manage and Control Asbestos in the Workplace (Safe Work Australia)",
+        "Code of Practice: Managing the Risks of Plant in the Workplace (Safe Work Australia)",
+        "Code of Practice: Scaffolds and Scaffolding Work (Safe Work Australia)",
+        "AS/NZS 1891.1 \u2014 Industrial fall-arrest systems and devices",
+        "AS/NZS 1801 \u2014 Occupational protective helmets",
+        "AS/NZS 1337 \u2014 Personal eye protection",
+        "Guide to Managing Risks of Industrial Rope Access Systems (Safe Work Australia, June 2022)",
+        "AS/NZS ISO 22846 \u2014 Rope access systems",
+        "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems and devices \u2014 Selection, use and maintenance",
+    ],
+}
+
+
+def build_document(config: dict | None = None) -> Document:
+    if config is None:
+        config = DEFAULT_CONFIG
+    risks = config["risks"]
+
     doc = Document()
 
     # ── Page setup: A4 landscape ────────────────────────────────────
@@ -398,11 +448,11 @@ def build_document() -> Document:
 
     # ── Project details header ──────────────────────────────────────
     details = [
-        ("Project:", "Remedial Building Works \u2014 18 Danks Street, Waterloo NSW 2017"),
-        ("PCBU / Principal Contractor:", "Robertson\u2019s Remedial and Painting Pty Ltd"),
-        ("Jurisdiction:", "NSW \u2014 WHS Act 2011 (NSW), WHS Regulation 2017 (NSW)"),
-        ("Date Prepared:", "23 February 2026"),
-        ("Prepared by:", "Gatekeeper Risk Assessment System"),
+        ("Project:", config["project_name"]),
+        ("PCBU / Principal Contractor:", config["pcbu"]),
+        ("Jurisdiction:", config["jurisdiction"]),
+        ("Date Prepared:", config["date"]),
+        ("Prepared by:", config["prepared_by"]),
     ]
     detail_table = doc.add_table(rows=len(details), cols=2)
     detail_table.alignment = WD_TABLE_ALIGNMENT.LEFT
@@ -458,7 +508,7 @@ def build_document() -> Document:
     ]
     col_widths = [1.0, 5.0, 1.2, 5.5, 2.2, 2.2, 2.5, 11.0, 2.5, 3.5]
 
-    t = doc.add_table(rows=1 + len(RISKS), cols=len(headers))
+    t = doc.add_table(rows=1 + len(risks), cols=len(headers))
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
 
     # header row
@@ -466,7 +516,7 @@ def build_document() -> Document:
         format_header_cell(t.rows[0].cells[j], h)
 
     # data rows
-    for i, risk in enumerate(RISKS):
+    for i, risk in enumerate(risks):
         row = t.rows[i + 1]
         add_body_cell(row.cells[0], str(risk["no"]))
         row.cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -516,12 +566,7 @@ def build_document() -> Document:
 
     st1 = doc.add_table(rows=5, cols=2)
     st1.alignment = WD_TABLE_ALIGNMENT.LEFT
-    pre_data = [
-        ("Critical (5\u20136)", "8"),
-        ("High (4)", "5"),
-        ("Medium (3)", "3"),
-        ("Low (1\u20132)", "0"),
-    ]
+    pre_data = config["pre_summary"]
     format_header_cell(st1.rows[0].cells[0], "Risk Rating")
     format_header_cell(st1.rows[0].cells[1], "Count")
     for i, (rating, count) in enumerate(pre_data):
@@ -545,12 +590,7 @@ def build_document() -> Document:
 
     st2 = doc.add_table(rows=5, cols=2)
     st2.alignment = WD_TABLE_ALIGNMENT.LEFT
-    post_data = [
-        ("Critical (5\u20136)", "0"),
-        ("High (4)", "0"),
-        ("Medium (3)", "9"),
-        ("Low (1\u20132)", "7"),
-    ]
+    post_data = config["post_summary"]
     format_header_cell(st2.rows[0].cells[0], "Risk Rating")
     format_header_cell(st2.rows[0].cells[1], "Count")
     for i, (rating, count) in enumerate(post_data):
@@ -569,14 +609,7 @@ def build_document() -> Document:
     for run in h.runs:
         run.font.name = FONT_NAME
         run.font.color.rgb = BLACK
-    hold_points = [
-        "Fibre cement boards \u2014 confirm asbestos status before any disturbance (WHS Reg Part 8.6)",
-        "Timber doors and frames \u2014 test for lead paint before abrading (WHS Reg Part 8.5)",
-        "Brickwork reconstruction \u2014 structural removal sequence confirmed before commencement",
-        "All silica-generating tasks \u2014 air monitoring and health surveillance required (WHS Reg Part 8.4)",
-        "Industrial rope access \u2014 anchor installation certified by qualified engineer, load tested to 15 kN minimum (WHS Reg r213)",
-    ]
-    for hp in hold_points:
+    for hp in config["hold_points"]:
         p = doc.add_paragraph(style="List Bullet")
         run = p.add_run(hp)
         run.font.name = FONT_NAME
@@ -590,23 +623,7 @@ def build_document() -> Document:
     for run in h.runs:
         run.font.name = FONT_NAME
         run.font.color.rgb = BLACK
-    refs = [
-        "Work Health and Safety Act 2011 (NSW) \u2014 s19, s28, s38",
-        "Work Health and Safety Regulation 2017 (NSW) \u2014 Part 3.1, Part 6.3, Part 6.4, Part 8.4, Part 8.5, Part 8.6",
-        "Code of Practice: Managing the Risk of Falls at Workplaces (Safe Work Australia)",
-        "Code of Practice: Managing Risks of Hazardous Chemicals in the Workplace (Safe Work Australia)",
-        "Code of Practice: How to Safely Remove Asbestos (Safe Work Australia)",
-        "Code of Practice: How to Manage and Control Asbestos in the Workplace (Safe Work Australia)",
-        "Code of Practice: Managing the Risks of Plant in the Workplace (Safe Work Australia)",
-        "Code of Practice: Scaffolds and Scaffolding Work (Safe Work Australia)",
-        "AS/NZS 1891.1 \u2014 Industrial fall-arrest systems and devices",
-        "AS/NZS 1801 \u2014 Occupational protective helmets",
-        "AS/NZS 1337 \u2014 Personal eye protection",
-        "Guide to Managing Risks of Industrial Rope Access Systems (Safe Work Australia, June 2022)",
-        "AS/NZS ISO 22846 \u2014 Rope access systems",
-        "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems and devices \u2014 Selection, use and maintenance",
-    ]
-    for ref in refs:
+    for ref in config["references"]:
         p = doc.add_paragraph(style="List Bullet")
         run = p.add_run(ref)
         run.font.name = FONT_NAME

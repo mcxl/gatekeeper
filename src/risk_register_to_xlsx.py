@@ -20,8 +20,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.formatting.rule import FormulaRule
 
-# Import the shared risk data from the docx module
-from src.risk_register_to_docx import RISKS
+# Import the default config from the docx module (used when run standalone)
+from src.risk_register_to_docx import DEFAULT_CONFIG as _WATERLOO_CONFIG
 
 # ── Constants (matching docx_style_standard) ──────────────────────
 FONT_NAME = "Arial"
@@ -85,31 +85,6 @@ RISK_MATRIX = [
 GATEKEEPER_CODES = ["WAH", "SIL", "ENV", "STR", "ASB", "LED", "TRF", "CHM", "WAT", "EMR"]
 RISK_LEVELS = ["Critical (6)", "Critical (5)", "High (4)", "High (3)", "Medium (3)", "Medium (2)", "Low (2)", "Low (1)"]
 
-# ── Hold points and references (from docx generator) ─────────────
-HOLD_POINTS = [
-    "Fibre cement boards — confirm asbestos status before any disturbance (WHS Reg Part 8.6)",
-    "Timber doors and frames — test for lead paint before abrading (WHS Reg Part 8.5)",
-    "Brickwork reconstruction — structural removal sequence confirmed before commencement",
-    "All silica-generating tasks — air monitoring and health surveillance required (WHS Reg Part 8.4)",
-    "Industrial rope access — anchor installation certified by qualified engineer, load tested to 15 kN minimum (WHS Reg r213)",
-]
-
-REFERENCES = [
-    "Work Health and Safety Act 2011 (NSW) — s19, s28, s38",
-    "Work Health and Safety Regulation 2017 (NSW) — Part 3.1, Part 6.3, Part 6.4, Part 8.4, Part 8.5, Part 8.6",
-    "Code of Practice: Managing the Risk of Falls at Workplaces (Safe Work Australia)",
-    "Code of Practice: Managing Risks of Hazardous Chemicals in the Workplace (Safe Work Australia)",
-    "Code of Practice: How to Safely Remove Asbestos (Safe Work Australia)",
-    "Code of Practice: How to Manage and Control Asbestos in the Workplace (Safe Work Australia)",
-    "Code of Practice: Managing the Risks of Plant in the Workplace (Safe Work Australia)",
-    "Code of Practice: Scaffolds and Scaffolding Work (Safe Work Australia)",
-    "AS/NZS 1891.1 — Industrial fall-arrest systems and devices",
-    "AS/NZS 1801 — Occupational protective helmets",
-    "AS/NZS 1337 — Personal eye protection",
-    "Guide to Managing Risks of Industrial Rope Access Systems (Safe Work Australia, June 2022)",
-    "AS/NZS ISO 22846 — Rope access systems",
-    "AS/NZS 1891.4 — Industrial fall-arrest systems and devices — Selection, use and maintenance",
-]
 
 
 def _risk_fill(level: str) -> PatternFill:
@@ -160,17 +135,18 @@ def _apply_body_cell(ws, row: int, col: int, text: str,
     cell.border = THIN_BORDER
 
 
-def build_sheet1_risk_register(ws) -> None:
+def build_sheet1_risk_register(ws, config: dict) -> None:
     """Build the Risk Register sheet with main table, summaries, and hold points."""
     ws.title = "Risk Register"
+    risks = config["risks"]
 
     # ── Project header ────────────────────────────────────────────
     project_details = [
-        ("Project:", "Remedial Building Works — 18 Danks Street, Waterloo NSW 2017"),
-        ("PCBU / Principal Contractor:", "Robertson's Remedial and Painting Pty Ltd"),
-        ("Jurisdiction:", "NSW — WHS Act 2011 (NSW), WHS Regulation 2017 (NSW)"),
-        ("Date Prepared:", "23 February 2026"),
-        ("Prepared by:", "Gatekeeper Risk Assessment System"),
+        ("Project:", config["project_name"]),
+        ("PCBU / Principal Contractor:", config["pcbu"]),
+        ("Jurisdiction:", config["jurisdiction"]),
+        ("Date Prepared:", config["date"]),
+        ("Prepared by:", config["prepared_by"]),
     ]
     for i, (label, value) in enumerate(project_details):
         label_cell = ws.cell(row=i + 1, column=1, value=label)
@@ -197,7 +173,7 @@ def build_sheet1_risk_register(ws) -> None:
 
     # ── Data rows ─────────────────────────────────────────────────
     data_start = header_row + 1
-    for i, risk in enumerate(RISKS):
+    for i, risk in enumerate(risks):
         r = data_start + i
         _apply_body_cell(ws, r, 1, risk["no"], center=True)
         _apply_body_cell(ws, r, 2, risk["task"])
@@ -216,7 +192,7 @@ def build_sheet1_risk_register(ws) -> None:
             for col in [1, 2, 3, 4, 5, 6, 8, 10]:
                 ws.cell(row=r, column=col).fill = alt
 
-    data_end = data_start + len(RISKS) - 1
+    data_end = data_start + len(risks) - 1
 
     # ── Data validation — Likelihood dropdown (column 5) ──────────
     likelihood_formula = '"A — Almost Certain,B — Likely,C — Possible,D — Unlikely,E — Rare"'
@@ -263,11 +239,11 @@ def build_sheet1_risk_register(ws) -> None:
     dv_residual.add(f"I{data_start}:I{data_end}")
 
     # ── Risk Rating (column 7) — write the pre-calculated value ─
-    # Static values from the RISKS data ensure text is always visible.
+    # Static values from the risks data ensure text is always visible.
     # Conditional formatting (below) applies the colour coding.
     # For any new rows added by the user, an XLOOKUP formula template
     # is provided on the 'Matrix & Lists' sheet.
-    for i, risk in enumerate(RISKS):
+    for i, risk in enumerate(risks):
         r = data_start + i
         _apply_risk_cell(ws, r, 7, risk["risk_pre"])
 
@@ -329,12 +305,7 @@ def build_sheet1_risk_register(ws) -> None:
     _apply_header(ws, pre_row, 1, "Risk Rating")
     _apply_header(ws, pre_row, 2, "Count")
 
-    pre_data = [
-        ("Critical (5–6)", "8"),
-        ("High (3–4)", "5"),
-        ("Medium (2–3)", "3"),
-        ("Low (1–2)", "0"),
-    ]
+    pre_data = config["pre_summary"]
     for i, (rating, count) in enumerate(pre_data):
         r = pre_row + 1 + i
         level = _extract_level(rating)
@@ -356,12 +327,7 @@ def build_sheet1_risk_register(ws) -> None:
     _apply_header(ws, post_row, 1, "Risk Rating")
     _apply_header(ws, post_row, 2, "Count")
 
-    post_data = [
-        ("Critical (5–6)", "0"),
-        ("High (3–4)", "0"),
-        ("Medium (2–3)", "9"),
-        ("Low (1–2)", "7"),
-    ]
+    post_data = config["post_summary"]
     for i, (rating, count) in enumerate(post_data):
         r = post_row + 1 + i
         level = _extract_level(rating)
@@ -375,12 +341,12 @@ def build_sheet1_risk_register(ws) -> None:
         cell_count.border = THIN_BORDER
 
     # ── Critical Hold Points ──────────────────────────────────────
-    hp_row = post_row + len(post_data) + 3
+    hp_row = post_row + len(config["post_summary"]) + 3
     ws.cell(row=hp_row, column=1, value="Critical Hold Points").font = Font(
         name=FONT_NAME, size=12, bold=True, color=BLACK,
     )
     hp_row += 1
-    for i, hp in enumerate(HOLD_POINTS):
+    for i, hp in enumerate(config["hold_points"]):
         cell = ws.cell(row=hp_row + i, column=1, value=f"• {hp}")
         cell.font = Font(name=FONT_NAME, size=9, color=BLACK)
         cell.alignment = Alignment(wrap_text=True)
@@ -391,12 +357,12 @@ def build_sheet1_risk_register(ws) -> None:
         )
 
     # ── References ────────────────────────────────────────────────
-    ref_row = hp_row + len(HOLD_POINTS) + 2
+    ref_row = hp_row + len(config["hold_points"]) + 2
     ws.cell(row=ref_row, column=1, value="References").font = Font(
         name=FONT_NAME, size=12, bold=True, color=BLACK,
     )
     ref_row += 1
-    for i, ref in enumerate(REFERENCES):
+    for i, ref in enumerate(config["references"]):
         cell = ws.cell(row=ref_row + i, column=1, value=f"• {ref}")
         cell.font = Font(name=FONT_NAME, size=8, color=BLACK)
         cell.alignment = Alignment(wrap_text=True)
@@ -419,7 +385,7 @@ def build_sheet1_risk_register(ws) -> None:
     ws.print_title_rows = f"{header_row}:{header_row}"
 
     # Set row heights for data rows
-    for i in range(len(RISKS)):
+    for i in range(len(risks)):
         ws.row_dimensions[data_start + i].height = 80
 
 
@@ -565,11 +531,13 @@ def build_sheet2_matrix(ws) -> None:
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
 
 
-def build_workbook() -> Workbook:
+def build_workbook(config: dict | None = None) -> Workbook:
     """Build the complete two-sheet workbook."""
+    if config is None:
+        config = _WATERLOO_CONFIG
     wb = Workbook()
     ws1 = wb.active
-    build_sheet1_risk_register(ws1)
+    build_sheet1_risk_register(ws1, config)
 
     ws2 = wb.create_sheet()
     build_sheet2_matrix(ws2)
