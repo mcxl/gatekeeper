@@ -5,27 +5,25 @@ Converts semicolon-separated control_summary text in the consolidated table (tab
 into ▪ small square bullet paragraphs.
 
 Bullet: ▪ U+25AA — Technical/engineering — Calibri 9pt — indent left=360/hanging=180
-Word-stable: uses Wingdings2 font for the square character to prevent Word override.
 
 Usage:
-    python3 swms_bulletize.py input.docx output.docx
+    python swms_bulletize.py input.docx output.docx
 
 The script:
-1. Unpacks the docx
+1. Unpacks the docx (zip archive)
 2. Adds/updates abstractNum (id=99) + num (id=99) with ▪ bullet definition
 3. Rewrites col 3 of each data row in tables[2] as bullet paragraphs
-4. Repacks and validates
+4. Repacks into a valid .docx
 """
 
 import sys
 import os
-import subprocess
+import zipfile
 import shutil
+import tempfile
 from lxml import etree
 
-SKILLS = '/mnt/skills/public/docx/scripts/office'
-W  = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-W16CID = 'http://schemas.microsoft.com/office/word/2016/wordml/cid'
+W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
 def w(tag): return f'{{{W}}}{tag}'
 ns = {'w': W}
@@ -33,8 +31,6 @@ ns = {'w': W}
 ABSTRACT_NUM_ID = '99'
 NUM_ID          = '99'
 
-# ▪ U+25AA in Wingdings2 = chr(0xF0A7) — prevents Word from overriding with its own symbol set
-# Using direct Unicode in Calibri is cleaner and stable in modern Word (2016+)
 BULLET_CHAR = '&#x25AA;'  # ▪ direct Unicode — Calibri supports it natively
 
 ABSTRACT_XML = f'''<w:abstractNum xmlns:w="{W}" w:abstractNumId="{ABSTRACT_NUM_ID}">
@@ -111,6 +107,49 @@ def make_bullet_para(text, ccvs_prefix=False):
     return etree.fromstring(para_xml)
 
 
+def unpack_docx(docx_path, work_dir):
+    """Unpack a .docx file (zip archive) to a working directory."""
+    with zipfile.ZipFile(docx_path, 'r') as zf:
+        zf.extractall(work_dir)
+    print(f'  Unpacked {os.path.basename(docx_path)}')
+
+
+def pack_docx(work_dir, output_path, original_path):
+    """
+    Repack a working directory into a .docx file.
+    Preserves the file order and compression from the original where possible.
+    """
+    # Get the original file list order to maintain compatibility
+    original_names = []
+    if original_path and os.path.exists(original_path):
+        with zipfile.ZipFile(original_path, 'r') as zf:
+            original_names = zf.namelist()
+
+    # Collect all files in work_dir
+    all_files = []
+    for root, dirs, files in os.walk(work_dir):
+        for f in files:
+            full = os.path.join(root, f)
+            arcname = os.path.relpath(full, work_dir).replace('\\', '/')
+            all_files.append(arcname)
+
+    # Order: original order first, then any new files
+    ordered = []
+    for name in original_names:
+        if name in all_files:
+            ordered.append(name)
+            all_files.remove(name)
+    ordered.extend(all_files)  # any new files at the end
+
+    with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for arcname in ordered:
+            full_path = os.path.join(work_dir, arcname.replace('/', os.sep))
+            if os.path.exists(full_path):
+                zf.write(full_path, arcname)
+
+    print(f'  Packed {os.path.basename(output_path)}')
+
+
 def update_numbering(num_path):
     """Add/replace abstractNum 99 and num 99 in numbering.xml."""
     tree = etree.parse(num_path)
@@ -134,7 +173,7 @@ def update_numbering(num_path):
 
     root.append(etree.fromstring(NUM_XML))
     tree.write(num_path, xml_declaration=True, encoding='utf-8', pretty_print=True)
-    print('  ✓ numbering.xml updated — abstractNum/num id=99 (▪ Calibri 9pt)')
+    print('  numbering.xml updated — abstractNum/num id=99')
 
 
 def bulletize_consolidated(doc_path):
@@ -144,7 +183,7 @@ def bulletize_consolidated(doc_path):
     tables = root.findall('.//w:tbl', ns)
 
     if len(tables) < 3:
-        print(f'  ERROR: expected ≥3 tables, found {len(tables)}')
+        print(f'  ERROR: expected >=3 tables, found {len(tables)}')
         return 0
 
     tbl = tables[2]
@@ -175,11 +214,8 @@ def bulletize_consolidated(doc_path):
         for p in cell.findall(w('p')):
             cell.remove(p)
 
-        # Detect CCVS prefix on first bullet — strip marker, pass flag
+        # Detect CCVS prefix on first bullet
         ccvs_first = bullets[0].startswith(CCVS_MARKER)
-        if ccvs_first:
-            # Keep marker in first bullet text — make_bullet_para handles rendering
-            pass
 
         # Add bullet paragraphs
         for b_i, bullet_text in enumerate(bullets):
@@ -189,81 +225,68 @@ def bulletize_consolidated(doc_path):
                 cell.append(para)
 
         replaced += 1
-        print(f'  Row {i:>2}: {len(bullets):>2} bullets — {repr(full_text[:55])}...')
+        preview = repr(full_text[:55])
+        print(f'  Row {i:>2}: {len(bullets):>2} bullets — {preview}...')
 
     tree.write(doc_path, xml_declaration=True, encoding='utf-8', pretty_print=True)
     return replaced
 
 
 def run(input_path, output_path):
-    print(f'\n{"═"*60}')
-    print(f'  SWMS Bulletizer — ▪ small square')
+    print(f'\n{"="*60}')
+    print(f'  SWMS Bulletizer')
     print(f'  Input:  {os.path.basename(input_path)}')
     print(f'  Output: {os.path.basename(output_path)}')
-    print(f'{"═"*60}\n')
+    print(f'{"="*60}\n')
 
-    work_dir = '/tmp/swms_bullet_work'
-    if os.path.exists(work_dir):
-        shutil.rmtree(work_dir)
+    work_dir = tempfile.mkdtemp(prefix='swms_bullet_')
+    try:
+        # Unpack
+        unpack_docx(input_path, work_dir)
 
-    # Unpack
-    result = subprocess.run(
-        ['python3', f'{SKILLS}/unpack.py', input_path, work_dir],
-        capture_output=True, text=True
-    )
-    print(f'  Unpack: {result.stdout.strip()}')
-    if result.returncode != 0:
-        print(f'  ERROR: {result.stderr}')
-        sys.exit(1)
+        # Update numbering
+        num_path = os.path.join(work_dir, 'word', 'numbering.xml')
+        if os.path.exists(num_path):
+            update_numbering(num_path)
+        else:
+            print('  WARNING: numbering.xml not found — creating minimal one')
+            os.makedirs(os.path.dirname(num_path), exist_ok=True)
+            with open(num_path, 'w', encoding='utf-8') as f:
+                f.write(f'<?xml version="1.0" encoding="utf-8"?>\n'
+                        f'<w:numbering xmlns:w="{W}">\n'
+                        f'{ABSTRACT_XML}\n'
+                        f'{NUM_XML}\n'
+                        f'</w:numbering>')
+            # Add relationship if missing
+            rels_path = os.path.join(work_dir, 'word', '_rels', 'document.xml.rels')
+            if os.path.exists(rels_path):
+                with open(rels_path, encoding='utf-8') as f:
+                    rels = f.read()
+                if 'numbering' not in rels:
+                    rels = rels.replace('</Relationships>',
+                        '<Relationship Id="rId99" '
+                        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" '
+                        'Target="numbering.xml"/>\n</Relationships>')
+                    with open(rels_path, 'w', encoding='utf-8') as f:
+                        f.write(rels)
 
-    # Update numbering
-    num_path = os.path.join(work_dir, 'word', 'numbering.xml')
-    if os.path.exists(num_path):
-        update_numbering(num_path)
-    else:
-        print('  WARNING: numbering.xml not found — creating minimal one')
-        # Create minimal numbering.xml
-        with open(num_path, 'w') as f:
-            f.write(f'''<?xml version="1.0" encoding="utf-8"?>
-<w:numbering xmlns:w="{W}">
-{ABSTRACT_XML}
-{NUM_XML}
-</w:numbering>''')
-        # Add relationship if missing
-        rels_path = os.path.join(work_dir, 'word', '_rels', 'document.xml.rels')
-        with open(rels_path) as f:
-            rels = f.read()
-        if 'numbering' not in rels:
-            rels = rels.replace('</Relationships>',
-                '<Relationship Id="rId99" '
-                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" '
-                'Target="numbering.xml"/>\n</Relationships>')
-            with open(rels_path, 'w') as f:
-                f.write(rels)
+        # Bulletize document
+        doc_path = os.path.join(work_dir, 'word', 'document.xml')
+        replaced = bulletize_consolidated(doc_path)
+        print(f'\n  Consolidated table: {replaced} rows bulletized')
 
-    # Bulletize document
-    doc_path = os.path.join(work_dir, 'word', 'document.xml')
-    replaced = bulletize_consolidated(doc_path)
-    print(f'\n  Consolidated table: {replaced} rows bulletized')
+        # Pack
+        pack_docx(work_dir, output_path, input_path)
 
-    # Pack and validate
-    result = subprocess.run(
-        ['python3', f'{SKILLS}/pack.py', work_dir, output_path,
-         '--original', input_path],
-        capture_output=True, text=True
-    )
-    print(f'\n  Pack: {result.stdout.strip()}')
-    if result.returncode != 0:
-        print(f'  ERROR: {result.stderr}')
-        sys.exit(1)
-
-    print(f'\n{"═"*60}')
-    print(f'  ✓ Complete → {output_path}')
-    print(f'{"═"*60}\n')
+        print(f'\n{"="*60}')
+        print(f'  Complete -> {output_path}')
+        print(f'{"="*60}\n')
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print('Usage: python3 swms_bulletize.py input.docx output.docx')
+        print('Usage: python swms_bulletize.py input.docx output.docx')
         sys.exit(1)
     run(sys.argv[1], sys.argv[2])

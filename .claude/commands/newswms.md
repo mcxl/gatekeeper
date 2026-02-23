@@ -12,7 +12,11 @@ You are generating a FSC-compliant Safe Work Method Statement for an Australian 
 1. Ask the user for: PBCU, PC, site address, scope of works, tasks, plant/equipment, chemicals, emergency assembly point, emergency contact number
 2. Confirm details back to user
 3. Generate the SWMS using the master instructions
-4. Output the completed .docx file
+4. Output the completed .docx files
+5. Run swms_bulletize.py on each output file to convert consolidated table to bullet format:
+   ```
+   PYTHONIOENCODING=utf-8 venv/Scripts/python.exe src/swms_bulletize.py output/<file>.docx output/<file>.docx
+   ```
 
 ## Rules
 - Always follow SWMS_GENERATOR_MASTER_v16_0.md
