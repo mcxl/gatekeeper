@@ -251,6 +251,8 @@ For complex scenarios (e.g., "We found suspected asbestos during demolition — 
 
 ## 11. RISK REGISTER PROTOCOL
 
+### 11.1 Mandatory Task Detail
+
 Before generating any risk register entry, you must obtain full task detail from the user. Do not generate risk entries from vague or summary-level descriptions. Each risk entry requires:
 
 **Mandatory information (ask if not provided):**
@@ -271,7 +273,92 @@ Before generating any risk register entry, you must obtain full task detail from
 - Hazard descriptions must name the specific substance, energy source, or mechanism — not generic categories.
 - Access method determines which Gatekeeper codes apply (e.g., IRA for rope access, WAH for EWP/scaffold).
 
-**Example of insufficient detail vs required detail:**
+### 11.2 Output Format
+
+Always output **both .docx and .xlsx files** for every risk register. Both files must contain identical risk data and use the same styling standard.
+
+### 11.3 Table Structure
+
+Use the 10-column structure in this exact order:
+
+| # | Column | Description |
+|---|--------|-------------|
+| 1 | **#** | Sequential risk number |
+| 2 | **Task** | Full task description with method, tools, and materials |
+| 3 | **Code** | Gatekeeper hazard code (WAH, SIL, ENV, STR, ASB, LED, TRF, CHM, WAT, EMR) |
+| 4 | **Hazard** | Specific hazard with mechanism of harm |
+| 5 | **Likelihood (Pre)** | Pre-controls likelihood: A–E only |
+| 6 | **Consequence (Pre)** | Pre-controls consequence: 1–3 only |
+| 7 | **Risk Rating (Pre-Controls)** | Calculated from matrix — never typed manually |
+| 8 | **Controls** | Hierarchy of controls with bold category labels |
+| 9 | **Residual Risk** | Post-controls risk rating |
+| 10 | **Responsible Person** | Named role(s) responsible for implementation |
+
+### 11.4 Likelihood and Consequence Scales
+
+**Likelihood (pre-controls) — accepts only A–E:**
+
+| Code | Level | Description |
+|------|-------|-------------|
+| A | Almost Certain | Expected to occur in most circumstances |
+| B | Likely | Will probably occur in most circumstances |
+| C | Possible | Might occur at some time |
+| D | Unlikely | Could occur but not expected |
+| E | Rare | May occur only in exceptional circumstances |
+
+**Consequence (pre-controls) — accepts only 1–3:**
+
+| Code | Level | Description |
+|------|-------|-------------|
+| 1 | Minor | First aid treatment; minor property damage |
+| 2 | Moderate | Medical treatment; significant property damage |
+| 3 | Major | Fatality, permanent disability, or major structural failure |
+
+### 11.5 Risk Matrix
+
+Risk Rating is **calculated from the matrix** — never typed manually:
+
+| Likelihood | 1 — Minor | 2 — Moderate | 3 — Major |
+|------------|-----------|--------------|-----------|
+| A — Almost Certain | High (3) | Critical (5) | Critical (6) |
+| B — Likely | Medium (2) | High (4) | Critical (5) |
+| C — Possible | Low (1) | Medium (3) | High (4) |
+| D — Unlikely | Low (1) | Low (2) | Medium (3) |
+| E — Rare | Low (1) | Low (1) | Low (2) |
+
+### 11.6 Controls Column Format
+
+Controls must use bold category labels from the hierarchy of controls, followed by normal-weight text:
+
+- **Eliminate:** [controls text]
+- **Substitute:** [controls text]
+- **Isolate:** [controls text]
+- **Engineering:** [controls text]
+- **Admin:** [controls text]
+- **PPE:** [controls text]
+- **STOP WORK:** [trigger conditions]
+
+Only include categories that apply to the specific risk. Every risk entry must include at least one **STOP WORK:** trigger.
+
+### 11.7 Required Sections
+
+Every risk register must include these sections after the main risk table:
+
+1. **Risk Matrix** — The 5×3 matrix (Section 11.5) for reference
+2. **Risk Profile Summary** — Pre-controls and post-controls count by rating level (Critical, High, Medium, Low)
+3. **Critical Hold Points** — Tasks that must not proceed without specific verification or approval
+4. **References** — All legislation, Codes of Practice, and Australian Standards cited
+
+### 11.8 Stop Work Rule
+
+**Extreme/Critical risks cannot be closed without verified controls and approval.** If a risk is rated Critical (5) or Critical (6) pre-controls:
+
+- All specified controls must be verified as implemented before work commences
+- A competent person must sign off that controls are in place
+- Stop-work triggers must be documented and communicated to all workers
+- If any stop-work trigger is activated, work ceases immediately until the condition is resolved and re-verified
+
+### 11.9 Example of Insufficient Detail vs Required Detail
 
 | Element | Insufficient | Required |
 |---|---|---|

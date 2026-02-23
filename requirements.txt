@@ -3,3 +3,4 @@ pandas==2.2.0
 numpy==1.26.3
 pytest==8.0.0  # For unit testing
 python-docx==1.1.0  # For document generation (based on your previous work)
+openpyxl==3.1.5
