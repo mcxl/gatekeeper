@@ -1,0 +1,1712 @@
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+Guide to managing risks of 
+industrial rope access 
+systems 
+Guidance material 
+JUNE 2022 
+
+--- PAGE 2 ---
+ 
+2 
+ 
+ 
+Contents 
+1. 
+Introduction .................................................................................................................... 3 
+1.1. 
+What is an industrial rope access system? ............................................................. 3 
+1.2. 
+Who should use this Guide? ................................................................................... 4 
+1.3. 
+How to use this Guide ............................................................................................. 4 
+2. 
+Who has health and safety duties? ................................................................................ 5 
+2.1. 
+WHS laws in your state or territory .......................................................................... 6 
+3. 
+Managing health and safety risks ................................................................................... 6 
+3.1. 
+Consultation ............................................................................................................ 6 
+3.2. 
+The risk management process ................................................................................ 7 
+3.3. 
+Training and supervision ....................................................................................... 11 
+3.4. 
+High risk construction work and safe work method statements ............................. 12 
+4. 
+Safe planning and use of an industrial rope access system ......................................... 12 
+4.1. 
+Planning the work ................................................................................................. 12 
+4.2. 
+Emergency procedures and first aid ...................................................................... 13 
+4.3. 
+Remote or isolated work ....................................................................................... 13 
+4.4. 
+Equipment selection, care and maintenance ......................................................... 13 
+4.5. 
+Anchor systems .................................................................................................... 14 
+4.6. 
+Rope protection .................................................................................................... 27 
+4.7. 
+Exclusion zones .................................................................................................... 28 
+4.8. 
+Use of tools and other work equipment ................................................................. 28 
+4.9. 
+Work environment hazards ................................................................................... 29 
+4.10. 
+Hazardous manual tasks ................................................................................... 30 
+4.11. 
+Suspension intolerance ..................................................................................... 30 
+4.12. 
+Overhead electric lines ...................................................................................... 31 
+5. 
+Glossary ...................................................................................................................... 31 
+Appendix A – Industrial rope access system checklist......................................................... 34 
+ 
+
+--- PAGE 3 ---
+ 
+3 
+1. Introduction 
+Industrial rope access systems can pose a number of work health and safety (WHS) risks. 
+This Guide provides information for duty holders, primarily for persons conducting a 
+business or undertaking (PCBUs), on: 
+ 
+their duties and obligations under the model WHS laws, 
+ 
+identifying and assessing the risks from using an industrial rope access system 
+ 
+control measures to manage the risks, and 
+ 
+safe planning and use of an industrial rope access system. 
+1.1. 
+What is an industrial rope access system? 
+An industrial rope access system is a work positioning system that is used for gaining 
+access to, and working at, a workface, usually by means of vertically suspended ropes  
+(see Figure 1). Although fall arrest components are used in an industrial rope access 
+system, its main purpose is to gain access to a work area rather than provide backup fall 
+protection. 
+The system involves using a main working line to access and position around a workplace, 
+while protected by a backup safety system—usually a safety line—to minimise the risk of a 
+fall. Both the working line and safety line should be connected to the worker’s harness, and 
+each secured to two anchor points. 
+An industrial rope access system includes the anchorages and the components that connect 
+a worker to an anchorage or anchorages, including the main and safety ropes, harness, 
+descenders, belay and fall arrest devices, connectors, lanyards, attachment hardware and 
+other related equipment, including rescue equipment. 
+ 
+Figure 1 Worker using a descender in an industrial rope access system 
+
+--- PAGE 4 ---
+ 
+4 
+1.2. 
+Who should use this Guide? 
+This Guide provides practical guidance to assist duty holders, primarily PCBUs, to manage 
+risks to health and safety associated with using an industrial rope access system.  
+You have duties if you: 
+ 
+engage workers, or cause workers to be engaged, to use an industrial rope access 
+system  
+ 
+influence or direct workers in use of an industrial rope access system, or  
+ 
+have management or control of a workplace, or the fixtures, fittings or plant at a 
+workplace, where an industrial rope access system is used.  
+Duty holders include industrial rope access service providers, building managers, building 
+owners, building body corporates, principal contractors, and other PCBUs at a workplace 
+where an industrial rope access system is used. 
+This Guide may also assist workers, health and safety representatives, and others in the 
+workplace who may be impacted by the use of an industrial rope access system. 
+The Guide applies to any workplace where an industrial rope access system is used, 
+including in and around buildings and structures, as well as on or around trees and other 
+natural features. For more information about using rope access systems in arboriculture, see 
+the Guide for managing risks of tree trimming and removal work. 
+1.3. 
+How to use this Guide 
+This Guide provides information about the duties and obligations under the model WHS laws 
+and the application of the WHS risk management process to hazards, risks, and control 
+measures that are commonly encountered with industrial rope access systems. The Guide is 
+not able to cover all hazards, risks and control measures in detail. However, examples have 
+been included to assist duty holders in identifying, assessing and managing the risks from an 
+industrial rope access system at their workplace.  
+In managing the risks, duty holders should also seek the advice of a competent person, for 
+example a qualified rope access technician, and refer to relevant industry guidance and 
+standards. This will ensure you have the most comprehensive information about hazards 
+and risks and the most effective control measures available for the particular workplace. 
+Conforming with industry guidance and standards for industrial rope access systems does 
+not automatically mean a duty holder is complying with their duties under the model WHS 
+laws. This Guide, together with other information available from Safe Work Australia, will 
+assist you to meet your duties and obligations under WHS laws. It should be read in 
+conjunction with the following: 
+ 
+Model Code of Practice: How to manage work health and safety risks. 
+ 
+Model Code of Practice: Managing the risk of falls at workplaces. 
+This Guide includes references to the legal requirements under the model WHS Act and 
+model WHS Regulations. These are included for convenience only and should not be relied 
+on in place of the full text of the model WHS Act and model WHS Regulations. 
+In this Guide the word ‘must’ indicates a legal requirement that must be complied with. The 
+word ‘should’ indicates a recommended course of action. 
+
+--- PAGE 5 ---
+ 
+5 
+2. Who has health and safety duties? 
+Everyone in the workplace has WHS duties. A range of people have specific duties in 
+relation to industrial rope access systems, including: 
+ 
+designers, manufacturers, importers, suppliers, and installers of plant and structures 
+ 
+persons with management or control of the workplace 
+ 
+officers such as company directors, and 
+ 
+workers. 
+The main duty holders are set out in Table 1. 
+As a duty holder, you must ensure the WHS duties are met, even if others also have the 
+same duty. If you do not take the required action yourself, you must ensure another duty 
+holder is doing so. This requires duty holders to communicate with each other to identify 
+hazards and risks, talk about health and safety concerns, and work together to minimise the 
+risks. 
+Table 1 Duties in relation to industrial rope access systems 
+Who 
+Duties 
+A person who 
+conducts a 
+business or 
+undertaking 
+(PCBU) 
+Must ensure, so far as is reasonably practicable, the health and safety 
+of workers, including volunteers, workers the PCBU engages to carry 
+out work, or workers the PCBU directs or influences in carrying out 
+work.  
+Must ensure that the health and safety of other people is not put at risk 
+from work carried out by the business or undertaking.  
+The PCBU with management or control of fixtures, fittings or plant at a 
+workplace must ensure, so far as is reasonably practicable, that the 
+fixtures, fittings and plant are without risks to the health and safety of 
+any person. 
+These duties require the PCBU to manage health and safety risks by 
+eliminating them so far as is reasonably practicable, and if this is not 
+reasonably practicable, by minimising those risks so far as is 
+reasonably practicable. 
+In the model WHS Regulations a PCBU also has a range of other 
+duties in relation to industrial rope access systems, including: 
+ 
+managing the risk of falls (regulations 78-80) 
+ 
+managing the risks of plant (regulation 203) 
+ 
+ensuring plant is maintained, inspected and tested (regulation 
+213) 
+ 
+managing the risks of musculoskeletal disorders relating to 
+hazardous manual tasks (regulation 60) 
+ 
+ensuring suitable and adequate information, training and 
+instruction are provided to workers (regulation 39) 
+ 
+maintaining a secure workplace from unauthorised access 
+(regulation 298), and 
+
+--- PAGE 6 ---
+ 
+6 
+Who 
+Duties 
+ 
+ensuring there is a Safe Work Method Statement for high risk 
+construction work (regulation 299). 
+Designers, 
+manufactures, 
+importers, 
+suppliers or 
+installers of 
+plant, 
+substances or 
+structures  
+Must ensure, so far as is reasonably practicable, the plant, substance 
+or structure they design, manufacture, import, supply or install is 
+without risks to health and safety. 
+This duty includes carrying out analysis, testing or an examination, and 
+providing specific information about the plant, substance or structure. 
+Information should be passed on from the designer through to the 
+manufacturer and supplier to the end user. 
+Officers such as 
+company 
+directors 
+Must exercise due diligence to ensure the business or undertaking 
+complies with the model WHS Act and Regulations. This includes 
+taking reasonable steps to ensure the business or undertaking has and 
+uses appropriate resources and processes to eliminate or minimise 
+risks to health and safety. 
+Workers and 
+other persons at 
+the workplace 
+Must take reasonable care for their own health and safety, comply with 
+reasonable instructions, and not adversely affect the health and safety 
+of other people. Workers must also co-operate with reasonable policies 
+and procedures.  
+2.1. 
+WHS laws in your state or territory 
+WHS laws are not the same across Australia. The Commonwealth, state and territory WHS 
+regulators are responsible for enforcing WHS laws in their jurisdiction, investigating incidents 
+and taking enforcement action.  
+If you need help understanding the WHS requirements in your jurisdiction, please contact 
+your WHS regulator. 
+3. Managing health and safety risks 
+As a PCBU, you must manage the health and safety risks associated with the use and 
+maintenance of an industrial rope access system. 
+Use the following steps to ensure, so far as is reasonably practicable, workers and other 
+persons are not exposed to health and safety risks associated with the use of an industrial 
+rope access system.  
+Further information on the risk management process is in the model Code of Practice: How 
+to manage work health and safety risks. 
+3.1. 
+Consultation 
+As a PCBU, you must consult, so far as is reasonably practicable, with your workers and 
+their health and safety representatives (if any) when deciding how to manage the risks of 
+using an industrial rope access system in the workplace. By drawing on the experience, 
+knowledge and ideas of your workers you are more likely to identify hazards and choose 
+effective control measures. 
+
+--- PAGE 7 ---
+ 
+7 
+If there is more than one business or undertaking involved at your workplace or if the 
+workplace is managed or controlled by another PCBU, you must consult them to find out 
+who is doing what and work together, so risks are eliminated or minimised so far as is 
+reasonably practicable. 
+This may involve discussing workplace-specific control measures including exclusion zones, 
+traffic management, and re-scheduling work that may interfere with the safety of industrial 
+rope access systems. 
+Further guidance on consultation can be found in the model Code of Practice: Work health 
+and safety consultation, co-operation and co-ordination. 
+3.2. 
+The risk management process 
+Risk management requires you to think about what could go wrong at your workplace and 
+what the consequences could be. Then you must do whatever is reasonably practicable to 
+eliminate or minimise those risks. This process will be implemented in different ways 
+depending on the size and nature of your business or undertaking.  
+Risk management involves four steps:  
+ 
+Identify hazards—find out what could cause harm.  
+ 
+Assess risks, if necessary—understand the nature of the harm that could be 
+caused by the hazard, how serious the harm could be and the likelihood of it 
+happening. This step may not be necessary if you are dealing with a known risk with 
+known control measures.  
+ 
+Control risks—implement the most effective control measure that is reasonably 
+practicable in the circumstances and ensure it remains effective over time.  
+ 
+Review hazards and control measures to ensure they are working as planned.  
+Determining what control measures are reasonably practicable includes consideration of the 
+availability and suitability of control measures. Cost may also be relevant, but you must only 
+consider this after you have assessed the extent of the risk and the available ways to 
+eliminate or minimise the risk.  
+Managing the risks of industrial rope access systems requires a high level of competency. 
+You should seek the advice of a competent person, for example a qualified rope access 
+technician, and refer to relevant industry guidance to ensure you have the most 
+comprehensive information about hazards and risks and use the most effective control 
+measures available for the particular workplace. 
+3.2.1. Identify the hazards 
+Identifying hazards associated with the use of an industrial rope access system involves 
+finding what could potentially cause harm to people. 
+The following can help you identify potential hazards: 
+ 
+Observe the workplace to identify areas where industrial rope access systems may 
+be used. Think about the workplace layout and condition: if there are surfaces or 
+edges that could damage or break rope access equipment; if work is above or near 
+people, vehicles or structures.  
+ 
+Identify the major functional requirements of the industrial rope access system, like 
+load requirements, available anchor points, and accessibility.  
+
+--- PAGE 8 ---
+ 
+8 
+ 
+Inspect industrial rope access systems and equipment before and after use to 
+ensure they are not damaged or excessively worn.  
+ 
+Identify any hazardous manual tasks such as working with heavy equipment or 
+repetitive strain risks like ascending a working line. 
+ 
+Consider the potential for falling objects like tools, debris, and equipment such as 
+working lines and safety lines being lowered. 
+ 
+Assess the workplace environment, including sunlight, wind, weather, and ground 
+conditions.  
+ 
+Consider other work activities at the workplace, including those above, below, within 
+or near a rope access work area. 
+You should seek the most comprehensive information about hazards from a competent 
+person and relevant industry guidance. 
+You should also ask your workers about potential hazards they can see at your workplace 
+and review your incident and injury records including near misses. 
+A checklist to assist in identifying hazards associated with industrial rope access system is at 
+Appendix A. 
+3.2.2. Assess the risks 
+In many cases the risks and related control measures will be well known. In other cases, you 
+may need to carry out a risk assessment to identify the likelihood of somebody being harmed 
+by a hazard and how serious the harm could be.  
+A risk assessment can help you determine what action you should take to control the risk 
+and how urgently the action needs to be taken. 
+People who use or work near industrial rope access systems are most at risk. Some of the 
+hazards and risks when using industrial rope access systems include: 
+ 
+falls from height, including swing down or swing back (pendulum effect) 
+ 
+falling objects  
+ 
+collisions with people, plant or structures  
+ 
+environmental conditions, including solar ultraviolet (UV) radiation, rain, lightning, or 
+winds 
+ 
+hazardous manual tasks, including working with heavy equipment or ascending a 
+line. 
+Examples of risk factors to consider include: 
+ 
+the available anchor systems, e.g. is there an anchor system designed for rope 
+access? Are there independent anchor points for a working line and safety line? 
+Have they been inspected and load tested? 
+ 
+requirements for rope protection, e.g. to protect from hazardous contact points such 
+as sharp edges or abrasive or hot surfaces  
+ 
+potential fall distances. Noting that extension of an energy absorber or the elongation 
+of the safety line should be considered to prevent a worker from hitting anything in 
+the event of a fall 
+ 
+the potential for swing down or swing back (pendulum effect)  
+ 
+the maximum impact load a rope access worker could exert on a line 
+ 
+site conditions, e.g. prevailing or unexpected winds and their strength and direction; 
+vehicle traffic, pedestrians or livestock that could interfere with the work 
+
+--- PAGE 9 ---
+ 
+9 
+ 
+environmental conditions, e.g. high solar UV radiation, storm activity—heavy rain or 
+lightning in the area  
+ 
+the type of plant and machinery required e.g. its dimensions, operating 
+characteristics, ease of manoeuvrability and how it will be restrained 
+ 
+the type of work activities required and the frequency of the work tasks 
+ 
+the qualifications, competency, skill and experience of the people doing the work 
+ 
+setting up and packing up procedures, and 
+ 
+work practices and procedures. 
+You should seek the most comprehensive information about risks from a competent person 
+and relevant industry guidance. 
+3.2.3. Take action to control the risks 
+As a PCBU, you must eliminate risks to health and safety so far as is reasonably practicable. 
+If it is not reasonably practicable to eliminate the risks, you must minimise the risks so far as 
+is reasonably practicable. You will most likely need to use a range of control measures to 
+protect your workers from the risks associated with the use of an industrial rope access 
+system. 
+Controlling risks should involve discussing site-specific requirements (for example, the type 
+of building materials used on the site or the presence of any known hazards). The ways of 
+controlling risks are ranked from the highest level of protection and reliability to the lowest. 
+This ranking is known as the hierarchy of control measures. You must work through this 
+hierarchy to manage health and safety risks associated with industrial rope access systems. 
+You should seek advice from a competent person and refer to relevant industry guidance to 
+ensure you use the most effective control measures available for the particular workplace. 
+3.2.3.1. 
+Managing the risk of a fall 
+As a PCBU, you must eliminate the risk of a fall from one level to another if the fall is likely to 
+injure a worker or any other person. If it is not reasonably practicable to eliminate the risk of 
+a fall (such as by working on the ground or on a solid construction), you must provide and 
+maintain a safe system of work to minimise this risk. This safe system of work must provide 
+adequate protection against the risk of a fall. 
+A safe system of work includes: 
+ 
+providing a fall prevention device, e.g. guard rail, barrier, roof safety mesh, 
+scaffolding, a building maintenance unit, or elevating work platform 
+ 
+if a fall prevention device is not reasonably practicable, providing a work positioning 
+system, e.g. an industrial rope access system, or 
+ 
+if neither of these are reasonably practicable, providing a fall arrest system, e.g. a 
+backup safety line, safety net or catch platform, so far as is reasonably practicable. 
+Providing a work positioning system may not be enough to minimise the risk of a fall. In most 
+circumstances, it is reasonably practicable to also provide a fall arrest system, like a safety 
+line. This is standard practice for industrial rope access systems but must be considered 
+when using any work positioning system. 
+For more information on managing the risk of a fall at your workplace, see the model Code 
+of Practice: Managing the risk of falls at workplaces. 
+
+--- PAGE 10 ---
+ 
+10 
+3.2.4. Elimination controls 
+The first thing you must consider is whether a risk can be completely removed from the 
+workplace. For example, to eliminate the risk of a fall it may be possible to complete certain 
+tasks on the ground. 
+If it is not reasonably practicable to completely eliminate the risk, then risks must be 
+minimised, so far as is reasonably practicable, by doing one or more of the following: 
+ 
+substituting the hazard for something safer 
+ 
+isolating the hazard from people 
+ 
+implementing engineering controls. 
+3.2.5. Substitution controls 
+Substituting the hazard for something safer can be an effective control measure. If it is 
+reasonably practicable, provide a fall prevention device, such as scaffolding, a building 
+maintenance unit, or an elevating work platform. However, if you determine the most 
+appropriate way to minimise risk is to use an industrial rope access system, you should 
+ensure any anchor point used has been determined by a competent person to be suitable for 
+use as an anchor point. 
+3.2.6. Isolation controls 
+Isolation involves physically separating the source of harm from people. For example, using 
+a physical barrier to prevent people from entering an area, or installing or placing your 
+industrial rope access anchor devices away from edges where there is a risk of a fall. 
+3.2.7. Engineering controls 
+An engineering control is a control measure that is physical in nature, including a mechanical 
+device or process. Examples include using a backup safety line to arrest a fall and using a 
+davit arm to protect lines from sharp edges. 
+3.2.8. Administrative controls 
+If risks remain, they should be minimised by implementing administrative control measures, 
+so far as is reasonably practicable. Administrative control measures include:  
+ 
+warning signs 
+ 
+supervising access to an exclusion zone 
+ 
+work methods or procedures that are designed to minimise exposure to a hazard 
+ 
+information, training and instruction needed to ensure workers can work safely, and 
+ 
+supervising work to ensure safe work procedures are followed.  
+Administrative controls are less effective than other control measures because they do not 
+control the hazard at the source and instead rely on human behaviour and supervision. 
+Generally, administrative controls should only be used to supplement other higher level 
+control measures, as a short-term measure or where there are no other practical control 
+measures available. 
+Some administrative measures will be necessary to ensure substitution, isolation and 
+engineering control measures are implemented effectively, for example, following safe work 
+procedures when using equipment. 
+
+--- PAGE 11 ---
+ 
+11 
+3.2.9. Personal protective equipment 
+Personal protective equipment (PPE) is the least effective method for controlling risk in 
+isolation, however it can be effectively used in conjunction with higher level controls to 
+minimise residual risk.  
+If workers are required to use PPE at the workplace, you must provide it unless it has been 
+provided by another PCBU. You must ensure it is selected to minimise risk to health and 
+safety. This includes ensuring the PPE is: 
+ 
+suitable for the nature of the work and any hazard associated with the work  
+ 
+of suitable size and fit, and 
+ 
+reasonably comfortable for the worker who is to use or wear it. 
+For example, a helmet designed for rope access work should always be worn when working 
+with an industrial rope access system. Additional personal protective equipment that may be 
+appropriate includes: 
+ 
+gloves to protect against cold weather or injury  
+ 
+slip-resistant footwear 
+ 
+eye protection where debris is being cleared or material is being removed, or where 
+drilling, cutting or percussion operations are being undertaken 
+ 
+respiratory protective equipment where there is a risk of inhalation of harmful 
+chemicals or dust 
+ 
+hearing protection where noise levels could cause risk of hearing damage 
+ 
+buoyancy or life jackets when working over water, and 
+ 
+sun protection. 
+You must also ensure PPE is maintained, repaired and replaced so it continues to minimise 
+risk to the worker who uses it. This includes ensuring the equipment is clean and hygienic, 
+and in good working order. 
+If you direct the carrying out of work, you must train workers in how to properly use, wear, 
+store, and maintain the PPE. A worker must, so far as reasonably able, use or wear the PPE 
+as instructed and must not intentionally misuse or damage the equipment.  
+3.2.10. 
+Maintain and review control measures 
+Check your control measures regularly to ensure they are working as planned. Control 
+measures need to be regularly reviewed to make sure they remain effective, taking into 
+consideration any changes that have affected your work activities, the nature and duration of 
+the work and whether the system is working as planned. 
+If a Safe Work Method Statement (SWMS) has been prepared due to high risk construction 
+work being done, the SWMS must also be reviewed and revised where necessary. 
+You should seek advice from a competent person and refer to relevant industry guidance to 
+ensure you have the most comprehensive information about hazards and risks and use the 
+most effective control measures available for the particular workplace. 
+3.3. 
+Training and supervision 
+As a PCBU, you must ensure workers are trained to perform their work safely. This includes 
+providing information, training, instruction, and supervision as necessary to protect all 
+persons from WHS risks arising from the business or undertaking. This must take into 
+account the nature of the work, the associated risks and the control measures to be 
+
+--- PAGE 12 ---
+ 
+12 
+implemented. You must also ensure industrial rope access workers and supervisors are 
+trained in emergency procedures, including rope rescue techniques. 
+Rope access system workers, including supervisors, may benefit from undertaking relevant 
+competency-based training before working with an industrial rope access system.  
+The level of supervision required will depend on the level of risk and the experience of the 
+workers involved. High levels of supervision may be necessary where workers are expected 
+to follow new procedures or carry out difficult and critical tasks. You should ensure 
+supervisors of rope access work have the necessary knowledge, skills, and experience to 
+competently supervise the rope access work. This includes competency in preparing work 
+plans, inspecting and maintaining equipment, and monitoring and reviewing the 
+effectiveness of rope access systems. 
+3.4. 
+High risk construction work and safe work method 
+statements 
+The use of industrial rope access systems is considered high risk construction work if it 
+involves construction work where there is a risk of a person falling more than 2 metres (in 
+some jurisdictions this is 3 metres). As a PCBU, you must ensure high risk construction work 
+is not carried out unless a SWMS is prepared for the work. 
+Further guidance on SWMS is in the model Code of Practice: Construction work. 
+4. Safe planning and use of an industrial rope access system 
+4.1. 
+Planning the work 
+Planning is the first step in ensuring an industrial rope access system is used safely. 
+Planning includes: 
+ 
+developing a scope of work 
+ 
+identifying hazards and assessing risks 
+ 
+selection of appropriate control measures, and  
+ 
+providing a safe system of work, including planning for emergencies. 
+Planning for rope access work should start as early as possible, including during the design 
+of a plant or structure, and should involve consultation with all relevant persons. This may 
+include a principal contractor, a building owner, equipment supplier, electricity supply 
+authority, designer, project manager, industrial rope access system workers, and other 
+workers.  
+Effective planning will help identify ways to protect persons who are: 
+ 
+selecting, installing, commissioning, inspecting, and dismantling an industrial rope 
+access system 
+ 
+directly involved in rope access work, including people using an industrial rope 
+access system and the people supporting them 
+ 
+performing other work activities at the workplace in an area adjacent to the rope 
+access work, including a public area or private property. 
+When developing safe systems of work involving industrial rope access systems, you should 
+seek advice from a competent person, for example a qualified rope access technician, and 
+refer to relevant industry guidance and Australian standards. For example, AS/NZS ISO 
+22846:2020 Personal equipment for protection against falls – Rope access systems. 
+
+--- PAGE 13 ---
+ 
+13 
+4.2. 
+Emergency procedures and first aid 
+As a PCBU, you must ensure an emergency plan is prepared for the workplace. This 
+includes establishing and testing emergency procedures and providing relevant workers the 
+information, training and instruction they need to implement these procedures.  
+This means ensuring help is provided promptly to any rope access worker who needs it. You 
+should ensure rope access workers do not work alone. You must ensure relevant workers 
+are trained in emergency procedures, including rope rescue techniques.  
+You must maintain the emergency plan so it remains effective. This means rescue 
+equipment should be present and ready for immediate use. This equipment should be 
+sufficient to carry out a rescue from any situation on the site. This could be normal rope 
+access equipment, preferably rigged for rescue. 
+Rigging for rescue involves rigging the working and safety lines with releasable anchors to 
+allow an injured worker to be lowered or raised to a safe location without the need for a 
+rescuer to descend or ascend to the position of the injured worker.  
+You must ensure workers have access to first aid equipment and facilities for the 
+administration of first aid. You must also ensure an adequate number of workers are trained 
+to administer first aid or the workers have access to people trained in first aid. 
+4.3. 
+Remote or isolated work 
+Workers using an industrial rope access system are often isolated from assistance, including 
+rescue, medical assistance, or attendance by emergency service officers. If you cannot 
+eliminate the risks associated with remote or isolated work, as a PCBU, you must minimise 
+these risks by providing a safe system of work. This includes providing effective 
+communication with any isolated worker. You should ensure workers do not work alone and 
+can effectively communicate with each other, and anyone else as necessary, at all times. 
+The type of communication system will depend on the site-specific conditions, such as the 
+size of the workplace, noise, and weather conditions. Expert advice and local knowledge 
+may be needed to assist with the selection of an effective communication system.  
+Further information can be found in the model Code of Practice: Managing the work 
+environment and facilities.  
+4.4. 
+Equipment selection, care and maintenance 
+Equipment used for industrial rope access systems should be designed, manufactured, 
+selected, used and maintained in compliance with relevant standards. 
+When selecting rope for use in an industrial rope access system, you should consider: 
+ 
+the maximum impact load a rope access worker could exert on the rope  
+ 
+the extension or elongation of the rope when identifying potential fall distances  
+ 
+site conditions, e.g. prevailing or unexpected winds and their strength and direction, 
+high solar UV radiation, possibility of heavy rain, extremes of heat or cold.   
+You should ensure that a competent person inspects equipment before and after use. This 
+includes personal equipment such as harnesses, lanyards and fall arrest devices and 
+common use equipment such as hardhats, ropes, slings, anchor devices and mobile 
+attachment devices. A competent person means a person who has acquired through 
+training, qualification or experience the knowledge and skills to carry out the task. 
+
+--- PAGE 14 ---
+ 
+14 
+Ropes and other equipment should be packed away after use, for example when work 
+finishes for the day, and not left set up. This helps ensure it is inspected again before use. 
+Equipment should be subject to periodic inspection, even if not used regularly, in line with 
+the manufacturer’s recommendations and relevant standards. 
+Any equipment that has arrested a fall or shows a defect should immediately be withdrawn 
+from service and not be used until a competent person can decide whether the equipment 
+should be destroyed, repaired or returned to service. If repaired or returned to service, the 
+equipment should be inspected by a competent person. 
+All equipment should be maintained in accordance with manufacturer instructions and be 
+stored to ensure it is not exposed to unnecessary strain, pressure, heat, humidity, moisture, 
+solar UV radiation, or chemicals. 
+4.4.1. Record keeping 
+As a person with management or control of plant at a workplace, you must keep a record of 
+all tests, inspections, maintenance, commissioning, decommissioning, dismantling, and 
+alterations of plant while it is used or until you relinquish control of it. Records should 
+describe the work carried out, when, and by who. As an example, records must be kept of 
+the testing and condition of installed industrial rope access anchors at a workplace. 
+Inspection records should include a statement from a competent person confirming the item 
+of plant has been inspected and whether it is safe to use. Inspection records should include: 
+ 
+What was looked at – component specification or areas of the plant inspected. 
+ 
+What was looked for – signs of wear, damage, cracking or corrosion. 
+ 
+What criteria were used – rejection criteria. 
+ 
+How was it looked for – techniques used. 
+ 
+What was found – test results, photographs or measurements. 
+ 
+What was recommended – repairs or replacements required before continued use. 
+ 
+What recommendations were actioned – recommendations acted upon and date 
+tasks were completed. 
+4.5. 
+Anchor systems 
+As a PCBU, you must ensure the provision and maintenance of safe systems of work. For 
+industrial rope access system, this typically means ensuring there are a minimum of two 
+independent anchor points provided and maintained to establish a main working line and a 
+backup safety line. Additional anchor points may be needed for emergency rescues. 
+Anchors and their supporting structure used as part of an industrial rope access system, 
+either on the working line or safety line, should have a minimum strength of 15 kN. All 
+components of the industrial rope access system should be designed to ensure the total 
+mass of the user and all their equipment is within the capacity of their energy absorber, in 
+accordance with the manufacturer’s instructions. 
+4.5.1. Types of anchor devices 
+There are many types of anchor devices and it is essential that care is taken when selecting 
+a device. Check it is suitable for the intended use, including the environment it will be used in 
+and the work to be undertaken. Anchor devices should only be used for industrial rope 
+access systems when the manufacturer states it is suitable for personal attachment, 
+including rope access.   
+
+--- PAGE 15 ---
+ 
+15 
+Table 2 summarises the common types of anchor devices and their suitability for use in 
+industrial rope access systems. This is intended as general guidance only. Detailed 
+information on the suitability of a device for industrial rope access work should be sought 
+from the plant manufacturer or supplier. 
+You must ensure anchor devices are installed, tested, and inspected by a competent person, 
+for example a qualified engineer, in accordance with the manufacturer’s instructions. This 
+includes confirming the anchor device is suitable for the intended use, the supporting 
+structure (including substrate) can sustain a 15 kN load, and the device is installed correctly 
+and has not damaged the anchor device or the integrity of the supporting structure. If a 
+qualified engineer or similar competent person has certified the design of an anchor 
+installation, but it is not reasonably practicable to have them witness the installation or carry 
+out a site visit, then you must ensure the installer is competent to ensure the anchor device 
+is installed in accordance with the manufacturer’s instructions.  
+Anchors that are permanently installed should be clearly marked with the maximum rated 
+load, intended direction of load, inspection details, and the manufacturer’s or installer’s 
+details. If it is not reasonably practicable to permanently install an anchor device, the use of 
+a temporary anchor device, such as a sling around a solid structure, is acceptable if it has 
+been determined to be safe by a competent person.  
+In most cases, the working line and safety line should each be attached to two anchor 
+devices. These anchor devices should be separate and independent from each other, as 
+well as from any anchor points needed for emergency rescues. In some situations, this can 
+mean installing different types of anchor devices for each line. 
+ 
+Figure 2 Examples of shear and tensile load 
+Some anchor devices are only suitable for rope access if loaded in shear. This means the 
+anchor is loaded in a direction that is almost perpendicular to how the anchor is installed, so 
+that the shear load is at least twice the tensile load. This is usually achieved if the angle of 
+the attached rope does not exceed 20° to the supporting surface. If the direction of load is 
+more in line with the anchor’s installation, then the anchor is loaded in tension. You should 
+seek information on the safe use of an anchor device from the manufacturer, supplier, or a 
+competent person such as a qualified engineer. 
+
+--- PAGE 16 ---
+ 
+16 
+Table 2 Common types of anchor devices 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Through anchor 
+ 
+Through anchors pass all the way through a wall, floor, or 
+other structural element. 
+ 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in 
+appropriate material, such 
+as steel or concrete, and not 
+in masonry or lighter weight 
+materials. 
+Davit arm 
+ 
+A cantilevered device over balustrades, parapets, and 
+curtain walls. They may be designed to be fixed in place, 
+traverse a track, or relocated between permanently 
+mounted bases. 
+ 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in 
+appropriate material, such 
+as concrete, and not in 
+masonry or lighter weight 
+materials. 
+
+--- PAGE 17 ---
+ 
+17 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Paired anchor device 
+A paired anchor device has two attachment points mounted 
+on a single base and fixing elements to install it to the 
+supporting surface. A typical design is a saddle 
+construction, but there are many different designs for base 
+elements, including a box, flat plate, or pedestal.
+ 
+If correctly installed in line 
+with manufacturer’s 
+recommendations on a flat 
+surface made of appropriate 
+material, such as concrete, 
+and not in masonry or lighter 
+weight materials. 
+Purlin mount 
+ 
+Purlin mount anchors involve an anchor device being 
+threaded through a hole in a purlin and fastened using a 
+threaded anchor block which is drawn upwards and 
+tightens against the underside of the purlin. 
+ 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in a purlin 
+that can withstand the 
+potential loads of rope 
+access work, including fall 
+arrest.  
+
+--- PAGE 18 ---
+ 
+18 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Surface mount 
+Surface mount anchors are usually fastened to metal roof 
+sheets.  
+ 
+If designed for industrial 
+rope access work and 
+correctly installed in line with 
+manufacturer’s 
+recommendations on a 
+surface that can withstand 
+the potential loads of rope 
+access work, including fall 
+arrest.  
+This device relies on the 
+fixings, roof sheets and 
+substrate being able to 
+sustain a 15 kN load. The 
+strength of the supporting 
+structure must be certified 
+by a competent person. 
+Anchor rail 
+ 
+Anchor rails are a type of rigid horizontal line, usually metal 
+tubing, permanently fitted to the side of a structure. 
+Attaching usually involves passing two slings around the 
+rail or to two sliding attachment points if fitted.
+ 
+If correctly installed in line 
+with manufacturer’s 
+recommendations on a 
+supporting structure that can 
+withstand the potential loads 
+of rope access work, 
+including fall arrest.  
+
+--- PAGE 19 ---
+ 
+19 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Torque controlled  
+ 
+ 
+Torque-controlled anchors utilise a thick sleave that is 
+expanded in a pre-drilled concrete hole to create friction 
+between the anchor and the hole.
+.
+ 
+Only if loaded in shear. 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in 
+appropriate material, such 
+as concrete, and not in 
+masonry or lighter weight 
+materials. 
+Chemical 
+Chemical anchors use an adhesive to create a bond 
+between the anchor device and the concrete it is being 
+mounted in. 
+ 
+Only if loaded in shear. 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in 
+appropriate material, such 
+as concrete, and not in 
+masonry or lighter weight 
+materials. 
+Degradation of the chemical 
+adhesive may occur over 
+time. 
+
+--- PAGE 20 ---
+ 
+20 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Undercut 
+ 
+Undercut anchors involve creating an undercut at the 
+bottom of a pre-drilled hole using a special drill bit or with a 
+self-drilling anchor. Once installed undercut anchors use 
+the compressive strength of the concrete and are 
+extremely strong. 
+ 
+Only if loaded in shear. 
+If correctly installed in line 
+with manufacturer’s 
+recommendations in 
+appropriate material, such 
+as concrete, and not in 
+masonry or lighter weight 
+materials. 
+Sling 
+ 
+An anchor sling is a temporary anchor device. It is attached 
+around a solid structure where it has been determined to 
+be safe to do so by a competent person. Image shows an 
+example setup using two anchor slings. This device 
+provides a temporary anchor point where no other reliable 
+anchor point exists. 
+ 
+An anchor sling should have 
+a minimum breaking 
+strength of 22 kN if made 
+from man-made fibres or 
+15 kN if made from steel 
+wire or chain.  
+Examples of a solid 
+structure include a structure 
+made from steel beams, a 
+lift shaft housing, or a plant 
+room.  
+You should check that the 
+use of a structure as an 
+anchor point does not 
+conflict with building safety 
+laws. 
+
+--- PAGE 21 ---
+ 
+21 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Counterweight 
+A counterweight anchor is a temporary anchor device. It is 
+typically a metal base loaded with weights, an attached 
+arm, and a support to provide a pivot point. The arm 
+projects over the edge to provide an attachment point. This 
+device provides a temporary anchor point where no other 
+reliable anchor point exists. 
+ 
+A counterweight anchor 
+relies on the mass of the 
+counterweights and the 
+position of the pivot point, 
+which is the point where the 
+arm becomes unsupported. 
+Correct setup prevents the 
+counterweights from lifting 
+off the surface when the 
+device comes under load. 
+The counterweights should 
+be steel, concrete or similar 
+material that cannot leak or 
+flow. Sand or water bags 
+should not be used.
+Deadweight 
+A deadweight anchor is a temporary anchor device 
+(typically, a weighted metal base with an anchor point to 
+which a line may be attached). The image shows an 
+example setup using two deadweight anchors. This device 
+provides a temporary anchor point where no other reliable 
+anchor point exists. 
+ 
+This device should not slip 
+when under load of at least 
+15 kN when tested in the 
+direction of expected load.  
+This relies on surface 
+friction. Without sufficient 
+friction, a fall or repetitive 
+loading and unloading may 
+cause the device to slip or 
+slide out of position. It 
+should not be used on 
+surfaces sloping downward 
+more than 5°; if the surface 
+is wet, insufficiently rough, 
+or otherwise contaminated; 
+or if conditions are icy.  
+The weights should be steel, 
+concrete or similar material 
+that cannot leak or flow. 
+Sand or water bags should 
+not be used. 
+
+--- PAGE 22 ---
+ 
+22 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Screw bolt    
+Screw bolt anchors involve the anchor device cutting 
+thread into a predrilled concrete hole. The pull-out 
+resistance is based on the effectiveness of the grooves that 
+are cut. 
+ 
+Screw bolts do not achieve 
+the tight tolerances needed 
+to ensure a safe anchor for 
+industrial rope access work 
+and are not recommended 
+by manufacturers for use in 
+industrial rope access work. 
+May be suitable if inspected 
+and determined safe for the 
+intended use by a 
+competent person. 
+Sleeve 
+Sleeve anchors function similar to a torque-controlled 
+anchor and rely on the expansion of a thin sleeve to create 
+a friction connection between the anchor device and the 
+concrete hole. 
+ 
+Sleeve anchors do not 
+perform well under repeated 
+loading applications like 
+those encountered during 
+industrial rope access work. 
+May be suitable if inspected 
+and determined safe for the 
+intended use by a 
+competent person. 
+
+--- PAGE 23 ---
+ 
+23 
+Anchor device 
+Suitable for industrial rope 
+access systems? 
+Boa coil expansion bolt 
+A boa coil expansion anchor is a removable anchor and 
+relies on the expansion of the boa coil to create a friction 
+connection between the anchor device and the concrete 
+hole. 
+  
+Boa coil expansion anchors 
+are not designed to 
+withstand the high loads 
+encountered during 
+industrial rope access work 
+and are not recommended 
+by manufacturers for use in 
+industrial rope access work. 
+May be suitable if inspected 
+and determined safe for the 
+intended use by a 
+competent person. 
+ 
+Drop-in 
+Drop-in anchors work by inserting the anchor device into a 
+pre-drilled hole. A stepped steel setting tool/punch is then 
+used with a hammer to push a ‘plug/wedge’ of metal down 
+towards the end of the anchor. This action causes the 
+slotted bottom section of the anchor to expand outwards 
+and hence wedge the anchor in the drilled hole. 
+ 
+Drop-in anchors should not 
+be used on new 
+installations. Existing 
+installed systems using 
+drop-in anchors where the 
+manufacturer has tested 
+and approved the whole 
+system may be suitable to 
+be used where they are 
+determined safe by a 
+competent person. 
+ 
+See AS/NZS 1891.4-2009 and AS/NZS 5532:2013 for further guidance on selection and use 
+of anchor devices. 
+4.5.2. Anchor access and layout 
+As a PCBU, you must ensure the workplace layout allows workers to safely enter and exit a 
+work area and have enough space to safely carry out work there, so far as is reasonably 
+practicable. For industrial rope access work, this includes ensuring workers can connect and 
+disconnect from the industrial rope access system without risk of falling, so far as is 
+
+--- PAGE 24 ---
+ 
+24 
+reasonably practicable. Generally, permanent or temporary anchor points should be installed 
+in a work area where an exclusion zone can be established and where, either: 
+ 
+the edges are protected by barriers or guard rails to prevent workers from falling, or  
+ 
+an anchor point is accessible before a worker is within 3 metres of an unguarded 
+edge. 
+The layout of the system should be designed by a competent person who is familiar with the 
+safe use of the system. They should consider the type of work to be carried out and where 
+anchor points will be needed to control risks. The foreseeable directions of loading and 
+anticipated potential loads should be established and taken into account when planning the 
+anchor layout.  
+When anchor devices are installed, it is essential they are spaced apart correctly to prevent 
+compromising the strength of the supporting structure. In rock or concrete, the minimum 
+distance between anchors is usually considered to be the depth of the installed anchor, 
+including any structural anchor. In masonry, the anchor devices should not be installed in the 
+same or adjacent masonry units. Information on the minimum distances between anchors 
+should be provided by the manufacturer or supplier of the anchor device. If this is not 
+available, you must carry out, or arrange the carrying out of, any testing needed to ensure, 
+so far as is reasonably practicable, the anchor devices are installed without risks to the 
+health and safety of any person. 
+Installing additional anchors may be necessary for emergency rescues.  
+The anchors should be installed so they can only be loaded in the directions intended by the 
+designer. If this is not practical, the area near the anchors should be clearly marked to show 
+the limitations of loading. 
+ 
+Figure 3 Example rooftop layout for an industrial rope access system 
+
+--- PAGE 25 ---
+ 
+25 
+Two anchor points should be installed or placed directly above each work area to ensure 
+each line can be safely attached to both anchors and to minimise pendulum effect. This is 
+when the system acts as pendulum during or after a fall from a position located horizontally 
+away from an anchor point. This can occur if the working line or an anchor fails. The 
+pendulum effect can result in the worker hitting the ground or a floor (swing down) or an 
+obstacle (swing back), or the working line being damaged or severed by contact with a sharp 
+edge or other hazardous surface.  
+ 
+Figure 4 Example of pendulum effect on rope access worker when one line breaks 
+The risk of swing down and swing back can be minimised by installing anchor points as 
+close together as is safe, installing additional anchor points such as intermediate 
+anchorages, or using rigging techniques that attach each line to two anchors.  
+4.5.3. Rigging techniques 
+The simplest rigging technique is a basic anchor system, where the working line and safety 
+line are each attached to a separate anchor device.  
+ 
+Figure 5 Basic anchor system 
+However, it is generally preferrable to use a rigging technique that attaches both the working 
+line and safety line to two anchors. These include Y-hang and other techniques that share 
+the load of both lines across two anchors. 
+Loading sharing reduces the load on each anchor device, which helps minimise the risk of 
+an anchor failing. This includes the load from the main working line and, should the main line 
+fail, the load from the safety line when arresting a fall.  
+
+--- PAGE 26 ---
+ 
+26 
+Attaching each line to two anchors also helps minimise the risk of uncontrolled swings. The 
+wider apart the anchors, the more dangerous the pendulum effect from uncontrolled swings 
+becomes.  
+ 
+Figure 6 Small Y-hang 
+Figure 7 Wide Y-hang 
+Using a small Y-hang or similar technique is also preferred where it is not practicable to have 
+anchors directly above a work area.  
+If anchors are 1.5 m or more apart, there should be two anchor points on each side. This 
+minimises the risk of uncontrolled swings as a result of any single point of failure.  
+When attached to two anchors using a Y-hang or similar technique, each line forms an angle 
+(the Y angle). This angle should be as low as possible and should generally not exceed 90 
+and should never exceed 120 without additional control measures. For example, a 
+horizontal anchor line system may exceed these angles but requires advice from a 
+competent person to design, install and use safely. 
+Table 3 Load distribution for different rigging angles 
+Load distribution  
+Rigging angle 
+Suitable for 
+industrial 
+rope access 
+systems? 
+Comments 
+ 
+90 
+ 
+Angle should be 
+as low as 
+possible and 
+should generally 
+not exceed 90. 
+
+--- PAGE 27 ---
+ 
+27 
+Load distribution  
+Rigging angle 
+Suitable for 
+industrial 
+rope access 
+systems? 
+Comments 
+120 
+  
+Angle should be 
+as low as 
+possible and 
+should never 
+exceed 120 
+without 
+additional 
+control 
+measures. 
+150 
+ 
+Angle should 
+never exceed 
+120 without 
+additional 
+control 
+measures. 
+4.5.4. Inspection of anchors 
+As a PCBU, you must ensure that maintenance, inspection and, if necessary, testing of plant 
+(including anchors) is carried out by a competent person. The maintenance, inspection and 
+testing must be carried out: 
+ 
+in accordance with the manufacturer’s recommendations, or  
+ 
+if there are no manufacturer’s recommendations, in accordance with the 
+recommendations of a competent person, or  
+ 
+in relation to inspection, if it is not reasonably practicable to comply with the above, 
+at least annually. 
+The nature and frequency of maintenance, inspection, and testing will vary depending on the 
+nature of the workplace, its environment and the risks associated with the plant. For 
+example, more frequent inspections may be required in harsh conditions.  
+Anchors should be load tested before first use and then at least annually. 
+For information on requirements relating to record keeping, see Equipment selection, care 
+and maintenance.   
+4.6. 
+Rope protection 
+Working lines and safety lines should be rigged so they hang free and do not come into 
+contact with hazardous surfaces (e.g. edges or abrasive or hot surfaces), or with hazardous 
+plant (e.g. hot work tools or power tools), at any time during the rope access activity. Where 
+this is not possible, working lines and safety lines should be protected. Rope protection may 
+
+--- PAGE 28 ---
+ 
+28 
+be fixed on an edge, such as davit arms, rollers, metal edge plates and edge padding, or 
+movable along the rope, such as a textile sheath that encapsulates the line. 
+ 
+Figure 8 Examples of rope protection 
+Some sites may require rope protection at multiple points along each line. You should 
+provide industrial rope access workers with access to protectors such as textile sheaths or 
+rubber matting so they can be placed where line risks are identified. Rope protectors should 
+be able to be tied off to keep protectors and lines in their intended place.  
+4.7. 
+Exclusion zones 
+An exclusion zone is used to prevent people from entering an area. Generally, this includes 
+providing clear signs, a physical barrier, and supervising access to the exclusion zone. 
+As a PCBU, you should ensure an exclusion zone is established: 
+ 
+above a rope access work area to protect the anchors and lines from damage or 
+alteration and to minimise trip hazards, and 
+ 
+below a rope access work area to help minimise the risk of objects falling on people. 
+Sometimes exclusion zones are useful at other locations, such as balconies, that are within 
+or near a rope access work area. 
+4.8. 
+Use of tools and other work equipment 
+As a PCBU, you must eliminate the risk of an object falling on a person so far as is 
+reasonably practicable. If this is not reasonably practicable, you must minimise the risk of an 
+object falling on a person, including by: 
+ 
+preventing an object from falling freely, e.g. attached to a separately anchored line, 
+or 
+ 
+if this is not reasonably practicable, providing a system to arrest an object’s fall, so 
+far as is reasonably practicable, e.g. a safety net or catch platform. 
+You may need a combination of controls to sufficiently minimise the risk of falling objects. 
+This may include establishing an exclusion zone below a rope access work area. 
+
+--- PAGE 29 ---
+ 
+29 
+Tools and work equipment attached to the rope access worker or rope systems should:  
+ 
+be suitable for the intended work, and 
+ 
+not impair the function of the main or backup systems. 
+Some tools are capable of cutting through working lines and safety lines. This includes hot 
+work tools, like welders or flaming cutting tools, and power tools, like angle grinders, drills, or 
+chain saws. You must eliminate this risk, so far as is reasonably practicable, by ensuring the 
+work is performed on the ground or a solid structure. If this not possible, you must minimise 
+the risk, so far as is reasonably practicable. This could include substituting the tool for 
+something safer or using engineering controls to protect the rope. 
+Tools should be securely attached to the rope access worker’s harness using cords or 
+lanyards. Small items may also be secured in buckets or bags. 
+Bulky, awkward or heavy tools and equipment that have the potential to interfere with the 
+function of the rope system or the worker’s ability to work, should be suspended with a 
+separate rope system secured to an independent anchor point. 
+4.9. 
+Work environment hazards  
+Industrial rope access system work is regularly performed outdoors, often in remote or 
+isolated conditions where workers are exposed to a range of environmental hazards.  
+Common hazards that should be considered before undertaking industrial rope access 
+system work includes: 
+ 
+Wind – Strong winds can cause rope tangles, dislodge tools and can potentially 
+affect the stability of a rope access worker suspended on ropes. 
+ 
+Wet – Equipment used on ropes such as descenders and back up devices may 
+perform differently when used on wet ropes. Wet lines may also be less resistant to 
+abrasion and can act as a tracking path for electrical currents. 
+ 
+Cold – Hypothermia and frostbite can occur when working in cold conditions. 
+ 
+Heat – Working in heat can result in a range of health issues including heat rash, 
+fainting, heat exhaustion, burns and heat stroke. 
+ 
+Solar UV radiation – Risk of skin cancer, sunburn and adverse health effects to the 
+eyes. Solar UV radiation can also damage equipment after prolonged exposure. 
+ 
+Non-environmental hazards – For example, radiation from transmitters.  
+If the risks from these hazards cannot be eliminated, then they must be minimised, so far as 
+is reasonably practicable.  
+It is important to access a local weather forecast and site information prior to starting a rope 
+access task and to get regular updates to ensure conditions remain safe. Where working in 
+potentially hazardous conditions, as a PCBU, you must provide workers with PPE—such as 
+safety gloves, protective clothing, and sunscreen—to minimise the risks to their health and 
+safety. 
+Further information on managing the risks associated with the work environment and 
+facilities can be found in the model Code of Practice: Managing the work environment and 
+facilities. 
+
+--- PAGE 30 ---
+ 
+30 
+4.10. 
+Hazardous manual tasks 
+Industrial rope access work involves manual tasks, whether working on the ground, on a 
+roof, or suspended by rope. 
+As a PCBU, you must eliminate the risks to health and safety relating to musculoskeletal 
+disorders from hazardous manual tasks so far as is reasonably practicable, for example by 
+designing the work so hazardous manual tasks are not required. If this is not reasonably 
+practicable, you must minimise the risks of hazardous manual tasks so far as is reasonably 
+practicable in accordance with the hierarchy of control measures. 
+A hazardous manual task is one requiring a person to lift, lower, push, pull, carry or 
+otherwise move, hold or restrain any person, animal or thing, that also involves repetitive or 
+sustained force, high or sudden force, repetitive movement, sustained or awkward posture, 
+or exposure to vibration.  
+Control measures may include: 
+ 
+planning work to make the task less hazardous. For example, working in descent 
+wherever possible to minimise more physically demanding ascending techniques. 
+ 
+providing and ensuring mechanical aids are used where possible, such as ensuring a 
+separately anchored line is used to manage the weight of high-pressure water jet 
+hoses or power tool cables. 
+ 
+ensuring the design of tools, equipment and PPE minimise the risks of manual 
+handling. 
+When deciding what control measures to implement, you must consider all relevant matters 
+that may contribute to a musculoskeletal injury, including: 
+ 
+postures, movement, forces and vibration 
+ 
+duration and frequency of the task  
+ 
+the nature, size and weight or number of things involved in carrying out the 
+hazardous manual task. 
+Further information can be found in the model Code of Practice: Hazardous manual tasks. 
+4.11. 
+Suspension intolerance 
+Suspension intolerance can occur with an industrial rope access system when a person has 
+an arrested fall and is suspended in an upright, vertical position. The capacity of the lower 
+legs to store large amounts of blood reduces the return of blood to the heart, slowing the 
+heart rate, which can cause the person to faint. This may lead to renal failure and eventually 
+death, depending on a person’s susceptibility. The quick rescue of a person suspended in a 
+harness, as soon as possible, is vital. 
+To prevent suspension intolerance, you should ensure that: 
+ 
+workers do not work alone when using a harness as fall protection 
+ 
+workers use a harness that allows legs to be kept horizontal  
+ 
+where the rescue is likely to take more than five minutes the harness and connection 
+point used should allow the suspended worker to raise their legs to near horizontal, 
+or the worker should carry straps to provide footholds 
+
+--- PAGE 31 ---
+ 
+31 
+ 
+workers are trained to do the following when they are hanging in a harness after a 
+fall:  
+o move their legs in the harness and push against any footholds, where these 
+movements are possible. In some instances, the harness design and any 
+injuries received may prevent this movement 
+o move their legs or legs and body to a near horizontal position, where these 
+movements are possible. 
+4.12. 
+Overhead electric lines 
+Electric lines pose significant risks, including electrocution, arcing, explosion, fire causing 
+burns, unpredictable cable whiplash and electrifying other objects including signs, poles, 
+trees or branches. Whether carrying voltage of 400,000V or 230V, contact with these 
+energised electric lines can be fatal. It is not necessary to touch an electric line to be 
+electrocuted. A ‘flashover’ or ‘arc’ can electrocute a person close to a line conductor. 
+As a PCBU, you must ensure, so far as is reasonably practicable, that no person, plant or 
+thing at the workplace comes within an unsafe distance of an overhead electric line. 
+If it is not reasonably practicable to ensure a safe distance, you must ensure that a risk 
+assessment is conducted for the proposed work and control measures implemented are 
+consistent with the risk assessment and any requirements of an electricity supply authority 
+where it is responsible for the electric line. 
+The following should be considered: 
+ 
+Are workers or plant likely to go near electric lines? If so, how close? 
+ 
+Are overhead electric lines hard to see in the sky or are they hidden by trees? 
+ 
+Has the relevant state or territory electricity supply authority been contacted for 
+information about specific requirements when working near electric lines, including 
+the qualifications required for those people working near electric lines? 
+ 
+Have emergency rescue procedures been established, including calling the 
+electricity supply authority to isolate the electricity supply before trying to rescue a 
+person receiving an electric shock? 
+Further information can be found in the model Code of Practice: Managing electrical risks in 
+the workplace.  
+5. Glossary 
+anchor point is a secure point for attaching a lanyard, working line, safety line or other 
+component of a fall arrest system, industrial rope access system, or restraint system. 
+Anchors require specific load and impact capacities for their intended use. 
+ascender is a device used on a working line of a work positioning system. It is designed to 
+allow controlled ascending or to maintain a stationary position.  
+building maintenance unit is a power-operated suspended working platform that is fixed 
+permanently to a building or structure and used for building maintenance or window 
+cleaning. 
+competent person is a person who has acquired through training, qualification or 
+experience the knowledge and skills to carry out the task. 
+descender is a device used on a working line of a work positioning system. It is designed to 
+allow controlled descending and short ascents or to maintain a stationary position. 
+
+--- PAGE 32 ---
+ 
+32 
+duty holder is any person who owes a work health and safety duty under the WHS Act 
+including a person conducting a business or undertaking, a designer, manufacturer, 
+importer, supplier, installer of products or plant used at work (upstream duty holder), officer 
+or a worker. 
+energy absorber is a device used to limit the deceleration in a fall. It reduces the 
+deceleration force imposed when a fall is suddenly arrested, and correspondingly reduces 
+the loadings on the anchorage and the person’s body. The energy absorber may either be a 
+separate item or manufactured as part of the lanyard.  
+fall means a fall by a person from one level to another. 
+fall arrest system means plant or material designed to safely stop a worker falling an 
+uncontrolled distance and to reduce the impact of the fall. This includes an industrial safety 
+net, a catch platform, or a safety harness system. 
+fall prevention device is material or equipment—or a combination of both—designed to 
+prevent a fall for temporary work at heights, that once in place after initial installation does 
+not require any ongoing adjustment, alteration or operation by any person to ensure its 
+integrity. This includes secure fencing, edge protection, working platforms and covers.  
+harness is a body holding device. A harness-based personal fall protection system comprises 
+of at least a harness, anchor/s and connecting components.  
+helmet is a hard or padded protective hat. A helmet designed for rope access work should 
+always be worn when working in an industrial rope access system. 
+industrial rope access system is a type of work positioning system used for gaining 
+access to, and working at, a workface, usually by means of vertically suspended ropes.  
+karabiner is a coupling link with a safety closure.  
+lanyard is an assembly consisting of a line and components to connect a harness to a line or 
+anchor point. A lanyard attached to a safety line usually incorporates an energy absorber. A 
+lanyard attached to a working line may come with or without adjusters. 
+may indicates an optional course of action. 
+must indicates a legal requirement exists that must be complied with. 
+person conducting a business or undertaking (PCBU) is an umbrella concept which 
+intends to capture all types of working arrangements or relationships. A PCBU includes a: 
+ 
+company 
+ 
+unincorporated body or association 
+ 
+sole trader or self-employed person.  
+Individuals who are in a partnership that is conducting a business will individually and 
+collectively be a PCBU. A volunteer association or elected members of a local authority will 
+not be a PCBU. 
+person with management or control of plant at a workplace is a person conducting a 
+business or undertaking to the extent that the business or undertaking involves the 
+management or control of fixtures, fittings or plant, in whole or in part, at a workplace. 
+
+--- PAGE 33 ---
+ 
+33 
+plant includes machinery, equipment, appliance, container, implement and tool components 
+or anything fitted or connected to those things. Plant includes items as diverse as industrial 
+rope access systems, lifts, cranes, computers, machinery, conveyors, forklifts, vehicles, 
+power tools, quad bikes, mobile plant and amusement devices. 
+restraint technique is a work positioning system used to control a person’s movement by 
+physically preventing them from reaching a position at which there is a risk of a fall, for 
+example an unprotected edge. It consists of a harness that is connected by a lanyard to an 
+anchorage or horizontal line. 
+risk of a fall is a circumstance that exposes a worker while at work, or other person while at 
+or in the vicinity of a workplace, to a risk of a fall that is reasonably likely to cause injury to 
+the worker or other person. This includes circumstances in which the worker or other person 
+is: 
+ 
+in or on plant or a structure that is at an elevated level 
+ 
+in or on plant that is being used to gain access to an elevated level 
+ 
+in the vicinity of an opening through which a person could fall 
+ 
+in the vicinity of an edge over which a person could fall 
+ 
+on or in the vicinity of a surface through which a person could fall 
+ 
+on or near the vicinity of a slippery, sloping or unstable surface. 
+rope protector is a sleeve or other item that protects a rope from abrasion, cuts, heat, or 
+other damage. 
+safety line is a rope used in an industrial rope access system to arrest a fall if the working 
+line fails. Also known as a backup line or secondary rope. 
+should indicates a recommended course of action. 
+swing down/swing back is a pendulum-like motion that occurs during or after a vertical fall 
+from a position located horizontally away from an anchor point. This can result in the worker 
+hitting the ground or a floor (swing down) or an obstacle (swing back), or the working line 
+being damaged or severed by contact with a sharp edge or other hazardous surface. 
+worker is any person who carries out work for a person conducting a business or 
+undertaking, including work as an employee, contractor or subcontractor (or their employee), 
+self-employed person, outworker, apprentice or trainee, work experience student, employee 
+of a labour hire company placed with a 'host employer' or a volunteer. 
+working line is a rope used in an industrial rope access system as part of a work positioning 
+system. It is designed to carry the load during suspension, ascending and descending. Also 
+known as the main line or primary rope. 
+workplace is any place where work is carried out for a business or undertaking and includes 
+any place where a worker goes, or is likely to be, while at work. This may include offices, 
+factories, shops, construction sites, vehicles, ships, aircraft or other mobile structures on 
+land or water. 
+work positioning system means any plant or structure, other than a temporary work 
+platform, that enables a person to be positioned and safely supported at a location for the 
+duration of the relevant work being carried out. This includes restraint technique or an 
+industrial rope access system. 
+
+--- PAGE 34 ---
+ 
+34 
+Appendix A – Industrial rope access system checklist 
+Workplace location: Select to enter text. 
+Activities: Select to enter text, e.g. cleaning and maintenance, construction work, etc. 
+Assessed by: Select to enter text. 
+Date: Select to enter text. 
+If ‘Yes’ to either of the below, then consider if an industrial rope access system 
+should not be used 
+Managing the risk of a fall 
+Yes No
+Can any work activities be done on the ground or a solid construction? 
+
+You must eliminate the risk of fall, so far as is reasonably practicable.
+☐ 
+☐ 
+Can the risk of a fall be minimised using a fall prevention device, such as guard 
+rails, barrier, scaffolding, building maintenance unit, or an elevating work platform? 
+ 
+You must provide a safe system of work, including providing a fall 
+prevention device if it is reasonably practicable.  
+☐ 
+☐ 
+ 
+If ‘No’ to any of the below, then review risk controls 
+Workplace assessment
+Yes No
+Can workers safely enter and exit work areas and access anchor points without the 
+risk of a fall? 
+☐ 
+☐ 
+Have all anchor points been inspected by a competent person and confirmed safe 
+for rope access work? 
+
+Provide instructions for any proprietary anchor systems. 
+☐ 
+☐ 
+Can each rope access worker remain attached to two lines, at all times, during the 
+planned work? 
+ 
+If possible, working line and safety line should each be rigged to load share 
+across two anchor points.
+☐ 
+☐ 
+Are two anchor points installed directly above each work area?  
+ 
+If not, you should provide deviation anchors that can support the potential 
+load.   
+☐ 
+☐ 
+Can rope access lines be rigged to hang free from hazardous surfaces, including 
+sharp edges, abrasive or hot surfaces, or hazardous plant?  
+ 
+You must eliminate hazardous surfaces. If not reasonably practicable, you 
+must minimise the risk of rope damage. You should: 
+o keep lines away from hazards, e.g. using deviations.  
+o if not possible, make surfaces safer, e.g. using rollers.  
+o if not possible, provide rope protection, e.g. padding or sleeves.
+☐ 
+☐ 
+Can workers avoid performing hazardous work, like hot work or using power tools, 
+while using a rope access system?  
+ 
+If not, you must minimise the risks, for example, provide rope protection like 
+steel lanyards or hot-work blankets.  
+☐ 
+☐ 
+Can exclusion zones be established to protect anchors and lines and minimise the 
+risk of objects falling on people?  
+ 
+This includes above and below rope access work areas, using signs, 
+barriers, and supervising access. 
+☐ 
+☐ 
+ 
+
+--- PAGE 35 ---
+ 
+35 
+If ‘No’ to any of the below, then review risk controls 
+Planning work 
+Yes No
+Is there a plan for the rope access work, including an agreed safe system of work? 
+ 
+Workers and all relevant duty holders must be consulted on any matters 
+affecting work health and safety. A Safe Work Method Statement (SWMS) 
+must be prepared before carrying out high risk construction work.   
+☐ 
+☐ 
+Is there an emergency plan in place, including an agreed rescue method? 
+ 
+You must ensure trained workers are available to help in any situation in the 
+workplace and that rescue equipment and first aid is ready and accessible. 
+Rope access lines should be rigged for rescue. 
+☐ 
+☐ 
+Will workplace conditions remain safe during the rope access work?  
+ 
+Look out for strong winds, storms, heat, cold, and solar UV radiation. You 
+must consult, coordinate, and cooperate with other duty holders at the 
+workplace to minimise the risk of other activities interfering with the rope 
+access work.
+☐ 
+☐ 
+Have all rope access workers been provided information, training and instruction 
+about the workplace prior to commencing work? 
+ 
+This includes a site induction about the hazards and risks at the workplace 
+that may increase the risks to rope access workers. 
+☐ 
+☐ 
+Work method
+Yes No
+Are all rope access workers trained and competent at the tasks they’re assigned 
+and the equipment and techniques they will use?  
+ 
+PCBUs should ensure any rope access worker they engage or direct has a 
+current certificate of competency (or similar).
+☐ 
+☐ 
+Will rope access workers be able to effectively communicate with each other, and 
+other necessary persons, at all times? 
+ 
+You must ensure the system of work includes effective communication with 
+any isolated worker.
+☐ 
+☐ 
+Will all tools and objects be prevented from falling or have their fall arrested? 
+ 
+This includes securing tools to lanyards or suspending on a separately 
+anchored line, or using a safety net or catch platform.
+☐ 
+☐ 
+Will bulky, awkward, or heavy tools be suspended on a separately anchored line? 
+☐ 
+☐ 
+Equipment 
+Yes No
+Has the condition of rope access systems and equipment been checked by a 
+competent person before use? 
+ 
+You must maintain, inspect, and test plant as recommended by the 
+manufacturer or a competent person. 
+☐ 
+☐ 
+Do workers have the equipment they need to ensure a safe system of work? 
+ 
+For example, suitable full body harness, fail-to-safe descenders, back-up 
+systems, rope protectors, etc. 
+☐ 
+☐ 
+Do workers have sufficient personal protective equipment for their tasks? 
+ 
+This includes a helmet designed for rope access work and other PPE as 
+required by the environment and task. 
+☐ 
+☐ 
+ 
+ 
+
