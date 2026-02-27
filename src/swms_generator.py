@@ -241,16 +241,31 @@ def build_ccvs_control(code, level, score, hold_points, eng, admin, ppe, stop_wo
 REMEDIAL_NEW = {
     'concrete_breakout': {
         'task': 'Concrete Breakout and Spalling Repair',
-        'task_desc': 'Mechanical removal of deteriorated concrete to sound substrate using jackhammers, scabblers, and needle guns. Preparation of exposed reinforcement and application of repair mortars.',
-        'hazard': 'Silica dust from concrete removal. Flying debris and fragments. Noise exposure. Hand-arm vibration from power tools. Working at height during façade repairs.',
-        'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
-        'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
-        'type': 'STD',
-        'control': [
-            ('Engineering:', 'Dust extraction on all power tools — vacuum-attached scabblers and needle guns. Water suppression where dust extraction not practicable. Physical barriers to contain debris — mesh screens on scaffold, drop sheets below work zone. Vibration-dampened tool handles where available.'),
-            ('Admin:', 'Concrete repair specification reviewed before commencement — depth of breakout, reinforcement treatment, repair mortar system confirmed. Silica dust exposure assessment completed — air monitoring if breakout exceeds 4 hours continuous. Vibration exposure log maintained — tool rotation every 30 minutes. Spotter below when working at height.'),
-            ('PPE:', 'P2 respirator (minimum) — half-face P3 with particulate filter if air monitoring indicates. Eye protection and face shield during breakout. Hearing protection (>85 dB, Class 5 minimum). Cut-resistant gloves. Steel capped footwear.'),
-            ('STOP WORK if:', 'Dust extraction fails or is inadequate — visible dust plume beyond immediate work zone — reinforcement condition worse than specification anticipated — structural concern identified during breakout — vibration exposure limit reached — unexpected services or voids encountered.')
+        'task_desc': 'Mechanical removal of deteriorated concrete to sound substrate using jackhammers, scabblers, and needle guns. Preparation and passivation of exposed reinforcement. Application of repair mortars to restore structural profile. Temporary propping where load-bearing elements affected.',
+        'hazard': 'Structural collapse if load-bearing element undermined during breakout. Silica dust from concrete removal — silicosis risk. Flying debris and fragments. Noise exposure. Hand-arm vibration from power tools. Working at height during façade repairs. Hidden deterioration beyond assessed extent.',
+        'risk_pre': 'High (6)', 'risk_post': 'Low (2)',
+        'code': 'STR-H6', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
+        'type': 'CCVS',
+        'hold_points': [
+            'Structural engineer repair specification and drawings on site — depth of breakout, reinforcement treatment, repair mortar system confirmed in writing before breakout commences',
+            'For Class 2 buildings: Construction Issued Regulated Design (CIRD) lodged on NSW Planning Portal per DBP Act 2020 before physical work commences',
+            'Temporary propping confirmed in place where breakout affects load-bearing elements (beams, columns, slabs) — propping design by competent person, installed and inspected before any concrete removed',
+            'Exclusion zone confirmed below work area — debris catch or overhead protection in place where work is above public or occupied areas',
+        ],
+        'eng': [
+            'Dust extraction on all power tools — vacuum-attached scabblers and needle guns. Water suppression where dust extraction not practicable. Physical barriers to contain debris — mesh screens on scaffold, drop sheets below work zone. Vibration-dampened tool handles where available.',
+            'Minimum 25mm clearance around exposed reinforcement — confirmed before mortar application. Clearance allows proper cleaning, priming, and mortar encapsulation of rebar.',
+        ],
+        'admin': [
+            'Silica dust exposure assessment completed — air monitoring if breakout exceeds 4 hours continuous. Vibration exposure log maintained — tool rotation every 30 minutes. Spotter below when working at height.',
+            'Rebar cleaned to bright metal (SA 2.5 or equivalent). Passivation primer (zinc-rich or epoxy per engineer specification) applied within product open time — no contamination of prepared surface between cleaning and priming. Product must match specification — no substitution without engineer approval.',
+            'Repair mortar applied in lifts per specification — product and method matching engineer design. Mortar to fully encapsulate rebar with no voids. Surface finished to match surrounding profile.',
+        ],
+        'ppe': [
+            'P2 respirator (minimum) — half-face P3 with particulate filter if air monitoring indicates. Eye protection and face shield during breakout. Hearing protection (>85 dB, Class 5 minimum). Cut-resistant gloves. Steel-capped footwear.',
+        ],
+        'stop_work': [
+            'Dust extraction fails or is inadequate — visible dust plume beyond immediate work zone. Reinforcement cross-section loss exceeds 20% or engineer tolerance — stop work, notify engineer for supplementary reinforcement design before proceeding. Structural concern, unexpected cracking, movement, or voids encountered during breakout — evacuate, do not re-enter without engineer assessment. Vibration exposure limit reached. Extent of deterioration exceeds engineer specification. Unexpected services encountered.',
         ]
     },
     'crack_stitching': {
@@ -267,16 +282,30 @@ REMEDIAL_NEW = {
             ('STOP WORK if:', 'Crack width or depth exceeds engineering specification tolerance — unexpected movement or displacement observed — services detected in cutting path — structural engineer advises hold — product temperature outside application range.')
         ]
     },
+    'epoxy_injection': {
+        'task': 'Epoxy Crack Injection',
+        'task_desc': 'Identification and marking of cracks, installation of injection ports, sealing of crack face with epoxy paste, injection of epoxy resin under low pressure, removal of ports and surface finishing. Includes structural and non-structural crack injection.',
+        'hazard': 'Skin sensitisation from epoxy resin — allergic contact dermatitis. Eye contact with epoxy hardener — chemical burns. Solvent vapour inhalation from injection products. Injection equipment under pressure — hose or fitting failure. Exothermic reaction in large resin volumes. Silica dust from port drilling (cross-reference SIL task).',
+        'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
+        'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
+        'type': 'STD',
+        'control': [
+            ('Engineering:', 'Injection equipment maintained per manufacturer — pressure relief valve functional, hose connections checked before use. Mixing ratios per product data sheet — do not exceed pot life. Resin mixed in small batches to control exotherm. Port drilling dust-controlled (HEPA shroud or wet method per SIL task).'),
+            ('Admin:', 'SDS for epoxy resin, hardener, and crack sealer reviewed before use — on site and accessible. Ventilation confirmed adequate — outdoor work preferred. Injection pressure monitored — do not exceed manufacturer limit. Crack width and depth assessed against engineer specification before injection. Workers trained in epoxy handling and first aid for chemical contact.'),
+            ('PPE:', 'Nitrile chemical-resistant gloves (minimum) — no skin contact with uncured resin. Eye protection (safety glasses or goggles). P2 respirator if in semi-enclosed area or extended exposure. Disposable coveralls recommended.'),
+            ('STOP WORK if:', 'Skin contact with uncured resin — wash immediately with soap and water, do not use solvent. Eye contact — flush 15 minutes, seek medical attention immediately. Injection pressure exceeds manufacturer limit. Crack leaking resin externally — depressurise and reseal. Product temperature outside application range. Exothermic reaction detected in mixing container — do not handle, allow to cool in safe location.')
+        ]
+    },
     'waterproofing': {
         'task': 'Waterproofing and Membrane Application',
-        'task_desc': 'Application of liquid-applied or sheet membrane waterproofing systems to balconies, podiums, planter boxes, wet areas, and below-grade elements. Includes surface preparation, primer, membrane, and protection layers.',
+        'task_desc': 'Application of liquid-applied or sheet membrane waterproofing systems to balconies, podiums, planter boxes, wet areas, and below-grade elements. Includes anti-carbonation coatings to cured concrete repair areas. Surface preparation, primer, membrane, and protection layers.',
         'hazard': 'Chemical exposure from primers, membranes, and solvents. Slip hazard on wet/coated surfaces. Fumes in enclosed areas. Manual handling of membrane rolls and equipment.',
         'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
         'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
         'type': 'STD',
         'control': [
             ('Engineering:', 'Ventilation maintained in enclosed application areas — mechanical ventilation if natural airflow insufficient. Non-slip walking paths maintained around wet membrane areas. Drainage provisions to prevent water pooling on uncured membrane.'),
-            ('Admin:', 'Waterproofing specification and system data sheet reviewed — substrate preparation, primer, membrane type, application rates, cure times confirmed. SDS for all products reviewed before use. Ambient temperature and substrate moisture checked before application — no application outside product parameters. Wet film thickness checks during application.'),
+            ('Admin:', 'Waterproofing specification and system data sheet reviewed — substrate preparation, primer, membrane type, application rates, cure times confirmed. SDS for all products reviewed before use. Ambient temperature and substrate moisture checked before application — no application outside product parameters. Wet film thickness checks during application. For concrete cancer remediation: anti-carbonation coating applied to cured repair mortar per engineer specification before membrane or final coating — product and coverage rate as specified.'),
             ('PPE:', 'Nitrile gloves — chemical-resistant. P2 respirator with organic vapour cartridge if solvent-based products. Eye protection. Non-slip footwear. Disposable overalls where splash risk exists.'),
             ('STOP WORK if:', 'Temperature outside product application range — substrate moisture exceeds product tolerance — rain imminent on uncured membrane — ventilation fails in enclosed area — product shelf life expired.')
         ]

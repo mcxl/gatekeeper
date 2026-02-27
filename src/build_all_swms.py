@@ -40,7 +40,8 @@ def get_next_num_id(numbering_elem):
     return max_id + 1
 
 def create_decimal_abstract_num(abs_id):
-    """Create a decimal abstractNum for HOLD POINTS: 1. 2. 3."""
+    """Create a decimal abstractNum for HOLD POINTS: 1. 2. 3.
+    Font: Aptos 8pt (sz=16 half-points) to match template body text."""
     xml = f'''<w:abstractNum xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
         w:abstractNumId="{abs_id}">
         <w:multiLevelType w:val="hybridMultilevel"/>
@@ -53,7 +54,9 @@ def create_decimal_abstract_num(abs_id):
                 <w:ind w:left="360" w:hanging="360"/>
             </w:pPr>
             <w:rPr>
-                <w:rFonts w:hint="default"/>
+                <w:rFonts w:ascii="Aptos" w:hAnsi="Aptos" w:hint="default"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
             </w:rPr>
         </w:lvl>
     </w:abstractNum>'''
@@ -61,7 +64,7 @@ def create_decimal_abstract_num(abs_id):
 
 def create_bullet_abstract_num(abs_id):
     """Create a bullet abstractNum for Eng/Admin/PPE/STOP WORK: open circle 'o'
-    Matches template abstractNumId=21 format exactly."""
+    Matches template abstractNumId=21 format. Font: Courier New 8pt (sz=16)."""
     xml = f'''<w:abstractNum xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
         w:abstractNumId="{abs_id}">
         <w:multiLevelType w:val="hybridMultilevel"/>
@@ -75,6 +78,8 @@ def create_bullet_abstract_num(abs_id):
             </w:pPr>
             <w:rPr>
                 <w:rFonts w:ascii="Courier New" w:hAnsi="Courier New" w:cs="Courier New" w:hint="default"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
             </w:rPr>
         </w:lvl>
     </w:abstractNum>'''
@@ -121,6 +126,94 @@ def inject_numbering_pair(doc):
     numbering.append(num_bul)
     
     return num_dec_id, num_bul_id
+
+
+def fix_reused_hold_point_numbering(row_elem, doc):
+    """Fix reused CCVS rows where HOLD POINT items use bullet numbering.
+
+    Template rows 6 (IRA) and 18 (Lead Paint) have all content sharing a
+    single bullet numId, including hold points which should be decimal 1. 2. 3.
+    This creates a new decimal numId and patches only the hold point paragraphs.
+
+    Returns the number of paragraphs fixed (0 if no fix needed).
+    """
+    tcs = row_elem.findall(qn('w:tc'))
+    if len(tcs) < 4:
+        return 0
+
+    control_cell = tcs[3]
+    paras = control_cell.findall(qn('w:p'))
+
+    # Build maps from document numbering
+    numbering = doc.part.numbering_part.numbering_definitions._numbering
+    num_to_abs = {}
+    abs_to_fmt = {}
+    for num in numbering.findall(qn('w:num')):
+        nid = num.get(qn('w:numId'))
+        absRef = num.find(qn('w:abstractNumId'))
+        if absRef is not None:
+            num_to_abs[nid] = absRef.get(qn('w:val'))
+    for absNum in numbering.findall(qn('w:abstractNum')):
+        aid = absNum.get(qn('w:abstractNumId'))
+        lvl0 = absNum.find(qn('w:lvl'))
+        if lvl0 is not None:
+            fmt_elem = lvl0.find(qn('w:numFmt'))
+            abs_to_fmt[aid] = fmt_elem.get(qn('w:val')) if fmt_elem is not None else 'unknown'
+
+    # Scan for hold point paragraphs that incorrectly use bullet numbering
+    in_hold_section = False
+    hold_point_numId_elems = []
+
+    for p in paras:
+        text = ''.join(
+            (r.find(qn('w:t')).text or '')
+            for r in p.findall(qn('w:r'))
+            if r.find(qn('w:t')) is not None
+        )
+
+        if 'HOLD POINT' in text.upper():
+            in_hold_section = True
+            continue
+
+        # Section headers that end the hold point section
+        if in_hold_section and any(h in text for h in ['Engineering:', 'Admin:', 'PPE:', 'STOP WORK']):
+            in_hold_section = False
+            continue
+
+        if in_hold_section:
+            pPr = p.find(qn('w:pPr'))
+            if pPr is not None:
+                numPr = pPr.find(qn('w:numPr'))
+                if numPr is not None:
+                    numId_elem = numPr.find(qn('w:numId'))
+                    if numId_elem is not None:
+                        nid = numId_elem.get(qn('w:val'))
+                        aid = num_to_abs.get(nid)
+                        fmt = abs_to_fmt.get(aid)
+                        if fmt == 'bullet':
+                            hold_point_numId_elems.append(numId_elem)
+
+    if not hold_point_numId_elems:
+        return 0
+
+    # Create new decimal numbering definition for this row's hold points
+    dec_abs_id = get_next_abstract_num_id(numbering)
+    dec_abs = create_decimal_abstract_num(dec_abs_id)
+    first_num = numbering.find(qn('w:num'))
+    if first_num is not None:
+        first_num.addprevious(dec_abs)
+    else:
+        numbering.append(dec_abs)
+
+    dec_num_id = get_next_num_id(numbering)
+    dec_num = create_num_elem(dec_num_id, dec_abs_id)
+    numbering.append(dec_num)
+
+    # Patch hold point paragraphs to use the new decimal numId
+    for numId_elem in hold_point_numId_elems:
+        numId_elem.set(qn('w:val'), str(dec_num_id))
+
+    return len(hold_point_numId_elems)
 
 
 # ============================================================
@@ -266,6 +359,10 @@ def build_swms(name, filename, task_list, new_tasks_dict):
     for idx, (source, key) in enumerate(task_list):
         if source == 'reuse':
             new_row = etree.fromstring(existing_rows[key])
+            # Fix hold point numbering in reused CCVS rows (template bug in rows 6, 18)
+            fixed_count = fix_reused_hold_point_numbering(new_row, doc)
+            if fixed_count:
+                print(f"    Fixed {fixed_count} hold point items: bullet -> decimal (row {key})")
             # Fix reused rows: remove code cell shading, add risk text colours
             tcs = new_row.findall(qn('w:tc'))
             if len(tcs) >= 7:
@@ -373,7 +470,7 @@ REMEDIAL_TASKS = [
     ('reuse', 1), ('reuse', 2), ('reuse', 3),
     ('reuse', 4), ('reuse', 5), ('reuse', 6), ('reuse', 8), ('reuse', 9),
     ('new', 'concrete_breakout'), ('new', 'crack_stitching'),
-    ('new', 'waterproofing'), ('new', 'expansion_joint'),
+    ('new', 'epoxy_injection'), ('new', 'waterproofing'), ('new', 'expansion_joint'),
     ('reuse', 16), ('reuse', 12), ('reuse', 13), ('reuse', 14), ('reuse', 15),
     ('reuse', 18), ('reuse', 10), ('reuse', 11), ('reuse', 20),
 ]

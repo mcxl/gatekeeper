@@ -30,7 +30,7 @@ Additional common tasks reused selectively:
 ---
 
 ## SWMS 1: REMEDIAL WORKS
-**Scope:** Concrete repairs, crack stitching, spalling repairs, waterproofing, structural remediation, expansion joint replacement, façade restoration
+**Scope:** Concrete repairs, crack stitching, epoxy crack injection, spalling repairs, waterproofing, structural remediation, expansion joint replacement, façade restoration
 
 | # | Task | Code | Type | Source |
 |---|------|------|------|--------|
@@ -42,21 +42,22 @@ Additional common tasks reused selectively:
 | 6 | Industrial Rope Access — Rope Setup and Rigging | IRA-H6 | CCVS | Painting R6 |
 | 7 | EWP Operation — Boom and Scissor Lift | WAH-H6 | CCVS | Painting R8 |
 | 8 | Jackhammering, Cutting, Grinding and Core Drilling — Silica Dust | SIL-H6 | CCVS | Painting R9 |
-| 9 | Concrete Breakout and Spalling Repair | PRE-M4 | STD | **NEW** |
+| 9 | Concrete Breakout and Spalling Repair | STR-H6 | CCVS | **NEW** — escalated from PRE-M4 STD (gap analysis 27/02/2026: structural collapse risk, propping, DBP Act) |
 | 10 | Crack Stitching and Structural Reinforcement | PRE-M4 | STD | **NEW** |
-| 11 | Waterproofing and Membrane Application | PRE-M4 | STD | **NEW** |
-| 12 | Expansion Joint Replacement | PRE-M4 | STD | **NEW** |
-| 13 | Sealant Replacement and Recaulking | PRE-M4 | STD | Painting R16 |
-| 14 | Balcony Security (Occupied Residential) | SYS-M3 | STD | Painting R12 |
-| 15 | Hazardous Chemicals — Epoxies, Resins, and Coatings | HAZ-M4 | STD | Painting R13 (adapted title) |
-| 16 | High-Pressure Water Cleaning | PRE-M4 | STD | Painting R14 |
-| 17 | Surface Preparation — Non-Silica-Lead | PRE-M4 | STD | Painting R15 |
-| 18 | Lead Paint Assessment and 6-Step Encapsulation | HAZ-H6 | CCVS | Painting R18 |
-| 19 | Manual Handling | PRE-M3 | STD | Painting R10 |
-| 20 | Housekeeping and Waste Management | PRE-L2 | STD | Painting R11 |
-| 21 | Hot and Dangerous Weather | SYS-M3 | STD | Painting R20 |
+| 11 | Epoxy Crack Injection | PRE-M4 | STD | **NEW** — added 27/02/2026 (gap analysis: different technique/hazards from crack stitching) |
+| 12 | Waterproofing and Membrane Application | PRE-M4 | STD | **NEW** — scope expanded to include anti-carbonation coatings |
+| 13 | Expansion Joint Replacement | PRE-M4 | STD | **NEW** |
+| 14 | Sealant Replacement and Recaulking | PRE-M4 | STD | Painting R16 |
+| 15 | Balcony Security (Occupied Residential) | SYS-M3 | STD | Painting R12 |
+| 16 | Hazardous Chemicals — Epoxies, Resins, and Coatings | HAZ-M4 | STD | Painting R13 (adapted title) |
+| 17 | High-Pressure Water Cleaning | PRE-M4 | STD | Painting R14 |
+| 18 | Surface Preparation — Non-Silica-Lead | PRE-M4 | STD | Painting R15 |
+| 19 | Lead Paint Assessment and 6-Step Encapsulation | HAZ-H6 | CCVS | Painting R18 |
+| 20 | Manual Handling | PRE-M3 | STD | Painting R10 |
+| 21 | Housekeeping and Waste Management | PRE-L2 | STD | Painting R11 |
+| 22 | Hot and Dangerous Weather | SYS-M3 | STD | Painting R20 |
 
-**New tasks (9–12): Need full task/hazard/control text written.**
+**New tasks (9–13): Full task/hazard/control text written. Task 9 escalated to CCVS with hold points for engineer spec, DBP Act CIRD, temporary propping, and rebar assessment.**
 
 ---
 
@@ -229,7 +230,7 @@ Additional common tasks reused selectively:
 
 | SWMS | Document | Tasks | New Tasks | Reused | CCVS Tasks |
 |------|----------|-------|-----------|--------|------------|
-| 1 | Remedial Works | 21 | 4 | 17 | 8 |
+| 1 | Remedial Works | 22 | 5 | 17 | 9 |
 | 2 | Spray Painting | 18 | 5 | 13 | 8 |
 | 3 | Groundworks | 18 | 10 | 8 | 5 |
 | 4 | Cladding Works | 19 | 6 | 13 | 8 |
@@ -237,7 +238,7 @@ Additional common tasks reused selectively:
 | 6 | Swing Stage | 16 | 9 | 7 | 8 |
 | 7 | Abrasive Blasting | 20 | 8 | 12 | 9 |
 
-**Total new task content to write: 52 tasks**
+**Total new task content to write: 53 tasks**
 **Total reused from painting master: 76 task instances**
 
 ---
