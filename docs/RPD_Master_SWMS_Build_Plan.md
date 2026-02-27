@@ -75,17 +75,18 @@ Additional common tasks reused selectively:
 | 7 | EWP Operation — Boom and Scissor Lift | WAH-H6 | CCVS | Painting R8 |
 | 8 | Airless Spray Unit Setup and Operation | PRE-H6 | CCVS | **NEW** |
 | 9 | Spray Application — Exterior (Open Air) | PRE-M4 | STD | **NEW** |
-| 10 | Spray Application — Interior (Enclosed/Confined) | HAZ-H6 | CCVS | **NEW** |
-| 11 | Overspray and Environmental Protection | ENV-M3 | STD | **NEW** |
-| 12 | Spray Equipment Cleaning and Solvent Use | HAZ-M4 | STD | **NEW** |
-| 13 | Hazardous Chemicals — Paints, Solvents, and Coatings | HAZ-M4 | STD | Painting R13 |
-| 14 | Surface Preparation — Non-Silica-Lead | PRE-M4 | STD | Painting R15 |
-| 15 | Lead Paint Assessment and 6-Step Encapsulation | HAZ-H6 | CCVS | Painting R18 |
-| 16 | Manual Handling | PRE-M3 | STD | Painting R10 |
-| 17 | Housekeeping and Waste Management | PRE-L2 | STD | Painting R11 |
-| 18 | Hot and Dangerous Weather | SYS-M3 | STD | Painting R20 |
+| 10 | Spray Application — Interior (Enclosed/Confined) | HAZ-H6 | CCVS | **NEW** — confined space hold point added 27/02/2026 |
+| 11 | Isocyanate / 2-Pack Coating Application | HAZ-H6 | CCVS | **NEW** — added 27/02/2026 (gap analysis: WHS Reg Schedule 14, health surveillance, supplied-air RPE) |
+| 12 | Overspray and Environmental Protection | ENV-M3 | STD | **NEW** |
+| 13 | Spray Equipment Cleaning and Solvent Use | HAZ-M4 | STD | **NEW** |
+| 14 | Hazardous Chemicals — Paints, Solvents, and Coatings | HAZ-M4 | STD | Painting R13 |
+| 15 | Surface Preparation — Non-Silica-Lead | PRE-M4 | STD | Painting R15 |
+| 16 | Lead Paint Assessment and 6-Step Encapsulation | HAZ-H6 | CCVS | Painting R18 |
+| 17 | Manual Handling | PRE-M3 | STD | Painting R10 |
+| 18 | Housekeeping and Waste Management | PRE-L2 | STD | Painting R11 |
+| 19 | Hot and Dangerous Weather | SYS-M3 | STD | Painting R20 |
 
-**New tasks (8–12): Airless spray specific — pressure injection risk, overspray containment, ventilation for enclosed spaces.**
+**New tasks (8–13): Airless spray specific — pressure injection risk, overspray containment, ventilation for enclosed spaces. Task 11 (Isocyanate) added 27/02/2026 gap analysis — WHS Reg Schedule 14 health surveillance, supplied-air RPE, continuous air monitoring.**
 
 ---
 
@@ -98,7 +99,7 @@ Additional common tasks reused selectively:
 | 2 | Emergency Response | SYS-H9 | STD | Painting R2 |
 | 3 | Residents and Public Interface | SYS-M3 | STD | Painting R3 |
 | 4 | Excavation and Trenching | WAH-H6 | CCVS | **NEW** — fall into trench/excavation |
-| 5 | Underground Services Location and Protection | ELE-H9 | CCVS | **NEW** — Dial Before You Dig, service strikes |
+| 5 | Underground and Overhead Services Location and Protection | ELE-H9 | CCVS | **NEW** — DBYD, service strikes, overhead power lines (expanded 27/02/2026: HY Underground and Overhead Services procedure) |
 | 6 | Powered Mobile Plant — Excavators, Loaders, Rollers | MOB-H6 | CCVS | **NEW** |
 | 7 | Concrete Cutting and Core Drilling — Silica Dust | SIL-H6 | CCVS | Painting R9 (adapted) |
 | 8 | Formwork and Steel Fixing | STR-M4 | STD | **NEW** |
@@ -231,15 +232,15 @@ Additional common tasks reused selectively:
 | SWMS | Document | Tasks | New Tasks | Reused | CCVS Tasks |
 |------|----------|-------|-----------|--------|------------|
 | 1 | Remedial Works | 22 | 5 | 17 | 9 |
-| 2 | Spray Painting | 18 | 5 | 13 | 8 |
+| 2 | Spray Painting | 19 | 6 | 13 | 9 |
 | 3 | Groundworks | 18 | 10 | 8 | 5 |
 | 4 | Cladding Works | 19 | 6 | 13 | 8 |
 | 5 | EWP (Standalone) | 16 | 10 | 6 | 10 |
 | 6 | Swing Stage | 16 | 9 | 7 | 8 |
 | 7 | Abrasive Blasting | 20 | 8 | 12 | 9 |
 
-**Total new task content to write: 53 tasks**
-**Total reused from painting master: 76 task instances**
+**Total new task content to write: 54 tasks**
+**Total reused from painting master: 77 task instances**
 
 ---
 

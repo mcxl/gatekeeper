@@ -365,7 +365,7 @@ SPRAY_NEW = {
             ('Engineering:', 'Overspray containment: scaffold shrink-wrap, drop sheets, and masking to all adjacent surfaces, windows, vehicles, and property. Wind breaks where practicable. Spray tip selected for minimum overspray — correct fan width and orifice size for product.'),
             ('Admin:', 'Wind speed monitored — no spraying above 15 km/h or per product data sheet limit, whichever is lower. Adjacent property and vehicle owners notified 48 hours before spraying. Spotter positioned to warn of pedestrians and wind changes. Overspray inspection after each spray session — immediate clean-up of any overspray.'),
             ('PPE:', 'Half-face respirator with P2/OV cartridge. Eye protection or goggles. Disposable spray suit or coveralls. Nitrile gloves. Head cover.'),
-            ('STOP WORK if:', 'Wind exceeds limit — overspray escaping containment — adjacent property complaint — rain during application — pedestrians entering spray zone — containment failure.')
+            ('STOP WORK if:', 'Wind exceeds limit — overspray escaping containment — adjacent property complaint — rain during application — pedestrians entering spray zone — containment failure — suspected skin injection injury (treat as medical emergency — do not wait for symptoms, transport to hospital with hand surgery capability immediately).')
         ]
     },
     'spray_interior': {
@@ -380,18 +380,19 @@ SPRAY_NEW = {
             'Atmospheric monitoring in place if solvent-based products used — LEL monitor calibrated and alarming at 10% LEL',
             'All ignition sources eliminated: no hot work, no unsealed electrical, no mobile phones in spray zone if solvent-based',
             'Emergency egress routes clear and marked — minimum two exits from spray area where practicable',
+            'Confined space assessment completed per WHS Regulation Part 4.3 for any area with restricted entry/exit (fewer than 2 standard exits, or exit requires climbing/crawling/travel >10m). If confined space: entry permit, standby person, and atmospheric monitoring required before spraying commences',
         ],
         'eng': [
-            'Mechanical exhaust ventilation running before, during, and 30 minutes after spraying. Fresh air intake positioned to create cross-flow ventilation. Explosion-proof electrical fittings in spray zone if solvent-based products. LEL monitor with audible alarm at 10% LEL.',
+            'Mechanical exhaust ventilation running before, during, and 30 minutes after spraying. Fresh air intake positioned to create cross-flow ventilation — extraction discharges externally, no recirculation. Explosion-proof electrical fittings in spray zone if solvent-based products. LEL monitor with audible alarm at 10% LEL — calibrated for primary solvent in product SDS. Continuous LEL monitoring during active spraying and for 30 minutes after last spray pass.',
         ],
         'admin': [
-            'Confined space risk assessment completed if area meets confined space definition per WHS Regulation. Water-based products preferred over solvent-based for interior work. Spray schedule coordinated to minimise exposure duration. Buddy system — no solo interior spraying.',
+            'Water-based products preferred over solvent-based for interior work. Spray schedule coordinated to minimise exposure duration. Buddy system — no solo interior spraying.',
         ],
         'ppe': [
             'Full-face respirator with combination OV/P3 cartridge for solvent-based. Half-face with P2/OV for water-based. Disposable spray suit. Nitrile gloves. Eye protection under full-face respirator.',
         ],
         'stop_work': [
-            'LEL alarm activates — ventilation fails or reduces — any worker reports dizziness, nausea, or irritation — visibility drops below 3m — ignition source identified in spray zone — single exit only and no buddy available.',
+            'LEL alarm activates — ventilation fails or reduces — any worker reports dizziness, nausea, or irritation — visibility drops below 3m — ignition source identified in spray zone — single exit only and no buddy available — area determined to be confined space and no confined space entry permit in force.',
         ]
     },
     'overspray_env': {
@@ -422,6 +423,32 @@ SPRAY_NEW = {
             ('STOP WORK if:', 'Solvent spill not contained — ventilation inadequate — ignition source near cleaning area — solvent waste container full or unsealed.')
         ]
     },
+    'isocyanate_2pack': {
+        'task': 'Isocyanate / 2-Pack Coating Application',
+        'task_desc': 'Spray application of isocyanate-containing products (2-pack polyurethane, 2K epoxy-urethane, isocyanate hardeners) and anti-graffiti coatings. Includes mandatory health surveillance, supplied-air respiratory protection, and continuous air monitoring.',
+        'hazard': 'Respiratory sensitisation from isocyanate inhalation — occupational asthma, irreversible airway damage. Skin sensitisation. Exothermic reaction during mixing. Vapour accumulation in enclosed spaces.',
+        'risk_pre': 'High (6)', 'risk_post': 'Low (2)',
+        'code': 'HAZ-H6', 'resp': 'Supervisor / Worker',
+        'type': 'CCVS',
+        'hold_points': [
+            'Product SDS reviewed — isocyanate component identified (HDI, MDI, TDI, or polymeric isocyanate). Isocyanate-specific controls activated',
+            'Workers confirmed medically fit for isocyanate exposure — pre-employment respiratory assessment (spirometry/lung function) completed. No worker with known respiratory sensitisation to isocyanates permitted in spray zone',
+            'Supplied-air respiratory protection confirmed: positive-pressure airline system or PAPR with combination OV/P3. Half-face cartridge respirator is NOT adequate for spray application of isocyanates',
+            'Continuous isocyanate air monitoring arranged — colorimetric tubes or real-time monitor. National WES: 0.02 mg/m\u00b3 (8hr TWA) for monomeric HDI, 0.07 mg/m\u00b3 for polymeric HDI',
+        ],
+        'eng': [
+            'Supplied-air respirator (positive-pressure airline) for all workers in spray zone. Local exhaust ventilation or spray booth with external discharge — no recirculation. Mixing of 2-pack components in ventilated area with spill containment. Isocyanate-specific spill kit available.',
+        ],
+        'admin': [
+            'Health surveillance program per WHS Regulation Schedule 14: baseline spirometry before first exposure, annual review by medical practitioner. Health surveillance records retained for 30 years minimum. Air monitoring results recorded and communicated to workers — any exceedance triggers immediate work cessation and control review. Product-specific application windows (temperature, humidity, pot life) checked before mixing.',
+        ],
+        'ppe': [
+            'Supplied-air respirator (positive-pressure airline or PAPR with OV/P3). Disposable Type 5/6 coveralls — removed before leaving spray zone. Nitrile chemical-resistant gloves. Eye protection or full-face supplied-air hood. Steel capped footwear.',
+        ],
+        'stop_work': [
+            'Any respiratory symptoms in spray zone (wheeze, chest tightness, cough, shortness of breath) — treat as sensitisation event, remove worker, seek medical assessment. Air monitoring exceeds WES — supplied-air system fault — ventilation fails — product mixed outside pot life — worker without medical fitness clearance — SDS not available for product.',
+        ]
+    },
 }
 
 # --- GROUNDWORKS NEW TASKS ---
@@ -429,33 +456,35 @@ GROUND_NEW = {
     'excavation': {
         'task': 'Excavation and Trenching',
         'task_desc': 'Open-cut excavation, trenching for services, footings, and drainage. Includes benching, battering, and shoring of excavation walls deeper than 1.5m.',
-        'hazard': 'Collapse of excavation walls — burial and suffocation. Fall into excavation. Contact with underground services. Flooding/water ingress. Ground vibration from adjacent plant.',
+        'hazard': 'Collapse of excavation walls — burial and suffocation. Fall into excavation. Contact with underground services. Flooding/water ingress. Ground vibration from adjacent plant. Atmospheric contamination — build-up of gases, fumes, oxygen depletion. Impact on adjacent buildings and structures.',
         'risk_pre': 'High (6)', 'risk_post': 'Low (2)',
         'code': 'WAH-H6', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
         'type': 'CCVS',
         'hold_points': [
+            'Ground Works Permit raised and approved per HY Works Permit procedure — permit in hard copy with operator/excavation crew, with current DBYD, as-built drawings, services layouts, and engineers report attached',
             'Geotechnical assessment reviewed: soil classification confirmed — batter angles and shoring requirements determined before excavation commences',
+            'Adjacent buildings and structures assessed by competent person (structural/geotechnical engineer) before excavation commences — vibration monitoring and structural integrity controls implemented per engineer\'s assessment',
             'Dial Before You Dig (DBYD) plans obtained and current (within 30 days). Service locations confirmed by non-destructive potholing within 1m of any indicated service',
             'Excavation deeper than 1.5m: shoring, benching, or battering designed by competent person per AS 4678 and WHS Regulation Chapter 6',
-            'Barricading: full perimeter barricade with warning signage before any excavation left unattended',
+            'Barricading per HY tiered system: up to 1m deep — bunting/barrier mesh (star pickets with safety caps at max 2.5m spacing, at least 1m from edge); greater than 1m deep — crowd control barriers, water-filled barriers, or 1.8m high interlockable hard fencing. Excavations >1.5m: "DANGER DEEP EXCAVATION" signage',
         ],
         'eng': [
-            'Shoring installed progressively as depth increases. Benching/battering angles per geotechnical report — never steeper than soil classification allows. Dewatering active if water table encountered. Edge protection: minimum 1m setback for spoil stockpile from excavation edge.',
+            'Shoring installed progressively as depth increases. Benching/battering angles per geotechnical report — never steeper than soil classification allows. Dewatering active if water table encountered. Edge protection: minimum 1m setback for spoil stockpile from excavation edge. Safe access/egress for excavations >1.5m — ladders secured to trench shields extending minimum 1m above top of excavation, or ramps/steps as appropriate. Controls to prevent objects falling on workers in excavations >1.5m — toe boards, guard rails at excavation edge, trench box sheets extending above trench depth.',
         ],
         'admin': [
-            'Daily inspection of excavation walls by competent person before any worker entry. After rain: re-inspection before re-entry. Excavation permit system in place for depths >1.5m. Emergency rescue plan for excavation entrapment — rescue equipment on site (ladder, harness, retrieval line).',
+            'Daily inspection of excavation walls by competent person before any worker entry. After rain: re-inspection before re-entry. Excavation permit system in place for depths >1.5m. Emergency rescue plan for excavation entrapment — rescue equipment on site (ladder, harness, retrieval line). Excavation assessed for confined space classification per HY Confined Space procedure. Atmospheric testing conducted before worker entry where gas or oxygen risk identified. No combustion engine plant operated in excavation while workers are inside. Excavations isolated and made safe at end of each shift/day and when not in use — barriers, covers, or backfill as appropriate.',
         ],
         'ppe': [
             'Steel capped footwear. Hard hat. High-vis vest or shirt. Cut-resistant gloves. Harness and retrieval line if entering excavation >1.5m without shoring.',
         ],
         'stop_work': [
-            'Wall cracking, slumping, or movement observed — water ingress not controlled by dewatering — shoring damaged or displaced — services exposed and not confirmed de-energised — spoil encroaching on edge setback — any worker in excavation >1.5m without shoring/benching.',
+            'Wall cracking, slumping, or movement observed — water ingress not controlled by dewatering — shoring damaged or displaced — services exposed and not confirmed de-energised — spoil encroaching on edge setback — any worker in excavation >1.5m without shoring/benching — atmospheric testing indicates unsafe conditions (oxygen depletion, gas detection, engine fumes in excavation) — Ground Works Permit not raised — adjacent structure integrity concern identified.',
         ]
     },
     'services_location': {
-        'task': 'Underground Services Location and Protection',
-        'task_desc': 'Location, identification, and protection of underground services including electrical, gas, water, sewer, telecommunications, and stormwater during ground disturbance activities.',
-        'hazard': 'Electrocution from contact with underground power cables. Gas main rupture — explosion and fire. Water main burst — flooding. Telecommunications damage — service disruption. Sewer damage — contamination.',
+        'task': 'Underground and Overhead Services Location and Protection',
+        'task_desc': 'Location, identification, and protection of underground and overhead services including electrical, gas, water, sewer, telecommunications, and stormwater during ground disturbance activities. Includes overhead power line management per HY Underground and Overhead Services procedure.',
+        'hazard': 'Electrocution from contact with underground power cables or overhead power lines. Gas main rupture — explosion and fire. Water main burst — flooding. Telecommunications damage — service disruption. Sewer damage — contamination. Plant contact with overhead conductors.',
         'risk_pre': 'High (9)', 'risk_post': 'Low (2)',
         'code': 'ELE-H9', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
         'type': 'CCVS',
@@ -464,18 +493,19 @@ GROUND_NEW = {
             'Service locator (CAT/Genny or GPR) used to confirm locations before any mechanical excavation. Services marked on ground with paint/flags',
             'Hand dig/vacuum excavation (potholing) within 1m horizontal and 300mm vertical of any indicated service — no mechanical excavation within this zone',
             'Service owner contacted and clearance obtained for work near high-risk services (HV power, high-pressure gas)',
+            'Overhead services identified: approach distances and work zones (Zone A/B/C) established per HY Underground and Overhead Services procedure. Electrical spotters required in Zone B. Plant fitted with limiting/slowing devices where it can reach Zone C',
         ],
         'eng': [
             'Services physically exposed by hand/vacuum excavation before mechanical plant operates within proximity. Exposed services supported and protected from damage. Isolation of services where practicable — de-energise, shut off, or depressurise.',
         ],
         'admin': [
-            'Service strike emergency procedure briefed to all workers — isolation points identified. Gas: evacuate, no ignition, call 000 and gas authority. Electrical: do not approach, isolate at source, call 000 and network provider. All workers inducted on service locations marked on site plan.',
+            'Competent spotter required when working within 500mm of underground asset per HY Underground Services procedure. Excavators not to be used within distances specified by state legislation and asset owners. Service strike emergency procedure briefed to all workers — isolation points identified. Gas: evacuate, no ignition, call 000 and gas authority. Electrical: do not approach, isolate at source, call 000 and network provider. All workers inducted on service locations (underground and overhead) marked on site plan.',
         ],
         'ppe': [
             'Steel capped footwear. Hard hat. High-vis vest or shirt. Insulated gloves if working near suspected electrical services. Cut-resistant gloves.',
         ],
         'stop_work': [
-            'Service encountered not shown on DBYD plans — any service contact (even minor) — odour of gas detected — water flow from unknown source — service locator readings inconsistent with plans — mechanical plant within 1m of unconfirmed service.',
+            'Service encountered not shown on DBYD plans — any service contact (even minor) — odour of gas detected — water flow from unknown source — service locator readings inconsistent with plans — mechanical plant within 1m of unconfirmed service — plant approaching overhead power line safe approach distance — spotter not available within 500mm of underground asset.',
         ]
     },
     'mobile_plant': {
@@ -486,7 +516,8 @@ GROUND_NEW = {
         'code': 'MOB-H6', 'resp': 'Supervisor / Operator / Worker',
         'type': 'CCVS',
         'hold_points': [
-            'Operator holds current SafeWork NSW HRW licence for plant class being operated — licence sighted and recorded',
+            'Operator holds current HRWL where required by legislation, or VOC/Statement of Attainment issued by an RTO for the specific plant class (e.g. excavator LE, roller LR, loader LL/LS, dozer LZ) — licence/VOC sighted and recorded. VOC assessments not undertaken by an RTO will not be accepted per HY',
+            'Plant safety verification completed upon arrival per HY procedure — plant approved for use by HY, verification sticker displayed. Plant Setup permit issued where required (piling rigs, mobile cranes, concrete boom pumps)',
             'Plant pre-start inspection completed and recorded — all safety systems functional (ROPS, FOPS, seatbelt, reversing alarm, camera/mirrors)',
             'Exclusion zones established: minimum 3m from operating plant for pedestrians — spotter in place when pedestrians must enter zone',
             'Overhead power line assessment completed — safe approach distances confirmed per AS/NZS 4576',
@@ -495,7 +526,7 @@ GROUND_NEW = {
             'ROPS and FOPS fitted and certified. Reversing camera and alarm operational. Rotating beacon active during operation. Physical barriers between plant operating zone and pedestrian areas where practicable. Outriggers deployed for lifting operations.',
         ],
         'admin': [
-            'Plant movement plan reviewed — travel paths, exclusion zones, overhead hazards, underground services all identified. Spotter assigned for reversing and blind spot operations. Communication between operator and ground crew — hand signals or two-way radio. Daily pre-start log maintained.',
+            'Plant movement plan reviewed — travel paths, exclusion zones, overhead hazards, underground services all identified. Spotter assigned for reversing and blind spot operations. Communication between operator and ground crew — hand signals or two-way radio. Daily pre-start log maintained. Zone of influence calculated for plant operating near excavations and underground pipes per HY Mobile Plant procedure (clay 1:1 ratio, sand/fill 2:1 ratio). Physical barriers (wheel stoppers, berms) installed to restrict plant movement within zone of influence. Plant work zones established based on geotechnical information — ground bearing capacity confirmed adequate for plant type.',
         ],
         'ppe': [
             'Operator: seatbelt worn at all times. Hard hat, steel capped footwear, high-vis vest or shirt for all ground personnel. Hearing protection (>85 dB) within 10m of operating plant.',
@@ -569,7 +600,7 @@ GROUND_NEW = {
         'type': 'STD',
         'control': [
             ('Engineering:', 'Electric pumps on RCD-protected circuits — leads clear of water. Pump intake screened to prevent blockage. Discharge via sediment control — silt fence, sediment basin, or filter sock. No direct discharge to stormwater without filtration.'),
-            ('Admin:', 'Dewatering licence or approval obtained if required by local authority. Water quality tested if contamination suspected — disposal via licensed facility if contaminated. Pump operation monitored — excavation stability checked during dewatering. Discharge location and flow rate recorded.'),
+            ('Admin:', 'Dewatering and discharge conducted in accordance with project Erosion and Sediment Control Plan (ESCP/SWMP) per HY Environmental standard. Dewatering licence or approval obtained if required by local authority. Water quality tested if contamination suspected — disposal via licensed facility if contaminated. Pump operation monitored — excavation stability checked during dewatering. Discharge location and flow rate recorded.'),
             ('PPE:', 'Waterproof boots. Cut-resistant gloves. Hearing protection (>85 dB) near pump.'),
             ('STOP WORK if:', 'Electrical fault on pump — discharge entering stormwater without filtration — excavation instability during dewatering — contaminated water identified — pump discharge flooding adjacent property.')
         ]
@@ -591,7 +622,7 @@ GROUND_NEW = {
             'Hydraulic or mechanical shoring systems rated for soil type and depth. Props and struts positioned per design — bearing plates on all contact surfaces. Waling and sheeting per design specification. Shoring to remain in place until backfill reaches safe height.',
         ],
         'admin': [
-            'Daily inspection of shoring by competent person — condition, alignment, load, ground movement. Shoring removal sequence planned — never remove from bottom up. After rain or seismic event — re-inspection before re-entry. Load monitoring where specified by engineer.',
+            'Shoring managed per HY Temporary Works procedure. Any changes to shoring design or installed system authorised and signed off by qualified engineer. Daily inspection of shoring by competent person — condition, alignment, load, ground movement. Subcontractor to submit competency records for nominated inspection personnel per HY procedure. Shoring removal sequence planned — never remove from bottom up. After rain or seismic event — re-inspection before re-entry. Load monitoring where specified by engineer.',
         ],
         'ppe': [
             'Steel capped footwear. Hard hat. Cut-resistant gloves. High-vis vest or shirt.',
@@ -628,20 +659,21 @@ CLADDING_NEW = {
         'hold_points': [
             'Lift plan completed: panel weights confirmed, lifting equipment rated and certified, rigging method and attachment points verified',
             'Wind speed monitored — no lifting above 30 km/h or panel manufacturer limit, whichever is lower. Large panels (>5m²): no lifting above 20 km/h',
+            'Structural engineer wind loading sign-off obtained for panel installation sequence — temporary and permanent wind loading conditions verified for panels during and after installation',
             'Exclusion zone established below lifting zone — no workers beneath suspended panel at any time',
             'Scaffold or EWP load rating confirmed adequate for panel weight plus worker weight plus tools',
         ],
         'eng': [
-            'Panel handling equipment (suction cups, clamps, lifting frames) rated for panel weight and type. Tag lines on all panels during crane lifts. Temporary fixing/bracing immediately on placement — panel not released from lifting equipment until minimum fixings installed per design.',
+            'Panel handling equipment (suction cups, clamps, lifting frames) rated for panel weight and type. Tag lines on all panels during crane lifts. Temporary fixing/bracing immediately on placement — panel not released from lifting equipment until minimum fixings installed per design. Bracing props locked (not hand-tight) and inspected per design — bracing design by competent person, removal only with structural engineer approval.',
         ],
         'admin': [
-            'Installation sequence per cladding design — verified with structural engineer for load distribution. Panel storage on site — stacked per manufacturer requirements, secured against wind. Delivery coordination — just-in-time where possible to minimise on-site storage.',
+            'Installation sequence per cladding design — verified with structural engineer for load distribution. Bracing inspection regime maintained — daily check of all temporary bracing until permanent fixings complete and engineer confirms bracing can be removed. Panel storage on site — stacked per manufacturer requirements, secured against wind. Delivery coordination — just-in-time where possible to minimise on-site storage.',
         ],
         'ppe': [
             'Hard hat. Cut-resistant gloves. Steel capped footwear. Eye protection. Harness when working at height. High-vis vest or shirt.',
         ],
         'stop_work': [
-            'Wind exceeds lift limit — rigging equipment defective — panel damaged and structural integrity compromised — exclusion zone breached — scaffold/EWP overloaded — fixing system not per design specification.',
+            'Wind exceeds lift limit — rigging equipment defective — panel damaged and structural integrity compromised — exclusion zone breached — scaffold/EWP overloaded — fixing system not per design specification — bracing removed without engineer approval — bracing props found unlocked or displaced.',
         ]
     },
     'panel_removal': {
@@ -776,6 +808,7 @@ EWP_NEW = {
         'code': 'MOB-H6', 'resp': 'Supervisor / Operator',
         'type': 'CCVS',
         'hold_points': [
+            'HY Plant Safety Verification completed upon EWP arrival — plant approved for use by HY, verification sticker displayed, registered in HammerTech',
             'Delivery vehicle access route confirmed clear: overhead clearance, ground capacity, turning circles assessed',
             'Unloading area level, firm, and clear of workers — spotter in place during unloading',
             'Underground services confirmed clear under EWP operating position — no positioning over pits, trenches, or voids',
@@ -785,7 +818,7 @@ EWP_NEW = {
             'Outrigger pads or steel plates sized for ground bearing capacity. Wheel chocks on trailer-mounted units. Stabiliser interlocks confirmed functional. EWP positioned on level ground — maximum slope per manufacturer specification for travel.',
         ],
         'admin': [
-            'Traffic management plan if EWP positioned on road or footpath. Overnight security — keys removed, controls locked, area barricaded. Daily setup check before first use each day. Ground conditions re-assessed after rain.',
+            'Traffic management plan if EWP positioned on road or footpath. Overnight security — keys removed, controls locked, area barricaded. Daily setup check before first use each day. Ground conditions re-assessed after rain. Insurance and registration current for all EWPs.',
         ],
         'ppe': [
             'Hard hat and steel capped footwear during setup. High-vis vest or shirt. Cut-resistant gloves.',
@@ -805,6 +838,8 @@ EWP_NEW = {
             'Pre-start checklist completed before first use each day — all items inspected and recorded',
             'Emergency lowering system tested from platform and ground controls — confirmed functional',
             'Platform guardrails, mid-rails, toe boards, and gate/chain complete and secure',
+            'Secondary operator protective devices checked — guards that protect operator from entrapment/crush between platform and structures confirmed functional per HY EWP Quick Guide',
+            'Scissor lift platform controls protection checked — guards around controls to prevent accidental operation or snagging confirmed in place',
             'Hydraulic system: no leaks, hoses not abraded, fluid level correct',
         ],
         'eng': [
@@ -837,7 +872,7 @@ EWP_NEW = {
             'Platform gate/chain closed during operation. Harness lanyard attached to manufacturer-designated anchor point only — never to guardrail. Outriggers fully deployed where fitted. Ground-level emergency controls accessible and unobstructed at all times.',
         ],
         'admin': [
-            'Spotter on ground during operation near structures, overhead hazards, or in traffic areas. Communication between operator and ground crew — radio or hand signals. Wind monitoring — cease operations above 40 km/h or manufacturer limit. No modification to platform (planks, ladders, or boxes to extend reach).',
+            'Spotter on ground during operation near structures, overhead hazards, or in traffic areas. Support personnel for boom lifts >11m must hold WP HRWL per HY Work at Height procedure. Communication between operator and ground crew — radio or hand signals. Wind monitoring — cease operations above 40 km/h or manufacturer limit. No modification to platform (planks, ladders, or boxes to extend reach).',
         ],
         'ppe': [
             'Full body harness (AS/NZS 1891.1) with short restraint lanyard. Hard hat — chinstrap in windy conditions. Steel capped footwear. High-vis vest or shirt.',
@@ -854,7 +889,7 @@ EWP_NEW = {
         'code': 'WAH-H6', 'resp': 'Supervisor / Operator',
         'type': 'CCVS',
         'hold_points': [
-            'Operator holds current SafeWork NSW HRW licence — WP class',
+            'Operator holds current EWPA Yellow Card — SL class for scissor lift. (Note: WP HRWL is for boom lifts >11m only — not required for scissor lifts.)',
             'Ground/floor surface assessed: level within manufacturer tolerance, firm, no potholes/edges/voids within travel path',
             'Platform load confirmed within rated capacity',
             'Outriggers or pothole guards deployed as required by manufacturer for operating height',
@@ -906,6 +941,7 @@ EWP_NEW = {
         'code': 'WAH-H9', 'resp': 'Supervisor / Worker',
         'type': 'CCVS',
         'hold_points': [
+            'Rescue plan addresses three distinct scenarios per HY Work at Height procedure: (a) rescue of incapacitated operator from platform via ground-level override, (b) rescue of operator suspended in harness after ejection/fall from platform, (c) medical emergency at height requiring casualty lowering',
             'Ground-level emergency controls location confirmed by all crew — tested before each shift',
             'Rescue procedure rehearsed by all workers on site who may need to perform rescue — minimum quarterly practice',
             'Suspension trauma awareness: all harness wearers briefed on symptoms and relief procedures — trauma straps fitted to harnesses',
@@ -1132,7 +1168,7 @@ SWING_NEW = {
         'code': 'WAH-H9', 'resp': 'Supervisor / Lead Technician',
         'type': 'CCVS',
         'hold_points': [
-            'Rescue plan documented and specific to this swing stage installation — not generic. Plan covers: rescue from platform, rescue of worker suspended on safety line, and medical emergency at height',
+            'Rescue plan documented and specific to this swing stage installation — not generic. Three distinct rescue scenarios addressed per HY Work at Height procedure: (a) rescue of incapacitated worker from platform, (b) rescue of worker suspended on independent safety line (harness suspension), (c) medical emergency at height requiring casualty lowering',
             'Rescue equipment on site and accessible: second means of access to platform height (adjacent building access, EWP on standby, or rope rescue capability)',
             'All crew trained in rescue procedure and rehearsed at project commencement — rescue drill completed and recorded',
             'Suspension trauma awareness: trauma straps fitted to all harnesses, all workers briefed on self-deployment and symptoms',
@@ -1141,7 +1177,7 @@ SWING_NEW = {
             'Emergency lowering by platform hoist — operable from ground level. If hoist fails: alternative rescue method (rope rescue, EWP, or adjacent access) available within 6 minutes. Trauma straps on all harnesses.',
         ],
         'admin': [
-            'Rescue procedure displayed at ground level and on platform. Minimum two persons on site when swing stage in use — one at ground level. Emergency services pre-notified of swing stage work (location, height, access). First aid trained person on site.',
+            'Rescue procedure displayed at ground level and on platform. Minimum two persons on site when swing stage in use — one at ground level. Emergency services pre-notified of swing stage work (location, height, access). First aid trained person on site. HY Strip Scaffold Work Permit obtained where required per HY Temporary Works procedure.',
         ],
         'ppe': [
             'Trauma straps fitted and deployed. Rescue harness for rescuer if rope rescue method used.',
@@ -1242,6 +1278,7 @@ BLASTING_NEW = {
         'code': 'SIL-H6', 'resp': 'Supervisor / Blaster',
         'type': 'CCVS',
         'hold_points': [
+            'Asbestos register reviewed and existing coating tested for asbestos content before blasting commences per HY Asbestos standard. If asbestos detected: cease — engage licensed asbestos removalist. Abrasive blasting is a prohibited method for asbestos-containing material removal',
             'Blast media confirmed: NO free silica content (crystalline silica banned for abrasive blasting per WHS Regulation). Material safety data sheet confirms silica-free',
             'Air monitoring plan in place: personal and boundary monitoring for respirable dust. Monitoring results reviewed by occupational hygienist',
             'Containment assessed: full containment if within 50m of occupied premises, public areas, or sensitive environments. Partial containment where open-air blasting is practicable',
@@ -1251,13 +1288,13 @@ BLASTING_NEW = {
             'Blast containment: tarps, mesh screens, or full enclosure depending on location and media. Dust suppression: wet blasting (vapour blasting) where practicable to reduce airborne dust. Media recovery system where possible — vacuum or sweep recovery. Blast area physically barricaded — minimum 10m exclusion zone.',
         ],
         'admin': [
-            'Blast plan documented: surface area, media type and consumption, profile required, containment method, waste disposal. Neighbours notified 48 hours before blasting commences. Blast times restricted per council/permit conditions — typically 7am–5pm. Dust monitoring results actioned same day — work adjusted if results exceed exposure standards. Post-blast surface profile checked with comparator gauge.',
+            'Blast plan documented: surface area, media type and consumption, profile required, containment method, waste disposal. Neighbours notified 48 hours before blasting commences. Blast times restricted per council/permit conditions — typically 7am–5pm. Dust monitoring results actioned same day — work adjusted if results exceed exposure standards. Post-blast surface profile checked with comparator gauge. Competent person directly supervises all abrasive blasting operations per SafeWork NSW requirements.',
         ],
         'ppe': [
             'Blaster: AS/NZS 1337-approved blast helmet with supplied air (Class 2B minimum), leather blast suit, leather gloves, steel capped boots. Assistants within 15m: half-face P3 respirator, eye protection, hearing protection (>85 dB, Class 5), long sleeves.',
         ],
         'stop_work': [
-            'Silica-containing media identified — air monitoring exceeds exposure standard — containment failure — dust escaping to adjacent properties — dead-man control malfunction — supplied air system fault — blast helmet visor damaged — wind exceeds containment capability.',
+            'Silica-containing media identified — asbestos detected or suspected in substrate coating (cease blasting immediately — treat as asbestos removal work per WHS Regulation) — air monitoring exceeds exposure standard — containment failure — dust escaping to adjacent properties — dead-man control malfunction — supplied air system fault — blast helmet visor damaged — wind exceeds containment capability.',
         ]
     },
     'blast_enclosed': {
@@ -1268,6 +1305,7 @@ BLASTING_NEW = {
         'code': 'HAZ-H9', 'resp': 'Supervisor / Blaster',
         'type': 'CCVS',
         'hold_points': [
+            'Asbestos register reviewed and existing coating tested for asbestos content before enclosed blasting commences. If asbestos detected: cease — engage licensed asbestos removalist. Abrasive blasting is a prohibited method for asbestos-containing material removal',
             'Enclosed blasting ventilation system operational: negative pressure maintained within enclosure, exhaust air filtered before discharge. Minimum 20 air changes per hour',
             'Confined space assessment completed if applicable per WHS Regulation Chapter 4 Part 4.3 — entry permit system in place',
             'Supplied air breathing apparatus confirmed: air quality tested (Grade D breathing air), flow rate adequate, emergency air reserve available',
@@ -1277,13 +1315,13 @@ BLASTING_NEW = {
             'Extraction ventilation with HEPA filtration — negative pressure prevents dust escape. Lighting rated for hazardous atmosphere if combustible media. Emergency air supply — minimum 10 minutes reserve. Blast containment sealed — no gaps allowing dust escape.',
         ],
         'admin': [
-            'Maximum continuous blast time per session — heat stress management. Work/rest rotation schedule. Visibility check — cease blasting if visibility <1m and allow dust to settle. Dust monitoring inside and outside containment. Emergency extraction procedure rehearsed.',
+            'Maximum continuous blast time per session — heat stress management. Work/rest rotation schedule. Visibility check — cease blasting if visibility <1m and allow dust to settle. Dust monitoring inside and outside containment. Emergency extraction procedure rehearsed. Competent person directly supervises all abrasive blasting operations per SafeWork NSW requirements.',
         ],
         'ppe': [
             'Blaster: Type CE supplied-air blast helmet with positive pressure, full leather blast suit, leather gauntlet gloves, steel capped boots, hearing protection (>85 dB). Standby person: half-face P3 respirator, hearing protection (>85 dB), eye protection.',
         ],
         'stop_work': [
-            'Ventilation system fails — positive pressure in helmet lost — air supply quality alarm — visibility zero for >5 minutes — confined space entry permit not current — standby person leaves position — heat stress symptoms — enclosure seal breached — dust escaping containment.',
+            'Ventilation system fails — positive pressure in helmet lost — air supply quality alarm — asbestos detected or suspected in substrate coating (cease blasting immediately — treat as asbestos removal work per WHS Regulation) — visibility zero for >5 minutes — confined space entry permit not current — standby person leaves position — heat stress symptoms — enclosure seal breached — dust escaping containment.',
         ]
     },
     'blast_media': {

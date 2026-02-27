@@ -6,16 +6,23 @@ Properly injects numbering definitions for new CCVS tasks.
 """
 
 import sys
+import os
+# Support both local and cloud environments
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_script_dir)
+sys.path.insert(0, _script_dir)
 sys.path.insert(0, '/home/claude')
 from swms_generator import *
 from docx import Document
 from docx.oxml.ns import qn
 from lxml import etree
 import copy
-import os
 
-TEMPLATE = "/mnt/user-data/uploads/RPD_MASTER_SWMS_TEMPLATE_V1.docx"
-OUTDIR = "/mnt/user-data/outputs"
+# Template and output paths — try local first, then cloud
+_local_template = os.path.join(_project_root, 'rpd-v8-upgrade', 'template', 'RPD_MASTER_SWMS_TEMPLATE_V1.docx')
+_local_outdir = os.path.join(_script_dir, 'outputs')
+TEMPLATE = _local_template if os.path.exists(_local_template) else "/mnt/user-data/uploads/RPD_MASTER_SWMS_TEMPLATE_V1.docx"
+OUTDIR = _local_outdir if os.path.isdir(os.path.dirname(_local_outdir)) else "/mnt/user-data/outputs"
 
 # ============================================================
 # NUMBERING INJECTION
@@ -214,6 +221,126 @@ def fix_reused_hold_point_numbering(row_elem, doc):
         numId_elem.set(qn('w:val'), str(dec_num_id))
 
     return len(hold_point_numId_elems)
+
+
+# ============================================================
+# HRCW CHECKBOX TICKING
+# ============================================================
+
+# Map of HRCW checkbox text fragments to their location in Table 0
+# Each SWMS can specify which additional boxes to tick (beyond the 2 pre-ticked)
+HRCW_CHECKBOX_LABELS = {
+    'falling_2m': 'falling more than 2 metres',
+    'asbestos': 'disturbing asbestos',
+    'telecom_tower': 'telecommunication tower',
+    'trench_1.5m': 'shaft or trench deeper than 1.5',
+    'explosives': 'Use of explosives',
+    'pressurised_gas': 'pressurised gas mains',
+    'structural_alterations': 'load-bearing support for structural',
+    'confined_space': 'confined space',
+    'chemical_fuel_lines': 'chemical, fuel or refrigerant lines',
+    'energised_electrical': 'energised electrical installations',
+    'flammable_atmosphere': 'contaminated or flammable atmosphere',
+    'demolition': 'Demolition of load-bearing',
+    'tilt_up_precast': 'Tilt-up or precast',
+    'road_traffic': 'road, railway, shipping lane',
+    'powered_mobile_plant': 'movement of powered mobile plant',
+    'temperature_extremes': 'artificial extremes of temperature',
+    'water_drowning': 'risk of drowning',
+    'diving': 'Diving work',
+}
+
+# Which additional HRCW boxes to tick per SWMS (beyond the 2 pre-ticked: falling_2m, powered_mobile_plant)
+HRCW_TICKS = {
+    'Spray Painting': ['flammable_atmosphere'],
+    'Groundworks': ['trench_1.5m'],
+}
+
+
+def tick_hrcw_checkboxes(doc, tick_keys):
+    """Tick additional HRCW checkboxes in Table 0.
+
+    The template uses plain text checkboxes:
+      Unticked: single run '[   ] Label text here'
+      Ticked: three runs '[' + '✓' (Segoe UI Symbol, bold, yellow highlight) + '] Label text'
+
+    This function finds unticked checkboxes matching the given keys and converts them
+    to the ticked format by splitting the run.
+    """
+    if not tick_keys:
+        return 0
+
+    table0 = doc.tables[0]
+    ticked_count = 0
+
+    # Build set of text fragments to search for
+    fragments = {}
+    for key in tick_keys:
+        if key in HRCW_CHECKBOX_LABELS:
+            fragments[HRCW_CHECKBOX_LABELS[key]] = key
+
+    # Scan rows 3-8 of Table 0 for matching unticked checkboxes
+    for row_idx in range(3, 9):
+        row = table0.rows[row_idx]
+        tcs = row._tr.findall(qn('w:tc'))
+        for tc in tcs:
+            for p in tc.findall(qn('w:p')):
+                runs = p.findall(qn('w:r'))
+                for r_idx, r in enumerate(runs):
+                    t = r.find(qn('w:t'))
+                    if t is None or t.text is None:
+                        continue
+                    text = t.text
+                    # Check if this is an unticked checkbox matching our target
+                    for frag, key in fragments.items():
+                        if frag in text and text.strip().startswith('[   ]'):
+                            # Split into: [  -> [  +  ✓  +  ] rest of text
+                            rest_text = text.replace('[   ] ', '] ', 1)
+                            if rest_text.startswith(']'):
+                                rest_text = rest_text[1:].lstrip()
+                                rest_text = '] ' + rest_text
+                            else:
+                                rest_text = '] ' + text.split('] ', 1)[1] if '] ' in text else text
+
+                            # 1. Change current run to just '['
+                            t.text = '['
+
+                            # 2. Create checkmark run (✓ in Segoe UI Symbol)
+                            check_r = etree.Element(qn('w:r'))
+                            check_rPr = etree.SubElement(check_r, qn('w:rPr'))
+                            check_fonts = etree.SubElement(check_rPr, qn('w:rFonts'))
+                            check_fonts.set(qn('w:ascii'), 'Segoe UI Symbol')
+                            check_fonts.set(qn('w:hAnsi'), 'Segoe UI Symbol')
+                            check_fonts.set(qn('w:cs'), 'Segoe UI Symbol')
+                            etree.SubElement(check_rPr, qn('w:b'))
+                            etree.SubElement(check_rPr, qn('w:bCs'))
+                            check_sz = etree.SubElement(check_rPr, qn('w:sz'))
+                            check_sz.set(qn('w:val'), '18')
+                            check_hl = etree.SubElement(check_rPr, qn('w:highlight'))
+                            check_hl.set(qn('w:val'), 'yellow')
+                            check_t = etree.SubElement(check_r, qn('w:t'))
+                            check_t.text = '\u2713'  # ✓
+
+                            # 3. Create rest-of-text run
+                            rest_r = etree.Element(qn('w:r'))
+                            # Copy rPr from original run if exists
+                            orig_rPr = r.find(qn('w:rPr'))
+                            if orig_rPr is not None:
+                                rest_r.append(copy.deepcopy(orig_rPr))
+                            rest_t = etree.SubElement(rest_r, qn('w:t'))
+                            rest_t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+                            rest_text_clean = text.split('] ', 1)[1] if '] ' in text else ''
+                            rest_t.text = '] ' + rest_text_clean
+
+                            # Insert checkmark and rest runs after current run
+                            r.addnext(rest_r)
+                            r.addnext(check_r)
+
+                            ticked_count += 1
+                            print(f"    HRCW ticked: {key} -> '{frag[:50]}'")
+                            break
+
+    return ticked_count
 
 
 # ============================================================
@@ -455,6 +582,13 @@ def build_swms(name, filename, task_list, new_tasks_dict):
         
         tbl.append(new_row)
     
+    # Tick additional HRCW checkboxes in Table 0 per SWMS type
+    hrcw_keys = HRCW_TICKS.get(name, [])
+    if hrcw_keys:
+        ticked = tick_hrcw_checkboxes(doc, hrcw_keys)
+        if ticked:
+            print(f"  HRCW checkboxes ticked: {ticked}")
+
     outpath = os.path.join(OUTDIR, filename)
     doc.save(outpath)
     print(f"  Saved: {outpath}")
@@ -479,7 +613,8 @@ SPRAY_TASKS = [
     ('reuse', 1), ('reuse', 2), ('reuse', 3),
     ('reuse', 4), ('reuse', 5), ('reuse', 6), ('reuse', 8),
     ('new', 'airless_setup'), ('new', 'spray_exterior'),
-    ('new', 'spray_interior'), ('new', 'overspray_env'), ('new', 'spray_cleaning'),
+    ('new', 'spray_interior'), ('new', 'isocyanate_2pack'),
+    ('new', 'overspray_env'), ('new', 'spray_cleaning'),
     ('reuse', 13), ('reuse', 15), ('reuse', 18),
     ('reuse', 10), ('reuse', 11), ('reuse', 20),
 ]
@@ -487,6 +622,7 @@ SPRAY_TASKS = [
 GROUND_TASKS = [
     ('reuse', 1), ('reuse', 2), ('reuse', 3),
     ('new', 'excavation'), ('new', 'services_location'), ('new', 'mobile_plant'),
+    ('reuse', 9),  # Silica Dust — Jackhammering, Cutting, Grinding (per build plan Task #7)
     ('new', 'formwork'), ('new', 'concrete_pour'), ('new', 'backfill'),
     ('new', 'drainage'), ('new', 'dewatering'), ('new', 'shoring'),
     ('new', 'contaminated_soil'),
