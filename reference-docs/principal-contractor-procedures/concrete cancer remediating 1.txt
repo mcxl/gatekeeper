@@ -1,0 +1,17 @@
+In New South Wales, remediating concrete cancer in Class 2 buildings (multi-unit residential) is strictly regulated by the Design and Building Practitioners (DBP) Act 2020. The process follows a mandatory compliance pathway to ensure structural integrity and safety. 
+1. Preliminary Assessment & Compliance
+Initial Inspection: A professional assessment—often including visual checks, hammer tapping for hollow sounds, and non-destructive testing—is conducted to map the extent of the damage.
+Engineering Appointment: For Class 2 buildings, you must engage a Registered Design Practitioner (typically a structural engineer) to diagnose the cause (e.g., chloride contamination or carbonation) and design a compliant repair solution.
+Design & Portal Lodgement: The engineer must prepare a Construction Issued Regulated Design (CIRD) and lodge it on the NSW Planning Portal before any physical work begins. 
+2. Site Preparation
+Structural Support: If load-bearing elements (beams or columns) are affected, the area must be secured with temporary propping and shoring to prevent collapse during the "breakout" phase.
+Access Setup: Installation of scaffolding or swing stages as required for exterior façade or balcony work. 
+3. Physical Remediation Sequence
+Step 1: Concrete Breakout: Unsound and delaminated concrete is chipped away until healthy, solid concrete is reached. A minimum clearance of 25mm is typically required around the steel reinforcement to allow for proper cleaning and bonding of new material.
+Step 2: Reinforcement Treatment: Corroded rebar is cleaned to a bright metal finish using abrasive techniques like grit blasting. If the steel has lost significant cross-sectional area, it must be supplemented or replaced.
+Step 3: Priming & Passivation: A specialised zinc-rich primer or epoxy coating is applied to the steel to passivate it and prevent future oxidation.
+Step 4: Concrete Reinstatement: The area is rebuilt using high-strength, polymer-modified repair mortars or concrete to match the original profile.
+Step 5: Protection & Waterproofing: Once cured, the surface is treated with an anti-carbonation coating or waterproof membrane to address the root cause of moisture ingress. 
+4. Certification & Documentation
+Compliance Declaration: Upon completion, the Registered Building Practitioner must lodge a Building Compliance Declaration on the NSW Planning Portal, confirming the work matches the regulated designs.
+Close-out Records: The Owners Corporation should receive documented repair locations and warranties for future maintenance and insurance disclosure
