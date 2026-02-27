@@ -259,7 +259,7 @@ REMEDIAL_NEW = {
         'admin': [
             'Silica dust exposure assessment completed — air monitoring if breakout exceeds 4 hours continuous. Vibration exposure log maintained — tool rotation every 30 minutes. Spotter below when working at height.',
             'Rebar cleaned to bright metal (SA 2.5 or equivalent). Passivation primer (zinc-rich or epoxy per engineer specification) applied within product open time — no contamination of prepared surface between cleaning and priming. Product must match specification — no substitution without engineer approval.',
-            'Repair mortar applied in lifts per specification — product and method matching engineer design. Mortar to fully encapsulate rebar with no voids. Surface finished to match surrounding profile.',
+            'Repair mortar applied in lifts per specification — product and method matching engineer design. Mortar to fully encapsulate rebar with no voids. Cure time observed between lifts per product TDS. Surface finished to match surrounding profile. Repair area cured per product specification before coating or waterproofing applied.',
         ],
         'ppe': [
             'P2 respirator (minimum) — half-face P3 with particulate filter if air monitoring indicates. Eye protection and face shield during breakout. Hearing protection (>85 dB, Class 5 minimum). Cut-resistant gloves. Steel-capped footwear.',
@@ -356,27 +356,27 @@ SPRAY_NEW = {
     },
     'spray_exterior': {
         'task': 'Spray Application — Exterior (Open Air)',
-        'task_desc': 'Airless spray application of paints, primers, sealers, and texture coatings to exterior surfaces in open-air conditions. Includes overspray management and environmental controls.',
+        'task_desc': 'Airless spray application of paints, primers, sealers, and texture coatings to exterior surfaces in open-air conditions. Includes overspray management and environmental controls. Electrostatic spray application is excluded from this SWMS — requires separate risk assessment and equipment-specific controls.',
         'hazard': 'Overspray drift to adjacent properties, vehicles, and persons. Paint mist inhalation. Slip hazard from overspray on walkways. Wind-driven spray. Working at height.',
         'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
         'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
         'type': 'STD',
         'control': [
-            ('Engineering:', 'Overspray containment: scaffold shrink-wrap, drop sheets, and masking to all adjacent surfaces, windows, vehicles, and property. Wind breaks where practicable. Spray tip selected for minimum overspray — correct fan width and orifice size for product.'),
-            ('Admin:', 'Wind speed monitored — no spraying above 15 km/h or per product data sheet limit, whichever is lower. Adjacent property and vehicle owners notified 48 hours before spraying. Spotter positioned to warn of pedestrians and wind changes. Overspray inspection after each spray session — immediate clean-up of any overspray.'),
+            ('Engineering:', 'Overspray containment: scaffold shrink-wrap, drop sheets, and masking to all adjacent surfaces, windows, vehicles, and property. Surface preparation completed and accepted before spraying — clean, dry, free of contaminants. Wind breaks where practicable. Spray tip selected for minimum overspray — correct fan width and orifice size for product. Tip condition checked — replace when worn (indicated by distorted fan pattern or increased overspray).'),
+            ('Admin:', 'Wind speed monitored — no spraying above 15 km/h or per product data sheet limit, whichever is lower. Application temperature and humidity within product data sheet limits — check before each spray session. Recoat windows observed per product TDS. DFT (dry film thickness) checked with calibrated gauge at frequency specified by coating specification. Adjacent property and vehicle owners notified 48 hours before spraying. Spotter positioned to warn of pedestrians and wind changes. Overspray inspection after each spray session — immediate clean-up of any overspray. Spray-specific emergency procedures briefed: (a) skin injection injury — do not apply pressure, do not wait for symptoms, transport to hospital with hand/microsurgery capability immediately; (b) solvent fire — CO2 or dry chemical extinguisher only, no water on solvent fire, evacuate if not immediately controlled.'),
             ('PPE:', 'Half-face respirator with P2/OV cartridge. Eye protection or goggles. Disposable spray suit or coveralls. Nitrile gloves. Head cover.'),
             ('STOP WORK if:', 'Wind exceeds limit — overspray escaping containment — adjacent property complaint — rain during application — pedestrians entering spray zone — containment failure — suspected skin injection injury (treat as medical emergency — do not wait for symptoms, transport to hospital with hand surgery capability immediately).')
         ]
     },
     'spray_interior': {
         'task': 'Spray Application — Interior (Enclosed/Confined)',
-        'task_desc': 'Airless spray application inside buildings, enclosed plant rooms, stairwells, basements, and areas with limited natural ventilation. Includes mandatory ventilation and atmospheric monitoring requirements.',
+        'task_desc': 'Airless spray application inside buildings, enclosed plant rooms, stairwells, basements, and areas with limited natural ventilation. Includes mandatory ventilation and atmospheric monitoring requirements. Electrostatic spray application is excluded from this SWMS — requires separate risk assessment and equipment-specific controls.',
         'hazard': 'Solvent vapour accumulation — explosive atmosphere risk with solvent-based products. Paint mist inhalation in enclosed space. Reduced visibility. Oxygen depletion in confined areas. Ignition sources.',
         'risk_pre': 'High (6)', 'risk_post': 'Low (2)',
         'code': 'HAZ-H6', 'resp': 'Supervisor / Worker',
         'type': 'CCVS',
         'hold_points': [
-            'Ventilation assessment completed: mechanical ventilation sized for room volume and product vapour generation rate — air changes per hour confirmed adequate',
+            'Ventilation assessment completed: mechanical ventilation sized for room volume and product vapour generation rate — minimum 20 air changes per hour for active spray zones (AS 1668.2). Ventilation design documented',
             'Atmospheric monitoring in place if solvent-based products used — LEL monitor calibrated and alarming at 10% LEL',
             'All ignition sources eliminated: no hot work, no unsealed electrical, no mobile phones in spray zone if solvent-based',
             'Emergency egress routes clear and marked — minimum two exits from spray area where practicable',
@@ -386,7 +386,7 @@ SPRAY_NEW = {
             'Mechanical exhaust ventilation running before, during, and 30 minutes after spraying. Fresh air intake positioned to create cross-flow ventilation — extraction discharges externally, no recirculation. Explosion-proof electrical fittings in spray zone if solvent-based products. LEL monitor with audible alarm at 10% LEL — calibrated for primary solvent in product SDS. Continuous LEL monitoring during active spraying and for 30 minutes after last spray pass.',
         ],
         'admin': [
-            'Water-based products preferred over solvent-based for interior work. Spray schedule coordinated to minimise exposure duration. Buddy system — no solo interior spraying.',
+            'Water-based products preferred over solvent-based for interior work. Application temperature and humidity within product data sheet limits. Recoat windows observed per product TDS. DFT checked with calibrated gauge per coating specification. Spray schedule coordinated to minimise exposure duration. Buddy system — no solo interior spraying.',
         ],
         'ppe': [
             'Full-face respirator with combination OV/P3 cartridge for solvent-based. Half-face with P2/OV for water-based. Disposable spray suit. Nitrile gloves. Eye protection under full-face respirator.',
@@ -418,7 +418,7 @@ SPRAY_NEW = {
         'type': 'STD',
         'control': [
             ('Engineering:', 'Cleaning in well-ventilated area only — outdoors preferred. Solvent waste captured in sealed metal containers — not poured to drain. Pressure bled down before disassembly. Solvent-soaked rags in self-closing metal bin — removed from site daily.'),
-            ('Admin:', 'SDS for all solvents and thinners reviewed. Minimum solvent quantity used — water flush first where possible with water-based products. Solvent waste disposal via licensed contractor. No smoking or ignition sources within 5m of cleaning area.'),
+            ('Admin:', 'SDS for all solvents and thinners reviewed. Minimum solvent quantity used — water flush first where possible with water-based products. Solvent waste disposal via licensed contractor. No smoking or ignition sources within 5m of cleaning area. Solvent fire emergency: CO2 or dry chemical extinguisher only — no water. Fire extinguisher within 5m of cleaning area. Solvent splash to eyes: flush with water for 20 minutes, seek medical attention.'),
             ('PPE:', 'Nitrile chemical-resistant gloves. P2 respirator with organic vapour cartridge. Eye protection. Disposable coveralls if splash risk.'),
             ('STOP WORK if:', 'Solvent spill not contained — ventilation inadequate — ignition source near cleaning area — solvent waste container full or unsealed.')
         ]
@@ -469,7 +469,7 @@ GROUND_NEW = {
             'Barricading per HY tiered system: up to 1m deep — bunting/barrier mesh (star pickets with safety caps at max 2.5m spacing, at least 1m from edge); greater than 1m deep — crowd control barriers, water-filled barriers, or 1.8m high interlockable hard fencing. Excavations >1.5m: "DANGER DEEP EXCAVATION" signage',
         ],
         'eng': [
-            'Shoring installed progressively as depth increases. Benching/battering angles per geotechnical report — never steeper than soil classification allows. Dewatering active if water table encountered. Edge protection: minimum 1m setback for spoil stockpile from excavation edge. Safe access/egress for excavations >1.5m — ladders secured to trench shields extending minimum 1m above top of excavation, or ramps/steps as appropriate. Controls to prevent objects falling on workers in excavations >1.5m — toe boards, guard rails at excavation edge, trench box sheets extending above trench depth.',
+            'Shoring installed progressively as depth increases. Benching/battering angles per geotechnical report — never steeper than soil classification allows. Dewatering active if water table encountered. Edge protection: spoil stockpile setback from excavation edge — minimum 1m or equal to excavation depth, whichever is greater. Safe access/egress for excavations >1.5m — ladders secured to trench shields extending minimum 1m above top of excavation, or ramps/steps as appropriate. Controls to prevent objects falling on workers in excavations >1.5m — toe boards, guard rails at excavation edge, trench box sheets extending above trench depth.',
         ],
         'admin': [
             'Daily inspection of excavation walls by competent person before any worker entry. After rain: re-inspection before re-entry. Excavation permit system in place for depths >1.5m. Emergency rescue plan for excavation entrapment — rescue equipment on site (ladder, harness, retrieval line). Excavation assessed for confined space classification per HY Confined Space procedure. Atmospheric testing conducted before worker entry where gas or oxygen risk identified. No combustion engine plant operated in excavation while workers are inside. Excavations isolated and made safe at end of each shift/day and when not in use — barriers, covers, or backfill as appropriate.',
@@ -572,7 +572,7 @@ GROUND_NEW = {
         'type': 'STD',
         'control': [
             ('Engineering:', 'Compaction equipment with vibration-dampened handles. Dust suppression with water spray during dry conditions. Backfill placed in controlled lifts — maximum layer thickness per geotechnical specification.'),
-            ('Admin:', 'Compaction testing at specified intervals and depths per geotechnical requirements. Fill material source and quality confirmed — no contaminated or unsuitable material. Vibration exposure log maintained — tool rotation schedule. Level checks against survey marks.'),
+            ('Admin:', 'Compaction testing at specified intervals and depths per geotechnical requirements — test results recorded and compared to specification before next lift placed. Fill material source and quality confirmed — no contaminated or unsuitable material. Vibration exposure log maintained — tool rotation every 30 minutes. Level checks against survey marks — final levels verified by surveyor before handover.'),
             ('PPE:', 'Steel capped footwear. Hearing protection (>85 dB). P2 dust mask in dry/dusty conditions. Cut-resistant gloves. High-vis vest or shirt.'),
             ('STOP WORK if:', 'Vibration exposure limit reached — contaminated or unsuitable fill material identified — compaction test failures — trench wall movement during backfill — dust not controlled.')
         ]
@@ -667,7 +667,7 @@ CLADDING_NEW = {
             'Panel handling equipment (suction cups, clamps, lifting frames) rated for panel weight and type. Tag lines on all panels during crane lifts. Temporary fixing/bracing immediately on placement — panel not released from lifting equipment until minimum fixings installed per design. Bracing props locked (not hand-tight) and inspected per design — bracing design by competent person, removal only with structural engineer approval.',
         ],
         'admin': [
-            'Installation sequence per cladding design — verified with structural engineer for load distribution. Bracing inspection regime maintained — daily check of all temporary bracing until permanent fixings complete and engineer confirms bracing can be removed. Panel storage on site — stacked per manufacturer requirements, secured against wind. Delivery coordination — just-in-time where possible to minimise on-site storage.',
+            'Installation sequence per cladding design — verified with structural engineer for load distribution. Curtain wall and unitised systems: building tolerance survey completed before fabrication — floor-to-floor heights, slab edges, column positions verified against design tolerances. Bracing inspection regime maintained — daily check of all temporary bracing until permanent fixings complete and engineer confirms bracing can be removed. Glazing panels: suction cup lifters rated for glass weight and surface condition, protective covers maintained until handover, no handling in rain or with wet gloves. Panel storage on site — stacked per manufacturer requirements, secured against wind. Oversized panel delivery: route survey from truck to installation point — access width, overhead clearance, floor loading confirmed. Lifting and handling method statement for panels exceeding 100kg or 3m length. Delivery coordination — just-in-time where possible to minimise on-site storage.',
         ],
         'ppe': [
             'Hard hat. Cut-resistant gloves. Steel capped footwear. Eye protection. Harness when working at height. High-vis vest or shirt.',
@@ -711,7 +711,7 @@ CLADDING_NEW = {
         'type': 'STD',
         'control': [
             ('Engineering:', 'Drill bits and fasteners matched to substrate — masonry, steel, or timber. Depth stop set for all chemical anchor drilling. Vibration-dampened tool handles where available. All power tools test-tagged current per AS/NZS 3012 — 3-monthly on construction sites.'),
-            ('Admin:', 'Fixing schedule and specification reviewed — fastener type, size, spacing, edge distance, embedment depth per cladding design. Pull-out testing at specified frequency per design. Services scan before drilling into any unknown substrate. Swarf and debris cleaned up progressively.'),
+            ('Admin:', 'Fixing schedule and specification reviewed — fastener type, size, spacing, edge distance, embedment depth per cladding design. Panel alignment and plumb checked against design tolerances before fixing — laser level or string line. Pull-out testing at specified frequency per design. Services scan before drilling into any unknown substrate. Swarf and debris cleaned up progressively.'),
             ('PPE:', 'Eye protection and face shield when drilling overhead. Hearing protection (>85 dB). Cut-resistant gloves. Steel capped footwear.'),
             ('STOP WORK if:', 'Substrate different from specification — fixing pull-out failure — services detected in drilling path — power tool defective — drill bit breakage frequency indicates wrong bit/substrate combination.')
         ]
@@ -846,7 +846,7 @@ EWP_NEW = {
             'All structural pins and bolts inspected — no cracks, deformation, or missing pins. Tyres/wheels — condition and inflation correct. Battery charge adequate for planned work duration (electric units). Boom/scissor mechanism — smooth operation, no jerking or unusual noise.',
         ],
         'admin': [
-            'Pre-start checklist recorded in EWP log book. Any defect: EWP locked out and tagged — not used until repaired by qualified technician. Operator familiarisation completed for EWP model — controls, capacity, wind limits. Current 10-year major inspection certificate sighted.',
+            'Pre-start checklist recorded in EWP log book. Any defect: EWP locked out and tagged — not used until repaired by qualified technician. Operator familiarisation completed for EWP model — controls, capacity, wind limits. Current 10-year major inspection certificate sighted. Manufacturer service intervals confirmed current — service log checked on delivery.',
         ],
         'ppe': [
             'Harness and lanyard (boom lifts) — inspected before each use. Hard hat. Steel capped footwear.',
@@ -1099,7 +1099,7 @@ SWING_NEW = {
             'Working rope and safety rope independently suspended — no common failure point. Rope guides installed to prevent rope snagging. Platform levelling system functional. Hoist motors tested for smooth operation — no jerking or slipping.',
         ],
         'admin': [
-            'Rigging checklist completed and signed by competent person. Platform not used until competent person sign-off. Rigging inspection before each use and after any incident or weather event. Wire rope replacement schedule per manufacturer specification.',
+            'Rigging checklist completed and signed by competent person. Platform not used until competent person sign-off. Rigging inspection before each use and after any incident or weather event. Wire rope replacement: per manufacturer specification or when any of the following observed — 6 or more broken wires in one lay length, strand breakage, kinking, birdcaging, corrosion pitting, or diameter reduction >10%.',
         ],
         'ppe': [
             'Full body harness with fall arrest to independent anchor during rigging. Hard hat with chin strap. Steel capped footwear. Gloves — leather for wire rope handling.',
@@ -1288,7 +1288,7 @@ BLASTING_NEW = {
             'Blast containment: tarps, mesh screens, or full enclosure depending on location and media. Dust suppression: wet blasting (vapour blasting) where practicable to reduce airborne dust. Media recovery system where possible — vacuum or sweep recovery. Blast area physically barricaded — minimum 10m exclusion zone.',
         ],
         'admin': [
-            'Blast plan documented: surface area, media type and consumption, profile required, containment method, waste disposal. Neighbours notified 48 hours before blasting commences. Blast times restricted per council/permit conditions — typically 7am–5pm. Dust monitoring results actioned same day — work adjusted if results exceed exposure standards. Post-blast surface profile checked with comparator gauge. Competent person directly supervises all abrasive blasting operations per SafeWork NSW requirements.',
+            'Blast plan documented: surface area, media type and consumption, profile required, containment method, waste disposal. Neighbours notified 48 hours before blasting commences. Blast times restricted per council/permit conditions — typically 7am–5pm. Dust monitoring results actioned same day — work adjusted if results exceed exposure standards. Post-blast surface profile checked with comparator gauge — profile within coating manufacturer specification range. Coating application commenced within maximum flash-rust window per coating specification (typically 4–8 hours depending on conditions). Competent person directly supervises all abrasive blasting operations per SafeWork NSW requirements.',
         ],
         'ppe': [
             'Blaster: AS/NZS 1337-approved blast helmet with supplied air (Class 2B minimum), leather blast suit, leather gloves, steel capped boots. Assistants within 15m: half-face P3 respirator, eye protection, hearing protection (>85 dB, Class 5), long sleeves.',
