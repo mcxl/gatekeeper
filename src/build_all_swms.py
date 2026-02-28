@@ -13,6 +13,7 @@ _project_root = os.path.dirname(_script_dir)
 sys.path.insert(0, _script_dir)
 sys.path.insert(0, '/home/claude')
 from swms_generator import *
+from format_swms import format_swms
 from docx import Document
 from docx.oxml.ns import qn
 from lxml import etree
@@ -343,61 +344,6 @@ def tick_hrcw_checkboxes(doc, tick_keys):
     return ticked_count
 
 
-def bold_em_dashes(doc):
-    """Make all em dashes (—) bold throughout the document.
-
-    Works at the lxml level to handle both python-docx rows and
-    raw XML rows appended by the builder. Splits any run containing
-    an em dash into separate runs so the dash character is bold while
-    surrounding text keeps its original formatting.
-    """
-    EM = '\u2014'
-    count = 0
-    for p in doc.element.body.iter(qn('w:p')):
-        runs_with_dash = [r for r in p.findall(qn('w:r'))
-                          if (r.find(qn('w:t')) is not None
-                              and r.find(qn('w:t')).text
-                              and EM in r.find(qn('w:t')).text)]
-        for r in runs_with_dash:
-            t_elem = r.find(qn('w:t'))
-            rPr_orig = r.find(qn('w:rPr'))
-            parts = t_elem.text.split(EM)
-            idx = list(p).index(r)
-            p.remove(r)
-
-            insert_idx = idx
-            for j, part in enumerate(parts):
-                if j > 0:
-                    # Bold em dash run
-                    dr = etree.Element(qn('w:r'))
-                    if rPr_orig is not None:
-                        drPr = copy.deepcopy(rPr_orig)
-                    else:
-                        drPr = etree.SubElement(dr, qn('w:rPr'))
-                    if drPr.find(qn('w:b')) is None:
-                        etree.SubElement(drPr, qn('w:b'))
-                    if drPr.getparent() is None:
-                        dr.insert(0, drPr)
-                    dt = etree.SubElement(dr, qn('w:t'))
-                    dt.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-                    dt.text = EM
-                    p.insert(insert_idx, dr)
-                    insert_idx += 1
-                    count += 1
-
-                if part:
-                    nr = etree.Element(qn('w:r'))
-                    if rPr_orig is not None:
-                        nrPr = copy.deepcopy(rPr_orig)
-                        nr.insert(0, nrPr)
-                    nt = etree.SubElement(nr, qn('w:t'))
-                    nt.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-                    nt.text = part
-                    p.insert(insert_idx, nr)
-                    insert_idx += 1
-    return count
-
-
 # ============================================================
 # ROW BUILDING
 # ============================================================
@@ -644,10 +590,11 @@ def build_swms(name, filename, task_list, new_tasks_dict):
         if ticked:
             print(f"  HRCW checkboxes ticked: {ticked}")
 
-    # Bold all em dashes throughout the document
-    dashes = bold_em_dashes(doc)
-    if dashes:
-        print(f"  Em dashes bolded: {dashes}")
+    # Apply formatting rules (em dashes, fonts, labels)
+    fmt = format_swms(doc)
+    print(f"  Formatted: {fmt['em_dashes']} em dashes bolded, "
+          f"{fmt['fonts']} fonts standardised, "
+          f"{fmt['labels']} labels bolded")
 
     outpath = os.path.join(OUTDIR, filename)
     doc.save(outpath)
