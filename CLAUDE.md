@@ -118,6 +118,18 @@ Valid pre scores: 1, 2, 3, 4, 6, 9
 Control text fields: 1,400 characters maximum.
 Trim from Admin section first — preserve Engineering and STOP WORK.
 
+### Em Dash Formatting — LOCKED
+
+All em dashes (—) in generated SWMS documents must be:
+1. **Bold** in the Word output — the `bold_em_dashes()` post-processor
+   handles this automatically during build
+2. **Followed by a capital letter** — always capitalise the first
+   letter after every em dash in source text
+
+The build pipeline applies bold formatting at the XML level after
+all tasks are assembled. Source text in swms_generator.py must have
+capitals after em dashes — the engine does not auto-capitalise.
+
 ### Content Authority Hierarchy
 
 1. Hansen Yuncken (HY) procedures — PRIMARY — never contradict
