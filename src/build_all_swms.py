@@ -354,16 +354,38 @@ def make_para_text(text):
     p.append(make_run(text))
     return p
 
-def build_new_std_row(template_std_xml, task_data):
+def split_hazards(text):
+    """Split hazard text into individual items for bulleted list.
+    Splits at '. ' (period-space) boundaries, preserving em-dash
+    qualifiers within each item."""
+    if not text:
+        return [text]
+    items = text.split('. ')
+    result = []
+    for i, item in enumerate(items):
+        item = item.strip()
+        if not item:
+            continue
+        # Add period back to all items except the last (which already has one)
+        if i < len(items) - 1:
+            item += '.'
+        # Strip trailing period for cleaner bullet appearance
+        item = item.rstrip('.')
+        if item:
+            result.append(item)
+    return result if result else [text]
+
+def build_new_std_row(template_std_xml, task_data, hazard_bullet_num_id):
     """Build a new STD task row"""
     row = etree.fromstring(template_std_xml)
     tcs = row.findall(qn('w:tc'))
-    
+
     set_cell_text(tcs[0], [
         make_header_para(task_data['task']),
         make_para_text(task_data['task_desc'])
     ])
-    set_cell_text(tcs[1], [make_para_text(task_data['hazard'])])
+    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
+    set_cell_text(tcs[1], hazard_paras)
     
     risk_pre = task_data['risk_pre']
     set_cell_text(tcs[2], [make_header_para(risk_pre)])
@@ -389,16 +411,17 @@ def build_new_std_row(template_std_xml, task_data):
     
     return row
 
-def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_id):
+def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_id, hazard_bullet_num_id):
     """Build a new CCVS task row with valid numbering IDs"""
     row = etree.fromstring(template_ccvs_xml)
     tcs = row.findall(qn('w:tc'))
-    
+
     set_cell_text(tcs[0], [
         make_header_para(task_data['task']),
         make_para_text(task_data['task_desc'])
     ])
-    set_cell_text(tcs[1], [make_para_text(task_data['hazard'])])
+    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
+    set_cell_text(tcs[1], hazard_paras)
     
     risk_pre = task_data['risk_pre']
     set_cell_text(tcs[2], [make_header_para(risk_pre)])
@@ -476,6 +499,19 @@ def build_swms(name, filename, task_list, new_tasks_dict):
     for tr in trs[1:]:
         tbl.remove(tr)
     
+    # Inject a shared bullet numId for hazard column bullets (all new rows)
+    numbering = doc.part.numbering_part.numbering_definitions._numbering
+    hazard_abs_id = get_next_abstract_num_id(numbering)
+    hazard_abs = create_bullet_abstract_num(hazard_abs_id)
+    first_num = numbering.find(qn('w:num'))
+    if first_num is not None:
+        first_num.addprevious(hazard_abs)
+    else:
+        numbering.append(hazard_abs)
+    hazard_bul_num_id = get_next_num_id(numbering)
+    numbering.append(create_num_elem(hazard_bul_num_id, hazard_abs_id))
+    print(f"  Hazard bullet numId: {hazard_bul_num_id}")
+
     # Pre-inject numbering pairs for ALL new CCVS tasks in this doc
     ccvs_numids = {}
     for source, key in task_list:
@@ -567,10 +603,10 @@ def build_swms(name, filename, task_list, new_tasks_dict):
             task_data = new_tasks_dict[key]
             if task_data['type'] == 'CCVS':
                 dec_id, bul_id = ccvs_numids[key]
-                new_row = build_new_ccvs_row(ccvs_template_xml, task_data, dec_id, bul_id)
+                new_row = build_new_ccvs_row(ccvs_template_xml, task_data, dec_id, bul_id, hazard_bul_num_id)
                 print(f"  Task {idx+1}: NEW CCVS (dec={dec_id},bul={bul_id}) - {task_data['task'][:45]}")
             else:
-                new_row = build_new_std_row(std_template_xml, task_data)
+                new_row = build_new_std_row(std_template_xml, task_data, hazard_bul_num_id)
                 print(f"  Task {idx+1}: NEW STD  - {task_data['task'][:45]}")
         
         # Ensure cantSplit
