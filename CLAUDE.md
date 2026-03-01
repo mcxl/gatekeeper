@@ -4,6 +4,15 @@
 
 ---
 
+## Project Structure
+
+This is a Python + Markdown codebase for SWMS (Safe Work Method
+Statements) documents. Source files are Python scripts that generate
+Word (.docx) outputs. When editing SWMS content, update the relevant
+Python source file, then rebuild the document.
+
+---
+
 ## What Gatekeeper Is
 
 Gatekeeper is the WHS governance architecture for Robertson's Remedial
@@ -412,6 +421,13 @@ When generating any new SWMS or adding new tasks:
 2. SafeWork NSW Codes of Practice and WHS Regulation
 3. RPD internal standards and task libraries
 
+### Terminology Standardization
+
+When making vocabulary/terminology changes across SWMS files, check
+ALL MSW-*.py source files for the old term using grep before
+committing. List any files that couldn't be updated (e.g., locked
+Word files) in the commit message.
+
 ---
 
 ## Coding Standards
@@ -428,6 +444,11 @@ When generating any new SWMS or adding new tasks:
 ---
 
 ## Git Workflow
+
+Always verify files exist before attempting `git add`. When
+committing, use descriptive commit messages that reference what was
+changed and why. After committing, confirm the commit with
+`git log --oneline -1`.
 
 After any file changes — always commit and push:
 
