@@ -177,6 +177,20 @@ Build will fail if format_swms.py is missing.
 - Text in [square brackets] → italic, dark grey (#444444)
 - Not bold even if surrounding text is bold
 
+#### Task Column Generation Rule (Mandatory)
+
+Task name and scope MUST be written by `build_all_swms.py`
+using the `make_col0_paras()` helper function only.
+Never write raw paragraphs directly into Col 0.
+The helper enforces bold/italic/indent/colour automatically.
+`format_swms.py` catches and corrects any deviation as fallback.
+
+- Task name paragraph: Bold, Aptos 8pt, indent left=0 hanging=0,
+  space before=20 twips, space after=0
+- Scope paragraph: Italic, Aptos 8pt, colour #444444,
+  text wrapped in [square brackets], indent left=0 hanging=0,
+  space before=0, space after=20 twips
+
 #### Risk Cell Colours
 
 - High: fill FF0000, text FFFFFF, bold

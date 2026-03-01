@@ -386,6 +386,54 @@ def make_para_text(text):
     p.append(make_run(text))
     return p
 
+
+def make_col0_paras(task_name, task_desc):
+    """Build Col 0 paragraphs for task name and scope.
+
+    Task name: Bold, Aptos 8pt, indent left=0 hanging=0,
+               space before=20 twips, space after=0
+    Scope:     Italic, Aptos 8pt, colour #444444, [bracketed],
+               indent left=0 hanging=0,
+               space before=0, space after=20 twips
+
+    Returns list of paragraphs (1 or 2 depending on whether
+    task_desc is provided).
+    """
+    paras = []
+
+    # --- Task name paragraph ---
+    p_name = etree.Element(qn('w:p'))
+    pPr = etree.SubElement(p_name, qn('w:pPr'))
+    sp = etree.SubElement(pPr, qn('w:spacing'))
+    sp.set(qn('w:before'), '20')
+    sp.set(qn('w:after'), '0')
+    sp.set(qn('w:line'), '276')
+    sp.set(qn('w:lineRule'), 'auto')
+    ind = etree.SubElement(pPr, qn('w:ind'))
+    ind.set(qn('w:left'), '0')
+    ind.set(qn('w:hanging'), '0')
+    p_name.append(make_run(task_name, bold=True))
+    paras.append(p_name)
+
+    # --- Scope paragraph (if provided) ---
+    if task_desc:
+        p_scope = etree.Element(qn('w:p'))
+        pPr2 = etree.SubElement(p_scope, qn('w:pPr'))
+        sp2 = etree.SubElement(pPr2, qn('w:spacing'))
+        sp2.set(qn('w:before'), '0')
+        sp2.set(qn('w:after'), '20')
+        sp2.set(qn('w:line'), '276')
+        sp2.set(qn('w:lineRule'), 'auto')
+        ind2 = etree.SubElement(pPr2, qn('w:ind'))
+        ind2.set(qn('w:left'), '0')
+        ind2.set(qn('w:hanging'), '0')
+        # Wrap in square brackets if not already
+        scope_text = task_desc if task_desc.startswith('[') else f'[{task_desc}]'
+        p_scope.append(make_run(scope_text, italic=True, color='444444'))
+        paras.append(p_scope)
+
+    return paras
+
 def split_hazards(text):
     """Split hazard text into individual items for bulleted list.
     Splits at '. ' (period-space) boundaries, preserving em-dash
@@ -412,10 +460,7 @@ def build_new_std_row(template_std_xml, task_data, hazard_bullet_num_id):
     row = etree.fromstring(template_std_xml)
     tcs = row.findall(qn('w:tc'))
 
-    set_cell_text(tcs[0], [
-        make_header_para(task_data['task']),
-        make_para_text(task_data['task_desc'])
-    ])
+    set_cell_text(tcs[0], make_col0_paras(task_data['task'], task_data['task_desc']))
     hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
     set_cell_text(tcs[1], hazard_paras)
     
@@ -448,10 +493,7 @@ def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_
     row = etree.fromstring(template_ccvs_xml)
     tcs = row.findall(qn('w:tc'))
 
-    set_cell_text(tcs[0], [
-        make_header_para(task_data['task']),
-        make_para_text(task_data['task_desc'])
-    ])
+    set_cell_text(tcs[0], make_col0_paras(task_data['task'], task_data['task_desc']))
     hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
     set_cell_text(tcs[1], hazard_paras)
     

@@ -32,7 +32,7 @@ OUTPUT_DIR = "/mnt/user-data/outputs"
 # XML HELPERS
 # ============================================================
 
-def make_run(text, bold=False, font='Aptos', size='16', color=None):
+def make_run(text, bold=False, italic=False, font='Aptos', size='16', color=None):
     """Create a w:r element"""
     r = etree.Element(qn('w:r'))
     rPr = etree.SubElement(r, qn('w:rPr'))
@@ -45,6 +45,8 @@ def make_run(text, bold=False, font='Aptos', size='16', color=None):
     szCs.set(qn('w:val'), size)
     if bold:
         etree.SubElement(rPr, qn('w:b'))
+    if italic:
+        etree.SubElement(rPr, qn('w:i'))
     if color:
         c = etree.SubElement(rPr, qn('w:color'))
         c.set(qn('w:val'), color)
