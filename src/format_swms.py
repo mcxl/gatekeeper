@@ -11,12 +11,19 @@ Rules:
   4. Bold sub-labels (any "Label:" pattern at start of text in CCVS)
   5. Italic for [bracketed] task descriptions
   6. Emergency Response: white text + red highlight on task name
+  7. P2 respirator normalisation — auto-replace non-canonical P2 terms
 """
 
 import copy
+import os
 import re
+import sys
 from lxml import etree
 from docx.oxml.ns import qn
+
+# Add src directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from swms_vocabulary import P2_CANONICAL, P2_VARIANTS
 
 # ============================================================
 # CONSTANTS
@@ -449,6 +456,49 @@ def highlight_emergency_response(doc):
 
 
 # ============================================================
+# RULE 7 — P2 respirator normalisation
+# ============================================================
+
+def normalise_p2_respirator(doc):
+    """Find non-canonical P2 terms and replace with the locked
+    canonical form: 'P2 respirator (minimum)'.
+
+    Scans every text run in the document body.  Matches are
+    case-insensitive.  Logs each replacement to console.
+    """
+    count = 0
+    # Build case-insensitive patterns, longest first
+    patterns = [(re.compile(re.escape(v), re.IGNORECASE), v)
+                for v in P2_VARIANTS]
+
+    # Track row number (approximate — count table rows)
+    row_num = 0
+    for elem in doc.element.body.iter():
+        tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if tag == 'tr':
+            row_num += 1
+
+        if tag != 't':
+            continue
+
+        if elem.text is None:
+            continue
+
+        text = elem.text
+        for pat, variant in patterns:
+            if pat.search(text):
+                new_text = pat.sub(P2_CANONICAL, text)
+                if new_text != text:
+                    print(f"  AUTO-FIX: '{variant}' -> "
+                          f"'{P2_CANONICAL}' [Row {row_num}]")
+                    elem.text = new_text
+                    text = new_text
+                    count += 1
+
+    return count
+
+
+# ============================================================
 # MAIN ENTRY POINT
 # ============================================================
 
@@ -459,6 +509,7 @@ def format_swms(doc):
     Returns a dict of counts for reporting.
     """
     results = {}
+    results['p2_normalise'] = normalise_p2_respirator(doc)
     results['em_dashes'] = bold_em_dashes(doc)
     results['fonts'] = standardise_fonts(doc)
     results['labels'] = bold_control_labels(doc)

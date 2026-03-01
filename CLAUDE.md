@@ -90,6 +90,31 @@ are all acceptable with their descriptor.
 The PPE normaliser in the engine catches these automatically.
 The validator confirms after generation. Both must pass.
 
+### P2 Respirator Rule — Non-Negotiable
+
+The canonical term is **P2 respirator (minimum)**.
+
+`(minimum)` is mandatory — it signals that P2 is the floor, not
+the ceiling. Higher-grade RPE (P3, half-face, full-face, supplied
+air) replaces P2 where task-specific risks demand it.
+
+| Wrong | Correct |
+|-------|---------|
+| P2 mask | P2 respirator (minimum) |
+| P2 dust mask | P2 respirator (minimum) |
+| P2 face mask | P2 respirator (minimum) |
+| dust mask | P2 respirator (minimum) |
+| face mask | P2 respirator (minimum) |
+
+**Enforcement chain:**
+1. `swms_vocabulary.py` — `PPE_ITEMS["p2_respirator"]` = canonical
+2. `format_swms.py` Rule 7 — auto-replaces all variants at
+   generation time and logs each fix to console
+3. `swms_ppe_validator.py` — confirms after generation
+
+This rule applies to every SWMS document — Master, standalone,
+and any future format. No exceptions.
+
 ### Code System v16.0
 
 15 working codes:

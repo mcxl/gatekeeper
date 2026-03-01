@@ -290,8 +290,8 @@ PPE_ITEMS = {
     "hearing_class5": "Hearing protection (>85 dB, Class 5 minimum)",
 
     # Respiratory
-    "p2_respirator": "P2 respirator",
-    "p2_dust_mask": "P2 dust mask",
+    "p2_respirator": "P2 respirator (minimum)",
+    "p2_dust_mask": "P2 respirator (minimum)",
     "p2_ov_respirator": "P2 respirator with organic vapour cartridge",
     "half_face_p2_ov": "Half-face respirator with P2/OV cartridge",
     "half_face_p3": "Half-face P3 with particulate filter",
@@ -310,6 +310,25 @@ PPE_ITEMS = {
     "long_sleeves": "Long sleeves",
     "disposable_coveralls": "Disposable coveralls",
 }
+
+
+# ============================================================
+# P2 VARIANT DETECTION — auto-replace non-canonical P2 terms
+# ============================================================
+# format_swms.py uses this list to find and replace P2 variants
+# in generated documents.  Longest matches first to avoid
+# partial replacement (e.g. "P2 dust mask" before "dust mask").
+
+P2_CANONICAL = "P2 respirator (minimum)"
+
+P2_VARIANTS = [
+    # Longest first — order matters
+    "P2 dust mask",
+    "P2 face mask",
+    "P2 mask",
+    "dust mask",
+    "face mask",
+]
 
 
 # ============================================================
