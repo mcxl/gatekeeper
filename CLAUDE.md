@@ -201,6 +201,55 @@ Rules:
   paragraph
 - Content wraps within the paragraph — no mid-chain line breaks
 
+### Task Name + Scope Format (Col 0 — every row)
+
+Task name: bold, normal weight, black
+Scope description: italic, [square brackets], paragraph below task name
+Scope text colour: #444444 (dark grey) where task is site-specific/customisable
+
+Example:
+
+> **Crack Stitching and Structural Reinforcement**
+> *[Installation of helical bars, carbon fibre reinforcement, or
+> stainless-steel pins into prepared slots/holes to restore structural
+> integrity of cracked masonry and concrete elements.]*
+
+Rules:
+- Task name always bold
+- Scope always italic and in square brackets
+- Scope is the customisation point — when user uploads a scope of works
+  or specification document, Claude Code updates ONLY the text inside
+  [ ] for the relevant task rows
+- Never bold the scope text
+- Never remove the square brackets
+
+### Hazard Column Format (Col 2 — every row)
+
+Each hazard is a separate bullet point:
+- Bullet character: o (Courier New font, open circle)
+- Left indent: 0.4cm (227 twips)
+- Hanging indent: 0.4cm (227 twips)
+- One hazard per bullet
+- Short noun phrases — not full sentences
+- Em dash allowed within a hazard item for qualification
+  e.g. Silica dust inhalation — Silicosis (fatal, irreversible)
+- Em dash within hazard bullet: bold the dash only
+- Full stop: last bullet only (optional)
+
+This format applies to EVERY row in the task table without exception.
+
+### Scope Customisation Trigger
+
+When user uploads a scope of works, specification, or drawing:
+1. Claude Code reads the document
+2. Identifies which tasks in swms_generator.py match the scope
+3. Updates ONLY the [ ] scope text for matched tasks
+4. Does NOT change task name, hazards, controls, or risk ratings
+5. Adds [SITE SPECIFIC] prefix to updated scope text
+   e.g. `[SITE SPECIFIC: Apply ARDEX WPM 300 sheet membrane to all
+   balcony surfaces as per engineer's specification dated 12/02/2025.]`
+6. Commits the change with message referencing the source document
+
 ### Content Authority Hierarchy
 
 1. Hansen Yuncken (HY) procedures — PRIMARY — never contradict
