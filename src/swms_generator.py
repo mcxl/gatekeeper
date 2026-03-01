@@ -1615,6 +1615,83 @@ BLASTING_NEW = {
     },
 }
 
+
+# ============================================================
+# SCREED PUMP — Concrete Screed Pump Operations (MSW-009)
+# ============================================================
+
+SCREED_NEW = {
+    'screed_pump_setup': {
+        'task': 'Screed Pump Setup, Hose Connection and Pressure Testing',
+        'task_desc': 'Position line pump, connect delivery hoses, inspect all couplings and safety clips, pressure test before pumping.',
+        'hazard': 'High-pressure injection injury from pump line \u2014 Sand/cement injected under skin causes tissue necrosis, compartment syndrome, potential amputation or death. Hose whip from coupling failure. Manual handling of pump components and delivery hoses. Electrical hazard from pump motor.',
+        'risk_pre': 'High (6)', 'risk_post': 'Low (2)',
+        'code': 'ENE-H6', 'resp': 'Supervisor / Pump Operator',
+        'type': 'CCVS',
+        'hold_points': [
+            'Pump operator trained and competent in specific pump model \u2014 Training records sighted',
+            'All delivery line couplings inspected, secured, and safety clips/pins confirmed \u2014 No worn or damaged fittings',
+            'Pressure test completed at rated working pressure before pumping screed \u2014 No leaks, no coupling movement',
+            'Exclusion zone established around pump and full length of delivery line \u2014 No personnel in hose whip zone during start-up and priming',
+        ],
+        'eng': [
+            'Hose clamps and couplings rated to pump maximum pressure \u2014 Safety whip checks on all hose joints \u2014 Delivery line secured and supported to prevent movement \u2014 RCD protection on electric pump',
+        ],
+        'admin': [
+            'Pump manufacturer operating manual on site \u2014 Daily pre-start inspection recorded \u2014 Hose and coupling replacement schedule maintained \u2014 Emergency shutdown procedure briefed to all workers',
+        ],
+        'ppe': [
+            'Steel-capped footwear, eye protection, hearing protection (>85 dB), cut-resistant gloves, hi-vis vest or shirt',
+        ],
+        'stop_work': [
+            'Hose coupling leaking or damaged \u2014 Pump pressure exceeds rated limit \u2014 Delivery line unsecured or unsupported \u2014 Blockage in line (do not attempt to clear under pressure) \u2014 Electrical fault on pump motor',
+        ],
+    },
+    'screed_material_prep': {
+        'task': 'Material Preparation and Mesh Placement',
+        'task_desc': 'Handle and stage cement and sand bags, cut and lay galvanised steel mesh reinforcement to specification.',
+        'hazard': 'Manual handling of cement and sand bags (20\u201325 kg). Cement dust inhalation and alkaline skin/eye contact. Cut and puncture injuries from mesh handling and cutting. Slip and trip on materials and offcuts.',
+        'risk_pre': 'Medium (4)', 'risk_post': 'Low (1)',
+        'code': 'ENV-M4', 'resp': 'Supervisor / Worker',
+        'type': 'STD',
+        'control': [
+            ('Engineering:', 'Mechanical aids for repetitive bag handling where available \u2014 Mesh cut with bolt cutters (not angle grinder) to reduce sparks and noise \u2014 Material staged to minimise carry distances'),
+            ('Admin:', 'SDS for cement reviewed \u2014 Correct mix ratio confirmed (1:3 or 1:4 cement:sand per specification) \u2014 Mesh specification and lap requirements confirmed before placement \u2014 Rotate workers on manual handling tasks'),
+            ('PPE:', 'P2 dust mask (dry cement handling), eye protection, chemical-resistant gloves (nitrile), steel-capped footwear, long sleeves'),
+            ('STOP WORK if:', 'SDS not available for cement product \u2014 Mesh specification not confirmed \u2014 Manual handling of bags >25 kg without mechanical aids'),
+        ]
+    },
+    'screed_pumping': {
+        'task': 'Screed Pumping, Placement and Levelling',
+        'task_desc': 'Pump sand/cement screed via delivery line, place to specified thickness, screed and level to falls.',
+        'hazard': 'Alkaline burns from wet cement screed (pH 12\u201313). Slip hazard on wet screed surface. Noise from pump operation. Manual handling strain from screeding and levelling. Hose movement and trip hazard.',
+        'risk_pre': 'Medium (4)', 'risk_post': 'Low (1)',
+        'code': 'ENV-M4', 'resp': 'Supervisor / Pump Operator / Worker',
+        'type': 'STD',
+        'control': [
+            ('Engineering:', 'Delivery hose routed and secured to prevent trip hazard \u2014 Non-slip walkways maintained around pour area \u2014 Pump operator maintains visual contact with nozzle operator at all times'),
+            ('Admin:', 'Pour sequence planned to avoid workers walking on fresh screed \u2014 Nozzle operator and pump operator communicate via agreed signals (radio or hand) \u2014 Skin contact with wet screed washed immediately with clean water \u2014 Screed thickness confirmed against specification during placement'),
+            ('PPE:', 'Waterproof boots, chemical-resistant gloves (nitrile), eye protection, hearing protection (>85 dB), hi-vis vest or shirt, long sleeves'),
+            ('STOP WORK if:', 'Communication between pump and nozzle operator fails \u2014 Screed mix consistency incorrect (too wet or too dry to pump) \u2014 Hose unsecured or moved from supported position'),
+        ]
+    },
+    'screed_cleanup': {
+        'task': 'Pump Cleanup, Washout and Demobilisation',
+        'task_desc': 'Flush delivery lines, contain washout water, disconnect hoses, clean and remove pump from site.',
+        'hazard': 'Alkaline washout water \u2014 Environmental contamination if discharged to stormwater. High-pressure water during line flush. Manual handling during hose disconnection and pump removal. Slip on wet surfaces.',
+        'risk_pre': 'Medium (4)', 'risk_post': 'Low (1)',
+        'code': 'ENV-M4', 'resp': 'Supervisor / Pump Operator',
+        'type': 'STD',
+        'control': [
+            ('Engineering:', 'Washout water contained in designated bund or container \u2014 No discharge to stormwater drains, gutters, or ground \u2014 Pump depressurised before disconnecting any coupling'),
+            ('Admin:', 'Washout location agreed before pumping commences \u2014 Washout water pH tested if discharge to sewer required (council approval) \u2014 All hoses and couplings cleaned, inspected, and stored \u2014 Site left clean and free of screed residue'),
+            ('PPE:', 'Waterproof boots, chemical-resistant gloves (nitrile), eye protection, hi-vis vest or shirt'),
+            ('STOP WORK if:', 'No containment available for washout water \u2014 Pump not fully depressurised before disconnection'),
+        ]
+    },
+}
+
+
 # Save task data for reference
 print("Task definitions loaded:")
 print(f"  Remedial: {len(REMEDIAL_NEW)} new tasks")
@@ -1624,4 +1701,5 @@ print(f"  Cladding: {len(CLADDING_NEW)} new tasks")
 print(f"  EWP: {len(EWP_NEW)} new tasks")
 print(f"  Swing Stage: {len(SWING_NEW)} new tasks")
 print(f"  Blasting: {len(BLASTING_NEW)} new tasks")
-print(f"  TOTAL: {len(REMEDIAL_NEW)+len(SPRAY_NEW)+len(GROUND_NEW)+len(CLADDING_NEW)+len(EWP_NEW)+len(SWING_NEW)+len(BLASTING_NEW)} new tasks")
+print(f"  Screed Pump: {len(SCREED_NEW)} new tasks")
+print(f"  TOTAL: {len(REMEDIAL_NEW)+len(SPRAY_NEW)+len(GROUND_NEW)+len(CLADDING_NEW)+len(EWP_NEW)+len(SWING_NEW)+len(BLASTING_NEW)+len(SCREED_NEW)} new tasks")

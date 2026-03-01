@@ -790,8 +790,16 @@ BLASTING_TASKS = [
     ('reuse', 10), ('reuse', 11), ('reuse', 20),
 ]
 
+SCREED_TASKS = [
+    ('reuse', 1), ('reuse', 2), ('reuse', 3),
+    ('new', 'screed_pump_setup'),
+    ('new', 'screed_material_prep'), ('new', 'screed_pumping'),
+    ('new', 'screed_cleanup'),
+    ('reuse', 10), ('reuse', 20),
+]
+
 # ============================================================
-# BUILD ALL 7
+# BUILD ALL 8
 # ============================================================
 
 if __name__ == '__main__':
@@ -803,6 +811,7 @@ if __name__ == '__main__':
         ("EWP Standalone",    "RPD-MSW-006_EWP_Master_SWMS.docx",              EWP_TASKS,      EWP_NEW),
         ("Swing Stage",       "RPD-MSW-007_Swing_Stage_Master_SWMS.docx",       SWING_TASKS,    SWING_NEW),
         ("Abrasive Blasting", "RPD-MSW-008_Abrasive_Blasting_Master_SWMS.docx", BLASTING_TASKS, BLASTING_NEW),
+        ("Screed Pump",       "RPD-MSW-009_Screed_Pump_Master_SWMS.docx",       SCREED_TASKS,   SCREED_NEW),
     ]
     
     results = []
