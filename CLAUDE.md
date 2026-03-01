@@ -33,6 +33,8 @@ gatekeeper/
 │   ├── SWMS_OPERATOR_GUIDE.md       ← setup, usage, version history
 │   ├── swms_bulletize.py            ← post-processor: semicolons → bullets
 │   ├── swms_ppe_validator.py        ← QA gate: PPE terminology checker
+│   ├── swms_vocabulary.py           ← controlled vocabulary: canonical phrases
+│   ├── vocab_tool.py                ← CLI: list/add/check/scan vocabulary
 │   ├── swms_generator.py            ← RPD Master SWMS task definitions
 │   ├── build_all_swms.py            ← batch runner for all Master SWMS docs
 │   ├── swms_base_generator.py       ← base generator (legacy)
@@ -296,6 +298,16 @@ Mandatory order:
 
 #### SWMS Data Structure in swms_generator.py
 
+**New tasks (vocabulary-based)** — use `new_task()`:
+- `hazard_keys`: list of HAZARDS dict keys
+- `engineering`: list of CONTROLS keys or raw strings
+- `admin`: list of CONTROLS keys or raw strings
+- `ppe_keys`: list of PPE_ITEMS keys
+- `stop_work_keys`: list of STOP_WORK keys
+- `new_task()` returns a build-compatible dict automatically
+
+**Legacy tasks (raw dicts)** — being migrated to `new_task()`:
+
 CCVS tasks store:
 - `hold_points`: list of strings (numbered list items)
 - `eng`: list of strings (one per bullet)
@@ -316,6 +328,44 @@ When user uploads a scope of works, specification, or drawing:
 4. Add [SITE SPECIFIC] prefix to updated scope
 5. Do NOT change task name, hazards, controls, or risk ratings
 6. Commit with message referencing the source document
+
+### How New SWMS Are Generated (Mandatory Workflow)
+
+When generating any new SWMS or adding new tasks:
+
+1. ALWAYS use `new_task()` helper from `swms_generator.py`
+   Never build task dicts manually with raw strings
+
+2. ALWAYS use vocabulary keys for hazards, PPE, and STOP WORK
+   Run: `python src/vocab_tool.py list hazards`
+   to see available keys before writing a task
+
+3. If a required phrase is not in vocabulary:
+   a. Run: `python src/vocab_tool.py add hazard` (or control/ppe/stopwork)
+   b. Define the canonical phrase
+   c. Commit the vocabulary addition FIRST
+   d. Then use the new key in the task definition
+
+4. Engineering and Admin controls:
+   Use vocabulary keys where a canonical phrase exists
+   Raw strings are permitted for task-specific content
+   but trigger a WARNING during build
+
+5. After adding any new tasks run:
+   `python src/vocab_tool.py scan`
+   to check for unregistered phrases
+
+6. This ensures every worker reading any RPD SWMS
+   sees identical wording for identical hazards
+   regardless of which document they are reading
+
+#### Vocabulary Files
+
+- `src/swms_vocabulary.py` — canonical dictionaries + resolver functions
+- `src/vocab_tool.py` — CLI tool for listing, adding, checking vocabulary
+- Resolver functions: `get_hazard()`, `get_control()`, `get_ppe()`,
+  `get_stop_work()`, `build_engineering()`, `build_admin()`
+- Invalid keys raise `ValueError` at build time — fail fast, not silent
 
 ### Content Authority Hierarchy
 

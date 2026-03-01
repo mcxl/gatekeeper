@@ -14,6 +14,17 @@ import copy
 import os
 import sys
 
+# Controlled vocabulary — canonical phrases for hazards, controls, PPE, STOP WORK
+try:
+    from swms_vocabulary import (
+        get_hazard, get_control, get_ppe, get_stop_work,
+        build_engineering, build_admin, HAZARDS, CONTROLS,
+        PPE_ITEMS, STOP_WORK,
+    )
+except ImportError:
+    print("WARNING: swms_vocabulary.py not found — new_task() will not be available.")
+    print("  Existing raw-string task definitions will still work.")
+
 TEMPLATE_PATH = "/mnt/user-data/uploads/RPD_MASTER_SWMS_TEMPLATE_V1.docx"
 OUTPUT_DIR = "/mnt/user-data/outputs"
 
@@ -191,6 +202,108 @@ def remove_cell_shading(tc):
             tcPr.remove(shd)
 
 # ============================================================
+# VOCABULARY-BASED TASK BUILDER
+# ============================================================
+
+def new_task(
+    name,
+    scope,
+    hazard_keys,
+    risk_pre,
+    risk_code,
+    engineering,
+    admin,
+    ppe_keys,
+    stop_work_keys,
+    responsibility="Supervisor / Worker / Sub-Contract Worker",
+    risk_post="Low (2)",
+    ccvs=False,
+    hold_points=None,
+):
+    """
+    Create a new SWMS task using controlled vocabulary.
+
+    Args:
+        name:           Task name string (bold in Col 0)
+        scope:          Scope description — goes in [brackets], italic
+                        Use None or '' if no scope description needed
+        hazard_keys:    List of keys from HAZARDS dict
+                        e.g. ["fall_unprotected_edge", "silica_dust_cutting"]
+        risk_pre:       Pre-control risk string e.g. "High (6)"
+        risk_code:      Risk code e.g. "STR-H6"
+        engineering:    List of vocabulary keys OR raw strings
+                        Joined as em dash chain (non-CCVS)
+                        or bullet list (CCVS)
+        admin:          List of vocabulary keys OR raw strings
+        ppe_keys:       List of PPE_ITEMS keys
+                        e.g. ["steel_cap", "p2_respirator", "eye_protection"]
+        stop_work_keys: List of STOP_WORK keys
+                        e.g. ["silica_no_controls", "edge_no_protection"]
+        responsibility: Responsibility string (default shown)
+        risk_post:      Post-control risk string (default "Low (2)")
+        ccvs:           True if this is a CCVS task with hold points
+        hold_points:    List of hold point verification strings (CCVS only)
+
+    Returns:
+        dict compatible with build_all_swms.py row builders.
+        Keys: task, task_desc, hazard, risk_pre, risk_post, code,
+              resp, type, and either 'control' (STD) or
+              'hold_points'/'eng'/'admin'/'ppe'/'stop_work' (CCVS).
+
+    Raises:
+        ValueError if any key not found in vocabulary
+    """
+    # Resolve hazards — each key must exist in HAZARDS
+    hazards = [get_hazard(k) for k in hazard_keys]
+    hazard_string = '. '.join(hazards)
+
+    # Resolve PPE — comma-joined canonical items
+    ppe_string = get_ppe(*ppe_keys)
+
+    # Resolve STOP WORK — em dash joined canonical conditions
+    stop_string = get_stop_work(*stop_work_keys)
+
+    # Base dict — compatible with build_new_std_row / build_new_ccvs_row
+    result = {
+        'task': name,
+        'task_desc': scope or '',
+        'hazard': hazard_string,
+        'risk_pre': risk_pre,
+        'risk_post': risk_post,
+        'code': risk_code,
+        'resp': responsibility,
+    }
+
+    if ccvs:
+        result['type'] = 'CCVS'
+        result['hold_points'] = hold_points or []
+        # CCVS: engineering/admin stay as lists (one per bullet)
+        result['eng'] = [
+            CONTROLS[e]["canonical"] if e in CONTROLS else e
+            for e in engineering
+        ]
+        result['admin'] = [
+            CONTROLS[a]["canonical"] if a in CONTROLS else a
+            for a in admin
+        ]
+        result['ppe'] = [ppe_string]
+        result['stop_work'] = [stop_string]
+    else:
+        result['type'] = 'STD'
+        # STD: engineering/admin joined as em dash chains
+        eng_string = build_engineering(*engineering)
+        adm_string = build_admin(*admin)
+        result['control'] = [
+            ('Engineering:', eng_string),
+            ('Admin:', adm_string),
+            ('PPE:', ppe_string),
+            ('STOP WORK if:', stop_string),
+        ]
+
+    return result
+
+
+# ============================================================
 # TASK DATA - NEW TASKS FOR EACH SWMS
 # ============================================================
 
@@ -274,20 +387,45 @@ REMEDIAL_NEW = {
             'Dust extraction fails or is inadequate — Visible dust plume beyond immediate work zone. Reinforcement cross-section loss exceeds 20% or engineer tolerance — Stop work, notify engineer for supplementary reinforcement design before proceeding. Structural concern, unexpected cracking, movement, or voids encountered during breakout — Evacuate, do not re-enter without engineer assessment. Vibration exposure limit reached. Extent of deterioration exceeds engineer specification. Unexpected services encountered.',
         ]
     },
-    'crack_stitching': {
-        'task': 'Crack Stitching and Structural Reinforcement',
-        'task_desc': 'Installation of helical bars, carbon fibre reinforcement, or stainless steel pins into prepared slots/holes to restore structural integrity of cracked masonry and concrete elements.',
-        'hazard': 'Silica dust from slot cutting. Noise from cutting equipment. Epoxy and resin chemical exposure. Working at height. Structural instability during repair.',
-        'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
-        'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
-        'type': 'STD',
-        'control': [
-            ('Engineering:', 'Slot cutting with vacuum-attached blade guard — No dry cutting. Depth stop set on cutting equipment per engineering specification — Typically 25–35mm into mortar beds. Services scan (CAT/Genny) before cutting into any substrate. Containment of epoxy/grout waste.'),
-            ('Admin:', 'Engineering specification and drawings reviewed before commencement — Slot depths, bar sizes, spacing, grout product confirmed. SDS for all epoxy, grout, and primer products reviewed — Fosroc Nitoprime, Renderox, WHO-60 or equivalent. Crack monitoring record completed before and after stitching. Structural engineer sign-off required before proceeding if crack width exceeds specification tolerance.'),
-            ('PPE:', 'P2 respirator during cutting operations. Nitrile gloves for epoxy and grout handling — No skin contact with uncured resin. Eye protection. Hearing protection (>85 dB) during cutting. Steel capped footwear.'),
-            ('STOP WORK if:', 'Crack width or depth exceeds engineering specification tolerance — Unexpected movement or displacement observed — Services detected in cutting path — Structural engineer advises hold — Product temperature outside application range.')
-        ]
-    },
+    'crack_stitching': new_task(
+        name='Crack Stitching and Structural Reinforcement',
+        scope='Installation of helical bars, carbon fibre reinforcement, or stainless steel pins into prepared slots/holes to restore structural integrity of cracked masonry and concrete elements.',
+        hazard_keys=[
+            'silica_dust_cutting',
+            'noise_cutting',
+            'epoxy_resin_exposure',
+            'working_at_height',
+            'structural_instability',
+        ],
+        risk_pre='Medium (4)',
+        risk_code='PRE-M4',
+        engineering=[
+            'vacuum_blade_guard',
+            'depth_stop_cutting',
+            'services_scan',
+            'epoxy_waste_containment',
+        ],
+        admin=[
+            'specification_reviewed',
+            'sds_epoxy_reviewed',
+            'crack_monitoring',
+            'engineer_signoff_tolerance',
+        ],
+        ppe_keys=[
+            'p2_respirator',
+            'nitrile_gloves',
+            'eye_protection',
+            'hearing_protection',
+            'steel_cap',
+        ],
+        stop_work_keys=[
+            'crack_exceeds_tolerance',
+            'unexpected_movement',
+            'services_in_path',
+            'engineer_hold',
+            'product_temp_outside',
+        ],
+    ),
     'epoxy_injection': {
         'task': 'Epoxy Crack Injection',
         'task_desc': 'Identification and marking of cracks, installation of injection ports, sealing of crack face with epoxy paste, injection of epoxy resin under low pressure, removal of ports and surface finishing. Includes structural and non-structural crack injection.',
@@ -302,20 +440,44 @@ REMEDIAL_NEW = {
             ('STOP WORK if:', 'Skin contact with uncured resin — Wash immediately with soap and water, do not use solvent. Eye contact — Flush 15 minutes, seek medical attention immediately. Injection pressure exceeds manufacturer limit. Crack leaking resin externally — Depressurise and reseal. Product temperature outside application range. Exothermic reaction detected in mixing container — Do not handle, allow to cool in safe location.')
         ]
     },
-    'waterproofing': {
-        'task': 'Waterproofing and Membrane Application',
-        'task_desc': 'Application of liquid-applied or sheet membrane waterproofing systems to balconies, podiums, planter boxes, wet areas, and below-grade elements. Includes anti-carbonation coatings to cured concrete repair areas. Surface preparation, primer, membrane, and protection layers.',
-        'hazard': 'Chemical exposure from primers, membranes, and solvents. Slip hazard on wet/coated surfaces. Fumes in enclosed areas. Manual handling of membrane rolls and equipment.',
-        'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
-        'code': 'PRE-M4', 'resp': 'Supervisor / Worker / Sub-Contract Worker',
-        'type': 'STD',
-        'control': [
-            ('Engineering:', 'Ventilation maintained in enclosed application areas — Mechanical ventilation if natural airflow insufficient. Non-slip walking paths maintained around wet membrane areas. Drainage provisions to prevent water pooling on uncured membrane.'),
-            ('Admin:', 'Waterproofing specification and system data sheet reviewed — Substrate preparation, primer, membrane type, application rates, cure times confirmed. SDS for all products reviewed before use. Ambient temperature and substrate moisture checked before application — No application outside product parameters. Wet film thickness checks during application. For concrete cancer remediation: anti-carbonation coating applied to cured repair mortar per engineer specification before membrane or final coating — Product and coverage rate as specified.'),
-            ('PPE:', 'Nitrile gloves — Chemical-resistant. P2 respirator with organic vapour cartridge if solvent-based products. Eye protection. Non-slip footwear. Disposable overalls where splash risk exists.'),
-            ('STOP WORK if:', 'Temperature outside product application range — Substrate moisture exceeds product tolerance — Rain imminent on uncured membrane — Ventilation fails in enclosed area — Product shelf life expired.')
-        ]
-    },
+    'waterproofing': new_task(
+        name='Waterproofing and Membrane Application',
+        scope='Application of liquid-applied or sheet membrane waterproofing systems to balconies, podiums, planter boxes, wet areas, and below-grade elements. Includes anti-carbonation coatings to cured concrete repair areas. Surface preparation, primer, membrane, and protection layers.',
+        hazard_keys=[
+            'chemical_primers_solvents',
+            'slip_wet_surfaces',
+            'fumes_enclosed',
+            'manual_handling_membrane',
+        ],
+        risk_pre='Medium (4)',
+        risk_code='PRE-M4',
+        engineering=[
+            'ventilation_enclosed',
+            'non_slip_paths',
+            'drainage_uncured',
+        ],
+        admin=[
+            'waterproofing_spec_reviewed',
+            'sds_reviewed',
+            'temp_humidity_check',
+            'wet_film_check',
+            'anticarbonation_coating',
+        ],
+        ppe_keys=[
+            'chemical_resistant_gloves',
+            'p2_ov_respirator',
+            'eye_protection',
+            'non_slip_footwear',
+            'disposable_coveralls',
+        ],
+        stop_work_keys=[
+            'temp_outside_range',
+            'substrate_moisture_exceeds',
+            'rain_uncured_membrane',
+            'ventilation_fails',
+            'product_expired',
+        ],
+    ),
     'expansion_joint': {
         'task': 'Expansion Joint Replacement',
         'task_desc': 'Removal of failed expansion joint systems and installation of new joint sealant, backer rod, or proprietary joint covers to building façade, podium, and structural movement joints.',
@@ -1330,20 +1492,45 @@ BLASTING_NEW = {
             'Ventilation system fails — Positive pressure in helmet lost — Air supply quality alarm — Asbestos detected or suspected in substrate coating (cease blasting immediately — Treat as asbestos removal work per WHS Regulation) — Visibility zero for >5 minutes — Confined space entry permit not current — Standby person leaves position — Heat stress symptoms — Enclosure seal breached — Dust escaping containment.',
         ]
     },
-    'blast_media': {
-        'task': 'Blast Media Selection and Handling',
-        'task_desc': 'Selection, storage, handling, and loading of abrasive blast media including garnet, glass bead, steel shot, soda, and crushed slag. Includes media quality control and waste management.',
-        'hazard': 'Manual handling of heavy media bags (25–50kg). Dust during loading and handling. Contaminated recycled media. Slip hazard from spilled media. Eye injury from loose particles.',
-        'risk_pre': 'Medium (4)', 'risk_post': 'Low (2)',
-        'code': 'HAZ-M4', 'resp': 'Worker / Sub-Contract Worker',
-        'type': 'STD',
-        'control': [
-            ('Engineering:', 'Bulk media delivery where possible — Hopper or silo feed to blast pot. Mechanical lifting for bags >25kg. Dust extraction at blast pot loading point. Media storage on pallets, covered, and dry.'),
-            ('Admin:', 'Media SDS reviewed — Confirm no free crystalline silica. Media specification matches coating manufacturer requirements — Type, particle size, hardness confirmed. Recycled media tested for contamination before re-use (lead, asbestos, other hazardous coatings). Waste media classified per EPA guidelines — Disposal to licensed facility if contaminated.'),
-            ('PPE:', 'P2 dust mask during loading and handling. Eye protection. Cut-resistant gloves. Steel capped footwear.'),
-            ('STOP WORK if:', 'Media contains free silica — Recycled media contaminated — Media wet or clumped — SDS not available — Manual handling of >25kg bags without mechanical aids.')
-        ]
-    },
+    'blast_media': new_task(
+        name='Blast Media Selection and Handling',
+        scope='Selection, storage, handling, and loading of abrasive blast media including garnet, glass bead, steel shot, soda, and crushed slag. Includes media quality control and waste management.',
+        hazard_keys=[
+            'manual_handling_heavy_bags',
+            'dust_loading_handling',
+            'contaminated_media',
+            'slip_spilled_media',
+            'eye_injury_particles',
+        ],
+        risk_pre='Medium (4)',
+        risk_code='HAZ-M4',
+        responsibility='Worker / Sub-Contract Worker',
+        engineering=[
+            'bulk_delivery_hopper',
+            'mechanical_lifting_25kg',
+            'dust_extraction_loading',
+            'media_storage_dry',
+        ],
+        admin=[
+            'media_sds_silica',
+            'media_spec_match',
+            'media_contamination_test',
+            'media_waste_classified',
+        ],
+        ppe_keys=[
+            'p2_dust_mask',
+            'eye_protection',
+            'cut_resistant_gloves',
+            'steel_cap',
+        ],
+        stop_work_keys=[
+            'media_free_silica',
+            'media_contaminated',
+            'media_wet_clumped',
+            'sds_not_available',
+            'manual_handling_no_aids',
+        ],
+    ),
     'blast_containment': {
         'task': 'Containment and Environmental Controls',
         'task_desc': 'Erection, maintenance, and removal of blast containment systems including full enclosures, tarps, screens, and environmental protection measures for dust, noise, and waste.',
