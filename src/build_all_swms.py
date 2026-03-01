@@ -47,6 +47,8 @@ def get_next_num_id(numbering_elem):
             max_id = nid
     return max_id + 1
 
+BULLET_INDENT = '227'  # 0.4cm in twips (1cm = 567 twips)
+
 def create_decimal_abstract_num(abs_id):
     """Create a decimal abstractNum for HOLD POINTS: 1. 2. 3.
     Font: Aptos 8pt (sz=16 half-points) to match template body text."""
@@ -59,7 +61,7 @@ def create_decimal_abstract_num(abs_id):
             <w:lvlText w:val="%1."/>
             <w:lvlJc w:val="left"/>
             <w:pPr>
-                <w:ind w:left="360" w:hanging="360"/>
+                <w:ind w:left="{BULLET_INDENT}" w:hanging="{BULLET_INDENT}"/>
             </w:pPr>
             <w:rPr>
                 <w:rFonts w:ascii="Aptos" w:hAnsi="Aptos" w:hint="default"/>
@@ -82,7 +84,7 @@ def create_bullet_abstract_num(abs_id):
             <w:lvlText w:val="o"/>
             <w:lvlJc w:val="left"/>
             <w:pPr>
-                <w:ind w:left="360" w:hanging="360"/>
+                <w:ind w:left="{BULLET_INDENT}" w:hanging="{BULLET_INDENT}"/>
             </w:pPr>
             <w:rPr>
                 <w:rFonts w:ascii="Courier New" w:hAnsi="Courier New" w:cs="Courier New" w:hint="default"/>
@@ -100,6 +102,32 @@ def create_num_elem(num_id, abstract_num_id):
         <w:abstractNumId w:val="{abstract_num_id}"/>
     </w:num>'''
     return etree.fromstring(xml)
+
+def normalise_numbering_indent(doc):
+    """Set all existing abstractNum level-0 indents to BULLET_INDENT (0.4cm).
+    Ensures template numbering matches new numbering definitions."""
+    numbering = doc.part.numbering_part.numbering_definitions._numbering
+    count = 0
+    for absNum in numbering.findall(qn('w:abstractNum')):
+        for lvl in absNum.findall(qn('w:lvl')):
+            if lvl.get(qn('w:ilvl')) != '0':
+                continue
+            pPr = lvl.find(qn('w:pPr'))
+            if pPr is None:
+                continue
+            ind = pPr.find(qn('w:ind'))
+            if ind is None:
+                continue
+            changed = False
+            if ind.get(qn('w:left')) != BULLET_INDENT:
+                ind.set(qn('w:left'), BULLET_INDENT)
+                changed = True
+            if ind.get(qn('w:hanging')) != BULLET_INDENT:
+                ind.set(qn('w:hanging'), BULLET_INDENT)
+                changed = True
+            if changed:
+                count += 1
+    return count
 
 def inject_numbering_pair(doc):
     """Add one decimal + one bullet numbering pair to the document.
@@ -482,6 +510,11 @@ def build_swms(name, filename, task_list, new_tasks_dict):
                 if txt is not None and txt.get(qn('w:val')) == '(%1)':
                     txt.set(qn('w:val'), '%1.')
                     print(f"  Fixed abstractNum 18 ilvl={lvl.get(qn('w:ilvl'))}: (%1) -> %1.")
+
+    # Normalise all existing numbering indents to 0.4cm hanging
+    indent_count = normalise_numbering_indent(doc)
+    if indent_count:
+        print(f"  Normalised {indent_count} numbering indent(s) to 0.4cm")
     
     t1 = doc.tables[1]
     tbl = t1._tbl
