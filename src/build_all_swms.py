@@ -51,7 +51,7 @@ def get_next_num_id(numbering_elem):
             max_id = nid
     return max_id + 1
 
-BULLET_INDENT = '227'  # 0.4cm in twips (1cm = 567 twips)
+BULLET_INDENT = '360'  # abstractNum definition indent per master reference
 
 def create_decimal_abstract_num(abs_id):
     """Create a decimal abstractNum for HOLD POINTS: 1. 2. 3.
@@ -381,8 +381,8 @@ def tick_hrcw_checkboxes(doc, tick_keys):
 # ============================================================
 
 def make_para_text(text):
-    """Simple paragraph with regular text"""
-    p = make_para()
+    """Simple paragraph with regular text — 2pt (40 twips) spacing for non-control cells."""
+    p = make_para(spacing_before='40', spacing_after='40')
     p.append(make_run(text))
     return p
 
@@ -391,10 +391,13 @@ def make_col0_paras(task_name, task_desc):
     """Build Col 0 paragraphs for task name and scope.
 
     Task name: Bold, Aptos 8pt, indent left=0 hanging=0,
-               space before=20 twips, space after=0
+               space before=40 twips (2pt), space after=40 twips (2pt)
     Scope:     Italic, Aptos 8pt, colour #444444, [bracketed],
                indent left=0 hanging=0,
-               space before=0, space after=20 twips
+               space before=40 twips (2pt), space after=40 twips (2pt)
+
+    Spacing values derived from master reference:
+    SWMS-RPD-Remedial-Works-260309-V1.docx (non-control cells use 40/40).
 
     Returns list of paragraphs (1 or 2 depending on whether
     task_desc is provided).
@@ -405,8 +408,8 @@ def make_col0_paras(task_name, task_desc):
     p_name = etree.Element(qn('w:p'))
     pPr = etree.SubElement(p_name, qn('w:pPr'))
     sp = etree.SubElement(pPr, qn('w:spacing'))
-    sp.set(qn('w:before'), '20')
-    sp.set(qn('w:after'), '0')
+    sp.set(qn('w:before'), '40')
+    sp.set(qn('w:after'), '40')
     sp.set(qn('w:line'), '276')
     sp.set(qn('w:lineRule'), 'auto')
     ind = etree.SubElement(pPr, qn('w:ind'))
@@ -420,8 +423,8 @@ def make_col0_paras(task_name, task_desc):
         p_scope = etree.Element(qn('w:p'))
         pPr2 = etree.SubElement(p_scope, qn('w:pPr'))
         sp2 = etree.SubElement(pPr2, qn('w:spacing'))
-        sp2.set(qn('w:before'), '0')
-        sp2.set(qn('w:after'), '20')
+        sp2.set(qn('w:before'), '40')
+        sp2.set(qn('w:after'), '40')
         sp2.set(qn('w:line'), '276')
         sp2.set(qn('w:lineRule'), 'auto')
         ind2 = etree.SubElement(pPr2, qn('w:ind'))
@@ -461,31 +464,36 @@ def build_new_std_row(template_std_xml, task_data, hazard_bullet_num_id):
     tcs = row.findall(qn('w:tc'))
 
     set_cell_text(tcs[0], make_col0_paras(task_data['task'], task_data['task_desc']))
-    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
+    # Hazard bullets: indent 170/170, spacing 40/40 per master reference
+    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id,
+                                      indent_left='170', indent_hanging='170',
+                                      spacing_before='40', spacing_after='40')
+                    for h in split_hazards(task_data['hazard'])]
     set_cell_text(tcs[1], hazard_paras)
-    
+
+    # Risk pre cell: 40/40 spacing, bold per master reference
     risk_pre = task_data['risk_pre']
-    set_cell_text(tcs[2], [make_header_para(risk_pre)])
+    set_cell_text(tcs[2], [make_cell_para(risk_pre, bold=True)])
     set_cell_shading(tcs[2], get_risk_color(risk_pre))
     set_cell_text_color(tcs[2], get_risk_text_color(risk_pre))
-    
+
     code_prefix = task_data['code'].split('-')[0]
     level = risk_pre.split(' ')[0]
     score = risk_pre.split('(')[1].rstrip(')')
     paras = build_std_control(code_prefix, level, score, task_data['control'])
     set_cell_text(tcs[3], paras)
-    
+
+    # Risk post cell: 40/40 spacing, bold per master reference
     risk_post = task_data['risk_post']
-    set_cell_text(tcs[4], [make_header_para(risk_post)])
+    set_cell_text(tcs[4], [make_cell_para(risk_post, bold=True)])
     set_cell_shading(tcs[4], get_risk_color(risk_post))
     set_cell_text_color(tcs[4], get_risk_text_color(risk_post))
-    
-    set_cell_text(tcs[5], [make_para_text(task_data['resp'])])
-    # Code cell: black bold text, no shading
-    p_code = make_para()
-    p_code.append(make_run(task_data['code'], bold=True))
-    set_cell_text(tcs[6], [p_code])
-    
+
+    # Responsibility cell: 40/40 spacing per master reference
+    set_cell_text(tcs[5], [make_cell_para(task_data['resp'])])
+    # Code cell: 40/40 spacing, bold, no shading per master reference
+    set_cell_text(tcs[6], [make_cell_para(task_data['code'], bold=True)])
+
     return row
 
 def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_id, hazard_bullet_num_id):
@@ -494,18 +502,23 @@ def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_
     tcs = row.findall(qn('w:tc'))
 
     set_cell_text(tcs[0], make_col0_paras(task_data['task'], task_data['task_desc']))
-    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id) for h in split_hazards(task_data['hazard'])]
+    # Hazard bullets: indent 170/170, spacing 40/40 per master reference
+    hazard_paras = [make_bullet_para(h, hazard_bullet_num_id,
+                                      indent_left='170', indent_hanging='170',
+                                      spacing_before='40', spacing_after='40')
+                    for h in split_hazards(task_data['hazard'])]
     set_cell_text(tcs[1], hazard_paras)
-    
+
+    # Risk pre cell: 40/40 spacing, bold per master reference
     risk_pre = task_data['risk_pre']
-    set_cell_text(tcs[2], [make_header_para(risk_pre)])
+    set_cell_text(tcs[2], [make_cell_para(risk_pre, bold=True)])
     set_cell_shading(tcs[2], get_risk_color(risk_pre))
     set_cell_text_color(tcs[2], get_risk_text_color(risk_pre))
-    
+
     code_prefix = task_data['code'].split('-')[0]
     level = risk_pre.split(' ')[0]
     score = risk_pre.split('(')[1].rstrip(')')
-    
+
     paras = build_ccvs_control(
         code_prefix, level, score,
         task_data['hold_points'],
@@ -517,20 +530,19 @@ def build_new_ccvs_row(template_ccvs_xml, task_data, decimal_num_id, bullet_num_
         bullet_num_id=bullet_num_id
     )
     set_cell_text(tcs[3], paras)
-    
+
+    # Risk post cell: 40/40 spacing, bold per master reference
     risk_post = task_data['risk_post']
-    set_cell_text(tcs[4], [make_header_para(risk_post)])
+    set_cell_text(tcs[4], [make_cell_para(risk_post, bold=True)])
     set_cell_shading(tcs[4], get_risk_color(risk_post))
     set_cell_text_color(tcs[4], get_risk_text_color(risk_post))
-    
-    set_cell_text(tcs[5], [make_para_text(task_data['resp'])])
-    # Code cell: no shading, black bold text
-    p_code = make_para()
-    p_code.append(make_run(task_data['code'], bold=True))
-    set_cell_text(tcs[6], [p_code])
-    # Remove any existing shading on code cell
+
+    # Responsibility cell: 40/40 spacing per master reference
+    set_cell_text(tcs[5], [make_cell_para(task_data['resp'])])
+    # Code cell: 40/40 spacing, bold, no shading per master reference
+    set_cell_text(tcs[6], [make_cell_para(task_data['code'], bold=True)])
     remove_cell_shading(tcs[6])
-    
+
     return row
 
 
@@ -801,6 +813,17 @@ SCREED_TASKS = [
 # ============================================================
 
 if __name__ == '__main__':
+    # Master reference check — warn if formatting authority document is missing
+    _master_ref = os.path.join(_project_root, 'src', 'inputs',
+                               'SWMS-RPD-Remedial-Works-260309-V1.docx')
+    if os.path.exists(_master_ref):
+        print(f"Master reference: {_master_ref} [OK]")
+    else:
+        print(f"WARNING: Master reference document not found:")
+        print(f"  Expected: {_master_ref}")
+        print(f"  All formatting constants are derived from this document.")
+        print(f"  Build will continue but formatting cannot be verified against source.")
+
     builds = [
         ("Remedial Works",    "RPD-MSW-002_Remedial_Works_Master_SWMS.docx",    REMEDIAL_TASKS, REMEDIAL_NEW),
         ("Spray Painting",    "RPD-MSW-003_Spray_Painting_Master_SWMS.docx",    SPRAY_TASKS,    SPRAY_NEW),

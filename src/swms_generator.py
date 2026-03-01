@@ -32,7 +32,7 @@ OUTPUT_DIR = "/mnt/user-data/outputs"
 # XML HELPERS
 # ============================================================
 
-def make_run(text, bold=False, italic=False, font='Aptos', size='16', color=None):
+def make_run(text, bold=False, italic=False, font='Aptos', size='16', color=None, highlight=None):
     """Create a w:r element"""
     r = etree.Element(qn('w:r'))
     rPr = etree.SubElement(r, qn('w:rPr'))
@@ -50,15 +50,20 @@ def make_run(text, bold=False, italic=False, font='Aptos', size='16', color=None
     if color:
         c = etree.SubElement(rPr, qn('w:color'))
         c.set(qn('w:val'), color)
+    if highlight:
+        hl = etree.SubElement(rPr, qn('w:highlight'))
+        hl.set(qn('w:val'), highlight)
     t = etree.SubElement(r, qn('w:t'))
     t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
     t.text = text
     return r
 
-def make_para(spacing_before='20', spacing_after='20', line='276'):
-    """Create empty w:p with spacing and hanging indent.
-    Spacing: 1pt before/after, 1.15 line spacing.
-    Indent: 0.4cm hanging (227 DXA)."""
+def make_para(spacing_before='20', spacing_after='20', line='276',
+              indent_left=None, indent_hanging=None):
+    """Create empty w:p with spacing. Indent only when explicitly requested.
+    Default spacing: 1pt (20 twips) before/after — for control cell use.
+    Non-control cells should pass spacing_before='40', spacing_after='40'.
+    Values derived from master reference: SWMS-RPD-Remedial-Works-260309-V1.docx"""
     p = etree.Element(qn('w:p'))
     pPr = etree.SubElement(p, qn('w:pPr'))
     sp = etree.SubElement(pPr, qn('w:spacing'))
@@ -66,9 +71,12 @@ def make_para(spacing_before='20', spacing_after='20', line='276'):
     sp.set(qn('w:after'), spacing_after)
     sp.set(qn('w:line'), line)
     sp.set(qn('w:lineRule'), 'auto')
-    ind = etree.SubElement(pPr, qn('w:ind'))
-    ind.set(qn('w:left'), '227')
-    ind.set(qn('w:hanging'), '227')
+    if indent_left is not None or indent_hanging is not None:
+        ind = etree.SubElement(pPr, qn('w:ind'))
+        if indent_left is not None:
+            ind.set(qn('w:left'), indent_left)
+        if indent_hanging is not None:
+            ind.set(qn('w:hanging'), indent_hanging)
     return p
 
 def make_header_para(text):
@@ -92,25 +100,36 @@ def make_stop_work_para(conditions):
     p.append(make_run(conditions))
     return p
 
+def make_cell_para(text, bold=False, spacing_before='40', spacing_after='40'):
+    """Non-control cell paragraph. 2pt (40 twips) spacing, no indent.
+    Used for risk, responsibility, and code cells per master reference."""
+    p = make_para(spacing_before=spacing_before, spacing_after=spacing_after)
+    p.append(make_run(text, bold=bold))
+    return p
+
 def make_ccvs_header_para(code, level, score):
-    """CCVS header: 'WAH (High-6) CCVS HOLD POINTS:'"""
+    """CCVS header: 'WAH (High-6) CCVS HOLD POINTS:'
+    Bold + yellow highlight per master reference."""
     p = make_para()
-    p.append(make_run(f'{code} ({level}-{score}) CCVS HOLD POINTS:', bold=True))
+    p.append(make_run(f'{code} ({level}-{score}) CCVS HOLD POINTS:', bold=True, highlight='yellow'))
     return p
 
 def make_hold_point_para():
-    """HOLD POINT — Do not commence until:"""
+    """HOLD POINT — Do not commence until:
+    Bold + yellow highlight on entire line per master reference."""
     p = make_para()
-    p.append(make_run('HOLD POINT ', bold=True))
-    p.append(make_run('—', bold=True))
-    p.append(make_run(' Do not commence until:', bold=True))
-    p.append(make_run(' ', bold=True))
+    p.append(make_run('HOLD POINT ', bold=True, highlight='yellow'))
+    p.append(make_run('\u2014', bold=True, highlight='yellow'))
+    p.append(make_run(' Do not commence until:', bold=True, highlight='yellow'))
+    p.append(make_run(' ', bold=True, highlight='yellow'))
     return p
 
 def make_numbered_para(text, num_id, ilvl='0'):
     """Numbered list paragraph - used for HOLD POINTS with decimal 1. 2. 3. format.
-    num_id must reference a valid <w:num> pointing to a decimal abstractNum."""
-    p = make_para()
+    num_id must reference a valid <w:num> pointing to a decimal abstractNum.
+    Indent 227/227, spacing 0/0 per master reference."""
+    p = make_para(spacing_before='0', spacing_after='0',
+                  indent_left='227', indent_hanging='227')
     pPr = p.find(qn('w:pPr'))
     numPr = etree.SubElement(pPr, qn('w:numPr'))
     ilvl_elem = etree.SubElement(numPr, qn('w:ilvl'))
@@ -120,10 +139,15 @@ def make_numbered_para(text, num_id, ilvl='0'):
     p.append(make_run(text))
     return p
 
-def make_bullet_para(text, num_id, ilvl='0'):
-    """Bullet list paragraph - used for Eng/Admin/PPE/STOP WORK with open circle 'o' format.
-    num_id must reference a valid <w:num> pointing to a bullet abstractNum."""
-    p = make_para()
+def make_bullet_para(text, num_id, ilvl='0',
+                     indent_left='227', indent_hanging='227',
+                     spacing_before='0', spacing_after='0'):
+    """Bullet list paragraph - open circle 'o' format.
+    Default indent 227/227 for CCVS control bullets.
+    Hazard bullets should pass indent_left='170', indent_hanging='170',
+    spacing_before='40', spacing_after='40' per master reference."""
+    p = make_para(spacing_before=spacing_before, spacing_after=spacing_after,
+                  indent_left=indent_left, indent_hanging=indent_hanging)
     pPr = p.find(qn('w:pPr'))
     numPr = etree.SubElement(pPr, qn('w:numPr'))
     ilvl_elem = etree.SubElement(numPr, qn('w:ilvl'))
@@ -134,8 +158,9 @@ def make_bullet_para(text, num_id, ilvl='0'):
     return p
 
 def make_section_label_para(label):
-    """Section label paragraph - bold label only"""
-    p = make_para()
+    """Section label paragraph - bold label only.
+    Spacing 0/0 per CCVS reference (inherited from style)."""
+    p = make_para(spacing_before='0', spacing_after='0')
     p.append(make_run(label, bold=True))
     p.append(make_run(' '))
     return p
@@ -348,10 +373,15 @@ def build_ccvs_control(code, level, score, hold_points, eng, admin, ppe, stop_wo
     for pp in ppe:
         paras.append(make_bullet_para(pp, num_id=bullet_num_id))
     
-    paras.append(make_section_label_para('STOP WORK if:'))
+    # STOP WORK uses 20/20 spacing per master reference (unlike other CCVS sections)
+    p_sw = make_para(spacing_before='20', spacing_after='20')
+    p_sw.append(make_run('STOP WORK if:', bold=True))
+    p_sw.append(make_run(' '))
+    paras.append(p_sw)
     for sw in stop_work:
-        paras.append(make_bullet_para(sw, num_id=bullet_num_id))
-    
+        paras.append(make_bullet_para(sw, num_id=bullet_num_id,
+                                      spacing_before='20', spacing_after='20'))
+
     return paras
 
 # ============================================================

@@ -4,6 +4,27 @@
 
 ---
 
+## Master Reference Document — SINGLE SOURCE OF TRUTH
+
+**File:** `src/inputs/SWMS-RPD-Remedial-Works-260309-V1.docx`
+
+This document is the **FORMATTING AUTHORITY** for all RPD SWMS
+generation. Every formatting constant in this system was derived
+from forensic analysis of this document using python-docx XML
+extraction on 02/03/2026.
+
+**Do not change any formatting value without re-analysing the
+master reference first.** If the reference document is updated,
+re-run forensic extraction and update all downstream files.
+
+Downstream files controlled by this reference:
+- `src/swms_generator.py` — XML helper functions
+- `src/build_all_swms.py` — row builder and numbering
+- `src/format_swms.py` — post-processor rules
+- `CLAUDE.md` — this file (formatting rules section)
+
+---
+
 ## Project Structure
 
 This is a Python + Markdown codebase for SWMS (Safe Work Method
@@ -166,16 +187,37 @@ Build will fail if format_swms.py is missing.
 - Size: 8pt (sz=16 half-points)
 - No Calibri, Arial, or Aptos Narrow anywhere in task tables
 
-#### Paragraph Settings (every paragraph in every task table cell)
+#### Paragraph Settings (per master reference forensic analysis)
 
+**Non-control cells** (Col 0 task name/scope, Col 1 hazards,
+Col 2 risk pre, Col 4 risk post, Col 5 resp, Col 6 code):
 - Alignment: Left
-- Left indent: 0.4cm (227 DXA)
-- Special: Hanging 0.4cm (227 DXA)
+- No indent (left=0, hanging=0) for task name/scope/risk/resp/code
+- Space before: 2pt (40 twips)
+- Space after: 2pt (40 twips)
+- Line spacing: Multiple 1.15
+- XML: `<w:spacing w:before="40" w:after="40" w:line="276"
+  w:lineRule="auto"/>`
+
+**Control cell** (Col 3 — section labels and STD content):
 - Space before: 1pt (20 twips)
 - Space after: 1pt (20 twips)
-- Line spacing: Multiple 1.15
+- No indent on control labels (Engineering:, Admin:, etc.)
 - XML: `<w:spacing w:before="20" w:after="20" w:line="276"
-  w:lineRule="auto"/>` `<w:ind w:left="227" w:hanging="227"/>`
+  w:lineRule="auto"/>`
+
+**CCVS control cell** (Col 3 — section labels and bullets):
+- Section labels (Engineering:, Admin:, PPE:): spacing 0/0
+- Control bullets: indent left=227 hanging=227, spacing 0/0
+- STOP WORK: spacing 20/20
+
+**Hazard column** (Col 1 — bullet items):
+- Indent: left=170 hanging=170 (paragraph-level override)
+- Spacing: 2pt (40 twips) before/after
+- abstractNum definition indent: left=360 hanging=360
+
+**Cell margins:** left=85, right=85 DXA
+**Row height:** val=200
 
 #### Em Dash Rule
 
@@ -190,7 +232,7 @@ Build will fail if format_swms.py is missing.
 - Admin: — bold, no highlight
 - PPE: — bold, no highlight
 - Supervision: — bold, no highlight
-- Hold points: — bold, no highlight
+- CCVS HOLD POINTS: header — bold + YELLOW highlight (per master ref)
 
 #### Special Highlights
 
@@ -220,10 +262,10 @@ The helper enforces bold/italic/indent/colour automatically.
 `format_swms.py` catches and corrects any deviation as fallback.
 
 - Task name paragraph: Bold, Aptos 8pt, indent left=0 hanging=0,
-  space before=20 twips, space after=0
+  space before=40 twips (2pt), space after=40 twips (2pt)
 - Scope paragraph: Italic, Aptos 8pt, colour #444444,
   text wrapped in [square brackets], indent left=0 hanging=0,
-  space before=0, space after=20 twips
+  space before=40 twips (2pt), space after=40 twips (2pt)
 
 #### Risk Cell Colours
 
@@ -247,8 +289,9 @@ The helper enforces bold/italic/indent/colour automatically.
 #### Bullet Style (CCVS control blocks and hazard column)
 
 - Character: o (Courier New font) — renders as open circle
-- Left indent: 0.4cm (227 DXA)
-- Hanging indent: 0.4cm (227 DXA)
+- CCVS control bullets: left indent 227 DXA, hanging 227 DXA
+- Hazard column bullets: left indent 170 DXA, hanging 170 DXA
+- abstractNum definition: left=360, hanging=360 (paragraph overrides)
 - One item per bullet (except PPE and STOP WORK)
 
 ---
@@ -296,7 +339,7 @@ Rules:
 #### CCVS TASK — Control Cell Structure
 
 Mandatory order:
-1. Risk header: `STR (High-6) CCVS HOLD POINTS:` ← bold, no highlight
+1. Risk header: `STR (High-6) CCVS HOLD POINTS:` ← bold + YELLOW highlight
 2. HOLD POINT line: `HOLD POINT — Do not commence until:` ← bold +
    full YELLOW highlight
 3. Numbered list: 1. 2. 3. verification conditions ← normal weight
@@ -334,11 +377,12 @@ Mandatory order:
 - Never remove the square brackets
 - Scope is the customisation point for site-specific works
 
-#### Hazard Column Format (Col 2 — every row)
+#### Hazard Column Format (Col 1 — every row)
 
 - Each hazard = separate bullet point
 - Bullet: o Courier New open circle
-- Left indent: 0.4cm (227 DXA), Hanging: 0.4cm (227 DXA)
+- Left indent: 170 DXA, Hanging: 170 DXA (per master reference)
+- Spacing: 2pt (40 twips) before/after
 - Short noun phrases — not full sentences
 - Em dash allowed within item for qualification (bold the dash only)
 - Full stop on last bullet only (optional)
@@ -496,7 +540,7 @@ Remote: origin
 
 ---
 
-*Last updated: 01/03/2026*
+*Last updated: 02/03/2026*
 *System: Gatekeeper v1.0 — SWMS Generator v16.4*
 *Owner: Alan Richardson — Robertson's Remedial and Painting Pty Ltd*
 

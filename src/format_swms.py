@@ -4,6 +4,13 @@ RPD SWMS Document Formatter
 Post-processing rules applied to every generated SWMS document
 before saving.  Called by build_all_swms.py.
 
+FORMATTING AUTHORITY:
+  All formatting constants in this file are derived from forensic
+  analysis of the master reference document:
+    src/inputs/SWMS-RPD-Remedial-Works-260309-V1.docx
+  This document is the SINGLE SOURCE OF TRUTH for RPD SWMS formatting.
+  Do not change formatting values without re-analysing the reference.
+
 Rules:
   1. Bold all em dashes (—) and capitalise the following letter
   2. Standardise all fonts to Aptos 8pt
