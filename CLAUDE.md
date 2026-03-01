@@ -160,6 +160,47 @@ Rules 7–8 are in `src/build_all_swms.py` (row builder + numbering).
 - Constant `BULLET_INDENT = '227'` (twips) in build_all_swms.py
 - Applied to new numbering definitions and all existing template definitions
 
+### Non-CCVS Standard Task Format — Reference Example
+
+Structure order (mandatory):
+1. Risk header bold, full stop after: `PRE (Medium-4): Controls in place.`
+2. `Engineering:` [em dash chain — no full stops]
+3. `Admin:` [em dash chain — no full stops]
+4. `PPE:` [comma list only — no em dashes, no full stop]
+5. `STOP WORK if:` [yellow highlight on label] [em dash chain — short phrases, no full stops]
+
+Reference example (from V5 document):
+
+> **PRE (Medium-4): Controls in place.**
+> **Engineering:** Temporary edge protection/fall prevention at exposed
+> edges — Slot cutting applies silica controls (wet/HEPA + P2 +
+> exclusion zone) — No dry cutting — Depth stops set on cutting
+> equipment per engineering specification typically 25–35mm
+> **Admin:** Engineering specification and drawings reviewed before
+> commencement — Slot depths, bar sizes, spacing, grout product
+> confirmed — SDS for all epoxy, grout, and primer products reviewed
+> — Crack monitoring record completed before and after stitching —
+> Structural engineer sign-off required before proceeding if crack
+> width exceeds specification tolerance
+> **PPE:** Steel-capped footwear, P2 respirator (minimum) during cutting
+> operations, eye protection, hearing protection (>85 dB) during
+> cutting, nitrile gloves for epoxy and grout handling
+> **STOP WORK if:** Crack width or depth exceeds engineering specification
+> tolerance — Unexpected movement or displacement observed — Services
+> detected in cutting path — Structural engineer advises hold —
+> Product temperature outside application range
+
+Rules:
+- Full stop appears ONLY after the risk header
+- Em dashes separate all control items in Engineering and Admin
+- PPE uses commas only — never em dashes
+- STOP WORK if: label is bold + yellow highlight; conditions after
+  are normal weight, no highlight
+- No full stops anywhere except the risk header line
+- Each label (Engineering: Admin: PPE: STOP WORK if:) starts a new
+  paragraph
+- Content wraps within the paragraph — no mid-chain line breaks
+
 ### Content Authority Hierarchy
 
 1. Hansen Yuncken (HY) procedures — PRIMARY — never contradict
