@@ -590,11 +590,13 @@ def build_swms(name, filename, task_list, new_tasks_dict):
         if ticked:
             print(f"  HRCW checkboxes ticked: {ticked}")
 
-    # Apply formatting rules (em dashes, fonts, labels)
+    # Apply all formatting rules
     fmt = format_swms(doc)
-    print(f"  Formatted: {fmt['em_dashes']} em dashes bolded, "
-          f"{fmt['fonts']} fonts standardised, "
-          f"{fmt['labels']} labels bolded")
+    print(f"  Formatted: {fmt['em_dashes']} em dashes, "
+          f"{fmt['fonts']} fonts, {fmt['labels']} labels, "
+          f"{fmt['sub_labels']} sub-labels, "
+          f"{fmt['italic_desc']} italic, "
+          f"{fmt['emergency']} emergency")
 
     outpath = os.path.join(OUTDIR, filename)
     doc.save(outpath)

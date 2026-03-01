@@ -118,17 +118,35 @@ Valid pre scores: 1, 2, 3, 4, 6, 9
 Control text fields: 1,400 characters maximum.
 Trim from Admin section first — preserve Engineering and STOP WORK.
 
-### Em Dash Formatting — LOCKED
+### Document Formatting Standard — LOCKED
 
-All em dashes (—) in generated SWMS documents must be:
-1. **Bold** in the Word output — the `bold_em_dashes()` post-processor
-   handles this automatically during build
-2. **Followed by a capital letter** — always capitalise the first
-   letter after every em dash in source text
+All formatting rules are applied automatically by `src/format_swms.py`
+during the build pipeline. Six rules, applied in order:
 
-The build pipeline applies bold formatting at the XML level after
-all tasks are assembled. Source text in swms_generator.py must have
-capitals after em dashes — the engine does not auto-capitalise.
+**Rule 1 — Em dashes (—): bold + capitalise**
+- Em dash character is always bold (its own run)
+- First letter after every em dash is capitalised
+- Source text in swms_generator.py must have capitals after em dashes
+
+**Rule 2 — Font: Aptos 8pt**
+- Every run standardised to Aptos font, 8pt (sz=16 half-points)
+- No Calibri, Arial, or other fonts in output
+
+**Rule 3 — Control labels: bold + highlight**
+- Engineering:, Admin:, PPE:, Supervision: → bold, no highlight
+- STOP WORK if: → bold + yellow highlight (conditions NOT highlighted)
+- HOLD POINT → bold + yellow highlight
+
+**Rule 4 — Sub-labels: bold**
+- Any capitalised text ending with `:` at start of a run is bold
+- Examples: Anchor verification:, Two-rope system:, Exclusion zone:
+
+**Rule 5 — Task descriptions: italic**
+- Text in [square brackets] → italic, dark grey (444444)
+- Not bold even if surrounding text is bold
+
+**Rule 6 — Emergency Response: red highlight**
+- "Emergency Response" task name → bold + red highlight + white text
 
 ### Content Authority Hierarchy
 
