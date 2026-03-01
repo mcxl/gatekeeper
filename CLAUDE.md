@@ -118,58 +118,101 @@ Valid pre scores: 1, 2, 3, 4, 6, 9
 Control text fields: 1,400 characters maximum.
 Trim from Admin section first — preserve Engineering and STOP WORK.
 
-### Document Formatting Standard — LOCKED
+### SWMS Formatting & Content Rules (Mandatory)
 
-Formatting rules are applied automatically during the build pipeline.
-Rules 1–6 are in `src/format_swms.py` (post-processor).
-Rules 7–8 are in `src/build_all_swms.py` (row builder + numbering).
+All rules below are LOCKED. Applied by `src/format_swms.py`
+(post-processor) and `src/build_all_swms.py` (row builder).
+Build will fail if format_swms.py is missing.
 
-**Rule 1 — Em dashes (—): bold + capitalise**
-- Em dash character is always bold (its own run)
-- First letter after every em dash is capitalised
-- Source text in swms_generator.py must have capitals after em dashes
+#### Font Standard
 
-**Rule 2 — Font: Aptos 8pt**
-- Every run standardised to Aptos font, 8pt (sz=16 half-points)
-- No Calibri, Arial, or other fonts in output
+- Font: Aptos
+- Size: 8pt (sz=16 half-points)
+- No Calibri, Arial, or Aptos Narrow anywhere in task tables
 
-**Rule 3 — Control labels: bold + highlight**
-- Engineering:, Admin:, PPE:, Supervision: → bold, no highlight
-- STOP WORK if: → bold + yellow highlight (conditions NOT highlighted)
-- HOLD POINT → bold + yellow highlight
+#### Paragraph Settings (every paragraph in every task table cell)
 
-**Rule 4 — Sub-labels: bold**
-- Any capitalised text ending with `:` at start of a run is bold
-- Examples: Anchor verification:, Two-rope system:, Exclusion zone:
+- Alignment: Left
+- Left indent: 0.4cm (227 DXA)
+- Special: Hanging 0.4cm (227 DXA)
+- Space before: 1pt (20 twips)
+- Space after: 1pt (20 twips)
+- Line spacing: Multiple 1.15
+- XML: `<w:spacing w:before="20" w:after="20" w:line="276"
+  w:lineRule="auto"/>` `<w:ind w:left="227" w:hanging="227"/>`
 
-**Rule 5 — Task descriptions: italic**
-- Text in [square brackets] → italic, dark grey (444444)
+#### Em Dash Rule
+
+- Bold the — character only (its own run)
+- Text before and after stays normal weight
+- Capital letter after every em dash
+- No full stops between em dash items
+
+#### Bold Labels (all task types)
+
+- Engineering: — bold, no highlight
+- Admin: — bold, no highlight
+- PPE: — bold, no highlight
+- Supervision: — bold, no highlight
+- Hold points: — bold, no highlight
+
+#### Special Highlights
+
+- STOP WORK if: — bold + YELLOW highlight on LABEL ONLY;
+  conditions after are normal weight, no highlight
+- HOLD POINT: — bold + YELLOW highlight on ENTIRE LINE
+  (includes em dash and "Do not commence until:")
+- Emergency Response: — bold, white text (FFFFFF), RED highlight
+
+#### Sub-labels (dynamic — not hardcoded)
+
+- Any capitalised text ending with `:` at start of a run → bold
+- Catches: Anchor verification:, Two-rope system:, Rescue readiness:,
+  Exclusion zone:, Edge management:, Drop zone controls: etc.
+
+#### Task Descriptions
+
+- Text in [square brackets] → italic, dark grey (#444444)
 - Not bold even if surrounding text is bold
 
-**Rule 6 — Emergency Response: red highlight**
-- "Emergency Response" task name → bold + red highlight + white text
+#### Risk Cell Colours
 
-**Rule 7 — Hazard column: open-circle bulleted list**
-- Hazard text split at `. ` (period-space) into individual items
-- Each item rendered as open-circle bullet (Courier New `o`)
-- Applies to all new STD and CCVS rows
-- Source text in swms_generator.py uses `. ` to separate hazards
+- High: fill FF0000, text FFFFFF, bold
+- Medium: fill FFFF00, text 000000, bold
+- Low: fill 00FF00, text 000000, bold
 
-**Rule 8 — Bullet/numbering indent: 0.4cm hanging**
-- All bullet and numbered list indentation: left=0.4cm, hanging=0.4cm
-- Constant `BULLET_INDENT = '227'` (twips) in build_all_swms.py
-- Applied to new numbering definitions and all existing template definitions
+#### CCVS Control Cell
 
-### Non-CCVS Standard Task Format — Reference Example
+- Cell fill: FFF2F2 (light pink)
 
-Structure order (mandatory):
-1. Risk header bold, full stop after: `PRE (Medium-4): Controls in place.`
-2. `Engineering:` [em dash chain — no full stops]
-3. `Admin:` [em dash chain — no full stops]
-4. `PPE:` [comma list only — no em dashes, no full stop]
-5. `STOP WORK if:` [yellow highlight on label] [em dash chain — short phrases, no full stops]
+#### Header Row
 
-Reference example (from V5 document):
+- Cell fill: DBE5F1 (light blue)
+
+#### Table Borders
+
+- Style: dotted, size 2, colour BFBFBF
+- All sides including inside
+
+#### Bullet Style (CCVS control blocks and hazard column)
+
+- Character: o (Courier New font) — renders as open circle
+- Left indent: 0.4cm (227 DXA)
+- Hanging indent: 0.4cm (227 DXA)
+- One item per bullet (except PPE and STOP WORK)
+
+---
+
+#### NON-CCVS STANDARD TASK — Control Cell Structure
+
+Mandatory order:
+1. Risk header: `PRE (Medium-4): Controls in place.` ← ONLY full stop
+2. Engineering: [em dash chain — no full stops]
+3. Admin: [em dash chain — no full stops]
+4. PPE: [comma list — no em dashes, no full stop]
+5. STOP WORK if: [yellow highlight on label] [em dash chain]
+
+Reference example:
 
 > **PRE (Medium-4): Controls in place.**
 > **Engineering:** Temporary edge protection/fall prevention at exposed
@@ -197,58 +240,82 @@ Rules:
 - STOP WORK if: label is bold + yellow highlight; conditions after
   are normal weight, no highlight
 - No full stops anywhere except the risk header line
-- Each label (Engineering: Admin: PPE: STOP WORK if:) starts a new
-  paragraph
+- Each label starts a new paragraph
 - Content wraps within the paragraph — no mid-chain line breaks
 
-### Task Name + Scope Format (Col 0 — every row)
+#### CCVS TASK — Control Cell Structure
 
-Task name: bold, normal weight, black
-Scope description: italic, [square brackets], paragraph below task name
-Scope text colour: #444444 (dark grey) where task is site-specific/customisable
+Mandatory order:
+1. Risk header: `STR (High-6) CCVS HOLD POINTS:` ← bold, no highlight
+2. HOLD POINT line: `HOLD POINT — Do not commence until:` ← bold +
+   full YELLOW highlight
+3. Numbered list: 1. 2. 3. verification conditions ← normal weight
+4. Engineering: bold label + bullet list (one item per bullet)
+5. Admin: bold label + bullet list (one item per bullet)
+6. PPE: bold label + single bullet, comma list
+7. STOP WORK if: bold label + YELLOW highlight + single bullet
+   em dash chain
 
-Example:
+#### CCVS vs Standard Key Differences
 
-> **Crack Stitching and Structural Reinforcement**
-> *[Installation of helical bars, carbon fibre reinforcement, or
-> stainless-steel pins into prepared slots/holes to restore structural
-> integrity of cracked masonry and concrete elements.]*
+| Element | Standard (non-CCVS) | CCVS |
+|---------|---------------------|------|
+| Hold points | None | Numbered list at top |
+| Engineering | Em dash chain inline | Bullet list one per bullet |
+| Admin | Em dash chain inline | Bullet list one per bullet |
+| PPE | Comma list single para | Single bullet comma list |
+| STOP WORK | Em dash chain inline | Single bullet em dash chain |
+| HOLD POINT | Not present | Full line yellow highlight |
 
-Rules:
-- Task name always bold
-- Scope always italic and in square brackets
-- Scope is the customisation point — when user uploads a scope of works
-  or specification document, Claude Code updates ONLY the text inside
-  [ ] for the relevant task rows
-- Never bold the scope text
+#### Em Dash Chain Rules (all task types)
+
+- No full stops between control items
+- No new paragraphs mid-chain
+- Em dash (—) is the ONLY separator between items
+- Capital letter after every em dash
+- Full stop only at risk header line
+- PPE uses commas only — never em dashes
+
+#### Task Name + Scope Format (Col 0 — every row)
+
+- Task name: bold, black
+- Scope text: italic, [square brackets], next paragraph, colour #444444
+- Never bold scope text
 - Never remove the square brackets
+- Scope is the customisation point for site-specific works
 
-### Hazard Column Format (Col 2 — every row)
+#### Hazard Column Format (Col 2 — every row)
 
-Each hazard is a separate bullet point:
-- Bullet character: o (Courier New font, open circle)
-- Left indent: 0.4cm (227 twips)
-- Hanging indent: 0.4cm (227 twips)
-- One hazard per bullet
+- Each hazard = separate bullet point
+- Bullet: o Courier New open circle
+- Left indent: 0.4cm (227 DXA), Hanging: 0.4cm (227 DXA)
 - Short noun phrases — not full sentences
-- Em dash allowed within a hazard item for qualification
-  e.g. Silica dust inhalation — Silicosis (fatal, irreversible)
-- Em dash within hazard bullet: bold the dash only
-- Full stop: last bullet only (optional)
+- Em dash allowed within item for qualification (bold the dash only)
+- Full stop on last bullet only (optional)
+- Applies to EVERY row without exception
 
-This format applies to EVERY row in the task table without exception.
+#### SWMS Data Structure in swms_generator.py
 
-### Scope Customisation Trigger
+CCVS tasks store:
+- `hold_points`: list of strings (numbered list items)
+- `eng`: list of strings (one per bullet)
+- `admin`: list of strings (one per bullet)
+- `ppe`: single string (comma separated)
+- `stop_work`: list of strings (joined with em dash, single bullet)
+
+Non-CCVS tasks store:
+- `control`: list of tuples (label, text) — em dash chain, pre-formatted
+- PPE and STOP WORK embedded in control tuples
+
+#### Scope Customisation Trigger
 
 When user uploads a scope of works, specification, or drawing:
-1. Claude Code reads the document
-2. Identifies which tasks in swms_generator.py match the scope
-3. Updates ONLY the [ ] scope text for matched tasks
-4. Does NOT change task name, hazards, controls, or risk ratings
-5. Adds [SITE SPECIFIC] prefix to updated scope text
-   e.g. `[SITE SPECIFIC: Apply ARDEX WPM 300 sheet membrane to all
-   balcony surfaces as per engineer's specification dated 12/02/2025.]`
-6. Commits the change with message referencing the source document
+1. Read the uploaded document
+2. Identify matching tasks in swms_generator.py
+3. Update ONLY the [ ] scope text for matched tasks
+4. Add [SITE SPECIFIC] prefix to updated scope
+5. Do NOT change task name, hazards, controls, or risk ratings
+6. Commit with message referencing the source document
 
 ### Content Authority Hierarchy
 
@@ -319,7 +386,7 @@ Remote: origin
 
 ---
 
-*Last updated: 27/02/2026*
+*Last updated: 01/03/2026*
 *System: Gatekeeper v1.0 — SWMS Generator v16.4*
 *Owner: Alan Richardson — Robertson's Remedial and Painting Pty Ltd*
 

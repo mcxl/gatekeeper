@@ -13,7 +13,11 @@ _project_root = os.path.dirname(_script_dir)
 sys.path.insert(0, _script_dir)
 sys.path.insert(0, '/home/claude')
 from swms_generator import *
-from format_swms import format_swms
+try:
+    from format_swms import format_swms
+except ImportError:
+    print("FATAL: format_swms.py not found — build cannot proceed without formatter.")
+    sys.exit(1)
 from docx import Document
 from docx.oxml.ns import qn
 from lxml import etree

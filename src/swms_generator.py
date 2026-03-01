@@ -43,13 +43,19 @@ def make_run(text, bold=False, font='Aptos', size='16', color=None):
     return r
 
 def make_para(spacing_before='20', spacing_after='20', line='276'):
-    """Create empty w:p with spacing"""
+    """Create empty w:p with spacing and hanging indent.
+    Spacing: 1pt before/after, 1.15 line spacing.
+    Indent: 0.4cm hanging (227 DXA)."""
     p = etree.Element(qn('w:p'))
     pPr = etree.SubElement(p, qn('w:pPr'))
     sp = etree.SubElement(pPr, qn('w:spacing'))
     sp.set(qn('w:before'), spacing_before)
     sp.set(qn('w:after'), spacing_after)
     sp.set(qn('w:line'), line)
+    sp.set(qn('w:lineRule'), 'auto')
+    ind = etree.SubElement(pPr, qn('w:ind'))
+    ind.set(qn('w:left'), '227')
+    ind.set(qn('w:hanging'), '227')
     return p
 
 def make_header_para(text):

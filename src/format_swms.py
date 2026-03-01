@@ -224,16 +224,33 @@ def bold_control_labels(doc):
     """Find control labels and STOP WORK / HOLD POINT phrases.
     Split them into formatted runs:
       - Engineering:, Admin:, PPE:, Supervision: → bold
-      - STOP WORK if: → bold + yellow highlight
-      - HOLD POINT → bold + yellow highlight
+      - STOP WORK if: → bold + yellow highlight on LABEL ONLY
+      - HOLD POINT → bold + yellow highlight on ENTIRE LINE
     """
-    all_labels = (
-        [(lbl, False, None, None) for lbl in BOLD_LABELS] +
-        [(lbl, True, 'yellow', None) for lbl in BOLD_YELLOW_LABELS] +
-        [(lbl, True, 'yellow', None) for lbl in HOLD_POINT_PHRASES]
-    )
+    # Labels that only need bold on the label text
+    std_labels = [(lbl, False, None, None) for lbl in BOLD_LABELS]
+    # STOP WORK: bold + yellow on label only (conditions stay normal)
+    sw_labels = [(lbl, True, 'yellow', None) for lbl in BOLD_YELLOW_LABELS]
+
+    all_labels = std_labels + sw_labels
     count = 0
+
     for p in doc.element.body.iter(qn('w:p')):
+        # --- HOLD POINT: highlight ALL runs in paragraph ---
+        para_text = ''.join(
+            (r.find(qn('w:t')).text or '')
+            for r in p.findall(qn('w:r'))
+            if r.find(qn('w:t')) is not None
+        )
+        if 'HOLD POINT' in para_text:
+            for r in p.findall(qn('w:r')):
+                rPr = _ensure_rPr(r)
+                _set_bold(rPr)
+                _set_highlight(rPr, 'yellow')
+            count += 1
+            continue  # skip per-run label search for this paragraph
+
+        # --- All other labels: split runs ---
         for r in list(p.findall(qn('w:r'))):
             t_elem = r.find(qn('w:t'))
             if t_elem is None or not t_elem.text:
