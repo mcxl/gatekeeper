@@ -212,7 +212,7 @@ TASKS = [
             "water — screed thickness confirmed against specification "
             "during placement.\n"
             "PPE: Waterproof boots, chemical-resistant gloves (nitrile), "
-            "eye protection, hearing protection (>85 dB), hi-vis vest "
+            "eye protection, hearing protection, hi-vis vest "
             "or shirt, long sleeves.\n"
             "STOP WORK if: Communication between pump and nozzle "
             "operator fails — screed mix consistency incorrect (too wet "

@@ -267,7 +267,7 @@ Reference example:
 > Structural engineer sign-off required before proceeding if crack
 > width exceeds specification tolerance
 > **PPE:** Steel-capped footwear, P2 respirator (minimum) during cutting
-> operations, eye protection, hearing protection (>85 dB) during
+> operations, eye protection, hearing protection during
 > cutting, nitrile gloves for epoxy and grout handling
 > **STOP WORK if:** Crack width or depth exceeds engineering specification
 > tolerance — Unexpected movement or displacement observed — Services

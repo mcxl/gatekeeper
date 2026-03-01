@@ -650,10 +650,8 @@ def build_swms(name, filename, task_list, new_tasks_dict):
                                 if 'high-vis vest' in txt.lower() and 'or shirt' not in txt.lower():
                                     txt = txt.replace('high-vis vest', 'high-vis vest or shirt')
                                     txt = txt.replace('High-vis vest', 'High-vis vest or shirt')
-                                # 3. Hearing protection -> hearing protection (>85 dB)
-                                #    But not if already qualified with (Class or (>85
+                                # 3. Hearing protection — no qualifier needed (removed >85 dB append)
                                 import re
-                                txt = re.sub(r'[Hh]earing protection(?!\s*\()', 'hearing protection (>85 dB)', txt)
                                 # 4. Generic gloves -> cut-resistant gloves
                                 #    Only where NOT preceded by specific type qualifier
                                 #    Specific types to preserve: nitrile, leather, insulating, blast,

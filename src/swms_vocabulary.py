@@ -286,8 +286,8 @@ PPE_ITEMS = {
     "face_shield": "Face shield",
 
     # Hearing
-    "hearing_protection": "Hearing protection (>85 dB)",
-    "hearing_class5": "Hearing protection (>85 dB, Class 5 minimum)",
+    "hearing_protection": "Hearing protection",
+    "hearing_class5": "Hearing protection (Class 5 minimum)",
 
     # Respiratory
     "p2_respirator": "P2 respirator (minimum)",

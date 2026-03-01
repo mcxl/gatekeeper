@@ -1488,7 +1488,7 @@ BLASTING_NEW = {
             'Maximum continuous blast time per session — Heat stress management. Work/rest rotation schedule. Visibility check — Cease blasting if visibility <1m and allow dust to settle. Dust monitoring inside and outside containment. Emergency extraction procedure rehearsed. Competent person directly supervises all abrasive blasting operations per SafeWork NSW requirements.',
         ],
         'ppe': [
-            'Blaster: Type CE supplied-air blast helmet with positive pressure, full leather blast suit, leather gauntlet gloves, steel capped boots, hearing protection (>85 dB). Standby person: half-face P3 respirator, hearing protection (>85 dB), eye protection.',
+            'Blaster: Type CE supplied-air blast helmet with positive pressure, full leather blast suit, leather gauntlet gloves, steel capped boots, hearing protection. Standby person: half-face P3 respirator, hearing protection, eye protection.',
         ],
         'stop_work': [
             'Ventilation system fails — Positive pressure in helmet lost — Air supply quality alarm — Asbestos detected or suspected in substrate coating (cease blasting immediately — Treat as asbestos removal work per WHS Regulation) — Visibility zero for >5 minutes — Confined space entry permit not current — Standby person leaves position — Heat stress symptoms — Enclosure seal breached — Dust escaping containment.',
@@ -1609,8 +1609,8 @@ BLASTING_NEW = {
         'control': [
             ('Engineering:', 'Compressor positioned maximum distance from occupied areas — Exhaust directed away. Noise attenuation on compressor where available. Blast nozzle selection for minimum noise — Venturi nozzles quieter than straight bore. Containment enclosure provides noise reduction to surrounds.'),
             ('Admin:', 'Noise assessment completed — Personal exposure levels documented. Hearing conservation program in place if exposure >85 dB(A) 8hr TWA: audiometric testing baseline and annual. Work hours restricted per council/EPA noise conditions — Typically 7am–5pm. Noise monitoring at site boundary if near residential. Communication in blast zone: hand signals or radio — Verbal communication not possible.'),
-            ('PPE:', 'Class 5 hearing protection (>85 dB) minimum for blaster and assistants. Dual protection (plugs + muffs) where exposure >100 dB(A). Hearing protection (>85 dB) for all workers within 15m of blasting operations.'),
-            ('STOP WORK if:', 'Worker not wearing hearing protection (>85 dB) in blast zone — Noise monitoring exceeds council limits at boundary — Audiometric testing shows threshold shift — Communication system failure in blast zone.')
+            ('PPE:', 'Class 5 hearing protection minimum for blaster and assistants. Dual protection (plugs + muffs) where exposure >100 dB(A). Hearing protection (>85 dB) for all workers within 15m of blasting operations.'),
+            ('STOP WORK if:', 'Worker not wearing hearing protection in blast zone — Noise monitoring exceeds council limits at boundary — Audiometric testing shows threshold shift — Communication system failure in blast zone.')
         ]
     },
 }
@@ -1641,7 +1641,7 @@ SCREED_NEW = {
             'Pump manufacturer operating manual on site \u2014 Daily pre-start inspection recorded \u2014 Hose and coupling replacement schedule maintained \u2014 Emergency shutdown procedure briefed to all workers',
         ],
         'ppe': [
-            'Steel-capped footwear, eye protection, hearing protection (>85 dB), cut-resistant gloves, hi-vis vest or shirt',
+            'Steel-capped footwear, eye protection, hearing protection, cut-resistant gloves, hi-vis vest or shirt',
         ],
         'stop_work': [
             'Hose coupling leaking or damaged \u2014 Pump pressure exceeds rated limit \u2014 Delivery line unsecured or unsupported \u2014 Blockage in line (do not attempt to clear under pressure) \u2014 Electrical fault on pump motor',
@@ -1671,7 +1671,7 @@ SCREED_NEW = {
         'control': [
             ('Engineering:', 'Delivery hose routed and secured to prevent trip hazard \u2014 Non-slip walkways maintained around pour area \u2014 Pump operator maintains visual contact with nozzle operator at all times'),
             ('Admin:', 'Pour sequence planned to avoid workers walking on fresh screed \u2014 Nozzle operator and pump operator communicate via agreed signals (radio or hand) \u2014 Skin contact with wet screed washed immediately with clean water \u2014 Screed thickness confirmed against specification during placement'),
-            ('PPE:', 'Waterproof boots, chemical-resistant gloves (nitrile), eye protection, hearing protection (>85 dB), hi-vis vest or shirt, long sleeves'),
+            ('PPE:', 'Waterproof boots, chemical-resistant gloves (nitrile), eye protection, hearing protection, hi-vis vest or shirt, long sleeves'),
             ('STOP WORK if:', 'Communication between pump and nozzle operator fails \u2014 Screed mix consistency incorrect (too wet or too dry to pump) \u2014 Hose unsecured or moved from supported position'),
         ]
     },

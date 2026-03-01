@@ -514,7 +514,7 @@ When generating SWMS documents from this template, the build script must enforce
 | tblLayout fixed | Present on Task Table | ✅ All 7 docs |
 | abstractNum 18 fix | `(%1)` → `%1.` in template numbering on load | ✅ All 7 docs |
 | PPE: eye protection | No "safety glasses" in any task | ✅ All rows (new + reused) |
-| PPE: hearing protection (>85 dB) | No unqualified "hearing protection" in any task | ✅ All rows (new + reused) |
+| PPE: hearing protection | No "hearing protection (>85 dB)" — use "hearing protection" without qualifier | ✅ All rows (new + reused) |
 | PPE: cut-resistant gloves | No generic "gloves" in any task | ✅ All rows (specific types preserved) |
 | PPE: high-vis vest or shirt | No "high-vis vest" without "or shirt" in any task | ✅ All rows (new + reused) |
 

@@ -244,7 +244,7 @@ TASKS = [
             "Exclusion zone around work area for debris. "
             "Inspect grinding wheels before fitting — no cracks or damage. "
             "Vibration rotation — limit individual exposure, maintain tooling.\n"
-            "PPE: P2/P3 respirator, face shield, hearing protection (>85 dB), "
+            "PPE: P2/P3 respirator, face shield, hearing protection, "
             "cut-resistant gloves, steel-capped footwear.\n"
             "Remove from exposure and rectify if dust controls fail."
         ),
