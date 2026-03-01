@@ -120,8 +120,9 @@ Trim from Admin section first — preserve Engineering and STOP WORK.
 
 ### Document Formatting Standard — LOCKED
 
-All formatting rules are applied automatically by `src/format_swms.py`
-during the build pipeline. Six rules, applied in order:
+Formatting rules are applied automatically during the build pipeline.
+Rules 1–6 are in `src/format_swms.py` (post-processor).
+Rules 7–8 are in `src/build_all_swms.py` (row builder + numbering).
 
 **Rule 1 — Em dashes (—): bold + capitalise**
 - Em dash character is always bold (its own run)
@@ -147,6 +148,17 @@ during the build pipeline. Six rules, applied in order:
 
 **Rule 6 — Emergency Response: red highlight**
 - "Emergency Response" task name → bold + red highlight + white text
+
+**Rule 7 — Hazard column: open-circle bulleted list**
+- Hazard text split at `. ` (period-space) into individual items
+- Each item rendered as open-circle bullet (Courier New `o`)
+- Applies to all new STD and CCVS rows
+- Source text in swms_generator.py uses `. ` to separate hazards
+
+**Rule 8 — Bullet/numbering indent: 0.4cm hanging**
+- All bullet and numbered list indentation: left=0.4cm, hanging=0.4cm
+- Constant `BULLET_INDENT = '227'` (twips) in build_all_swms.py
+- Applied to new numbering definitions and all existing template definitions
 
 ### Content Authority Hierarchy
 

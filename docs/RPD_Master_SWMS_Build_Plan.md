@@ -246,6 +246,8 @@ Additional common tasks reused selectively:
 
 ## Formatting Rules (applies to all 7 SWMS + painting master)
 
+### Build-time rules (`build_all_swms.py`)
+
 1. **HOLD POINT numbering:** `1. 2. 3.` (not `(1) (2) (3)`)
 2. **Risk cells:** Contrasting text colour — white on red, black on yellow/green
 3. **Code cells:** No background colour. Black bold text for all tasks (STD and CCVS)
@@ -255,3 +257,14 @@ Additional common tasks reused selectively:
    - "Gloves" (generic) → **Cut-resistant gloves**
    - "High-vis vest" → **High-vis vest or shirt**
    - Specific glove types (nitrile, leather, insulating, blast) unchanged
+5. **Hazard column:** Split at `. ` into open-circle bulleted list (one hazard per bullet)
+6. **Bullet/numbering indent:** 0.4cm hanging (`BULLET_INDENT = '227'` twips) — all lists
+
+### Post-processor rules (`format_swms.py`)
+
+7. **Em dashes (—):** Bold + capitalise following letter
+8. **Font:** Aptos 8pt on all runs (sz=16 half-points)
+9. **Control labels:** Engineering:, Admin:, PPE:, Supervision: → bold; STOP WORK / HOLD POINT → bold + yellow highlight
+10. **Sub-labels:** Any capitalised "Label:" pattern at start of run → bold
+11. **Task descriptions:** `[bracketed text]` → italic, dark grey (444444)
+12. **Emergency Response:** Bold + red highlight + white text
