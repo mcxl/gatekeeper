@@ -80,6 +80,7 @@ def _load_task_from_row(cur: sqlite3.Cursor, row: sqlite3.Row) -> TaskBlock:
         source=row["source"] or "library",
         approved=bool(row["approved"]),
         version=row["version"] or "1.0",
+        db_id=row["id"],
     )
 
 
@@ -111,7 +112,9 @@ def query_task(task_name: str, user: str = "system") -> TaskBlock:
                 user=user,
                 inputs=task_name,
             ))
-            return generate_task(task_name, user=user)
+            task = generate_task(task_name, user=user)
+            task_id = save_task(task)
+            return task.model_copy(update={"db_id": task_id})
 
         # Fuzzy match against task_name column
         best_score = 0
@@ -142,14 +145,16 @@ def query_task(task_name: str, user: str = "system") -> TaskBlock:
                 )
             return task
 
-        # score < 60 → generate
+        # score < 50 → generate and persist as draft
         log_event(AuditEvent(
             event_type="LIBRARY_MISS",
             user=user,
             inputs=task_name,
             output_hash=str(best_score),
         ))
-        return generate_task(task_name, user=user)
+        task = generate_task(task_name, user=user)
+        task_id = save_task(task)
+        return task.model_copy(update={"db_id": task_id})
 
     finally:
         conn.close()

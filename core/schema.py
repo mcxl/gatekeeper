@@ -24,6 +24,7 @@ class TaskBlock(BaseModel):
     source: Literal["library", "ai-generated"] = "library"
     approved: bool = False
     version: str = "1.0"
+    db_id: int | None = None
 
 
 class ValidationResult(BaseModel):

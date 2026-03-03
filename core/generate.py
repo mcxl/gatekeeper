@@ -43,7 +43,8 @@ SYSTEM_PROMPT = (
     "- If wah_applicable true, controls[0] must be WAH sentence verbatim:\n"
     + WAH_SENTENCE
     + "\n- ccvs_code in ccvs_code field only — never in controls or admin\n"
-    "- Role names in responsibility only — never in controls\n"
+    "- Role names (Supervisor, Worker, SUP, WKR, etc.) in responsibility only — "
+    "never in controls, admin, or ppe fields\n"
     "- Verb-first bullets. Hard cap 18 words per bullet. No semicolons.\n"
     "- Plain English only: prefer 1-2 syllable words. Avoid abstract nouns "
     "(procedure, assessment, implementation, personnel, utilise, commence). "
