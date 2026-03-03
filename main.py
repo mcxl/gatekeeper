@@ -29,7 +29,7 @@ def cmd_generate(args):
         open(p, "w", encoding="utf-8").write(render_md(task))
         print(f"MD:   {p}")
     print(f"Source: {task.source}  Approved: {task.approved}")
-    if task.source == "ai-generated" and task.db_id is not None:
+    if task.source == "ai-generated" and task.db_id is not None and not task.approved:
         print(f"Saved as draft — Task ID: {task.db_id}")
         print(f"Review output then run: python main.py approve {task.db_id} --user Alan")
 
