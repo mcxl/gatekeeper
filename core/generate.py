@@ -12,6 +12,9 @@ import hashlib
 import json
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import anthropic
 
 from core.schema import AuditEvent, TaskBlock, ValidationResult
