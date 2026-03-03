@@ -80,10 +80,15 @@ def count_syllables(word: str) -> int:
 
 
 def _fog(bullet: str) -> tuple[float, list[str]]:
-    """Return (fog_score, complex_words) for a single bullet string."""
+    """Return (fog_score, complex_words) for a single bullet string.
+
+    Returns 0.0 for items with fewer than 5 words — the Gunning Fog formula
+    produces unreliable results on very short fragments (a single complex word
+    can dominate the ratio, giving false positives).
+    """
     words = bullet.split()
     n = len(words)
-    if n == 0:
+    if n < 5:
         return 0.0, []
     complex_words = [w for w in words if count_syllables(w) >= 3]
     fog = 0.4 * (n + 100 * (len(complex_words) / n))

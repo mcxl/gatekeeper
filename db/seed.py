@@ -68,53 +68,72 @@ def extract_task_blocks(content: str) -> list[tuple[str, dict | None]]:
 # CONTROL LINE PARSING
 # ============================================================
 
-_PPE_KEYWORDS = {
-    'respirator', 'harness', 'gloves', 'helmet', 'hard hat',
-    'hi-vis', 'vest or shirt', 'mask', 'goggles', 'steel-capped',
-    'footwear', 'lanyard', 'earplugs', 'coverall', 'face shield',
-}
+# Section label prefixes to strip (longer/more specific first)
+_SECTION_PREFIXES = [
+    'STOP WORK if: ', 'HOLD POINT: ',
+    'Engineering: ', 'Admin: ', 'PPE: ', 'Controls: ',
+]
 
-_ADMIN_KEYWORDS = {
-    'toolbox', 'sign-in', 'sds', 'competent person', 'briefed',
-    'pre-start', 'load limit', 'do not modify', 'inspect before',
-    'record', 'license', 'licence', 'certificate', 'briefing',
-    'induction', 'permit',
-}
+# PPE starts: item begins with equipment name → ppe
+_PPE_STARTS = (
+    'helmet', 'harness', 'respirator', 'gloves', 'vest', 'footwear', 'goggles',
+    'full body', 'steel-capped', 'hi-vis', 'face shield', 'earplugs', 'lanyard',
+    'eye protection', 'ear protection', 'hearing protection', 'coverall', 'p2 ',
+)
 
-def classify_control(line: str) -> str:
-    """Map a single control line to a control_type."""
-    ll = line.lower()
+# Admin starts: item begins with admin keyword → admin
+_ADMIN_STARTS = (
+    'record', 'notify', 'brief', 'toolbox', 'sds', 'sign-in', 'register',
+)
 
-    if ('hold point' in ll
-            or 'work must not commence' in ll
-            or 'do not start' in ll):
+
+def _strip_section_label(line: str) -> str:
+    """Return content with any leading section label removed."""
+    for prefix in _SECTION_PREFIXES:
+        if line.startswith(prefix):
+            return line[len(prefix):]
+    return line
+
+
+def _reclassify(item: str) -> str:
+    """Assign control_type to a stripped individual item by content."""
+    ll = item.lower()
+    if 'hold point' in ll or 'do not start' in ll:
         return 'hold_point'
-
-    if ('remove from exposure' in ll
-            or 'stop work' in ll
-            or ll.startswith('stop and implement')):
+    if 'stop work' in ll or 'remove from exposure' in ll:
         return 'stop_work'
-
-    if line.startswith('PPE:') or any(kw in ll for kw in _PPE_KEYWORDS):
+    if any(ll.startswith(kw) for kw in _PPE_STARTS):
         return 'ppe'
-
-    if line.startswith('Admin:') or any(kw in ll for kw in _ADMIN_KEYWORDS):
+    if any(ll.startswith(kw) for kw in _ADMIN_STARTS):
         return 'admin'
-
     return 'control'
 
 
 def parse_control_lines(controls_str: str) -> list[tuple[str, str]]:
-    """Return (control_type, content) for each non-empty control line."""
+    """
+    Split controls string into individual items and classify each.
+
+    For each newline-delimited line:
+      - Skip risk-header lines (e.g. "WFR (High — C=3): Controls in place.")
+      - Strip leading section label ("Engineering: ", "Admin: ", etc.)
+      - Split remaining content on ' — ' (em dash separator)
+      - Strip trailing periods and whitespace from each fragment
+      - Re-classify each fragment by content keywords
+    """
     results = []
-    for line in controls_str.split('\n'):
-        line = line.strip()
-        if not line:
+    for raw_line in controls_str.split('\n'):
+        raw_line = raw_line.strip()
+        if not raw_line:
             continue
         # Skip risk-header lines: e.g. "WFR (High — C=3): Controls in place."
-        if re.match(r'^[A-Z]{2,4}\s+\(', line) and 'Controls in place' in line:
+        if re.match(r'^[A-Z]{2,4}\s+\(', raw_line) and 'Controls in place' in raw_line:
             continue
-        results.append((classify_control(line), line))
+        # Strip section label then split by em dash
+        content = _strip_section_label(raw_line)
+        for part in content.split(' — '):
+            item = part.strip().rstrip('.')
+            if item:
+                results.append((_reclassify(item), item))
     return results
 
 
