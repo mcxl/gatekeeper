@@ -109,6 +109,29 @@ def _reclassify(item: str) -> str:
     return 'control'
 
 
+def _split_fragment(fragment: str) -> list[str]:
+    """
+    Split a fragment into sentence-sized items.
+
+    Primary split: already done on ' — ' by the caller.
+    Secondary split: if a fragment is still longer than 18 words,
+    split further on '. ' (sentence boundary). Strips trailing
+    periods and discards empty results.
+    """
+    fragment = fragment.strip().rstrip('.')
+    if not fragment:
+        return []
+    if len(fragment.split()) <= 18:
+        return [fragment]
+    # Secondary split on ". " (sentence break)
+    parts = []
+    for sentence in re.split(r'\.\s+', fragment):
+        sentence = sentence.strip().rstrip('.')
+        if sentence:
+            parts.append(sentence)
+    return parts if parts else [fragment]
+
+
 def parse_control_lines(controls_str: str) -> list[tuple[str, str]]:
     """
     Split controls string into individual items and classify each.
@@ -117,7 +140,7 @@ def parse_control_lines(controls_str: str) -> list[tuple[str, str]]:
       - Skip risk-header lines (e.g. "WFR (High — C=3): Controls in place.")
       - Strip leading section label ("Engineering: ", "Admin: ", etc.)
       - Split remaining content on ' — ' (em dash separator)
-      - Strip trailing periods and whitespace from each fragment
+      - If any fragment still exceeds 18 words, split further on '. '
       - Re-classify each fragment by content keywords
     """
     results = []
@@ -128,11 +151,10 @@ def parse_control_lines(controls_str: str) -> list[tuple[str, str]]:
         # Skip risk-header lines: e.g. "WFR (High — C=3): Controls in place."
         if re.match(r'^[A-Z]{2,4}\s+\(', raw_line) and 'Controls in place' in raw_line:
             continue
-        # Strip section label then split by em dash
+        # Strip section label, split by em dash, then apply secondary split
         content = _strip_section_label(raw_line)
-        for part in content.split(' — '):
-            item = part.strip().rstrip('.')
-            if item:
+        for em_part in content.split(' — '):
+            for item in _split_fragment(em_part):
                 results.append((_reclassify(item), item))
     return results
 
@@ -227,7 +249,10 @@ def seed(conn: sqlite3.Connection, content: str) -> dict:
             (
                 task_name, scope, '1.0', 'approved',
                 _risk_label(pre), _risk_label(post), ccvs_code,
-                wah, 'library', 1, 'SWMS_TASK_LIBRARY_v1',
+                0,  # wah_applicable always 0 for seeded library tasks —
+                    # they ARE the WAH tasks; the WAH sentence cross-reference
+                    # is for AI-generated tasks only.
+                'library', 1, 'SWMS_TASK_LIBRARY_v1',
             ),
         )
         task_id = cur.lastrowid

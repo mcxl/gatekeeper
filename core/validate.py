@@ -88,7 +88,7 @@ def _fog(bullet: str) -> tuple[float, list[str]]:
     """
     words = bullet.split()
     n = len(words)
-    if n < 5:
+    if n < 8:
         return 0.0, []
     complex_words = [w for w in words if count_syllables(w) >= 3]
     fog = 0.4 * (n + 100 * (len(complex_words) / n))
