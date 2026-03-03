@@ -301,3 +301,7 @@ def score_task(task: TaskBlock) -> ValidationResult:
         fog_scores=fog_scores,
         word_counts=word_counts,
     )
+
+
+# Alias used by generate.py and library.py
+validate_task = score_task
