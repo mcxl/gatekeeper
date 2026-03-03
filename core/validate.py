@@ -137,7 +137,8 @@ def score_task(task: TaskBlock) -> ValidationResult:
             if _is_wah_exempt(item):
                 continue
             for code in APPROVED_CCVS_CODES:
-                if re.search(rf"\b{re.escape(code)}\b", item):
+                # (?!-) excludes hyphenated compounds e.g. "ELE-rated"
+                if re.search(rf"\b{re.escape(code)}\b(?!-)", item):
                     errors.append(
                         f"Check 2 — CCVS code '{code}' found embedded in "
                         f"{fname}: '{_preview(item)}'"
@@ -232,7 +233,8 @@ def score_task(task: TaskBlock) -> ValidationResult:
                     )
 
             # CHECK 9: PER-BULLET FOG
-            fog, complex_words = _fog(item)
+            # PPE fields contain equipment lists (not prose) — fog is not meaningful.
+            fog, complex_words = _fog(item) if fname != "ppe" else (0.0, [])
             fog_scores[preview] = fog
             if fog > 14:
                 errors.append(
