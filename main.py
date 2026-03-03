@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Gatekeeper CLI — python main.py {generate|approve|list|score|seed}"""
 
-import argparse, os, sqlite3, subprocess, sys
+import argparse, io, os, sqlite3, subprocess, sys
+
+# Ensure Unicode output works on Windows cp1252 consoles
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _ROOT)
