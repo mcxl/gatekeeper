@@ -91,9 +91,9 @@ def query_task(task_name: str, user: str = "system") -> TaskBlock:
     """
     Look up a task by name using fuzzy matching.
 
-    Score >= 85 → LIBRARY_HIT, return task.
-    Score 60–84 → LIBRARY_HIT with low-confidence warning.
-    Score < 60  → LIBRARY_MISS, call generate_task().
+    Score >= 80 → LIBRARY_HIT, return task.
+    Score 50–79 → LIBRARY_HIT with low-confidence warning.
+    Score < 50  → LIBRARY_MISS, call generate_task().
 
     All results pass through validate_task() before returning.
     """
@@ -117,14 +117,14 @@ def query_task(task_name: str, user: str = "system") -> TaskBlock:
         best_score = 0
         best_row = None
         for row in rows:
-            score = fuzz.token_sort_ratio(
+            score = fuzz.token_set_ratio(
                 task_name.lower(), row["task_name"].lower()
             )
             if score > best_score:
                 best_score = score
                 best_row = row
 
-        if best_score >= 60:
+        if best_score >= 50:
             task = _load_task_from_row(cur, best_row)
             log_event(AuditEvent(
                 event_type="LIBRARY_HIT",
@@ -134,7 +134,7 @@ def query_task(task_name: str, user: str = "system") -> TaskBlock:
                 output_hash=str(best_score),
             ))
             result = validate_task(task)
-            if best_score < 85:
+            if best_score < 80:
                 result.warnings.insert(
                     0,
                     f"Low-confidence library match (score {best_score}) — "
