@@ -19,9 +19,10 @@ import sys
 import os
 import re
 
-# Ensure src/ is on path
+# Ensure vocab/ is on path
 _script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _script_dir)
+_vocab_dir = os.path.join(_script_dir, '..', 'vocab')
+sys.path.insert(0, _vocab_dir)
 
 from swms_vocabulary import HAZARDS, CONTROLS, PPE_ITEMS, STOP_WORK
 
@@ -116,7 +117,7 @@ def add_entry(dict_name, dict_obj):
     print()
 
     # Attempt to write directly to file
-    vocab_path = os.path.join(_script_dir, 'swms_vocabulary.py')
+    vocab_path = os.path.join(_vocab_dir, 'swms_vocabulary.py')
     if not os.path.exists(vocab_path):
         print("Cannot find swms_vocabulary.py — add manually.")
         return

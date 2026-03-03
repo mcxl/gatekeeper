@@ -301,7 +301,7 @@ def generate_project_status() -> str:
     md.append("## Vocabulary Coverage")
     md.append("")
     try:
-        from src.swms_vocabulary import HAZARDS, CONTROLS, PPE_ITEMS, STOP_WORK
+        from vocab.swms_vocabulary import HAZARDS, CONTROLS, PPE_ITEMS, STOP_WORK
         md.append(f"- **Hazards:** {len(HAZARDS)} canonical entries")
         md.append(f"- **Controls:** {len(CONTROLS)} canonical entries")
         md.append(f"- **PPE items:** {len(PPE_ITEMS)} canonical entries")

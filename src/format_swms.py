@@ -28,8 +28,8 @@ import sys
 from lxml import etree
 from docx.oxml.ns import qn
 
-# Add src directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add vocab directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'vocab'))
 from swms_vocabulary import P2_CANONICAL, P2_VARIANTS
 
 # ============================================================
@@ -506,6 +506,67 @@ def normalise_p2_respirator(doc):
 
 
 # ============================================================
+# RULE 8 — CCVS header: bold + yellow highlight on every run
+# ============================================================
+
+def highlight_ccvs_headers(doc):
+    """Find paragraphs containing 'CCVS HOLD POINTS:' and ensure
+    every run in the paragraph has bold + yellow highlight.
+
+    This catches CCVS header lines where the source document
+    may have inconsistent highlight (some runs yellow, some not).
+
+    Logs each fix to console with row number and text.
+    """
+    count = 0
+    row_num = 0
+
+    for elem in doc.element.body.iter():
+        tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if tag == 'tr':
+            row_num += 1
+        if tag != 'p':
+            continue
+
+        # Get paragraph text
+        runs = elem.findall(qn('w:r'))
+        para_text = ''.join(
+            (r.find(qn('w:t')).text or '')
+            for r in runs
+            if r.find(qn('w:t')) is not None
+        )
+
+        if 'CCVS HOLD POINTS' not in para_text:
+            continue
+
+        # Check if any run is missing highlight
+        needs_fix = False
+        for r in runs:
+            rPr = r.find(qn('w:rPr'))
+            if rPr is None:
+                needs_fix = True
+                break
+            hl = rPr.find(qn('w:highlight'))
+            if hl is None or hl.get(qn('w:val')) != 'yellow':
+                needs_fix = True
+                break
+            if rPr.find(qn('w:b')) is None:
+                needs_fix = True
+                break
+
+        if needs_fix:
+            for r in runs:
+                rPr = _ensure_rPr(r)
+                _set_bold(rPr)
+                _set_highlight(rPr, 'yellow')
+            count += 1
+            print(f"  HEADER FIX applied: Row {row_num} "
+                  f"— {para_text[:80]}")
+
+    return count
+
+
+# ============================================================
 # MAIN ENTRY POINT
 # ============================================================
 
@@ -519,6 +580,7 @@ def format_swms(doc):
     results['p2_normalise'] = normalise_p2_respirator(doc)
     results['em_dashes'] = bold_em_dashes(doc)
     results['fonts'] = standardise_fonts(doc)
+    results['ccvs_headers'] = highlight_ccvs_headers(doc)
     results['labels'] = bold_control_labels(doc)
     results['sub_labels'] = bold_sub_labels(doc)
     results['italic_desc'] = italic_bracketed_descriptions(doc)

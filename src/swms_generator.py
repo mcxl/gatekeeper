@@ -15,6 +15,7 @@ import os
 import sys
 
 # Controlled vocabulary — canonical phrases for hazards, controls, PPE, STOP WORK
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'vocab'))
 try:
     from swms_vocabulary import (
         get_hazard, get_control, get_ppe, get_stop_work,
