@@ -109,21 +109,35 @@ def _reclassify(item: str) -> str:
     return 'control'
 
 
+# Regex to detect CCVS-code prefix fragments that should be skipped:
+# e.g. "SIL: Wet cutting...", "ENV (High...", "ELE ..."
+_CCVS_PREFIX_RE = re.compile(r'^[A-Z]{2,4}[\s:(]')
+
+# Role-name words to strip from the start of a fragment
+_ROLE_PREFIXES = ('Worker ', 'Workers ', 'Supervisor ', 'Supervisors ')
+
+
+def _strip_role_prefix(item: str) -> str:
+    """Strip leading role-name word (e.g. 'Worker ') from a fragment."""
+    for prefix in _ROLE_PREFIXES:
+        if item.startswith(prefix):
+            return item[len(prefix):]
+    return item
+
+
 def _split_fragment(fragment: str) -> list[str]:
     """
-    Split a fragment into sentence-sized items.
+    Split a fragment on '. ' (sentence boundary) unconditionally.
 
-    Primary split: already done on ' — ' by the caller.
-    Secondary split: if a fragment is still longer than 18 words,
-    split further on '. ' (sentence boundary). Strips trailing
-    periods and discards empty results.
+    Primary split on ' — ' is done by the caller. This applies a
+    secondary sentence-break split to every em-dash fragment, producing
+    sub-sentence items that fall below the Fog minimum word threshold.
+    Strips trailing periods and discards empty results.
     """
     fragment = fragment.strip().rstrip('.')
     if not fragment:
         return []
-    if len(fragment.split()) <= 18:
-        return [fragment]
-    # Secondary split on ". " (sentence break)
+    # Always split on ". " — no word-count guard
     parts = []
     for sentence in re.split(r'\.\s+', fragment):
         sentence = sentence.strip().rstrip('.')
@@ -137,25 +151,33 @@ def parse_control_lines(controls_str: str) -> list[tuple[str, str]]:
     Split controls string into individual items and classify each.
 
     For each newline-delimited line:
-      - Skip risk-header lines (e.g. "WFR (High — C=3): Controls in place.")
+      - Skip risk-header lines ("WFR (High — C=3): Controls in place.")
       - Strip leading section label ("Engineering: ", "Admin: ", etc.)
-      - Split remaining content on ' — ' (em dash separator)
-      - If any fragment still exceeds 18 words, split further on '. '
-      - Re-classify each fragment by content keywords
+      - Split on ' — ' (em dash) then on '. ' (sentence break)
+      - Skip fragments whose text starts with a CCVS-code prefix
+        (e.g. "SIL: Wet cutting…", "ENV (High…")
+      - Strip leading role-name words ("Worker ", "Supervisor ", …)
+      - Re-classify and store each clean fragment
     """
     results = []
     for raw_line in controls_str.split('\n'):
         raw_line = raw_line.strip()
         if not raw_line:
             continue
-        # Skip risk-header lines: e.g. "WFR (High — C=3): Controls in place."
+        # Skip risk-header lines: "WFR (High — C=3): Controls in place."
         if re.match(r'^[A-Z]{2,4}\s+\(', raw_line) and 'Controls in place' in raw_line:
             continue
-        # Strip section label, split by em dash, then apply secondary split
+        # Strip section label, split by em dash, then sentence-break split
         content = _strip_section_label(raw_line)
         for em_part in content.split(' — '):
             for item in _split_fragment(em_part):
-                results.append((_reclassify(item), item))
+                # Fix 1: skip CCVS-code prefix fragments
+                if _CCVS_PREFIX_RE.match(item):
+                    continue
+                # Fix 3: strip leading role-name words
+                item = _strip_role_prefix(item)
+                if item:
+                    results.append((_reclassify(item), item))
     return results
 
 
