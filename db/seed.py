@@ -77,8 +77,11 @@ _SECTION_PREFIXES = [
 # PPE starts: item begins with equipment name → ppe
 _PPE_STARTS = (
     'helmet', 'harness', 'respirator', 'gloves', 'vest', 'footwear', 'goggles',
-    'full body', 'steel-capped', 'hi-vis', 'face shield', 'earplugs', 'lanyard',
-    'eye protection', 'ear protection', 'hearing protection', 'coverall', 'p2 ',
+    'full body', 'steel-capped', 'hi-vis', 'high-vis', 'face shield', 'earplugs',
+    'lanyard', 'eye protection', 'ear protection', 'hearing protection', 'coverall',
+    'p2 ', 'p2/', 'p3/', 'p2/p3', 'chemical-resistant', 'chemical resistant',
+    'cut-resistant', 'cut resistant', 'safety harness', 'fall arrest',
+    'full-face', 'half-face', 'disposable respirator',
 )
 
 # Admin starts: item begins with admin keyword → admin

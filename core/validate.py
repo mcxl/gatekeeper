@@ -234,11 +234,13 @@ def score_task(task: TaskBlock) -> ValidationResult:
 
             # CHECK 9: PER-BULLET FOG
             # PPE fields contain equipment lists (not prose) — fog is not meaningful.
+            # stop_work allows higher complexity (technical precision required).
             fog, complex_words = _fog(item) if fname != "ppe" else (0.0, [])
             fog_scores[preview] = fog
-            if fog > 14:
+            fog_hard_cap = 16 if fname == "stop_work" else 14
+            if fog > fog_hard_cap:
                 errors.append(
-                    f"Check 9 — Fog score {fog:.1f} exceeds hard cap 14 "
+                    f"Check 9 — Fog score {fog:.1f} exceeds hard cap {fog_hard_cap} "
                     f"in {fname}: '{preview}' "
                     f"(complex words: {complex_words})"
                 )
