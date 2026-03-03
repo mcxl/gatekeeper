@@ -44,7 +44,12 @@ SYSTEM_PROMPT = (
     + WAH_SENTENCE
     + "\n- ccvs_code in ccvs_code field only — never in controls or admin\n"
     "- Role names in responsibility only — never in controls\n"
-    "- Verb-first bullets. Hard cap 18 words per bullet. No semicolons."
+    "- Verb-first bullets. Hard cap 18 words per bullet. No semicolons.\n"
+    "- Plain English only: prefer 1-2 syllable words. Avoid abstract nouns "
+    "(procedure, assessment, implementation, personnel, utilise, commence). "
+    "Use active voice. Split any bullet with 3+ complex words into two shorter bullets.\n"
+    "- Gunning Fog score per bullet must stay below 14. "
+    "Test mentally: if a bullet has more than 2 words with 3+ syllables, rewrite it."
 )
 
 
