@@ -37,15 +37,15 @@
 ## Database State
 
 **File:** `db/gatekeeper.db`
-**Total tasks:** 134 (as of 2026-03-04, run 3 complete)
+**Total tasks:** 140 (as of 2026-03-04, run 4 complete)
 
 ### Summary
 | Category | Count | Status |
 |----------|-------|--------|
 | v1.0 library tasks (IDs 1–37) | 37 | All approved, 37/37 passing validation |
 | AI-generated tasks | 1 | Task 38 — Crack Stitching with Thor Helical Bars, approved |
-| ref-1.0 CoP-extracted tasks | 96 | All approved (60 from runs 1–2, 36 from run 3) |
-| **Total approved** | **134** | 0 draft |
+| ref-1.0 CoP-extracted tasks | 102 | All approved (60 from runs 1–2, 36 from run 3, 6 from run 4) |
+| **Total approved** | **140** | 0 draft |
 
 ### v1.0 Library tasks (IDs 1–37)
 - Source: `src/SWMS_TASK_LIBRARY.md` → seeded via `db/seed.py`
@@ -88,7 +88,14 @@
 | model_code_of_practice-how_to_manage_work_health_and_safety_risks-nov24.pdf | 0 | 0 | API credits exhausted |
 | **Run 3 TOTAL** | **115** | **36** | |
 
-> **API credits exhausted** partway through scaffolding PDF. Last 4 PDFs need re-run after topping up credits at console.anthropic.com.
+#### Run 4 results (COMPLETE, 6/6 approved)
+| PDF | Extracted | Saved | Note |
+|-----|-----------|-------|------|
+| scaffolding-industry-safety-standard.pdf | 23 | 6 | |
+| WHS-Safe Design of Structures-CoP.pdf | 0 | 0 | No procedure content — policy/methodology doc |
+| model-code-practice-managing-psychosocial-hazards-work.pdf | 0 | 0 | No procedure content — policy doc |
+| model_code_of_practice-how_to_manage_work_health_and_safety_risks-nov24.pdf | 0 | 0 | No procedure content — methodology doc |
+| **Run 4 TOTAL** | **23** | **6** | |
 
 #### Dominant failure patterns (runs 2–3)
 - **Check 9 (fog)** — "reasonably practicable", multi-syllable domain terms
@@ -101,18 +108,7 @@
 
 ## Next Actions — Priority Order
 
-### 1. Top up Anthropic API credits — then re-run 4 incomplete PDFs
-API credits exhausted during run 3. After topping up at console.anthropic.com:
-```bash
-# Update PRIORITY_FILES in seed_from_references.py to only the 4 that failed:
-# scaffolding-industry-safety-standard.pdf
-# WHS-Safe Design of Structures-CoP.pdf
-# model-code-practice-managing-psychosocial-hazards-work.pdf
-# model_code_of_practice-how_to_manage_work_health_and_safety_risks-nov24.pdf
-python db/seed_from_references.py
-```
-
-### 2. Process HY procedures (PRIMARY AUTHORITY)
+### 1. Process HY procedures (PRIMARY AUTHORITY)
 HY procedures are the **primary content authority** per CLAUDE.md.
 Seed as `version="hy-1.0"`.
 
