@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GATEKEEPER — Zero-Trust Safety Framework</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --deep: #0f1318;
+    --panel: #141a22;
+    --border: #1e2d3d;
+    --steel: #2a3f54;
+    --alert: #ff3b3b;
+    --warn: #ff8c00;
+    --safe: #00e5a0;
+    --cyan: #00c8ff;
+    --text: #c8d8e8;
+    --dim: #5a7a8a;
+    --grid: rgba(0,200,255,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* SCANLINE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* GRID BACKGROUND */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .logo-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .logo-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    line-height: 0.9;
+    letter-spacing: 4px;
+    color: #fff;
+    position: relative;
+  }
+
+  h1 .gate { color: var(--cyan); }
+  h1 .keeper { color: #fff; }
+
+  .h1-sub {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .status-block {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .status-item {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--safe);
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.warn { background: var(--warn); animation-delay: 0.5s; }
+  .status-dot.alert { background: var(--alert); animation-delay: 1s; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* CORE PHILOSOPHY STRIP */
+  .philosophy {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--cyan);
+    padding: 16px 24px;
+    margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .philosophy-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    white-space: nowrap;
+  }
+
+  .philosophy-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  /* PANELS */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .panel:hover { border-color: var(--cyan); }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .panel.cyan::before { background: var(--cyan); }
+  .panel.safe::before { background: var(--safe); }
+  .panel.warn::before { background: var(--warn); }
+  .panel.alert::before { background: var(--alert); }
+
+  .panel-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+
+  .panel.cyan .panel-title { color: var(--cyan); }
+  .panel.safe .panel-title { color: var(--safe); }
+  .panel.warn .panel-title { color: var(--warn); }
+  .panel.alert .panel-title { color: var(--alert); }
+
+  /* CHECKPOINT FLOW - spans all 3 cols */
+  .checkpoint-flow {
+    grid-column: 1 / -1;
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--cyan);
+    padding: 32px;
+    margin-bottom: 2px;
+  }
+
+  .flow-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .flow-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+  }
+
+  .flow-desc {
+    font-size: 13px;
+    color: var(--dim);
+    font-weight: 300;
+    letter-spacing: 1px;
+  }
+
+  .checkpoints {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    position: relative;
+  }
+
+  .checkpoint {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 20px 16px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .checkpoint:hover {
+    background: #1a2535;
+    border-color: var(--cyan);
+    z-index: 2;
+  }
+
+  .checkpoint + .checkpoint::before {
+    content: '►';
+    position: absolute;
+    left: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cyan);
+    font-size: 12px;
+    z-index: 3;
+  }
+
+  .cp-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    color: rgba(0,200,255,0.15);
+    line-height: 1;
+    position: absolute;
+    top: 8px;
+    right: 12px;
+  }
+
+  .cp-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .cp-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .cp-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cp-items li {
+    font-size: 11px;
+    color: var(--dim);
+    font-weight: 300;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.3;
+  }
+
+  .cp-items li::before {
+    content: '—';
+    color: var(--cyan);
+    flex-shrink: 0;
+    opacity: 0.5;
+  }
+
+  /* RISK TIERS */
+  .risk-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .risk-tier {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--deep);
+    border: 1px solid var(--border);
+  }
+
+  .tier-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    min-width: 90px;
+    text-align: center;
+  }
+
+  .tier-badge.extreme { background: var(--alert); color: #000; }
+  .tier-badge.high { background: var(--warn); color: #000; }
+  .tier-badge.medium { background: #f0c040; color: #000; }
+  .tier-badge.low { background: var(--safe); color: #000; }
+
+  .tier-text {
+    font-size: 12px;
+    color: var(--dim);
+    flex: 1;
+  }
+
+  .tier-controls {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    text-align: right;
+  }
+
+  /* DEVIANCE METER */
+  .deviance-meter {
+    margin-top: 12px;
+  }
+
+  .meter-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .meter-bar {
+    height: 8px;
+    background: var(--deep);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    position: relative;
+  }
+
+  .meter-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 8px,
+      rgba(0,0,0,0.3) 8px,
+      rgba(0,0,0,0.3) 10px
+    );
+  }
+
+  .deviance-stages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .deviance-stage {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .ds-bar {
+    height: 4px;
+    flex-shrink: 0;
+  }
+
+  .ds-label {
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  /* SWMS PANEL */
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: var(--deep);
+    border-left: 2px solid var(--steel);
+    font-size: 11px;
+    color: var(--dim);
+    transition: all 0.2s;
+  }
+
+  .task-item:hover {
+    border-left-color: var(--cyan);
+    color: var(--text);
+  }
+
+  .task-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--cyan);
+    opacity: 0.6;
+    min-width: 24px;
+  }
+
+  .task-status {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .ts-complete { background: var(--safe); }
+  .ts-active { background: var(--warn); animation: pulse 1.5s infinite; }
+  .ts-pending { background: var(--steel); }
+
+  /* BOTTOM ROW */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2px;
+  }
+
+  /* AUDIT TRAIL */
+  .audit-log {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow: hidden;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+  .log-time { color: var(--dim); white-space: nowrap; }
+  .log-type { padding: 1px 6px; font-size: 9px; letter-spacing: 1px; }
+  .log-type.pass { background: rgba(0,229,160,0.15); color: var(--safe); }
+  .log-type.warn { background: rgba(255,140,0,0.15); color: var(--warn); }
+  .log-type.fail { background: rgba(255,59,59,0.15); color: var(--alert); }
+  .log-type.info { background: rgba(0,200,255,0.1); color: var(--cyan); }
+  .log-msg { color: var(--text); flex: 1; }
+
+  /* COMPLIANCE GAUGES */
+  .gauges {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gauge-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gauge-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--dim);
+  }
+
+  .gauge-pct {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .gauge-track {
+    height: 6px;
+    background: var(--deep);
+    border: 1px solid var(--border);
+  }
+
+  .gauge-fill {
+    height: 100%;
+    transition: width 1s ease;
+  }
+
+  /* FOOTER */
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-left {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .footer-right {
+    display: flex;
+    gap: 24px;
+  }
+
+  .footer-stat {
+    text-align: center;
+  }
+
+  .fs-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--cyan);
+    line-height: 1;
+  }
+
+  .fs-label {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* CORNER DECORATIONS */
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+  }
+
+  .corner-tl {
+    top: 0; left: 0;
+    border-top: 2px solid var(--cyan);
+    border-left: 2px solid var(--cyan);
+  }
+
+  .corner-br {
+    bottom: 0; right: 0;
+    border-bottom: 2px solid var(--cyan);
+    border-right: 2px solid var(--cyan);
+  }
+
+  /* DIAGONAL ACCENT */
+  .diag-accent {
+    position: absolute;
+    top: 0; right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 40px 40px 0;
+    border-color: transparent rgba(0,200,255,0.1) transparent transparent;
+  }
+
+  /* ANIMATE IN */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel, .checkpoint-flow, .bottom-grid > * {
+    animation: slideUp 0.6s ease forwards;
+  }
+
+  .panel:nth-child(1) { animation-delay: 0.1s; }
+  .panel:nth-child(2) { animation-delay: 0.2s; }
+  .panel:nth-child(3) { animation-delay: 0.3s; }
+
+  /* BLINKING CURSOR */
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: var(--cyan);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-tag">// Robertson's Remedial & Painting Pty Ltd</div>
+      <h1>
+        <span class="gate">GATE</span><span class="keeper">KEEPER</span>
+      </h1>
+      <div class="h1-sub">Zero-Trust WHS Safety Framework · v2.0</div>
+    </div>
+    <div class="status-block">
+      <div class="status-item"><span class="status-dot"></span> SYSTEM ACTIVE</div>
+      <div class="status-item"><span class="status-dot warn"></span> 2 SITES MONITORED</div>
+      <div class="status-item"><span class="status-dot alert"></span> AUDIT MODE ENABLED</div>
+      <div class="status-item" style="margin-top:8px;">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);">FSC COMPLIANT · SAFEWORK NSW</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PHILOSOPHY -->
+  <div class="philosophy">
+    <div class="philosophy-label">CORE DOCTRINE</div>
+    <div class="philosophy-text">
+      Every worker is a gatekeeper. Every task requires proof of safety, not assumption of it.
+    </div>
+  </div>
+
+  <!-- TOP THREE PANELS -->
+  <div class="main-grid">
+
+    <!-- PANEL 1: ZERO TRUST MODEL -->
+    <div class="panel cyan" style="position:relative">
+      <div class="corner-tl"></div>
+      <div class="diag-accent"></div>
+      <div class="panel-label">PILLAR 01 // PHILOSOPHY</div>
+      <div class="panel-title">Zero-Trust<br>Safety Model</div>
+      <p style="font-size:13px;color:var(--dim);font-weight:300;line-height:1.6;margin-bottom:16px;">
+        Never assume safety is in place. Every control, every barrier, every permit must be actively verified before work commences.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);">
+          <span style="color:var(--alert);font-family:'Share Tech Mono',monospace;font-size:10px;">DENY</span>
+          Default state — no work proceeds without checkpoint clearance
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);">
+          <span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:10px;">VERIFY</span>
+          Each control independently confirmed by responsible person
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);">
+          <span style="color:var(--safe);font-family:'Share Tech Mono',monospace;font-size:10px;">GRANT</span>
+          Work authorised only after all gates cleared
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 2: NORMALIZATION OF DEVIANCE -->
+    <div class="panel alert" style="position:relative">
+      <div class="corner-tl" style="border-color:var(--alert)"></div>
+      <div class="panel-label">PILLAR 02 // THREAT</div>
+      <div class="panel-title">Normalization<br>of Deviance</div>
+      <p style="font-size:13px;color:var(--dim);font-weight:300;line-height:1.5;margin-bottom:14px;">
+        The gradual acceptance of non-compliance as routine. Gatekeeper interrupts this drift with mandatory friction.
+      </p>
+      <div class="deviance-stages">
+        <div class="deviance-stage">
+          <div class="ds-bar" style="width:80px;background:var(--safe)"></div>
+          <div class="ds-label">Safe practice established</div>
+        </div>
+        <div class="deviance-stage">
+          <div class="ds-bar" style="width:60px;background:#f0c040"></div>
+          <div class="ds-label">First shortcut tolerated</div>
+        </div>
+        <div class="deviance-stage">
+          <div class="ds-bar" style="width:40px;background:var(--warn)"></div>
+          <div class="ds-label">Deviation becomes habit</div>
+        </div>
+        <div class="deviance-stage">
+          <div class="ds-bar" style="width:20px;background:var(--alert)"></div>
+          <div class="ds-label">Incident — CHECKPOINT FAILED</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(255,59,59,0.08);border:1px solid rgba(255,59,59,0.2);font-size:11px;color:var(--alert);">
+        ⚡ Gatekeeper's mandatory checkpoints break this cycle at every task
+      </div>
+    </div>
+
+    <!-- PANEL 3: SWMS TASK LIBRARY -->
+    <div class="panel safe" style="position:relative">
+      <div class="corner-tl" style="border-color:var(--safe)"></div>
+      <div class="panel-label">PILLAR 03 // DOCUMENTATION</div>
+      <div class="panel-title">SWMS Task<br>Library</div>
+      <div class="task-list">
+        <div class="task-item"><span class="task-num">T-01</span>Site Setup & Establishment<div class="task-status ts-complete"></div></div>
+        <div class="task-item"><span class="task-num">T-02</span>Scaffolding Erection<div class="task-status ts-complete"></div></div>
+        <div class="task-item"><span class="task-num">T-03</span>Pressure Washing<div class="task-status ts-active"></div></div>
+        <div class="task-item"><span class="task-num">T-04</span>Concrete Remediation<div class="task-status ts-active"></div></div>
+        <div class="task-item"><span class="task-num">T-05</span>Waterproofing Application<div class="task-status ts-pending"></div></div>
+        <div class="task-item"><span class="task-num">T-06</span>Paint Application — Airless<div class="task-status ts-pending"></div></div>
+        <div class="task-item"><span class="task-num">T-07</span>Rope Access Operations<div class="task-status ts-pending"></div></div>
+        <div class="task-item" style="opacity:0.4;font-size:10px;color:var(--dim);">
+          <span class="task-num">···</span>+13 more tasks
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CHECKPOINT FLOW - FULL WIDTH -->
+  <div class="checkpoint-flow">
+    <div class="flow-header">
+      <div>
+        <div class="flow-title">MANDATORY MENTAL CHECKPOINTS</div>
+        <div class="flow-desc">Every task must traverse all gates before work authorisation is granted</div>
+      </div>
+      <div style="margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);">
+        GATE STATUS: <span style="color:var(--safe)">ALL CLEAR ▶</span>
+      </div>
+    </div>
+
+    <div class="checkpoints">
+
+      <div class="checkpoint">
+        <div class="cp-num">01</div>
+        <div class="cp-label">GATE // AUTHORISATION</div>
+        <div class="cp-title">Pre-Task<br>Verification</div>
+        <ul class="cp-items">
+          <li>SWMS read & understood</li>
+          <li>Competency confirmed</li>
+          <li>Induction current</li>
+          <li>Task scope defined</li>
+        </ul>
+      </div>
+
+      <div class="checkpoint">
+        <div class="cp-num">02</div>
+        <div class="cp-label">GATE // ENVIRONMENT</div>
+        <div class="cp-title">Site Hazard<br>Assessment</div>
+        <ul class="cp-items">
+          <li>Area inspected</li>
+          <li>Exclusion zones set</li>
+          <li>Overhead hazards clear</li>
+          <li>Weather conditions OK</li>
+        </ul>
+      </div>
+
+      <div class="checkpoint">
+        <div class="cp-num">03</div>
+        <div class="cp-label">GATE // EQUIPMENT</div>
+        <div class="cp-title">Plant & PPE<br>Inspection</div>
+        <ul class="cp-items">
+          <li>PPE inspected & fitted</li>
+          <li>Equipment tagged/tested</li>
+          <li>Rescue plan confirmed</li>
+          <li>Defects reported</li>
+        </ul>
+      </div>
+
+      <div class="checkpoint">
+        <div class="cp-num">04</div>
+        <div class="cp-label">GATE // CONTROLS</div>
+        <div class="cp-title">Risk Control<br>Confirmation</div>
+        <ul class="cp-items">
+          <li>Hierarchy of controls applied</li>
+          <li>Permits obtained</li>
+          <li>Isolation verified</li>
+          <li>Supervision assigned</li>
+        </ul>
+      </div>
+
+      <div class="checkpoint">
+        <div class="cp-num">05</div>
+        <div class="cp-label">GATE // HUMAN FACTORS</div>
+        <div class="cp-title">Worker State<br>Check</div>
+        <ul class="cp-items">
+          <li>Fatigue self-assessment</li>
+          <li>No impairment</li>
+          <li>Task understood</li>
+          <li>Emergency contacts set</li>
+        </ul>
+      </div>
+
+      <div class="checkpoint" style="border-color:var(--safe);background:#0a1f17;">
+        <div class="cp-num" style="color:rgba(0,229,160,0.2)">✓</div>
+        <div class="cp-label" style="color:var(--safe)">GATE // AUTHORISED</div>
+        <div class="cp-title" style="color:var(--safe)">Work<br>Authorised</div>
+        <ul class="cp-items">
+          <li>All gates cleared</li>
+          <li>Sign-off recorded</li>
+          <li>Time logged</li>
+          <li>Ongoing monitoring active</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-grid">
+
+    <!-- RISK REGISTER + AUDIT LOG -->
+    <div style="display:flex;flex-direction:column;gap:2px;">
+
+      <!-- RISK REGISTER -->
+      <div class="panel warn">
+        <div class="panel-label">RISK REGISTER // ACTIVE</div>
+        <div class="panel-title" style="margin-bottom:14px;">Tier Classification</div>
+        <div class="risk-tiers">
+          <div class="risk-tier">
+            <div class="tier-badge extreme">EXTREME</div>
+            <div class="tier-text">Uncontrolled fall from height, electrocution, confined space asphyxiation</div>
+            <div class="tier-controls">ELIMINATE<br>/ SUBSTITUTE</div>
+          </div>
+          <div class="risk-tier">
+            <div class="tier-badge high">HIGH</div>
+            <div class="tier-text">Scaffold collapse, chemical exposure, struck by plant</div>
+            <div class="tier-controls">ENGINEERING<br>CONTROLS</div>
+          </div>
+          <div class="risk-tier">
+            <div class="tier-badge medium">MEDIUM</div>
+            <div class="tier-text">Manual handling, UV exposure, slip/trip hazards</div>
+            <div class="tier-controls">ADMIN<br>CONTROLS</div>
+          </div>
+          <div class="risk-tier">
+            <div class="tier-badge low">LOW</div>
+            <div class="tier-text">Dust nuisance, noise below 85dB, minor lacerations</div>
+            <div class="tier-controls">PPE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div class="panel cyan">
+        <div class="panel-label">AUDIT TRAIL // LIVE</div>
+        <div class="panel-title" style="font-size:20px;margin-bottom:14px;">System Log <span class="cursor"></span></div>
+        <div class="audit-log">
+          <div class="log-entry">
+            <span class="log-time">08:14:32</span>
+            <span class="log-type pass">PASS</span>
+            <span class="log-msg">Gate 01–05 cleared · Rouse Hill · T-03 Pressure Washing</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">08:02:11</span>
+            <span class="log-type warn">WARN</span>
+            <span class="log-msg">Gate 03 retry · Harness inspection failed — replaced</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">07:55:44</span>
+            <span class="log-type pass">PASS</span>
+            <span class="log-msg">Gate 01–05 cleared · Double Bay · T-02 Scaffolding</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">07:30:00</span>
+            <span class="log-type info">INIT</span>
+            <span class="log-msg">Gatekeeper v2.0 activated · 2 sites · 6 workers</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">07:28:55</span>
+            <span class="log-type fail">HALT</span>
+            <span class="log-msg">Gate 02 blocked · Exclusion zone not established · WORK STOPPED</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COMPLIANCE DASHBOARD -->
+    <div class="panel cyan" style="display:flex;flex-direction:column;gap:0;">
+      <div class="panel-label">COMPLIANCE DASHBOARD</div>
+      <div class="panel-title" style="font-size:20px;margin-bottom:20px;">FSC Metrics</div>
+      <div class="gauges">
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>SWMS Compliance</span>
+            <span class="gauge-pct" style="color:var(--safe)">96%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:96%;background:var(--safe)"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>Checkpoint Completion</span>
+            <span class="gauge-pct" style="color:var(--safe)">100%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:100%;background:var(--safe)"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>PPE Adherence</span>
+            <span class="gauge-pct" style="color:var(--safe)">94%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:94%;background:var(--safe)"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>Permit Currency</span>
+            <span class="gauge-pct" style="color:#f0c040)">88%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:88%;background:#f0c040"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>Incident-Free Days</span>
+            <span class="gauge-pct" style="color:var(--cyan)">247</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:82%;background:var(--cyan)"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row">
+          <div class="gauge-label">
+            <span>Risk Controls Verified</span>
+            <span class="gauge-pct" style="color:var(--safe)">100%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:100%;background:var(--safe)"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- QUICK STATS -->
+      <div style="margin-top:auto;padding-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="text-align:center;padding:12px;background:var(--deep);border:1px solid var(--border);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--cyan);line-height:1;">20</div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:2px;">SWMS TASKS</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--deep);border:1px solid var(--border);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--safe);line-height:1;">5</div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:2px;">GATES / TASK</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--deep);border:1px solid var(--border);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--warn);line-height:1;">6</div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:2px;">WORKERS ACTIVE</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--deep);border:1px solid var(--border);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--alert);line-height:1;">0</div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:2px;">INCIDENTS YTD</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">
+      GATEKEEPER // ZERO-TRUST WHS FRAMEWORK<br>
+      Robertson's Remedial & Painting Pty Ltd · SafeWork NSW Compliant · FSC Audit Ready<br>
+      <span style="color:rgba(90,122,138,0.5)">© 2026 RPD · Built with Alan Richardson · All rights reserved</span>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:right;">
+      FRAMEWORK STATUS<br>
+      <span style="color:var(--safe);font-size:13px;">● OPERATIONAL</span><br>
+      <span style="margin-top:4px;display:block;">WHS ACT 2011 · ISO 45001</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

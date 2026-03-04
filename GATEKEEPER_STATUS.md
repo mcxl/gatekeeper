@@ -108,35 +108,44 @@
 
 ---
 
-## Next Actions — Priority Order
+## Automation Sequence — Complete
 
-### 1. Run web interface
+All seeding and web interface steps are done. The system is operational.
+
+### Completed Steps
+1. **v1.0 library seeded** — 38 tasks from `SWMS_TASK_LIBRARY.md` via `db/seed.py`
+2. **CoP reference seeding** — 102 tasks from 48 WHS PDFs via `db/seed_from_references.py` (runs 1–4)
+3. **Industry SWMS seeding** — 44 tasks from 45 `.doc` files via `db/seed_from_industry_swms.py`
+4. **HY procedure seeding** — 6 tasks from 14 HY PDFs via `db/seed_from_hy.py`
+5. **FastAPI web interface** — `api/main.py` + `api/templates/index.html` — tested and working
+
+### Run the Web Interface
 ```bash
 python -m uvicorn api.main:app --reload --port 8000
 # Then open http://localhost:8000
 ```
 190 approved tasks available for library lookup. AI fallback for any unknown task.
 
-### 2. Process HY standards (12+ PDFs — not yet seeded)
-`reference-docs/principal-contractor-procedures/hansen-yuncken-standards/`
-- 10 HYer-Standard PDFs (WAH, asbestos, cranes, demolition, electrical, etc.)
-- 10 QC-HYer-Standard PDFs (concrete, facade, flooring, glazing, roofing, etc.)
-```bash
-# Update HY_DIR in db/seed_from_hy.py to point to hansen-yuncken-standards/
-python db/seed_from_hy.py
-```
+---
 
-### 3. Investigate WAH safety net failure
+## Future Actions — Priority Order
+
+### 1. Investigate WAH safety net failure
 Swing stage guide (0/15 saved) and falls planning CoP both failing Check 4
 despite WAH injection in `dict_to_taskblock()`. Likely a whitespace or
 strip mismatch between `WAH_SENTENCE` constant and validate.py comparison.
 Debug: `python main.py score <wah_task_id>` on any WAH draft task.
 
-### 4. Process remaining Tier 2 reference PDFs
+### 2. Process remaining Tier 2 reference PDFs
 - Formwork fact sheets, roof fact sheets, precast CoP
 - Run `db/seed_from_references.py` after updating PRIORITY_FILES
 
-### 5. Build Phase 2 — Risk Register integration
+### 3. Process HY standards (12+ PDFs — additional standards)
+`reference-docs/principal-contractor-procedures/hansen-yuncken-standards/`
+- 10 HYer-Standard PDFs (WAH, asbestos, cranes, demolition, electrical, etc.)
+- 10 QC-HYer-Standard PDFs (concrete, facade, flooring, glazing, roofing, etc.)
+
+### 4. Build Phase 2 — Risk Register integration
 Risk register outputs drive SWMS task selection automatically.
 See `CLAUDE.md` → Governance Flow for full architecture.
 
