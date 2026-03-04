@@ -37,15 +37,17 @@
 ## Database State
 
 **File:** `db/gatekeeper.db`
-**Total tasks:** 140 (as of 2026-03-04, run 4 complete)
+**Total tasks:** 190 (as of 2026-03-04, all seeding complete)
 
 ### Summary
-| Category | Count | Status |
-|----------|-------|--------|
-| v1.0 library tasks (IDs 1–37) | 37 | All approved, 37/37 passing validation |
-| AI-generated tasks | 1 | Task 38 — Crack Stitching with Thor Helical Bars, approved |
-| ref-1.0 CoP-extracted tasks | 102 | All approved (60 from runs 1–2, 36 from run 3, 6 from run 4) |
-| **Total approved** | **140** | 0 draft |
+| Category | Count | Version | Status |
+|----------|-------|---------|--------|
+| v1.0 library tasks | 38 | 1.0 | All approved, 37/37 passing validation |
+| AI-generated tasks | 1 | — | Task 38 — Crack Stitching, approved |
+| CoP-extracted tasks | 102 | ref-1.0 | All approved (runs 1–4) |
+| Industry SWMS (.doc) | 44 | industry-1.0 | All approved (45 files, 132 extracted) |
+| HY procedures | 6 | hy-1.0 | All approved (14 PDFs, 78 extracted) |
+| **Total approved** | **190** | — | 0 draft |
 
 ### v1.0 Library tasks (IDs 1–37)
 - Source: `src/SWMS_TASK_LIBRARY.md` → seeded via `db/seed.py`
@@ -108,16 +110,21 @@
 
 ## Next Actions — Priority Order
 
-### 1. Process HY procedures (PRIMARY AUTHORITY)
-HY procedures are the **primary content authority** per CLAUDE.md.
-Seed as `version="hy-1.0"`.
+### 1. Run web interface
+```bash
+python -m uvicorn api.main:app --reload --port 8000
+# Then open http://localhost:8000
+```
+190 approved tasks available for library lookup. AI fallback for any unknown task.
 
-- `reference-docs/principal-contractor-procedures/hansen-yuncken-procedures/` — 14 PDFs
-  (WAH, asbestos, cranes, demolition, electrical, ground works, mobile plant,
-  plant & equipment, precast, temporary works, underground services, erosion)
-- `reference-docs/principal-contractor-procedures/hansen-yuncken-standards/` — 12+ standards
-  (concrete, facade weatherproofing, fire resistance, flooring, glazing,
-  precast fabrication, roofing, services, structural steel, waterproofing, wet areas)
+### 2. Process HY standards (12+ PDFs — not yet seeded)
+`reference-docs/principal-contractor-procedures/hansen-yuncken-standards/`
+- 10 HYer-Standard PDFs (WAH, asbestos, cranes, demolition, electrical, etc.)
+- 10 QC-HYer-Standard PDFs (concrete, facade, flooring, glazing, roofing, etc.)
+```bash
+# Update HY_DIR in db/seed_from_hy.py to point to hansen-yuncken-standards/
+python db/seed_from_hy.py
+```
 
 ### 3. Investigate WAH safety net failure
 Swing stage guide (0/15 saved) and falls planning CoP both failing Check 4
@@ -138,6 +145,9 @@ See `CLAUDE.md` → Governance Flow for full architecture.
 ## Key Commands Reference
 
 ```bash
+# Start web interface
+python -m uvicorn api.main:app --reload --port 8000
+
 # Generate a new SWMS task (library lookup → AI fallback → save draft)
 python main.py generate "Task Name" --output both
 
