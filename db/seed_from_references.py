@@ -42,16 +42,10 @@ from core.validate import validate_task, WAH_SENTENCE
 # ============================================================
 
 PRIORITY_FILES = [
-    "Construction-work-COP.pdf",
-    "Managing-the-risk-of-falls-at-workplaces-COP.pdf",
-    "guide_to_managing_risks_of_industrial_rope_access_systems.pdf",
-    "Managing-electrical-risks-in-the-workplace-COP.pdf",
-    "model_cop_elevatingworkplatforms-december2025.pdf",
-    "guide-suspended-swing-stage-scaffolds.pdf",
-    "Excavation-work-COP.pdf",
-    "model-code-practice-managing-risk-falls-workplaces.pdf",
-    "model_code_of_practice-managing-risks-respirable-crystalline-silica.pdf",
-    "How-to-safely-remove-asbestos-COP.pdf",
+    "scaffolding-industry-safety-standard.pdf",
+    "WHS-Safe Design of Structures-CoP.pdf",
+    "model-code-practice-managing-psychosocial-hazards-work.pdf",
+    "model_code_of_practice-how_to_manage_work_health_and_safety_risks-nov24.pdf",
 ]
 
 CHUNK_SIZE = 14000   # chars per API call (~3500 tokens of content)
