@@ -35,7 +35,7 @@ REFS_DIR = os.path.join(_ROOT, "docs", "references")
 FAILURES_PATH = os.path.join(_DIR, "reference_seed_failures.txt")
 
 from core.schema import TaskBlock
-from core.validate import validate_task
+from core.validate import validate_task, WAH_SENTENCE
 
 # ============================================================
 # PRIORITY FILES — process in order, highest yield first
@@ -50,7 +50,7 @@ PRIORITY_FILES = [
     "guide-suspended-swing-stage-scaffolds.pdf",
     "Excavation-work-COP.pdf",
     "model-code-practice-managing-risk-falls-workplaces.pdf",
-    "model-code-practice-managing-risks-respirable-crystalline-silica.pdf",
+    "model_code_of_practice-managing-risks-respirable-crystalline-silica.pdf",
     "How-to-safely-remove-asbestos-COP.pdf",
 ]
 
@@ -70,6 +70,10 @@ EXTRACT_SYSTEM_PROMPT = (
     "{task_name, scope, controls[], hold_points[], stop_work[], "
     "admin[], ppe[], risk_pre, risk_post, wah_applicable} "
     "Only extract tasks directly supported by the document content. "
+    "IMPORTANT — WAH rule: if wah_applicable is true, controls[0] MUST be "
+    "this exact sentence verbatim:\n"
+    + WAH_SENTENCE
+    + "\nDo not paraphrase it. Copy it exactly as the first control.\n"
     "Output JSON only. No commentary."
 )
 
@@ -78,12 +82,19 @@ GENERATION_RULES = (
     "\n\nRULES FOR EACH FIELD:\n"
     "- task_name: short imperative phrase, e.g. 'Scaffold Erection and Dismantling'\n"
     "- scope: one sentence describing what the task covers\n"
-    "- controls[]: verb-first bullets, max 18 words each, plain English, "
-    "prefer 1-2 syllable words, active voice, Gunning Fog below 14\n"
-    "- hold_points[]: 'Do not proceed until X confirmed' format\n"
-    "- stop_work[]: 'Stop work if X occurs' format, plain English\n"
-    "- admin[]: record-keeping and briefing actions only\n"
-    "- ppe[]: equipment names only, comma-free single items per entry\n"
+    "- controls[]: DO NOT copy source text verbatim. REWRITE each control as a "
+    "verb-first bullet using plain words (1-2 syllables where possible). "
+    "Max 18 words per bullet. Active voice. No abstract nouns "
+    "(identification, preparation, management, provision, implementation, "
+    "assessment, requirement, procedure). "
+    "Gunning Fog score must be below 14 — if a bullet has 3+ words with "
+    "3+ syllables, split it into two shorter bullets.\n"
+    "- hold_points[]: 2-5 items. 'Do not proceed until X confirmed' format. "
+    "Plain words only.\n"
+    "- stop_work[]: 2-5 items. 'Stop work if X occurs' format. Plain words only.\n"
+    "- admin[]: 1-4 items. Record-keeping and briefing actions only. "
+    "Start with: Brief, Record, Review, Notify, Check.\n"
+    "- ppe[]: equipment names only, one item per entry, no commas within an entry\n"
     "- risk_pre: one of Low-1, Low-2, Low-3, Medium-4, High-6, High-9\n"
     "- risk_post: one of Low-1, Low-2, Low-3, Medium-4, High-6, High-9\n"
     "- wah_applicable: true if task involves work above 1.5m, else false\n"
@@ -203,18 +214,27 @@ def dict_to_taskblock(d: dict) -> TaskBlock | None:
             return []
         return [str(i).strip() for i in items if str(i).strip()]
 
+    wah = bool(d.get("wah_applicable", False))
+    controls = _clean_list("controls")
+
+    # WAH safety net: if wah_applicable but controls[0] isn't the exact sentence,
+    # inject it. This catches cases where Claude paraphrased rather than copied.
+    if wah:
+        if not controls or controls[0].strip() != WAH_SENTENCE.strip():
+            controls = [WAH_SENTENCE] + [c for c in controls if c.strip() != WAH_SENTENCE.strip()]
+
     return TaskBlock(
         task=task_name,
         scope=str(d.get("scope", "")).strip(),
         risk_pre=_normalise_risk(d.get("risk_pre", "Medium-4")),
         risk_post=_normalise_risk(d.get("risk_post", "Low-2")),
         hold_points=_clean_list("hold_points"),
-        controls=_clean_list("controls"),
+        controls=controls,
         stop_work=_clean_list("stop_work"),
         admin=_clean_list("admin"),
         ppe=_clean_list("ppe"),
         responsibility=DEFAULT_RESPONSIBILITY.copy(),
-        wah_applicable=bool(d.get("wah_applicable", False)),
+        wah_applicable=wah,
         source="library",
         approved=False,
         version="ref-1.0",
@@ -321,7 +341,7 @@ def main():
 
             chunks = split_into_chunks(full_text, CHUNK_SIZE)
             chunks = chunks[:MAX_CHUNKS]
-            print(f"  Pages of text → {len(chunks)} chunk(s) (of {len(split_into_chunks(full_text, CHUNK_SIZE))} total)")
+            print(f"  Text chunks: {len(chunks)} (of {len(split_into_chunks(full_text, CHUNK_SIZE))} total, capped at {MAX_CHUNKS})")
 
             pdf_extracted = 0
             pdf_saved = 0
@@ -383,7 +403,7 @@ def main():
                 time.sleep(API_DELAY)
 
             conn.commit()
-            print(f"  → Extracted: {pdf_extracted}  Saved: {pdf_saved}")
+            print(f"  Done: extracted={pdf_extracted}  saved={pdf_saved}")
 
     finally:
         conn.close()
