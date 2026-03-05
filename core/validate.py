@@ -30,11 +30,28 @@ WAH_SENTENCE = (
     "Emergency Response."
 )
 
-# 15 working codes + 2 auto-injected — from SWMS generation system v16.0
+# Taxonomy v2.0 — hazard families (used for embedded-code detection in bullet text)
+HAZARD_FAMILIES = [
+    "WAH", "IRA", "ELE", "SIL", "STR", "CFS", "ENE",
+    "HOT", "MOB", "ASB", "LED", "TRF", "ENV", "CHM", "SYS"
+]
+
+# Taxonomy v2.0 — approved full CCVS codes (used to validate ccvs_code field)
 APPROVED_CCVS_CODES = [
-    "WFR", "WFA", "WAH", "IRA", "ELE", "SIL", "STR",
-    "CFS", "ENE", "HOT", "MOB", "ASB", "LED", "TRF", "ENV",
-    "SYS", "EMR",
+    "WAH-H6", "WAH-H9",
+    "IRA-H6", "IRA-H9",
+    "ELE-M4", "ELE-H6",
+    "SIL-H6", "SIL-H9",
+    "STR-H6", "STR-H9",
+    "CFS-H9",
+    "ENE-M4", "ENE-H6",
+    "HOT-M4", "HOT-H6",
+    "MOB-M4", "MOB-H6",
+    "ASB-H6", "ASB-H9",
+    "LED-H6",
+    "CHM-M3", "CHM-H6",
+    "TRF-M4", "TRF-H6",
+    "SYS-L1", "SYS-L2", "SYS-M3", "SYS-M4", "SYS-H6", "SYS-H9"
 ]
 
 # Banned vocabulary — phrase: suggested substitution (None = warn without fix)
@@ -122,8 +139,9 @@ def score_task(task: TaskBlock) -> ValidationResult:
 
     # ----------------------------------------------------------
     # CHECK 2: CCVS INTEGRITY
-    # CCVS codes must not appear embedded in bullet text fields.
-    # WAH sentence is exempt (it intentionally references WAH controls).
+    # 2a: Hazard family codes must not appear embedded in bullet text fields.
+    #     WAH sentence is exempt (it intentionally references WAH controls).
+    # 2b: ccvs_code field value (if set) must be an approved full CCVS code.
     # ----------------------------------------------------------
     ccvs_fields = {
         "controls": task.controls,
@@ -136,13 +154,18 @@ def score_task(task: TaskBlock) -> ValidationResult:
         for item in items:
             if _is_wah_exempt(item):
                 continue
-            for code in APPROVED_CCVS_CODES:
-                # (?!-) excludes hyphenated compounds e.g. "ELE-rated"
-                if re.search(rf"\b{re.escape(code)}\b(?!-)", item):
+            for family in HAZARD_FAMILIES:
+                # (?!-) excludes hyphenated compounds e.g. "ELE-rated" or "WAH-H6"
+                if re.search(rf"\b{re.escape(family)}\b(?!-)", item):
                     errors.append(
-                        f"Check 2 — CCVS code '{code}' found embedded in "
+                        f"Check 2 — Hazard family code '{family}' found embedded in "
                         f"{fname}: '{_preview(item)}'"
                     )
+
+    if task.ccvs_code is not None and task.ccvs_code not in APPROVED_CCVS_CODES:
+        errors.append(
+            f"Check 2 — ccvs_code '{task.ccvs_code}' is not an approved CCVS code"
+        )
 
     # ----------------------------------------------------------
     # CHECK 3: RESPONSIBILITY INTEGRITY
