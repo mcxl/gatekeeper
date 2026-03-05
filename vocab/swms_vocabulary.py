@@ -20,6 +20,42 @@ Rules:
 """
 
 # ============================================================
+# TAXONOMY v2.0 — Hazard families, scope, and retired codes
+# ============================================================
+
+HAZARD_FAMILIES = [
+    "WAH", "IRA", "ELE", "SIL", "STR", "CFS", "ENE",
+    "HOT", "MOB", "ASB", "LED", "TRF", "ENV", "CHM", "SYS"
+]
+
+HAZARD_CODE_SCOPE = {
+    "WAH": "All elevated work, fall restraint, fall arrest, EWP, scaffold, ladder, roof, edge protection",
+    "IRA": "Rope access positioning, anchor systems, descent, ascent, facade work",
+    "ELE": "Isolation, LOTO, portable tools, overhead powerlines, test-for-dead, RCD",
+    "SIL": "Grinding, drilling, jackhammering, abrasive blasting, surface prep, wet suppression",
+    "STR": "Demolition, temporary works, propping, shoring, tilt-up, precast, concrete cancer repair",
+    "CFS": "Entry, atmosphere testing, rescue procedures, standby person, SCBA",
+    "ENE": "Hydraulic, pneumatic, gravity loads, spring-loaded, pressure systems, high-pressure washing",
+    "HOT": "Welding, cutting, grinding ignition risk, open flame, fire blankets, fire watch",
+    "MOB": "Excavators, cranes, forklifts, telehandlers, EWP, exclusion zones, spotter",
+    "ASB": "Bonded or friable assessment, removal, painting over, encapsulation, air monitoring",
+    "LED": "Paint testing, remediation, overcoating, contamination, blood lead monitoring",
+    "TRF": "TPMP, pedestrian controls, public interface, road or rail corridor, spotters",
+    "ENV": "Spill control, overspray, stormwater, contaminated soil, waste management",
+    "CHM": "Solvents, coatings, adhesives, resins, cleaning agents, all SDS-controlled substances",
+    "SYS": "Pre-start verification, site establishment, EMR, induction, permits",
+}
+
+RETIRED_CODES = {
+    "WFA": "WAH",
+    "HAZ": "CHM",
+    "PRE": "ENE",
+    "WFR": "WAH",
+    "EMR": "SYS",
+}
+
+
+# ============================================================
 # HAZARDS — Canonical hazard descriptions
 # ============================================================
 
