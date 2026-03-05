@@ -25,9 +25,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vocab.swms_vocabulary import HAZARDS  # import to confirm vocab path works
 
-# Re-import WAH_SENTENCE from validate (single source of truth)
-from core.validate import WAH_SENTENCE
-
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 2048
 
