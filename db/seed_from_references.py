@@ -36,6 +36,17 @@ FAILURES_PATH = os.path.join(_DIR, "reference_seed_failures.txt")
 
 from core.schema import TaskBlock
 from core.validate import validate_task, WAH_SENTENCE
+from vocab.swms_vocabulary import RETIRED_CODES
+
+
+def remap_code(code):
+    if not code:
+        return code
+    family = code.split('-')[0] if '-' in code else code
+    if family in RETIRED_CODES:
+        new_family = RETIRED_CODES[family]
+        return code.replace(family, new_family, 1)
+    return code
 
 # ============================================================
 # PRIORITY FILES — process in order, highest yield first
@@ -256,7 +267,7 @@ def save_ref_task(conn: sqlite3.Connection, task: TaskBlock) -> int:
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             task.task, task.scope, task.version, "draft",
-            task.risk_pre, task.risk_post, task.ccvs_code,
+            task.risk_pre, task.risk_post, remap_code(task.ccvs_code),
             1 if task.wah_applicable else 0,
             task.source, 0, None,
         ),

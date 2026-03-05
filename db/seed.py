@@ -20,6 +20,19 @@ PROJECT_ROOT = os.path.dirname(_dir)
 DB_PATH = os.path.join(_dir, 'gatekeeper.db')
 LIBRARY_PATH = os.path.join(PROJECT_ROOT, 'src', 'SWMS_TASK_LIBRARY.md')
 
+sys.path.insert(0, PROJECT_ROOT)
+from vocab.swms_vocabulary import RETIRED_CODES
+
+
+def remap_code(code):
+    if not code:
+        return code
+    family = code.split('-')[0] if '-' in code else code
+    if family in RETIRED_CODES:
+        new_family = RETIRED_CODES[family]
+        return code.replace(family, new_family, 1)
+    return code
+
 
 # ============================================================
 # RISK LABEL
@@ -273,7 +286,7 @@ def seed(conn: sqlite3.Connection, content: str) -> dict:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 task_name, scope, '1.0', 'approved',
-                _risk_label(pre), _risk_label(post), ccvs_code,
+                _risk_label(pre), _risk_label(post), remap_code(ccvs_code),
                 0,  # wah_applicable always 0 for seeded library tasks —
                     # they ARE the WAH tasks; the WAH sentence cross-reference
                     # is for AI-generated tasks only.
