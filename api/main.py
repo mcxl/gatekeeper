@@ -133,6 +133,21 @@ async def health():
 # STANDALONE RUNNER
 # ============================================================
 
+@app.get("/infer")
+def infer_endpoint(q: str):
+    """
+    GET /infer?q=<work description>
+    Returns inferred WHS requirements. No Claude call — pure inference.
+    """
+    from core.inference_matrix import infer_to_dict
+    return infer_to_dict(q)
+
+
+# ============================================================
+# STANDALONE RUNNER
+# ============================================================
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+

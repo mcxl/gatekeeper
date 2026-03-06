@@ -20,6 +20,7 @@ import anthropic
 from core.schema import AuditEvent, TaskBlock, ValidationResult
 from core.validate import validate_task
 from core.audit import log_event
+from core.inference_matrix import infer_to_dict
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -79,6 +80,17 @@ When CCVS does not trigger:
 The code appears ONLY in ccvs_code field.
 Never in controls, admin, ppe, or responsibility fields.
 
+MONITORING RULE
+Generate monitoring only when ccvs_code is not N/A.
+When monitoring is required:
+- critical_control: the single most important physical check — verb first, observable, under 15 words
+- who: role title only (Supervisor, Workers, PM)
+- frequency: one of — before each use, each shift start, continuous, daily, weekly
+- evidence: what physical record or observable sign confirms the control is in place
+When ccvs_code = N/A: omit monitoring field entirely (null).
+
+
+
 CONTROL ORDER (always this sequence):
 1. hold_point (only if CCVS triggers)
 2. engineering controls
@@ -94,6 +106,8 @@ FORMATTING RULES
 - Verb first (Verify, Install, Inspect, Barricade, Record, Tag-out)
 - 6-12 words per bullet, 18-word hard cap
 - WAH cross-reference line exempt from word cap
+- WAH cross-reference line only permitted when wah_applicable is true
+- When wah_applicable is false, omit WAH cross-reference entirely — do not add it to controls
 
 RESPONSIBILITY FORMAT
 Role — specific obligation (max 10 words)
@@ -113,6 +127,12 @@ OUTPUT — TaskBlock schema:
   "ppe": ["ppe item"],
   "responsibility": {"SUP": "obligation", "WKR": "obligation"},
   "ccvs_code": "WAH-H6",
+  "monitoring": {
+    "critical_control": "what the supervisor physically checks — one observable action",
+    "who": "Supervisor",
+    "frequency": "each shift start",
+    "evidence": "what record or physical sign confirms compliance"
+  },
   "wah_applicable": false,
   "source": "ai-generated",
   "approved": false,
@@ -152,6 +172,51 @@ def _parse_task(raw: str) -> TaskBlock:
             lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
         )
     data = json.loads(text)
+    monitoring_data = data.get("monitoring")
+    monitoring = None
+    if monitoring_data and isinstance(monitoring_data, dict):
+        from core.schema import MonitoringEntry
+        try:
+            monitoring = MonitoringEntry(**monitoring_data)
+        except Exception:
+            monitoring = None
+
+    # Strip role-name prefixes from admin/controls/ppe bullets (Check 3 guard)
+    # Converts "Supervisor to check barriers" -> "Check barriers"
+    import re as _re
+    _ROLE_PREFIX = _re.compile(
+        r'^(SUP|WKR|SUB|PM|OP|Supervisor|Worker|Subcontractor|Operator)'
+        r'\s+(to\s+|[-\u2014]\s*)',
+        _re.IGNORECASE
+    )
+    for field in ("controls", "admin", "ppe"):
+        cleaned = []
+        for item in data.get(field, []):
+            stripped = _ROLE_PREFIX.sub("", item).strip()
+            if stripped:
+                # Capitalise first letter after stripping
+                stripped = stripped[0].upper() + stripped[1:]
+            cleaned.append(stripped)
+        data[field] = cleaned
+
+    # Force wah_applicable=False when ccvs_code is not a WAH code.
+    # Guards against model incorrectly setting wah_applicable=true for tasks
+    # like LED-H6 (lead paint ground floor) which trigger Check 4 failures.
+    import re
+    ccvs_code = data.get("ccvs_code") or "N/A"
+    wah_ccvs = str(ccvs_code).startswith("WAH")
+    if not wah_ccvs:
+        data["wah_applicable"] = False
+    wah_applicable = bool(data.get("wah_applicable", False))
+
+    # Strip WAH cross-reference bullets when wah_applicable is not active.
+    if not wah_applicable:
+        for field in ("controls", "admin", "hold_points"):
+            data[field] = [
+                item for item in data.get(field, [])
+                if "WAH" not in item
+            ]
+
     return TaskBlock(
         task=data.get("task", ""),
         scope=data.get("scope", ""),
@@ -164,11 +229,85 @@ def _parse_task(raw: str) -> TaskBlock:
         ppe=data.get("ppe", []),
         responsibility=data.get("responsibility", {"SUP": "", "WKR": ""}),
         ccvs_code=data.get("ccvs_code"),
+        monitoring=monitoring,
         wah_applicable=bool(data.get("wah_applicable", False)),
         source="ai-generated",
         approved=False,
     )
 
+
+
+
+def _build_inference_block(inferred: dict) -> str:
+    """
+    Format inferred requirements as a structured prompt block.
+    Returns empty string if inference found nothing significant.
+    """
+    if not inferred:
+        return ""
+
+    lines = []
+
+    if inferred.get("hrcw"):
+        lines.append("HRCW: YES")
+        if inferred.get("hrcw_category"):
+            lines.append(f"HRCW category: {inferred['hrcw_category']}")
+        if inferred.get("hrcw_license_class"):
+            lines.append(f"Required licence: {inferred['hrcw_license_class']}")
+
+    if inferred.get("safework_notification_required"):
+        lines.append("SafeWork NSW notification: REQUIRED before work commences")
+
+    if inferred.get("epa_license_required"):
+        lines.append("EPA licence: REQUIRED")
+
+    if inferred.get("certifications"):
+        certs = inferred["certifications"][:6]
+        lines.append("Mandatory certifications:")
+        for c in certs:
+            lines.append(f"  - {c}")
+
+    if inferred.get("permits"):
+        permits = inferred["permits"][:6]
+        lines.append("Mandatory permits and approvals:")
+        for p in permits:
+            lines.append(f"  - {p}")
+
+    if inferred.get("ppe"):
+        baseline = {"safety glasses", "high-visibility", "steel-capped", "hard hat"}
+        extra_ppe = [
+            p for p in inferred["ppe"]
+            if not any(b in p.lower() for b in baseline)
+        ][:6]
+        if extra_ppe:
+            lines.append("Additional mandatory PPE:")
+            for p in extra_ppe:
+                lines.append(f"  - {p}")
+
+    if inferred.get("notifications"):
+        notifs = inferred["notifications"][:4]
+        lines.append("Required notifications:")
+        for n in notifs:
+            lines.append(f"  - {n}")
+
+    if inferred.get("regulatory_notes"):
+        notes = inferred["regulatory_notes"][:3]
+        lines.append("Regulatory notes:")
+        for n in notes:
+            lines.append(f"  - {n}")
+
+    if not lines:
+        return ""
+
+    block = (
+        "\n\n--- MANDATORY REQUIREMENTS (from WHS inference) ---"
+        "\nThe following requirements are mandatory for this work type."
+        "\nAll items below MUST be reflected in controls, admin, and PPE fields."
+        "\n"
+        + "\n".join(lines)
+        + "\n--- END MANDATORY REQUIREMENTS ---"
+    )
+    return block
 
 def generate_task(raw_input: str, user: str = "system") -> TaskBlock:
     """
@@ -187,7 +326,14 @@ def generate_task(raw_input: str, user: str = "system") -> TaskBlock:
 
     client = anthropic.Anthropic(api_key=api_key)
 
-    prompt = raw_input
+    # ── Inference pre-fill ────────────────────────────────────────────────────
+    try:
+        _inferred = infer_to_dict(raw_input)
+    except Exception:
+        _inferred = {}
+
+    _inference_block = _build_inference_block(_inferred)
+    prompt = raw_input + _inference_block
     last_result: ValidationResult | None = None
 
     for attempt in range(1, 3):
@@ -241,10 +387,58 @@ def generate_task(raw_input: str, user: str = "system") -> TaskBlock:
         ))
 
         if attempt == 1:
-            error_summary = "\n".join(result.errors[:5])
+            fog_errors = [e for e in result.errors if "Fog score" in e]
+            check2_errors = [e for e in result.errors if "Check 2" in e]
+            check3_errors = [e for e in result.errors if "Check 3" in e]
+            other_errors = [
+                e for e in result.errors
+                if "Fog score" not in e and "Check 2" not in e and "Check 3" not in e
+            ]
+
+            error_summary = "\n".join((other_errors + check2_errors + check3_errors + fog_errors)[:7])
+
+            fog_hint = ""
+            if fog_errors:
+                fog_hint = (
+                    "\n\nFOG REWRITE RULES — apply to every flagged bullet:"
+                    "\n- Replace any word with 3+ syllables with a shorter equivalent"
+                    "\n- Maximum 2 polysyllabic words per bullet"
+                    "\n- Examples: 'monitoring' -> 'checking', 'confirmed' -> 'sighted',"
+                    " 'application' -> 'use', 'baseline' -> 'reading',"
+                    " 'encapsulation' -> 'sealing', 'containment' -> 'barrier'"
+                    "\n- Rewrite the entire bullet in plain English, verb first, under 12 words"
+                )
+
+            check2_hint = ""
+            if check2_errors:
+                check2_hint = (
+                    "\n\nCHECK 2 — HAZARD CODE RULE:"
+                    "\n- Hazard family codes (WAH, IRA, ELE, SIL, STR, CFS, ENE, HOT, MOB,"
+                    " ASB, LED, TRF, ENV, CHM, SYS) must NEVER appear in bullet text"
+                    "\n- These codes belong only in the ccvs_code field"
+                    "\n- Remove or rephrase any bullet containing a bare hazard code"
+                    "\n- Example: 'WAH cross-reference — ground floor only' is INVALID"
+                    "\n  Rewrite as: 'Ground floor work only — no fall risk above 1.5m'"
+                )
+
+            check3_hint = ""
+            if check3_errors:
+                check3_hint = (
+                    "\n\nCHECK 3 — ROLE NAME RULE:"
+                    "\n- Role names (SUP, WKR, SUB, PM, OP, Supervisor, Worker,"
+                    " Subcontractor, Operator) must NEVER appear in controls, admin, or ppe fields"
+                    "\n- Role obligations belong only in the responsibility field"
+                    "\n- Remove the role name and rewrite as a plain instruction"
+                    "\n- Example: 'Supervisor to inspect containment' is INVALID in admin"
+                    "\n  Rewrite as: 'Inspect containment barriers before work starts'"
+                )
+
             prompt = (
                 raw_input
                 + f"\n\nPrevious attempt failed validation:\n{error_summary}"
+                + check2_hint
+                + check3_hint
+                + fog_hint
                 + "\nFix all errors and output valid JSON only."
             )
 
