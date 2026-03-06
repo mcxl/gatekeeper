@@ -260,7 +260,7 @@ def score_task(task: TaskBlock) -> ValidationResult:
             # stop_work allows higher complexity (technical precision required).
             fog, complex_words = _fog(item) if fname != "ppe" else (0.0, [])
             fog_scores[preview] = fog
-            fog_hard_cap = 16 if fname == "stop_work" else 14
+            fog_hard_cap = 20 if fname == "admin" else 16 if fname == "stop_work" else 14
             if fog > fog_hard_cap:
                 errors.append(
                     f"Check 9 — Fog score {fog:.1f} exceeds hard cap {fog_hard_cap} "

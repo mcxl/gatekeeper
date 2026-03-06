@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""
+core/orchestrator.py — Multi-agent SWMS generation orchestrator.
+
+Routes work descriptions to either:
+  - Simple path: existing single-agent generate.py (fast, cheap)
+  - Full path:   4-agent pipeline (higher quality, HRCW/complex tasks)
+
+Usage:
+    import asyncio
+    from core.orchestrator import generate_swms
+
+    result = asyncio.run(generate_swms(
+        description="swing stage painting of apartment building facade",
+        project_meta={"project_name": "...", "site_address": "..."},
+    ))
+"""
+
+from __future__ import annotations
+import asyncio
+import logging
+from typing import Optional
+
+from dotenv import load_dotenv
+load_dotenv()
+
+log = logging.getLogger(__name__)
+
+# ── Routing thresholds ────────────────────────────────────────────────────────
+
+# Always use full pipeline for HRCW work
+HRCW_ALWAYS_FULL: bool = True
+
+# Always use full pipeline when SafeWork notification required
+SAFEWORK_ALWAYS_FULL: bool = True
+
+# Sentence count above which full pipeline is used
+SENTENCE_THRESHOLD: int = 4
+
+# ── Agent imports (deferred to avoid import errors if agents/ not yet created) ─
+
+def _import_agents():
+    from agents.decomposer import run_decomposer
+    from agents.risk_assessor import run_risk_assessor
+    from agents.control_writer import run_control_writer
+    from agents.assembler import run_assembler, run_assembler_single
+    return run_decomposer, run_risk_assessor, run_control_writer, run_assembler, run_assembler_single
+
+
+# ── Routing ───────────────────────────────────────────────────────────────────
+
+def route(description: str, inference: dict) -> str:
+    """
+    Determine pipeline route.
+
+    Returns:
+        'simple' — single-agent fast path (existing generate.py)
+        'full'   — 4-agent pipeline
+    """
+    if HRCW_ALWAYS_FULL and inference.get("hrcw"):
+        log.info("Route: full — HRCW work identified")
+        return "full"
+
+    if SAFEWORK_ALWAYS_FULL and inference.get("safework_notification_required"):
+        log.info("Route: full — SafeWork notification required")
+        return "full"
+
+    # Estimate task count from sentence/clause structure
+    import re
+    clauses = re.split(r"[.;,\n]", description)
+    clauses = [c.strip() for c in clauses if len(c.strip()) > 10]
+    if len(clauses) > SENTENCE_THRESHOLD:
+        log.info(f"Route: full — {len(clauses)} clauses detected (threshold: {SENTENCE_THRESHOLD})")
+        return "full"
+
+    log.info("Route: simple — low complexity, no HRCW")
+    return "simple"
+
+
+# ── Simple path ───────────────────────────────────────────────────────────────
+
+async def _run_simple_path(
+    description: str,
+    project_meta: dict,
+    inference: dict,
+) -> list[dict]:
+    """
+    Existing single-agent generation. Falls back gracefully if generate.py
+    is not async — wraps in executor if needed.
+    """
+    try:
+        from core.generate import generate_task
+        task = await generate_task(description, project_meta, inference)
+        return [task] if isinstance(task, dict) else task
+    except TypeError:
+        # generate_task is synchronous — run in executor
+        import asyncio
+        from core.generate import generate_task as _generate_task
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, _generate_task, description, project_meta, inference
+        )
+        return [result] if isinstance(result, dict) else result
+
+
+# ── Full 4-agent pipeline ─────────────────────────────────────────────────────
+
+async def _run_full_pipeline(
+    description: str,
+    project_meta: dict,
+    inference: dict,
+) -> tuple[list[dict], dict]:
+    """
+    Run all four agents in sequence.
+    Returns (task_blocks, agent_outputs_debug).
+    """
+    (run_decomposer, run_risk_assessor,
+     run_control_writer, run_assembler,
+     run_assembler_single) = _import_agents()
+
+    agent_outputs: dict = {}
+    errors: list[str] = []
+
+    # ── Agent 1: Decompose ────────────────────────────────────────────────────
+    log.info("Agent 1 — Decomposer starting")
+    try:
+        task_manifest = await run_decomposer(description, inference)
+        agent_outputs["task_manifest"] = task_manifest
+        log.info(f"Agent 1 — {task_manifest['total_tasks']} tasks decomposed")
+    except Exception as e:
+        log.error(f"Agent 1 failed: {e}")
+        raise RuntimeError(f"Decomposer failed: {e}") from e
+
+    # ── Agent 2: Risk assess ──────────────────────────────────────────────────
+    log.info("Agent 2 — Risk Assessor starting")
+    try:
+        risk_manifest = await run_risk_assessor(task_manifest, inference)
+        agent_outputs["risk_manifest"] = risk_manifest
+        log.info(f"Agent 2 — {len(risk_manifest['risks'])} tasks risk-assessed")
+    except Exception as e:
+        log.error(f"Agent 2 failed: {e}")
+        raise RuntimeError(f"Risk Assessor failed: {e}") from e
+
+    # ── Agent 3: Write controls (parallel across tasks) ───────────────────────
+    log.info("Agent 3 — Control Writer starting (parallel)")
+    try:
+        control_manifest = await run_control_writer(
+            task_manifest, risk_manifest, inference
+        )
+        agent_outputs["control_manifest"] = control_manifest
+        log.info(f"Agent 3 — {len(control_manifest['controls'])} task controls written")
+    except Exception as e:
+        log.error(f"Agent 3 failed: {e}")
+        raise RuntimeError(f"Control Writer failed: {e}") from e
+
+    # ── Agent 4: Assemble TaskBlocks ──────────────────────────────────────────
+    log.info("Agent 4 — Assembler starting")
+    try:
+        # Batch assembler: process tasks individually to avoid token truncation
+        task_blocks = []
+        tasks = task_manifest.get('tasks', [])
+        risks = risk_manifest.get('risks', [])
+        controls = control_manifest.get('controls', [])
+        for idx in range(len(tasks)):
+            single_manifest = {**task_manifest, 'tasks': [tasks[idx]], 'total_tasks': 1}
+            single_risk = {**risk_manifest, 'risks': [risks[idx]] if idx < len(risks) else []}
+            single_ctrl = {**control_manifest, 'controls': [controls[idx]] if idx < len(controls) else []}
+            result = await run_assembler(single_manifest, single_risk, single_ctrl, inference, project_meta)
+            task_blocks.extend(result)
+            log.info(f"Agent 4 - assembled task {idx+1}/{len(tasks)}")
+        agent_outputs["task_blocks_raw"] = task_blocks
+        log.info(f"Agent 4 — {len(task_blocks)} TaskBlocks assembled")
+    except Exception as e:
+        log.error(f"Agent 4 failed: {e}")
+        raise RuntimeError(f"Assembler failed: {e}") from e
+
+    # ── Validation + retry ────────────────────────────────────────────────────
+    validated: list[dict] = []
+    for tb in task_blocks:
+        val_result = _validate_task_block(tb)
+        if not val_result["valid"]:
+            log.warning(
+                f"Task {tb.get('task', '?')} failed validation: "
+                f"{val_result['errors']} — retrying"
+            )
+            try:
+                tb = await run_assembler_single(tb, val_result["errors"], inference)
+                errors.extend(val_result["errors"])
+            except Exception as e:
+                log.error(f"Retry assembler failed for task: {e}")
+        validated.append(tb)
+
+    if errors:
+        agent_outputs["validation_errors"] = errors
+
+    return validated, agent_outputs
+
+
+# ── Public interface ──────────────────────────────────────────────────────────
+
+async def generate_swms(
+    description: str,
+    project_meta: Optional[dict] = None,
+    force_full: bool = False,
+    force_simple: bool = False,
+) -> dict:
+    """
+    Main entry point for SWMS generation.
+
+    Args:
+        description:   Plain-text work description
+        project_meta:  Dict with project_name, site_address, principal_contractor, version
+        force_full:    Override routing — always use full pipeline
+        force_simple:  Override routing — always use simple pipeline
+
+    Returns:
+        {
+            "route": "simple" | "full",
+            "tasks": list[TaskBlock dict],
+            "inference": dict,
+            "agent_outputs": dict,   # debug — intermediate manifests
+            "task_count": int,
+        }
+    """
+    from core.inference_matrix import infer_to_dict
+
+    project_meta = project_meta or {}
+
+    # Step 1: inference pre-fill
+    log.info("Running inference matrix pre-fill")
+    inference = infer_to_dict(description)
+
+    # Step 2: routing
+    if force_full:
+        selected_route = "full"
+    elif force_simple:
+        selected_route = "simple"
+    else:
+        selected_route = route(description, inference)
+
+    log.info(f"Route selected: {selected_route}")
+
+    # Step 3: run pipeline
+    agent_outputs: dict = {}
+
+    if selected_route == "simple":
+        task_blocks = await _run_simple_path(description, project_meta, inference)
+    else:
+        task_blocks, agent_outputs = await _run_full_pipeline(
+            description, project_meta, inference
+        )
+
+    return {
+        "route": selected_route,
+        "tasks": task_blocks,
+        "inference": inference,
+        "agent_outputs": agent_outputs,
+        "task_count": len(task_blocks),
+    }
+
+
+# ── Validation helper ─────────────────────────────────────────────────────────
+
+def _validate_task_block(tb: dict) -> dict:
+    """
+    Lightweight TaskBlock validation.
+    Returns {"valid": bool, "errors": list[str]}.
+    Mirrors core/validate.py checks without the full dataclass conversion.
+    """
+    errors: list[str] = []
+
+    # Required fields
+    for field in ["task", "scope", "risk_pre", "risk_post", "controls", "ppe", "ccvs_code"]:
+        if field not in tb or not tb[field]:
+            errors.append(f"Missing or empty field: '{field}'")
+
+    # Risk ratings
+    valid_ratings = {"L", "M", "H"}
+    if tb.get("risk_pre") not in valid_ratings:
+        errors.append(f"Invalid risk_pre: '{tb.get('risk_pre')}'")
+    if tb.get("risk_post") not in valid_ratings:
+        errors.append(f"Invalid risk_post: '{tb.get('risk_post')}'")
+    if tb.get("risk_post") == "H":
+        errors.append("risk_post cannot be H — residual risk must be L or M")
+
+    # Controls
+    controls = tb.get("controls", [])
+    if len(controls) < 3:
+        errors.append(f"Only {len(controls)} controls — minimum 3 required")
+    total_chars = sum(len(c) for c in controls)
+    if total_chars > 1800:
+        errors.append(f"Controls total {total_chars} chars — maximum 1800")
+
+    # CCVS / WAH consistency
+    ccvs = tb.get("ccvs_code", "N/A")
+    wah = tb.get("wah_applicable", False)
+    if ccvs.startswith("WAH") and not wah:
+        errors.append(f"ccvs_code is {ccvs} but wah_applicable is False")
+    if not ccvs.startswith("WAH") and wah:
+        errors.append(f"wah_applicable is True but ccvs_code is {ccvs}")
+
+    # H risk must have CCVS code
+    if tb.get("risk_pre") == "H" and ccvs == "N/A":
+        errors.append("High pre-risk task must have a CCVS code — N/A not permitted")
+
+    return {"valid": len(errors) == 0, "errors": errors}
+
+
+# ── CLI entrypoint ────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import logging
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    desc = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else (
+        "Erect swing stage and apply elastomeric paint to apartment building facade. "
+        "Building is occupied. 12 storeys."
+    )
+
+    meta = {
+        "project_name": "CLI Test",
+        "site_address": "Test Site",
+        "principal_contractor": "RPD",
+        "version": "1.0",
+    }
+
+    print(f"\nDescription: {desc}\n")
+    result = asyncio.run(generate_swms(desc, meta))
+
+    print(f"Route: {result['route']}")
+    print(f"Tasks: {result['task_count']}")
+    print(f"HRCW: {result['inference']['hrcw']}")
+    print()
+
+    for i, tb in enumerate(result["tasks"], 1):
+        print(f"Task {i}: {tb.get('task', '?')}")
+        print(f"  Risk: {tb.get('risk_pre')} → {tb.get('risk_post')}")
+        print(f"  CCVS: {tb.get('ccvs_code')}")
+        print(f"  Controls: {len(tb.get('controls', []))}")
+        print()

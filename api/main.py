@@ -147,6 +147,51 @@ def infer_endpoint(q: str):
 # STANDALONE RUNNER
 # ============================================================
 
+
+
+@app.get("/generate/route")
+def check_route(description: str):
+    from core.orchestrator import route as _route
+    from core.inference_matrix import infer_to_dict
+    inference = infer_to_dict(description)
+    selected = _route(description, inference)
+    return {
+        "description": description[:100],
+        "route": selected,
+        "hrcw": inference["hrcw"],
+        "hrcw_category": inference.get("hrcw_category"),
+        "safework_notification": inference["safework_notification_required"],
+    }
+
+
+@app.post("/generate/auto")
+async def generate_auto(request: dict):
+    from core.orchestrator import generate_swms
+    try:
+        result = await generate_swms(
+            description=request.get("description", ""),
+            project_meta=request.get("project_meta", {}),
+            force_full=request.get("force_full", False),
+            force_simple=request.get("force_simple", False),
+        )
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/generate/full")
+async def generate_full(request: dict):
+    from core.orchestrator import generate_swms
+    try:
+        result = await generate_swms(
+            description=request.get("description", ""),
+            project_meta=request.get("project_meta", {}),
+            force_full=True,
+        )
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

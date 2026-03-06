@@ -8,6 +8,19 @@ class ResponsibilityEntry(BaseModel):
     obligation: str
 
 
+class MonitoringEntry(BaseModel):
+    critical_control: str
+    who: str
+    frequency: Literal[
+        "before each use",
+        "each shift start",
+        "continuous",
+        "daily",
+        "weekly"
+    ]
+    evidence: str
+
+
 class TaskBlock(BaseModel):
     task: str
     scope: str
@@ -18,8 +31,9 @@ class TaskBlock(BaseModel):
     stop_work: list[str] = Field(default_factory=list)
     admin: list[str] = Field(default_factory=list)
     ppe: list[str] = Field(default_factory=list)
-    responsibility: dict[str, str]  # role key → obligation string
+    responsibility: dict[str, str]
     ccvs_code: str | None = None
+    monitoring: MonitoringEntry | None = None
     wah_applicable: bool = False
     source: Literal["library", "ai-generated"] = "library"
     approved: bool = False
