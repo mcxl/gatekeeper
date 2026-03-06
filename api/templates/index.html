@@ -238,7 +238,19 @@
     const fd = new FormData(this);
 
     try {
-      const resp = await fetch('/generate', { method: 'POST', body: fd });
+      const resp = await fetch('/generate/auto', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          description: fd.get('task_name'),
+          project_meta: {
+            project_name: fd.get('site_name') || '',
+            site_address: fd.get('site_name') || '',
+            principal_contractor: fd.get('principal_contractor') || 'General',
+            trade_type: fd.get('trade_type') || '',
+          },
+        }),
+      });
       const data = await resp.json();
 
       if (data.error) {
@@ -248,44 +260,53 @@
       }
 
       status.className = 'ok';
-      status.textContent = `✓ Generated: "${data.task_name}" — source: ${data.source}`;
+      const route = data.route ? ` — pipeline: ${data.route}` : '';
+      const taskCount = data.task_count ? ` — ${data.task_count} tasks` : '';
+      status.textContent = `✓ Generated${route}${taskCount}`;
 
-      // Build download links
+      // Build task summary
       downloads.innerHTML = '';
       downloads.style.display = 'block';
 
-      if (data.docx_b64) {
-        const bytes = Uint8Array.from(atob(data.docx_b64), c => c.charCodeAt(0));
-        const blob = new Blob([bytes], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = data.docx_filename;
-        a.textContent = '⬇ Download Word (.docx)';
-        downloads.appendChild(a);
+      if (data.tasks && data.tasks.length > 0) {
+        // Download JSON
+        const jsonBlob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const jsonUrl = URL.createObjectURL(jsonBlob);
+        const jsonLink = document.createElement('a');
+        jsonLink.href = jsonUrl;
+        jsonLink.download = 'swms_tasks.json';
+        jsonLink.textContent = '⬇ Download JSON';
+        downloads.appendChild(jsonLink);
+
+        // Task table
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">';
+        html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:6px 8px;text-align:left;">#</th><th style="padding:6px 8px;text-align:left;">Task</th><th style="padding:6px 8px;">Risk</th><th style="padding:6px 8px;">CCVS</th><th style="padding:6px 8px;">Controls</th></tr>';
+        data.tasks.forEach((t, i) => {
+          const bg = i % 2 === 0 ? '#f8f9fa' : '#fff';
+          const riskPre = t.risk_pre || '?';
+          const riskPost = t.risk_post || '?';
+          const ccvs = t.ccvs_code || 'N/A';
+          const ctrlCount = (t.controls || []).length;
+          const ccvsColor = ccvs !== 'N/A' ? '#c62828' : '#666';
+          html += `<tr style="background:${bg};border-bottom:1px solid #e0e0e0;">`;
+          html += `<td style="padding:5px 8px;color:#999;">${i+1}</td>`;
+          html += `<td style="padding:5px 8px;">${t.task || '?'}</td>`;
+          html += `<td style="padding:5px 8px;text-align:center;">${riskPre} → ${riskPost}</td>`;
+          html += `<td style="padding:5px 8px;text-align:center;color:${ccvsColor};font-weight:700;">${ccvs}</td>`;
+          html += `<td style="padding:5px 8px;text-align:center;">${ctrlCount}</td>`;
+          html += '</tr>';
+        });
+        html += '</table>';
+        downloads.insertAdjacentHTML('beforeend', html);
       }
 
-      if (data.markdown) {
-        const blob = new Blob([data.markdown], {type: 'text/markdown'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = data.md_filename;
-        a.textContent = '⬇ Download Markdown';
-        a.className = 'md-link';
-        downloads.appendChild(a);
-
-        mdContent.textContent = data.markdown;
-        mdPreview.style.display = 'block';
-      }
-
-      meta.textContent = `Risk: ${data.risk_pre} → ${data.risk_post} | Approved: ${data.approved}${data.draft_id ? ' | Draft ID: ' + data.draft_id : ''}`;
-
-      if (data.message) {
-        const msg = document.createElement('p');
-        msg.style.cssText = 'margin-top:8px;font-size:12px;color:#b36200;';
-        msg.textContent = data.message;
-        meta.appendChild(msg);
+      // Inference summary
+      if (data.inference) {
+        const inf = data.inference;
+        let parts = [];
+        if (inf.hrcw) parts.push(`HRCW: ${inf.hrcw_category || 'Yes'}`);
+        if (inf.safework_notification_required) parts.push('SafeWork notification required');
+        meta.textContent = parts.length > 0 ? parts.join(' | ') : 'Standard work — no HRCW triggers';
       }
 
     } catch(err) {
