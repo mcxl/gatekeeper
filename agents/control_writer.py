@@ -77,6 +77,10 @@ CCVS CODES — assign the highest applicable:
   ASB-H4  Asbestos — no decontamination
   N/A     No CCVS trigger for this task
 
+CRITICAL: Use ONLY the codes listed above. Do not invent new codes.
+PUB, ENV, FAL, GEN and any other unlisted prefixes are INVALID.
+If no listed code fits, use N/A.
+
 MONITORING — required when ccvs_code is not N/A:
   critical_control: most important physical check — verb first, under 15 words
   who: Supervisor / Workers / PM

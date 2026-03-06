@@ -28,6 +28,17 @@ YOUR JOBS:
    - task name: ≤60 chars
    - scope: ≤120 chars
 4. Verify CCVS integrity: H pre-risk must have a CCVS code (not N/A)
+   APPROVED CCVS CODES — use only these exact strings, no others:
+   WAH-H6, WAH-H9, IRA-H6, IRA-H9,
+   ELE-M4, ELE-H6, SIL-H6, SIL-H9,
+   STR-H6, STR-H9, CFS-H9,
+   ENE-M4, ENE-H6, HOT-M4, HOT-H6,
+   MOB-M4, MOB-H6, ASB-H6, ASB-H9,
+   LED-H6, CHM-M3, CHM-H6,
+   TRF-M4, TRF-H6,
+   SYS-L1, SYS-L2, SYS-M3, SYS-M4, SYS-H6, SYS-H9,
+   N/A
+   Any code not in this list is INVALID — replace with the closest approved code or N/A.
 5. wah_applicable = true ONLY if ccvs_code starts with "WAH"
 6. responsibility.SUP: what the supervisor is responsible for — plain English, ≤20 words
 7. responsibility.WKR: what workers are responsible for — plain English, ≤20 words
