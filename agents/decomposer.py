@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+TASK COUNT LIMIT: Generate a maximum of 12 tasks. Combine minor steps into logical groups to stay within this limit. Quality over quantity — 8-12 well-scoped tasks is ideal.
 agents/decomposer.py — Agent 1: Task Decomposer
 Breaks a work description into an ordered TaskManifest.
 
@@ -19,7 +20,7 @@ Your ONLY job is to break a work description into an ordered list of logical tas
 Do not assess risk. Do not write controls. Do not write PPE. Only decompose.
 
 RULES:
-- Maximum 20 tasks
+- Maximum 12 tasks. Combine minor steps into logical groups. 8-12 tasks is ideal.
 - Tasks must be in logical work sequence:
     mobilisation → site establishment → preparatory works →
     principal works → finishing → defects / make good → demobilisation
@@ -94,7 +95,7 @@ async def run_decomposer(description: str, inference: dict) -> dict:
     )
 
     message = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5",
         max_tokens=4096,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
@@ -118,8 +119,8 @@ def _validate_task_manifest(manifest: dict) -> None:
             raise ValueError(f"TaskManifest missing required key: '{key}'")
     if not isinstance(manifest["tasks"], list) or len(manifest["tasks"]) == 0:
         raise ValueError("TaskManifest.tasks must be a non-empty list")
-    if len(manifest["tasks"]) > 20:
-        raise ValueError(f"TaskManifest has {len(manifest['tasks'])} tasks — maximum is 20")
+    if len(manifest["tasks"]) > 12:
+        raise ValueError(f"TaskManifest has {len(manifest['tasks'])} tasks — maximum is 12")
     for i, task in enumerate(manifest["tasks"]):
         for field in ["sequence", "task", "scope", "trade_type", "hrcw", "complexity"]:
             if field not in task:

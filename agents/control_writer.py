@@ -137,6 +137,20 @@ async def run_control_writer(
     return {"controls": list(results)}
 
 
+async def write_controls_single(
+    task: dict,
+    risk: dict,
+    inference: dict,
+) -> dict:
+    """
+    Write controls for a single task.
+    Called per-task in the streaming pipeline.
+    Returns a single control entry dict.
+    """
+    inference_context = _build_inference_context(inference)
+    return await _write_controls_for_task(task, risk, inference_context)
+
+
 async def _write_controls_for_task(
     task: dict,
     risk: dict,
@@ -160,7 +174,7 @@ async def _write_controls_for_task(
     )
 
     message = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5",
         max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],

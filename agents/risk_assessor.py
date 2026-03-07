@@ -102,7 +102,7 @@ async def run_risk_assessor(task_manifest: dict, inference: dict) -> dict:
     )
 
     message = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5",
         max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],

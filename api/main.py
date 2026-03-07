@@ -192,6 +192,45 @@ async def generate_full(request: dict):
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/generate/stream")
+async def generate_stream(request: dict):
+    """
+    POST /generate/stream
+    Server-Sent Events stream. Yields JSON lines as each task completes.
+    Client reads via EventSource or fetch + ReadableStream.
+    """
+    import json
+    from fastapi.responses import StreamingResponse
+    from core.orchestrator import generate_swms_stream
+
+    description = request.get("description", "")
+    project_meta = request.get("project_meta", {})
+    force_full = request.get("force_full", False)
+    force_simple = request.get("force_simple", False)
+
+    async def event_generator():
+        try:
+            async for event in generate_swms_stream(
+                description=description,
+                project_meta=project_meta,
+                force_full=force_full,
+                force_simple=force_simple,
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            import json as _json
+            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

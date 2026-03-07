@@ -42,9 +42,9 @@ SENTENCE_THRESHOLD: int = 4
 def _import_agents():
     from agents.decomposer import run_decomposer
     from agents.risk_assessor import run_risk_assessor
-    from agents.control_writer import run_control_writer
+    from agents.control_writer import run_control_writer, write_controls_single
     from agents.assembler import run_assembler, run_assembler_single
-    return run_decomposer, run_risk_assessor, run_control_writer, run_assembler, run_assembler_single
+    return run_decomposer, run_risk_assessor, run_control_writer, write_controls_single, run_assembler, run_assembler_single
 
 
 # ── Routing ───────────────────────────────────────────────────────────────────
@@ -115,8 +115,8 @@ async def _run_full_pipeline(
     Returns (task_blocks, agent_outputs_debug).
     """
     (run_decomposer, run_risk_assessor,
-     run_control_writer, run_assembler,
-     run_assembler_single) = _import_agents()
+     run_control_writer, write_controls_single,
+     run_assembler, run_assembler_single) = _import_agents()
 
     agent_outputs: dict = {}
     errors: list[str] = []
@@ -141,59 +141,53 @@ async def _run_full_pipeline(
         log.error(f"Agent 2 failed: {e}")
         raise RuntimeError(f"Risk Assessor failed: {e}") from e
 
-    # ── Agent 3: Write controls (parallel across tasks) ───────────────────────
-    log.info("Agent 3 — Control Writer starting (parallel)")
-    try:
-        control_manifest = await run_control_writer(
-            task_manifest, risk_manifest, inference
-        )
-        agent_outputs["control_manifest"] = control_manifest
-        log.info(f"Agent 3 — {len(control_manifest['controls'])} task controls written")
-    except Exception as e:
-        log.error(f"Agent 3 failed: {e}")
-        raise RuntimeError(f"Control Writer failed: {e}") from e
+    # ── Per-task loop: Agent 3 (controls) → Agent 4 (assemble) ───────────────
+    tasks = task_manifest.get("tasks", [])
+    risks_by_seq = {r["sequence"]: r for r in risk_manifest.get("risks", [])}
+    task_blocks = []
 
-    # ── Agent 4: Assemble TaskBlocks ──────────────────────────────────────────
-    log.info("Agent 4 — Assembler starting")
-    try:
-        # Batch assembler: process tasks individually to avoid token truncation
-        task_blocks = []
-        tasks = task_manifest.get('tasks', [])
-        risks = risk_manifest.get('risks', [])
-        controls = control_manifest.get('controls', [])
-        for idx in range(len(tasks)):
-            single_manifest = {**task_manifest, 'tasks': [tasks[idx]], 'total_tasks': 1}
-            single_risk = {**risk_manifest, 'risks': [risks[idx]] if idx < len(risks) else []}
-            single_ctrl = {**control_manifest, 'controls': [controls[idx]] if idx < len(controls) else []}
-            result = await run_assembler(single_manifest, single_risk, single_ctrl, inference, project_meta)
-            task_blocks.extend(result)
-            log.info(f"Agent 4 - assembled task {idx+1}/{len(tasks)}")
-        agent_outputs["task_blocks_raw"] = task_blocks
-        log.info(f"Agent 4 — {len(task_blocks)} TaskBlocks assembled")
-    except Exception as e:
-        log.error(f"Agent 4 failed: {e}")
-        raise RuntimeError(f"Assembler failed: {e}") from e
+    for idx, task in enumerate(tasks):
+        seq = task["sequence"]
+        risk = risks_by_seq.get(seq, {})
 
-    # ── Validation + retry ────────────────────────────────────────────────────
-    validated: list[dict] = []
-    for tb in task_blocks:
+        # Agent 3: write controls for this single task
+        log.info(f"Agent 3+4 — task {idx+1}/{len(tasks)}: {task['task'][:40]}")
+        try:
+            ctrl = await write_controls_single(task, risk, inference)
+        except Exception as e:
+            log.error(f"Agent 3 failed for task {idx+1}: {e}")
+            raise RuntimeError(f"Control Writer failed for task {idx+1}: {e}") from e
+
+        # Agent 4: assemble this single task
+        single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
+        single_risk = {**risk_manifest, "risks": [risk] if risk else []}
+        single_ctrl = {"controls": [ctrl]}
+        try:
+            result = await run_assembler(
+                single_manifest, single_risk, single_ctrl, inference, project_meta
+            )
+            tb = result[0] if result else {}
+        except Exception as e:
+            log.error(f"Agent 4 failed for task {idx+1}: {e}")
+            raise RuntimeError(f"Assembler failed for task {idx+1}: {e}") from e
+
+        # Validate + retry
         val_result = _validate_task_block(tb)
         if not val_result["valid"]:
-            log.warning(
-                f"Task {tb.get('task', '?')} failed validation: "
-                f"{val_result['errors']} — retrying"
-            )
+            log.warning(f"Task {tb.get('task', '?')} failed validation: {val_result['errors']} — retrying")
             try:
                 tb = await run_assembler_single(tb, val_result["errors"], inference)
                 errors.extend(val_result["errors"])
             except Exception as e:
-                log.error(f"Retry assembler failed for task: {e}")
-        validated.append(tb)
+                log.error(f"Retry assembler failed for task {idx+1}: {e}")
+        task_blocks.append(tb)
+        log.info(f"Task {idx+1}/{len(tasks)} complete")
 
+    agent_outputs["task_blocks_raw"] = task_blocks
     if errors:
         agent_outputs["validation_errors"] = errors
 
-    return validated, agent_outputs
+    return task_blocks, agent_outputs
 
 
 # ── Public interface ──────────────────────────────────────────────────────────
@@ -258,6 +252,111 @@ async def generate_swms(
         "task_count": len(task_blocks),
     }
 
+
+
+
+async def generate_swms_stream(
+    description: str,
+    project_meta: dict | None = None,
+    force_full: bool = False,
+    force_simple: bool = False,
+):
+    """
+    Async generator version of generate_swms().
+    Yields dicts as each stage completes so the caller can stream to client.
+
+    Yield types:
+        {"type": "route",      "route": str, "inference": dict}
+        {"type": "task_count", "count": int}
+        {"type": "task",       "index": int, "total": int, "task": dict}
+        {"type": "done",       "task_count": int}
+        {"type": "error",      "message": str}
+    """
+    from core.inference_matrix import infer_to_dict
+
+    project_meta = project_meta or {}
+
+    # Step 1: inference
+    inference = infer_to_dict(description)
+
+    # Step 2: routing
+    if force_full:
+        selected_route = "full"
+    elif force_simple:
+        selected_route = "simple"
+    else:
+        selected_route = route(description, inference)
+
+    yield {"type": "route", "route": selected_route, "inference": inference}
+
+    # Step 3: simple path — single task, yield immediately
+    if selected_route == "simple":
+        task_blocks = await _run_simple_path(description, project_meta, inference)
+        yield {"type": "task_count", "count": len(task_blocks)}
+        for i, tb in enumerate(task_blocks):
+            yield {"type": "task", "index": i, "total": len(task_blocks), "task": tb}
+        yield {"type": "done", "task_count": len(task_blocks)}
+        return
+
+    # Step 4: full pipeline — agents 1+2 on full manifest, then per-task 3→4
+    (run_decomposer, run_risk_assessor,
+     _run_control_writer_batch, write_controls_single,
+     run_assembler, run_assembler_single) = _import_agents()
+
+    try:
+        task_manifest = await run_decomposer(description, inference)
+    except Exception as e:
+        yield {"type": "error", "message": f"Decomposer failed: {e}"}
+        return
+
+    try:
+        risk_manifest = await run_risk_assessor(task_manifest, inference)
+    except Exception as e:
+        yield {"type": "error", "message": f"Risk Assessor failed: {e}"}
+        return
+
+    # Per-task loop: agent 3 (controls) → agent 4 (assemble) → yield
+    tasks = task_manifest.get("tasks", [])
+    risks_by_seq = {r["sequence"]: r for r in risk_manifest.get("risks", [])}
+    total = len(tasks)
+
+    yield {"type": "task_count", "count": total}
+
+    assembled = []
+    for idx, task in enumerate(tasks):
+        seq = task["sequence"]
+        risk = risks_by_seq.get(seq, {})
+
+        try:
+            # Agent 3: controls for this task
+            ctrl = await write_controls_single(task, risk, inference)
+
+            # Agent 4: assemble this task
+            single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
+            single_risk = {**risk_manifest, "risks": [risk] if risk else []}
+            single_ctrl = {"controls": [ctrl]}
+            result = await run_assembler(
+                single_manifest, single_risk, single_ctrl, inference, project_meta
+            )
+            tb = result[0] if result else {}
+
+            # Validate + retry
+            val = _validate_task_block(tb)
+            if not val["valid"]:
+                try:
+                    tb = await run_assembler_single(tb, val["errors"], inference)
+                except Exception:
+                    pass
+
+            assembled.append(tb)
+            yield {"type": "task", "index": idx, "total": total, "task": tb}
+            await asyncio.sleep(0)
+
+        except Exception as e:
+            yield {"type": "error", "message": f"Task {idx+1} failed: {e}"}
+            assembled.append({})
+
+    yield {"type": "done", "task_count": len(assembled), "route": selected_route}
 
 # ── Validation helper ─────────────────────────────────────────────────────────
 

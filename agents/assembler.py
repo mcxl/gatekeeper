@@ -118,7 +118,7 @@ async def run_assembler(
     )
 
     message = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5",
         max_tokens=16000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
@@ -157,7 +157,7 @@ async def run_assembler_single(
     )
 
     message = _get_client().messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5",
         max_tokens=2000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
