@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "libreoffice-still"]
-
-[phases.install]
-cmds = ["pip install --break-system-packages -r requirements.txt"]
-
-[start]
-cmd = "python3.11 start.py"
