@@ -458,22 +458,30 @@ let currentDocType = 'swms';
 let currentFormat = 'pdf';
 
 // ── Auth ───────────────────────────────────────────
-(function checkAuth() {
+(async function checkAuth() {
   const token = localStorage.getItem('access_token');
   if (!token) { window.location.href = '/'; return; }
-  fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
-    .then(r => {
-      if (!r.ok) throw new Error('unauthorized');
-      return r.json();
-    })
-    .then(data => {
-      document.getElementById('user-email').textContent = data.email || '';
-    })
-    .catch(() => {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      window.location.href = '/';
-    });
+  try {
+    let res = await fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.status === 401) {
+      // Try refresh
+      const refreshed = await refreshTokenIfNeeded();
+      if (refreshed) {
+        res = await fetch(API + '/auth/me', { headers: getAuthHeaders() });
+      }
+    }
+    if (!res.ok) {
+      console.error('Auth check failed:', res.status, await res.text());
+      throw new Error('unauthorized');
+    }
+    const data = await res.json();
+    document.getElementById('user-email').textContent = data.email || '';
+  } catch (err) {
+    console.error('Auth error:', err);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/';
+  }
 })();
 
 function getAuthHeaders() {
