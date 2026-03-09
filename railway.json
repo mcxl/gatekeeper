@@ -1,6 +1,8 @@
 {
+  "build": {
+    "builder": "DOCKERFILE"
+  },
   "deploy": {
-    "startCommand": "python3.11 start.py",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 60
   }
