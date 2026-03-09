@@ -13,7 +13,6 @@ fastapi==0.135.1
 uvicorn==0.41.0
 jinja2==3.1.6
 python-multipart==0.0.22
-docx2pdf
 python-jose[cryptography]
 passlib[bcrypt]
 aiofiles
