@@ -16,8 +16,12 @@ Usage:
 
 import io
 import json
+import logging
 import os
 import sys
+import traceback
+
+logger = logging.getLogger(__name__)
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
@@ -469,7 +473,8 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render DOCX failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
 
 
 def _build_filename(project_meta: dict, ext: str) -> str:
@@ -559,7 +564,8 @@ async def render_pdf_endpoint(request: dict, user: dict = Depends(get_current_us
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render PDF failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
 
 
 @app.post("/render/both")
@@ -585,7 +591,8 @@ async def render_both_endpoint(request: dict, user: dict = Depends(get_current_u
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render both failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
 
 
 # ============================================================
@@ -696,7 +703,8 @@ async def render_ra_pdf_endpoint(request: dict, user: dict = Depends(get_current
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render RA PDF failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
 
 
 @app.post("/render/ra/both")
@@ -717,7 +725,8 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render RA both failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
 
 
 # ============================================================
