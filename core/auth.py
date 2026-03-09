@@ -3,14 +3,18 @@
 core/auth.py — Supabase authentication via REST API.
 
 Uses httpx to call Supabase Auth API directly (avoids heavy supabase-py SDK).
-JWT verification done locally with python-jose.
+JWT verification done locally with python-jose using JWKS (ES256).
 """
 
+import logging
 import os
+
 import httpx
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
+
+logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
@@ -102,19 +106,37 @@ def reset_password(email: str) -> None:
         raise HTTPException(status_code=r.status_code, detail=detail)
 
 
-# ── JWT verification (local, no Supabase call) ──────────────────────────────
+# ── JWKS cache + JWT verification ─────────────────────────────────────────────
+
+_jwks_cache = None
+
+
+async def get_jwks() -> dict:
+    """Fetch and cache JWKS from Supabase."""
+    global _jwks_cache
+    if _jwks_cache is None:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json",
+                timeout=10,
+            )
+            _jwks_cache = resp.json()
+            logger.info(f"JWKS fetched: {len(_jwks_cache.get('keys', []))} keys")
+    return _jwks_cache
+
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
-    """Verify JWT and return user dict. Raises 401 if invalid."""
+    """Verify JWT using Supabase JWKS and return user dict. Raises 401 if invalid."""
     token = credentials.credentials
     try:
+        jwks = await get_jwks()
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            options={"verify_aud": False, "verify_exp": True},
+            jwks,
+            algorithms=["ES256", "HS256"],
+            options={"verify_aud": False},
         )
         user_id = payload.get("sub")
         if not user_id:
@@ -124,8 +146,7 @@ async def get_current_user(
             )
         return {"user_id": user_id, "email": payload.get("email")}
     except JWTError as e:
-        import logging
-        logging.error(f"JWT decode failed: {e}, secret_len={len(SUPABASE_JWT_SECRET)}, token_prefix={token[:20]}...")
+        logger.error(f"JWT decode failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token: {e}",
