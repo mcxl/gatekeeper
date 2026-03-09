@@ -224,18 +224,7 @@ async def generate(
 
 @app.get("/health")
 async def health():
-    import platform
-    env = os.getenv("ENVIRONMENT", "development")
-    result = {"status": "ok", "environment": env, "platform": platform.system()}
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        count = conn.execute("SELECT COUNT(*) FROM Tasks WHERE status='approved'").fetchone()[0]
-        conn.close()
-        result["approved_tasks"] = count
-    except Exception:
-        result["approved_tasks"] = "db_unavailable"
-    result["supabase_configured"] = bool(os.getenv("SUPABASE_URL"))
-    return result
+    return {"status": "ok"}
 
 
 @app.post("/upload/extract")

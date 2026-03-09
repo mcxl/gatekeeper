@@ -1,0 +1,9 @@
+PLAIN ENGLISH COMPLIANCE REPORT
+WorkCover NSW Guidelines - Level 3 (Full Pipeline + DOCX Render)
+======================================================================
+Input: EWP facade access concrete grinding silica dust Hansen Yuncken PC Sydney
+Pipeline: full
+Total control lines checked: 187
+Violations found: 0
+
+No violations found -- all control text passes plain English checks.
