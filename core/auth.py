@@ -114,19 +114,21 @@ async def get_current_user(
             token,
             SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
-            options={"verify_aud": False},
+            options={"verify_aud": False, "verify_exp": True},
         )
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
+                detail="Invalid token: no sub claim",
             )
         return {"user_id": user_id, "email": payload.get("email")}
-    except JWTError:
+    except JWTError as e:
+        import logging
+        logging.error(f"JWT decode failed: {e}, secret_len={len(SUPABASE_JWT_SECRET)}, token_prefix={token[:20]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=f"Invalid or expired token: {e}",
         )
 
 
