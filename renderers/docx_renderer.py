@@ -634,6 +634,23 @@ def render_swms_document(
         if "[Insert description here]" in p0.text:
             p0.clear()
             _run(p0, f"\u25a0 Description: {_desc_text}", bold=True, size_pt=16)
+        # Keep P0 tight against cover table — no spacing, no page break
+        p0.paragraph_format.space_after = Pt(0)
+        p0.paragraph_format.space_before = Pt(0)
+
+    # Remove any page breaks between P0 and Table 0
+    for para in doc.paragraphs:
+        if para._element.getnext() is not None and para._element.getnext().tag.endswith('}tbl'):
+            # Clear any page-break-before on this paragraph
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                for pb in pPr.findall(qn('w:pageBreakBefore')):
+                    pPr.remove(pb)
+            break
+
+    # Reduce top margin so cover table stays on page 1
+    if doc.sections:
+        doc.sections[0].top_margin = Cm(1.0)
 
     # ── Table 0: Cover page ─────────────────────────────────────────────
     t0 = doc.tables[0]
