@@ -276,6 +276,11 @@ async def generate_swms(
     # Post-generation plain English cleanup + CCVS enforcement
     task_blocks = [_enforce_plain_english(tb) for tb in task_blocks]
     _suppress_false_ccvs(task_blocks, inference)
+    # Validate and repair CCVS codes (fix missing hyphens like "WAHH6" → "WAH-H6")
+    from renderers.docx_renderer import validate_ccvs_code
+    for tb in task_blocks:
+        if "ccvs_code" in tb:
+            tb["ccvs_code"] = validate_ccvs_code(tb["ccvs_code"])
     # Enrich risk labels with numeric scores: "H" → "High(9)"
     for tb in task_blocks:
         _enrich_risk_labels(tb)

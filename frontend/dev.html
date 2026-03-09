@@ -248,8 +248,16 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
     <div style="font-size:11px;color:#888;font-style:italic;margin-top:4px">Double-check spelling — used in document footer</div>
   </div>
   <div class="field">
+    <label>Company / PCBU Name</label>
+    <input type="text" id="m1-pcbu" placeholder="e.g. Smith Building Pty Ltd">
+  </div>
+  <div class="field">
     <label>Principal Contractor</label>
-    <input type="text" id="m1-pc" placeholder="e.g. mCXI">
+    <input type="text" id="m1-pc" placeholder="Leave blank if same as PCBU">
+  </div>
+  <div class="field">
+    <label>Supervisor / Manager Name <span class="opt">(optional)</span></label>
+    <input type="text" id="m1-manager" placeholder="Site supervisor or manager">
   </div>
   <div class="field">
     <label>Access Method</label>
@@ -659,11 +667,13 @@ function qaNav(dir) {
 
 // ── Build description from mode ────────────────────
 function buildPayload(mode) {
-  let description = '', site = '', pc = '', access = '', hazards = '';
+  let description = '', site = '', pc = '', pcbu = '', manager = '', access = '', hazards = '';
   if (mode === 1) {
     description = document.getElementById('m1-desc').value;
     site = document.getElementById('m1-site').value;
-    pc = document.getElementById('m1-pc').value;
+    pcbu = (document.getElementById('m1-pcbu') || {}).value || '';
+    pc = document.getElementById('m1-pc').value || pcbu;
+    manager = (document.getElementById('m1-manager') || {}).value || '';
     access = document.getElementById('m1-access').value;
     hazards = document.getElementById('m1-hazards').value;
   } else if (mode === 2) {
@@ -694,7 +704,11 @@ function buildPayload(mode) {
     project_meta: {
       project_name: site || 'Untitled Project',
       site_address: site,
-      principal_contractor: pc,
+      project_address: site,
+      pcbu_name: pcbu || pc,
+      principal_contractor: pc || pcbu,
+      manager_name: manager,
+      work_activity: description,
       version: '1.0'
     }
   };

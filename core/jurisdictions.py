@@ -14,13 +14,13 @@ JURISDICTIONS: dict[str, dict] = {
         "name": "Australia",
         "flag": "\U0001f1e6\U0001f1fa",
         "legislation": {
-            "primary_act": "Model WHS Act 2011",
-            "regulations": "Model WHS Regulations 2017",
-            "codes_of_practice": "Safe Work Australia Codes of Practice",
+            "primary_act": "WHS Act 2011 (NSW)",
+            "regulations": "WHS Regulation 2017 (NSW)",
+            "codes_of_practice": "SafeWork NSW Codes of Practice",
         },
         "base_legislation_string": (
-            "Model WHS Act 2011 — Model WHS Regulations 2017 — "
-            "Safe Work Australia Codes of Practice"
+            "WHS Act 2011 (NSW) — WHS Regulation 2017 (NSW) — "
+            "SafeWork NSW Codes of Practice"
         ),
         "regulator": "Safe Work Australia",
         "currency": "AUD",

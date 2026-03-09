@@ -35,6 +35,51 @@ BLACK     = RGBColor(0x00, 0x00, 0x00)
 WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
 GREY      = RGBColor(0x44, 0x44, 0x44)
 
+# ── Text sanitisation — catches duplicate tokens before they reach the document ──
+_DUPLICATE_TOKENS = [
+    ("steel-capped steel-capped", "steel-capped"),
+    ("cut-resistant cut-resistant", "cut-resistant"),
+    ("high-visibility high-visibility", "high-visibility"),
+    ("chemical-resistant chemical-resistant", "chemical-resistant"),
+    ("  ", " "),
+]
+
+def sanitise_text(text: str) -> str:
+    """Remove duplicate tokens and double spaces from generated text."""
+    for bad, good in _DUPLICATE_TOKENS:
+        while bad in text:
+            text = text.replace(bad, good)
+    return text
+
+# ── CCVS code validator ──────────────────────────────────────────────────────
+import re as _re_ccvs
+
+_VALID_CCVS_STREAMS = [
+    'WFR', 'WFA', 'WAH', 'IRA', 'ELE', 'SIL', 'STR', 'CFS',
+    'ENE', 'HOT', 'MOB', 'ASB', 'LED', 'TRF', 'ENV', 'CHM',
+    'SCF', 'CRN', 'EXC', 'MNH', 'NOI', 'TLT', 'DEM', 'FMW',
+]
+_VALID_CCVS_PATTERN = _re_ccvs.compile(
+    r'^(' + '|'.join(_VALID_CCVS_STREAMS) + r')-(H6|H9|M3|M4|L1|L2)$'
+)
+
+def validate_ccvs_code(code: str) -> str:
+    """Normalise and validate a CCVS code. Fixes missing hyphen."""
+    if not code or code == 'N/A':
+        return 'N/A'
+    if _VALID_CCVS_PATTERN.match(code):
+        return code
+    upper = code.upper().strip()
+    for stream in _VALID_CCVS_STREAMS:
+        if upper.startswith(stream):
+            suffix = upper[len(stream):].lstrip('-')
+            repaired = f"{stream}-{suffix}"
+            if _VALID_CCVS_PATTERN.match(repaired):
+                return repaired
+    import logging
+    logging.warning(f"Invalid CCVS code could not be repaired: {repr(code)}")
+    return 'N/A'
+
 BLUE   = "DBE5F1"
 RED_BG = "FF0000"
 YLW_BG = "FFFF00"
@@ -88,7 +133,7 @@ def _fix_spacing(para) -> None:
 
 def _run(para, text: str, bold=False, color: RGBColor = None,
          size_pt: int = 8, highlight: bool = False) -> None:
-    run = para.add_run(text)
+    run = para.add_run(sanitise_text(text))
     run.font.name = FONT
     run.font.size = Pt(size_pt)
     run.bold = bold
@@ -575,12 +620,20 @@ def render_swms_document(
         )
 
     # ── Body paragraph 0: Description ────────────────────────────────────
-    description = project_meta.get("project_name", project_meta.get("description", ""))
-    if description and doc.paragraphs:
+    _desc_text = (project_meta.get("work_activity_summary")
+                  or project_meta.get("work_activity")
+                  or project_meta.get("description")
+                  or project_meta.get("project_name", ""))
+    # Strip address if provided separately
+    _p0_address = (project_meta.get("project_address")
+                   or project_meta.get("site_address", ""))
+    if _p0_address and _p0_address in _desc_text:
+        _desc_text = _desc_text.replace(_p0_address, "").strip(" ,at-")
+    if _desc_text and doc.paragraphs:
         p0 = doc.paragraphs[0]
         if "[Insert description here]" in p0.text:
             p0.clear()
-            _run(p0, f"\u25a0 Description: {description}", bold=True, size_pt=16)
+            _run(p0, f"\u25a0 Description: {_desc_text}", bold=True, size_pt=16)
 
     # ── Table 0: Cover page ─────────────────────────────────────────────
     t0 = doc.tables[0]
@@ -592,15 +645,26 @@ def render_swms_document(
             para.clear()
         _run(cell.paragraphs[0], value)
 
-    pcbu = project_meta.get("pcbu", project_meta.get("principal_contractor", ""))
-    manager = project_meta.get("manager", "")
-    work_activity = (project_meta.get("work_activity")
-                      or project_meta.get("description")
-                      or project_meta.get("project_name", ""))
-    site_name = (project_meta.get("site_name")
-                  or project_meta.get("site_address", ""))
-    pc = project_meta.get("principal_contractor", "")
+    pcbu = (project_meta.get("pcbu_name")
+            or project_meta.get("pcbu")
+            or project_meta.get("principal_contractor", ""))
+    manager = (project_meta.get("manager_name")
+               or project_meta.get("manager", ""))
+    site_name = (project_meta.get("project_address")
+                 or project_meta.get("site_name")
+                 or project_meta.get("site_address", ""))
+    pc = project_meta.get("principal_contractor", pcbu)
     supervisor = project_meta.get("supervisor", "")
+    # Work Activity: use explicit summary, fall back to description with address stripped
+    work_activity = project_meta.get("work_activity_summary", "")
+    if not work_activity:
+        work_activity = (project_meta.get("work_activity")
+                         or project_meta.get("description")
+                         or project_meta.get("project_name", ""))
+        # Strip address from work_activity if address is provided separately
+        if site_name and site_name in work_activity:
+            work_activity = work_activity.replace(site_name, "").strip(" ,at-")
+        work_activity = work_activity[:120]
     doc_date = project_meta.get("date", date.today().strftime(jur["date_format"]))
 
     # Row 0: PCBU + Site
@@ -728,10 +792,10 @@ def render_swms_document(
         # Col 5 — Responsibility
         _responsibility_cell(c[5], task, size_pt=_SZ)
 
-        # Col 6 — CCVS code
+        # Col 6 — CCVS code (validated)
         p6 = c[6].paragraphs[0]
         p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _run(p6, task.ccvs_code or "N/A", bold=True, size_pt=_SZ)
+        _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=_SZ)
 
     # ── Table 3: Risk matrix — font only (content untouched) ────────────
     t3 = doc.tables[3]
@@ -759,7 +823,7 @@ def render_swms_document(
 
     reg_notes = inference.get("regulatory_notes", [])
     jur_notes = inference.get("jurisdiction_notes", [])
-    # Clean NSW references from regulatory notes
+    # Deduplicate regulatory notes against base legislation
     _cleaned_notes = []
     _base_lower = [b.lower() for b in _BASE_LEGISLATION]
     for n in reg_notes + jur_notes:
@@ -767,15 +831,14 @@ def render_swms_document(
             continue
         if n in _cleaned_notes:
             continue
+        cleaned = n.strip()
         if jurisdiction == "AU":
-            cleaned = (n.replace("(NSW)", "").replace("SafeWork NSW", "Safe Work Australia")
-                        .replace("WHS Act 2011 (NSW)", "Model WHS Act 2011")
-                        .replace("WHS Regulation 2017 (NSW)", "Model WHS Regulations 2017")
-                        .replace("Applicable NSW Codes of Practice", "Safe Work Australia Codes of Practice")
-                        .strip())
-        else:
-            cleaned = n.strip()
-        if cleaned and cleaned not in _cleaned_notes:
+            # Normalise Model Act references to NSW-specific
+            cleaned = (cleaned
+                       .replace("Model WHS Act 2011", "WHS Act 2011 (NSW)")
+                       .replace("Model WHS Regulations 2017", "WHS Regulation 2017 (NSW)")
+                       .replace("Safe Work Australia Codes of Practice", "SafeWork NSW Codes of Practice"))
+        if cleaned and cleaned.lower() not in _base_lower and cleaned not in _cleaned_notes:
             _cleaned_notes.append(cleaned)
     all_legislation = _BASE_LEGISLATION + _cleaned_notes
     cell = t4.cell(0, 1)
@@ -1029,9 +1092,11 @@ def render_swms_document(
         tr = t7.rows[1]._tr
         tr.getparent().remove(tr)
 
-    # Add monitoring rows for tasks that have monitoring entries
+    # Add monitoring rows — only tasks with a real CCVS code and monitoring data
     for task in tasks:
         if task.monitoring is None:
+            continue
+        if validate_ccvs_code(task.ccvs_code or "N/A") == "N/A":
             continue
         m = task.monitoring
         row = t7.add_row()
@@ -1043,20 +1108,33 @@ def render_swms_document(
 
     # ── Footer ─────────────────────────────────────────────────────────
     import re as _re
-    proj_name = project_meta.get("project_name", "UNKNOWN")
+    # Build SWMS ID slug from site address (preferred) or project_name
+    _address = (project_meta.get("project_address")
+                or project_meta.get("site_name")
+                or project_meta.get("site_address", ""))
+    if _address:
+        # "218 Vincent Rd, Cranebrook NSW 2749" → "218-Vincent-Rd-Cranebrook"
+        _slug_parts = _address.split(",")[0].strip()
+        _slug = _re.sub(r'[^a-zA-Z0-9\s]', '', _slug_parts)
+        _slug = _re.sub(r'\s+', '-', _slug.strip())
+        # Add suburb if present after comma
+        _suburb_match = _re.search(r',\s*([A-Za-z]+)', _address)
+        if _suburb_match:
+            _slug += '-' + _suburb_match.group(1)
+    else:
+        _slug = project_meta.get("project_name", "UNKNOWN")
     # Strip unsafe filename characters
-    proj_name = _re.sub(r'[\\/:*?"<>|]', "-", proj_name)
+    _slug = _re.sub(r'[\\/:*?"<>|]', "-", _slug)
     # Format date as DDMMYYYY
     footer_date = project_meta.get("date", "")
     if not footer_date:
         footer_date = date.today().strftime("%d%m%Y")
     else:
-        # If date is DD/MM/YYYY, strip slashes
         footer_date = footer_date.replace("/", "")
     # Append jurisdiction act abbreviation
-    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926"}
+    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926", "CA": "Canada OHS"}
     jur_ref = _JUR_FOOTER.get(jurisdiction, "")
-    footer_text = f"SWMS-{proj_name}-{footer_date}-V01"
+    footer_text = f"SWMS-{_slug}-{footer_date}-V01"
     if jur_ref:
         footer_text += f" | {jur_ref}"
 
@@ -1071,7 +1149,51 @@ def render_swms_document(
     fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
     _run(fp, footer_text, size_pt=_SZ)
 
+    # ── Post-render validation ────────────────────────────────────────
+    warnings = validate_output(doc)
+    if warnings:
+        import logging
+        for w in warnings:
+            logging.warning(f"RENDER VALIDATION: {w}")
+
     # ── Save and return ─────────────────────────────────────────────────
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+# ── Output validation ────────────────────────────────────────────────────────
+
+_KNOWN_PLACEHOLDER_TOKENS = [
+    'UNKNOWN', '[Insert', 'mcxico', 'your-company',
+    'PCBU_NAME', 'INSERT_', '{{', '}}',
+]
+
+def validate_output(doc) -> list[str]:
+    """Check rendered document for unresolved placeholders and malformed codes."""
+    errors = []
+    all_text_blocks = []
+    for para in doc.paragraphs:
+        all_text_blocks.append(para.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                all_text_blocks.append(cell.text)
+    full_text = ' '.join(all_text_blocks)
+
+    for token in _KNOWN_PLACEHOLDER_TOKENS:
+        if token in full_text:
+            errors.append(f"Unresolved placeholder found: '{token}'")
+
+    # Check for malformed CCVS codes (missing hyphen)
+    bad_codes = _re_ccvs.findall(
+        r'\b(' + '|'.join(_VALID_CCVS_STREAMS) + r')[A-Z]\d\b', full_text
+    )
+    for code in bad_codes:
+        errors.append(f"Malformed CCVS code (missing hyphen): '{code}'")
+
+    # Check for duplicate PPE tokens
+    if 'steel-capped steel-capped' in full_text:
+        errors.append("Duplicate PPE token: 'steel-capped steel-capped'")
+
+    return errors
