@@ -2,17 +2,20 @@
 """
 renderers/pdf_renderer.py — Convert DOCX bytes to PDF bytes.
 
-Primary:   LibreOffice headless (if installed)
-Fallback:  docx2pdf (uses Microsoft Word COM automation on Windows)
+Primary:   LibreOffice headless (Linux/Railway)
+Fallback:  docx2pdf (Microsoft Word COM on Windows)
 """
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def docx_to_pdf(docx_bytes: bytes) -> bytes:
@@ -22,10 +25,22 @@ def docx_to_pdf(docx_bytes: bytes) -> bytes:
     Tries LibreOffice headless first, falls back to docx2pdf (Word COM).
     Raises RuntimeError if neither converter is available.
     """
-    soffice = _find_libreoffice()
-    if soffice:
-        return _convert_libreoffice(docx_bytes, soffice)
-    return _convert_docx2pdf(docx_bytes)
+    # Try LibreOffice first (Linux/Railway)
+    try:
+        soffice = _find_libreoffice()
+        if soffice:
+            logger.info(f"Using LibreOffice: {soffice}")
+            return _convert_libreoffice(docx_bytes, soffice)
+    except Exception as lo_err:
+        logger.warning(f"LibreOffice failed: {lo_err}")
+
+    # Try docx2pdf second (Windows)
+    try:
+        return _convert_docx2pdf(docx_bytes)
+    except Exception as d2p_err:
+        logger.warning(f"docx2pdf failed: {d2p_err}")
+
+    raise RuntimeError("No PDF converter available.")
 
 
 def _find_libreoffice() -> str | None:

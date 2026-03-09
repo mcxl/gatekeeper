@@ -1,5 +1,6 @@
 [build]
 pythonVersion = "3.11"
+buildCommand = "apt-get update && apt-get install -y libreoffice && pip install -r requirements.txt"
 
 [deploy]
 startCommand = "python3.11 start.py"
