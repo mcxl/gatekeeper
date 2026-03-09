@@ -88,19 +88,12 @@ async def _run_simple_path(
     Existing single-agent generation. Falls back gracefully if generate.py
     is not async — wraps in executor if needed.
     """
-    try:
-        from core.generate import generate_task
-        task = await generate_task(description, project_meta, inference)
-        return [task] if isinstance(task, dict) else task
-    except TypeError:
-        # generate_task is synchronous — run in executor
-        import asyncio
-        from core.generate import generate_task as _generate_task
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, _generate_task, description, project_meta, inference
-        )
-        return [result] if isinstance(result, dict) else result
+    from core.generate import generate_task
+    import asyncio
+    loop = asyncio.get_event_loop()
+    task = await loop.run_in_executor(None, generate_task, description)
+    result = task.model_dump() if hasattr(task, 'model_dump') else task
+    return [result] if isinstance(result, dict) else result
 
 
 # ── Full 4-agent pipeline ─────────────────────────────────────────────────────
@@ -197,6 +190,7 @@ async def generate_swms(
     project_meta: Optional[dict] = None,
     force_full: bool = False,
     force_simple: bool = False,
+    jurisdiction: str = "AU",
 ) -> dict:
     """
     Main entry point for SWMS generation.
@@ -222,7 +216,42 @@ async def generate_swms(
 
     # Step 1: inference pre-fill
     log.info("Running inference matrix pre-fill")
-    inference = infer_to_dict(description)
+    inference = infer_to_dict(description, jurisdiction=jurisdiction)
+
+    # Build jurisdiction context for agent prompts
+    if jurisdiction != "AU":
+        from core.jurisdictions import get_jurisdiction
+        jur = get_jurisdiction(jurisdiction)
+        jur_context = (
+            f"\n\nJURISDICTION: {jur['name']} ({jurisdiction}). "
+            f"Regulatory body: {jur['regulator']}. "
+            f"Primary legislation: {jur['legislation']['primary_act']}. "
+            f"Use {jurisdiction} terminology, standards, and regulatory references throughout. "
+            f"Do not reference Australian legislation unless comparing."
+        )
+        description = description + jur_context
+
+    # Inject verified standards reference into description for agent prompts
+    from vocab.standards_registry import (
+        get_verified_standards,
+        validate_standard_citations,
+        strip_unverified_citations,
+    )
+    verified_refs = get_verified_standards(
+        jurisdiction=jurisdiction,
+        ccvs_codes=inference.get("ccvs_codes", []),
+    )
+    if verified_refs:
+        standards_block = "\n".join(f"  — {s}" for s in verified_refs)
+        description += (
+            "\n\nVERIFIED STANDARDS FOR THIS JOB:\n"
+            "The following standards and codes are verified as current and applicable. "
+            "Reference ONLY these standards by name. Do not cite any standard number "
+            "that is not in this list:\n\n"
+            f"{standards_block}\n\n"
+            "If you need to reference a standard not in this list, describe the "
+            "requirement in plain English without citing a standard number."
+        )
 
     # Step 2: routing
     if force_full:
@@ -244,6 +273,32 @@ async def generate_swms(
             description, project_meta, inference
         )
 
+    # Post-generation plain English cleanup + CCVS enforcement
+    task_blocks = [_enforce_plain_english(tb) for tb in task_blocks]
+    _suppress_false_ccvs(task_blocks, inference)
+    # Enrich risk labels with numeric scores: "H" → "High(9)"
+    for tb in task_blocks:
+        _enrich_risk_labels(tb)
+
+    # Strip unverified standard citations from generated task text
+    ccvs_codes = inference.get("ccvs_codes", [])
+    for tb in task_blocks:
+        for field in ("controls", "admin", "stop_work", "hold_points"):
+            if field in tb and isinstance(tb[field], list):
+                tb[field] = [
+                    strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
+                    for ctrl in tb[field]
+                ]
+    # Log any flagged citations for monitoring
+    validation = validate_standard_citations(
+        str(task_blocks), jurisdiction, ccvs_codes
+    )
+    if validation["flag_count"] > 0:
+        log.warning(
+            f"WARNING: {validation['flag_count']} unverified citations stripped: "
+            f"{validation['flagged']}"
+        )
+
     return {
         "route": selected_route,
         "tasks": task_blocks,
@@ -260,6 +315,7 @@ async def generate_swms_stream(
     project_meta: dict | None = None,
     force_full: bool = False,
     force_simple: bool = False,
+    jurisdiction: str = "AU",
 ):
     """
     Async generator version of generate_swms().
@@ -277,7 +333,20 @@ async def generate_swms_stream(
     project_meta = project_meta or {}
 
     # Step 1: inference
-    inference = infer_to_dict(description)
+    inference = infer_to_dict(description, jurisdiction=jurisdiction)
+
+    # Build jurisdiction context for agent prompts
+    if jurisdiction != "AU":
+        from core.jurisdictions import get_jurisdiction
+        jur = get_jurisdiction(jurisdiction)
+        jur_context = (
+            f"\n\nJURISDICTION: {jur['name']} ({jurisdiction}). "
+            f"Regulatory body: {jur['regulator']}. "
+            f"Primary legislation: {jur['legislation']['primary_act']}. "
+            f"Use {jurisdiction} terminology, standards, and regulatory references throughout. "
+            f"Do not reference Australian legislation unless comparing."
+        )
+        description = description + jur_context
 
     # Step 2: routing
     if force_full:
@@ -348,6 +417,8 @@ async def generate_swms_stream(
                 except Exception:
                     pass
 
+            tb = _enforce_plain_english(tb)
+            _enrich_risk_labels(tb)
             assembled.append(tb)
             yield {"type": "task", "index": idx, "total": total, "task": tb}
             await asyncio.sleep(0)
@@ -356,7 +427,165 @@ async def generate_swms_stream(
             yield {"type": "error", "message": f"Task {idx+1} failed: {e}"}
             assembled.append({})
 
+    # Suppress false CCVS codes across all assembled tasks
+    _suppress_false_ccvs(assembled, inference)
     yield {"type": "done", "task_count": len(assembled), "route": selected_route}
+
+
+# ── Risk label enrichment ─────────────────────────────────────────────────────
+
+_RISK_LABELS = {"H": "High", "M": "Medium", "L": "Low"}
+
+
+def _enrich_risk_labels(tb: dict) -> None:
+    """Convert risk_pre/risk_post from 'H'/'M'/'L' to 'High(9)'/'Medium(4)'/'Low(2)'.
+
+    Uses risk_pre_score/risk_post_score dicts {likelihood, consequence} if available.
+    Falls back to defaults based on letter grade.
+    """
+    _DEFAULTS = {"H": 9, "M": 4, "L": 2}
+
+    for field, score_field in [("risk_pre", "risk_pre_score"),
+                                ("risk_post", "risk_post_score")]:
+        rating = tb.get(field, "")
+        # Skip if already enriched (e.g. "High(6)")
+        if "(" in str(rating):
+            continue
+        letter = rating.strip().upper()[:1] if rating else ""
+        label = _RISK_LABELS.get(letter, rating)
+        # Compute numeric score from likelihood × consequence
+        score_data = tb.get(score_field, {})
+        if isinstance(score_data, dict) and score_data:
+            score = score_data.get("likelihood", 1) * score_data.get("consequence", 1)
+        else:
+            score = _DEFAULTS.get(letter, 0)
+        if score:
+            tb[field] = f"{label}({score})"
+        elif label:
+            tb[field] = label
+
+
+# ── Plain English enforcement ─────────────────────────────────────────────────
+
+def _enforce_plain_english(tb: dict) -> dict:
+    """Auto-replace formal phrases with plain English in all control text fields."""
+    from vocab.swms_vocabulary import enforce_vocabulary
+    for field in ("controls", "admin", "stop_work", "hold_points", "ppe", "hazards"):
+        if field in tb and isinstance(tb[field], list):
+            tb[field] = [enforce_vocabulary(item) for item in tb[field]]
+    # Glove selection: chemical-resistant vs cut-resistant based on task context
+    _enforce_glove_selection(tb)
+    # SIL scoring: downgrade SIL-H6/H9 to SIL-M4 for passive dust tasks
+    _enforce_sil_scoring(tb)
+    return tb
+
+
+import re as _re
+
+_CHEMICAL_KEYWORDS = _re.compile(
+    r"\b(epoxy|resin|hardener|solvent|chemical|acid|alkali|caustic|adhesive|"
+    r"primer|paint|coating|membrane|sealant|grout|mortar|waterproof|hazardous\s+substance)\b",
+    _re.I,
+)
+
+_CHEMICAL_GLOVE = "chemical-resistant gloves (nitrile or task-appropriate)"
+_CUT_GLOVE = "cut-resistant gloves"
+
+
+_GLOVE_PATTERN = _re.compile(
+    r"\b(cut-resistant gloves|chemical-resistant gloves|nitrile gloves|"
+    r"work gloves|safety gloves|protective gloves|leather gloves|"
+    r"disposable gloves|rubber gloves|latex gloves|butyl gloves|"
+    r"laminate gloves|gloves)\b", _re.I,
+)
+
+
+def _enforce_glove_selection(tb: dict) -> None:
+    """Set glove type based on whether the task involves chemicals."""
+    task_text = (tb.get("task", "") + " " + tb.get("scope", "")).lower()
+    has_chemicals = bool(_CHEMICAL_KEYWORDS.search(task_text))
+    target_glove = _CHEMICAL_GLOVE if has_chemicals else _CUT_GLOVE
+
+    ppe = tb.get("ppe", [])
+    if not isinstance(ppe, list):
+        return
+
+    # Replace any glove item with the correct type for this task
+    found_glove = False
+    new_ppe = []
+    for item in ppe:
+        if _GLOVE_PATTERN.search(item):
+            if not found_glove:
+                new_ppe.append(target_glove)
+                found_glove = True
+            # skip duplicate glove entries
+        else:
+            new_ppe.append(item)
+    tb["ppe"] = new_ppe
+
+
+_ACTIVE_DUST_PATTERNS = [
+    _re.compile(r"\b(grind|grinding|cut|cutting|drill|drilling|saw|sawing|jackhammer|demolish|break|chip|chase|core)\w*\b", _re.I),
+]
+
+_PASSIVE_DUST_KEYWORDS = [
+    "clean", "vacuum", "sweep", "wipe", "mop", "wash", "damp", "housekeep",
+]
+
+
+_HOT_WORK_CONFIRM_PATTERNS = [
+    _re.compile(r"\bweld", _re.I),
+    _re.compile(r"\boxy\b", _re.I),
+    _re.compile(r"\bacetylene\b", _re.I),
+    _re.compile(r"\btorch\b", _re.I),
+    _re.compile(r"\bflame\s*cut", _re.I),
+    _re.compile(r"\barc\s*weld", _re.I),
+    _re.compile(r"\bhot\s*work", _re.I),
+    _re.compile(r"\bbrazing\b", _re.I),
+    _re.compile(r"\bsoldering\b", _re.I),
+]
+
+
+def _suppress_false_ccvs(task_blocks: list[dict], inference: dict) -> None:
+    """Suppress HOT CCVS codes when inference says no hot work is present."""
+    # Check if the original description has real hot work
+    has_hot_work = any("hot_work" in str(inference.get("permits", [])).lower()
+                       or "hot work" in str(inference.get("notes", [])).lower()
+                       for _ in [1])
+    # Also check if any hot work certs/permits are in inference
+    all_inf = str(inference).lower()
+    has_hot_inf = "hot work" in all_inf or "welding" in all_inf
+    if has_hot_inf:
+        return  # hot work is legitimate
+    for tb in task_blocks:
+        ccvs = tb.get("ccvs_code", "N/A")
+        if ccvs.startswith("HOT"):
+            # Check task name for actual hot work keywords
+            task_text = (tb.get("task", "") + " " + tb.get("scope", "")).lower()
+            real_hot = any(p.search(task_text) for p in _HOT_WORK_CONFIRM_PATTERNS)
+            if not real_hot:
+                tb["ccvs_code"] = "N/A"
+                # Also remove hot work from controls/admin
+                for field in ("controls", "admin", "hold_points", "stop_work"):
+                    if field in tb and isinstance(tb[field], list):
+                        tb[field] = [item for item in tb[field]
+                                     if "hot work" not in item.lower()]
+
+
+def _enforce_sil_scoring(tb: dict) -> None:
+    """Downgrade SIL-H6/H9 to SIL-M4 for passive/cleaning tasks (no active dust generation)."""
+    ccvs = tb.get("ccvs_code", "N/A")
+    if ccvs not in ("SIL-H6", "SIL-H9"):
+        return
+    # Check task name only (scope may mention upstream activities like grinding)
+    task_name = tb.get("task", "").lower()
+    # If task involves active dust generation, keep the high code
+    for pat in _ACTIVE_DUST_PATTERNS:
+        if pat.search(task_name):
+            return
+    # No active dust generation — downgrade to SIL-M4
+    tb["ccvs_code"] = "SIL-M4"
+
 
 # ── Validation helper ─────────────────────────────────────────────────────────
 

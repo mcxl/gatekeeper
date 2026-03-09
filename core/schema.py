@@ -11,19 +11,14 @@ class ResponsibilityEntry(BaseModel):
 class MonitoringEntry(BaseModel):
     critical_control: str
     who: str
-    frequency: Literal[
-        "before each use",
-        "each shift start",
-        "continuous",
-        "daily",
-        "weekly"
-    ]
+    frequency: str
     evidence: str
 
 
 class TaskBlock(BaseModel):
     task: str
     scope: str
+    hazards: list[str] = Field(default_factory=list)
     risk_pre: str
     risk_post: str
     hold_points: list[str] = Field(default_factory=list)

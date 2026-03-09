@@ -325,6 +325,22 @@ def score_task(task: TaskBlock) -> ValidationResult:
                 f"exceeds 10 words ({wc} words): '{_preview(obligation)}'"
             )
 
+    # ----------------------------------------------------------
+    # CHECK 13: PLAIN ENGLISH (WorkCover NSW) — warn only
+    # ----------------------------------------------------------
+    try:
+        from vocab.swms_vocabulary import check_vocabulary as _pe_check
+        all_text_fields = (
+            task.controls + task.admin + task.ppe
+            + task.hold_points + task.stop_work
+        )
+        for item in all_text_fields:
+            pe_warnings = _pe_check(item)
+            for w in pe_warnings:
+                warnings.append(f"Check 13 — {w}: '{_preview(item)}'")
+    except ImportError:
+        pass
+
     passed = len(errors) == 0
     return ValidationResult(
         passed=passed,

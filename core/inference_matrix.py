@@ -35,6 +35,7 @@ class Requirements:
     safework_notification: bool = False
     epa_license: bool = False
     notes: list[str] = field(default_factory=list)
+    plant: list[str] = field(default_factory=list)
 
 # ── Baseline PPE (all construction work) ─────────────────────────────────────
 
@@ -3314,6 +3315,44 @@ MATRIX = [
         ],
     },
 
+    # ── CIVIL — TILT-UP / PRECAST CONCRETE ──────────────────────────────────
+    {
+        "keywords": ["tilt-up", "tilt up", "tiltup", "precast", "precast concrete",
+                     "tilt-up panel", "precast panel", "concrete panel", "panel erection"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.12 — Tilt-up or precast concrete elements",
+        "hrcw_license_class": "Crane Licence — C6 (mobile crane) for panel erection",
+        "ppe": [
+            "Hard hat — mandatory during panel erection",
+            "High-visibility vest",
+            "Safety boots",
+            "Eye protection",
+        ],
+        "certs": [
+            "Crane operator licence — C6 mobile crane (Safe Work Australia)",
+            "Dogman licence — DG class (Safe Work Australia)",
+            "Rigger licence — RB basic or RI intermediate (Safe Work Australia)",
+        ],
+        "permits": [
+            "Temporary bracing design — engineer-certified before panel erection",
+            "Ground bearing assessment — engineer certification before crane setup",
+            "Exclusion zone — established before panel lift commences",
+        ],
+        "qualifications": [
+            "Competent person — experienced in tilt-up/precast erection procedures",
+            "Temporary brace removal sequence — engineer-specified order",
+        ],
+        "notifications": [],
+        "safework_notification": True,
+        "epa_license": False,
+        "notes": [
+            "AS 3850 — Tilt-up concrete construction",
+            "Temporary bracing — must remain until permanent connections verified by engineer",
+            "Panel exclusion zone — no personnel within 1.5x panel height during erection",
+            "Brace removal — sequential removal per engineer's specification only",
+        ],
+    },
+
     # ── CIVIL — RIGGING & DOGGING ────────────────────────────────────────────
     {
         "keywords": ["rigging", "dogging", "sling", "shackle", "lifting gear",
@@ -4463,6 +4502,737 @@ MATRIX = [
         ],
     },
 
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Electrical (6 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── ENERGISED ELECTRICAL ──────────────────────────────────────────────
+    {
+        "keywords": ["energised electrical", "live electrical", "live work",
+                     "energised work", "electrical energised"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.16 — Work on or near energised electrical installations",
+        "hrcw_license_class": "Licensed Electrician — NSW Fair Trading",
+        "ppe": [
+            "Insulated gloves — rated to working voltage",
+            "Arc-flash rated clothing — Category 2 minimum",
+            "Face shield — arc-flash rated",
+            "Insulated footwear",
+        ],
+        "certs": [
+            "Licensed Electrician — NSW Fair Trading",
+        ],
+        "permits": [
+            "Energised Electrical Work Permit — signed before any live work",
+        ],
+        "qualifications": [],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "AS/NZS 3000 — Wiring rules",
+            "SafeWork NSW Code of Practice: Managing Electrical Risks in the Workplace",
+            "Energised work only permitted where de-energisation creates greater risk",
+        ],
+    },
+
+    # ── LOCKOUT TAGOUT ────────────────────────────────────────────────────
+    {
+        "keywords": ["lockout", "tagout", "loto", "lock out tag out",
+                     "isolation procedure", "energy isolation"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Safety glasses",
+            "Insulated gloves — where electrical isolation",
+        ],
+        "certs": [],
+        "permits": [
+            "Isolation permit — lock and tag applied before work commences",
+        ],
+        "qualifications": [
+            "Competent person — trained in LOTO procedures",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 s.203 — Isolation of plant from energy sources",
+            "Isolation locks and tags — personal locks for each worker",
+        ],
+    },
+
+    # ── OVERHEAD POWERLINES ───────────────────────────────────────────────
+    {
+        "keywords": ["overhead powerline", "overhead power line", "powerline exclusion",
+                     "near powerlines", "power line clearance", "safe approach distance"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.16 — Work near energised electrical installations",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat — mandatory near overhead lines",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Spotter — trained in safe approach distances and exclusion zones",
+        ],
+        "notifications": [
+            "Ausgrid/Endeavour Energy — notification required for work within safe approach distance",
+        ],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "SafeWork NSW Code of Practice: Managing Electrical Risks in the Workplace",
+            "Exclusion zone <6.4m from overhead powerlines — no work without DNSP approval",
+            "AS 5488 — Classification of subsurface utility information",
+        ],
+    },
+
+    # ── LEVEL 2 ASP ───────────────────────────────────────────────────────
+    {
+        "keywords": ["level 2 asp", "l2 asp", "authorised service provider",
+                     "asp works", "contestable electrical"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.16 — Electrical installation work",
+        "hrcw_license_class": "Level 2 ASP Licence — NSW Fair Trading",
+        "ppe": [
+            "Insulated gloves — rated to working voltage",
+            "Arc-flash rated clothing",
+        ],
+        "certs": [
+            "Level 2 ASP licence — NSW Fair Trading",
+        ],
+        "permits": [],
+        "qualifications": [],
+        "notifications": [
+            "DNSP notification required — Ausgrid/Endeavour Energy before contestable work",
+        ],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Service and Installation Rules of NSW",
+            "Level 2 ASP works include metering, service lines, and point of attachment",
+        ],
+    },
+
+    # ── SWITCHBOARD ───────────────────────────────────────────────────────
+    {
+        "keywords": ["switchboard", "distribution board", "meter board",
+                     "db upgrade", "switchboard upgrade"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.16 — Electrical installation work",
+        "hrcw_license_class": "Licensed Electrician — NSW Fair Trading",
+        "ppe": [
+            "Insulated gloves — rated to working voltage",
+            "Arc-flash rated face shield",
+        ],
+        "certs": [
+            "Licensed Electrician — NSW Fair Trading",
+        ],
+        "permits": [],
+        "qualifications": [],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "AS/NZS 3000 — Wiring rules",
+            "Isolation required before switchboard work — LOTO procedure applies",
+        ],
+    },
+
+    # ── UNDERGROUND CABLE ─────────────────────────────────────────────────
+    {
+        "keywords": ["underground cable", "cable strike", "buried cable",
+                     "underground electrical", "cable location"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.16 — Work near energised electrical installations",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Insulated footwear",
+            "Safety glasses",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Competent person — cable locator operator",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Dial Before You Dig — DBYD enquiry required before any excavation",
+            "AS 5488 — Classification of subsurface utility information",
+            "Cable location scan required before mechanical excavation within 1m of services",
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Confined Space (4 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── CONFINED SPACE ENTRY ──────────────────────────────────────────────
+    {
+        "keywords": ["confined space entry", "confined space work", "enter confined space",
+                     "pit entry", "stormwater pit", "tank entry", "vault entry",
+                     "manhole entry", "sewer entry"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.15 — Work in or near a confined space",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Full-body harness — retrieval attachment point",
+            "P2 respirator (minimum) — upgrade to SCBA where oxygen deficiency risk",
+            "Safety glasses",
+            "Hard hat — low clearance areas",
+        ],
+        "certs": [
+            "Confined Space Entry and Rescue — RIIWHS202E or equivalent",
+        ],
+        "permits": [
+            "Confined Space Entry Permit — signed before every entry",
+        ],
+        "qualifications": [
+            "Standby person — trained in emergency procedures, stationed at entry point",
+            "Rescue plan — documented before entry, tested with team",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Part 4.3 — Confined spaces",
+            "SafeWork NSW Code of Practice: Managing Risks in Confined Spaces",
+            "Atmospheric monitor (4-gas) — continuous monitoring during entry",
+            "Communication system between entrant and standby person required",
+        ],
+    },
+
+    # ── CONFINED SPACE RESCUE ─────────────────────────────────────────────
+    {
+        "keywords": ["confined space rescue", "rescue plan confined", "retrieval system",
+                     "confined rescue equipment"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.15 — Work in or near a confined space",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Full-body harness — retrieval attachment point",
+            "SCBA — self-contained breathing apparatus for rescue entry",
+        ],
+        "certs": [
+            "Confined Space Entry and Rescue — RIIWHS202E or equivalent",
+        ],
+        "permits": [],
+        "qualifications": [
+            "Standby person — stationed at entry point at all times during work",
+            "Rescue team — trained and equipped, available within response time",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 s.74 — Rescue procedures for confined spaces",
+            "Retrieval equipment — mechanical advantage system or tripod at entry",
+            "Practice rescue drill required before first entry on each site",
+        ],
+    },
+
+    # ── CONFINED SPACE ATMOSPHERIC ────────────────────────────────────────
+    {
+        "keywords": ["atmospheric testing", "atmospheric monitoring", "gas testing confined",
+                     "oxygen monitoring", "4-gas monitor", "four gas monitor"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.15 — Work in or near a confined space",
+        "hrcw_license_class": None,
+        "ppe": [
+            "P2 respirator (minimum) — upgrade based on atmospheric results",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Competent person — atmospheric testing and monitor calibration",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 s.67 — Atmospheric testing before entry",
+            "Monitor continuously during work — O2, LEL, CO, H2S minimum",
+            "Alarm set points: O2 <19.5%, LEL >10%, CO >30ppm, H2S >10ppm",
+        ],
+    },
+
+    # ── CONFINED SPACE HOT WORK ───────────────────────────────────────────
+    {
+        "keywords": ["hot work confined", "welding confined space", "cutting confined space",
+                     "grinding confined space", "confined space hot work"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.15 — Work in or near a confined space",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Full-body harness — retrieval attachment point",
+            "Welding helmet or face shield",
+            "Fire-resistant clothing",
+            "SCBA or supplied air — where flammable atmosphere risk",
+        ],
+        "certs": [
+            "Confined Space Entry and Rescue — RIIWHS202E or equivalent",
+        ],
+        "permits": [
+            "Confined Space Entry Permit — signed before entry",
+            "Hot Works Permit — dual permit required for hot work inside confined space",
+        ],
+        "qualifications": [
+            "Fire watch — continuous during and 30 minutes after hot work",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Part 4.3 — Confined spaces",
+            "LEL must be <5% before and during hot work — continuous monitoring",
+            "Forced ventilation mandatory — natural ventilation insufficient for hot work",
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Asbestos (5 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── ASBESTOS SURVEY ───────────────────────────────────────────────────
+    {
+        "keywords": ["asbestos survey", "asbestos audit", "pre-demolition survey",
+                     "asbestos register", "asbestos inspection", "acm survey"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [],
+        "certs": [
+            "Asbestos Assessor — accredited under WHS Reg 2017",
+        ],
+        "permits": [],
+        "qualifications": [
+            "Asbestos Assessor — competent to identify and classify ACMs",
+        ],
+        "notifications": [
+            "SafeWork NSW notification if asbestos identified and removal >10m²",
+        ],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "SafeWork NSW Code of Practice: How to Manage and Control Asbestos in the Workplace",
+            "WHS Reg 2017 s.425 — Asbestos register must be maintained",
+            "Pre-demolition survey mandatory before any demolition or refurbishment",
+        ],
+    },
+
+    # ── ASBESTOS CLASS A (FRIABLE) ────────────────────────────────────────
+    {
+        "keywords": ["class a removal", "class a asbestos", "friable asbestos",
+                     "friable removal", "asbestos class a"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.18 — Asbestos removal work (friable)",
+        "hrcw_license_class": "Asbestos Removal Licence — Class A (friable)",
+        "ppe": [
+            "Full-face powered air-purifying respirator (PAPR) — P3 filter",
+            "Disposable Tyvek coveralls — taped at wrists and ankles",
+            "Nitrile gloves — double layer",
+            "Safety boots — decontaminated at zone exit",
+        ],
+        "certs": [
+            "Asbestos Removal Licence — Class A (SafeWork NSW)",
+            "CPCCDE3014 — Remove friable asbestos",
+            "Asbestos Assessor — accredited for air monitoring",
+        ],
+        "permits": [
+            "Asbestos removal permit — Class A",
+        ],
+        "qualifications": [
+            "Licensed supervisor on site at all times",
+            "Asbestos Assessor — clearance inspection and certificate before re-occupation",
+        ],
+        "notifications": [
+            "SafeWork NSW — 5 business days notice before Class A removal",
+        ],
+        "safework_notification": True,
+        "epa_license": True,
+        "notes": [
+            "WHS Reg 2017 Part 8.3 — Asbestos removal duties",
+            "Air monitoring required during all Class A removal",
+            "Clearance certificate required before re-occupation",
+            "Negative pressure enclosure required for indoor friable removal",
+        ],
+    },
+
+    # ── ASBESTOS CLASS B (NON-FRIABLE) ────────────────────────────────────
+    {
+        "keywords": ["class b removal", "class b asbestos", "non-friable asbestos",
+                     "non-friable removal", "asbestos class b", "bonded asbestos removal"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.18 — Asbestos removal work (non-friable)",
+        "hrcw_license_class": "Asbestos Removal Licence — Class B (non-friable)",
+        "ppe": [
+            "P2 half-face respirator — fit-tested",
+            "Disposable Tyvek coveralls — taped at wrists and ankles",
+            "Nitrile gloves",
+            "Safety glasses — full seal",
+        ],
+        "certs": [
+            "Asbestos Removal Licence — Class B (SafeWork NSW)",
+            "CPCCDE3002 — Remove non-friable asbestos",
+        ],
+        "permits": [
+            "Asbestos removal permit — Class B",
+        ],
+        "qualifications": [
+            "Licensed supervisor on site during removal",
+        ],
+        "notifications": [
+            "SafeWork NSW — 1 business day notice before Class B removal >10m²",
+        ],
+        "safework_notification": True,
+        "epa_license": True,
+        "notes": [
+            "WHS Reg 2017 Part 8.3 — Asbestos removal duties",
+            "SafeWork NSW Code of Practice: How to Safely Remove Asbestos",
+            "Wet removal methods — keep ACM damp to minimise fibre release",
+        ],
+    },
+
+    # ── ASBESTOS ENCAPSULATION ────────────────────────────────────────────
+    {
+        "keywords": ["asbestos encapsulat", "seal asbestos", "paint over asbestos",
+                     "asbestos coating", "encapsulate acm"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "P2 half-face respirator — fit-tested",
+            "Disposable Tyvek coveralls",
+            "Nitrile gloves",
+            "Safety glasses — full seal",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Competent person — trained in asbestos awareness",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "SafeWork NSW Code of Practice: How to Manage and Control Asbestos in the Workplace",
+            "Encapsulation is not removal — does not require removal licence",
+            "Asbestos register must be updated to record encapsulated material and location",
+        ],
+    },
+
+    # ── ASBESTOS UNEXPECTED ───────────────────────────────────────────────
+    {
+        "keywords": ["unexpected asbestos", "suspected asbestos", "asbestos discovery",
+                     "found asbestos", "possible acm", "suspected acm"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "P2 half-face respirator — immediately upon discovery",
+            "Disposable coveralls — if contact with material",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [],
+        "notifications": [
+            "SafeWork NSW — if asbestos confirmed and removal required",
+        ],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "STOP WORK immediately — evacuate area and restrict access",
+            "Do not disturb suspected material — leave in place",
+            "Engage Asbestos Assessor for sampling and identification",
+            "WHS Reg 2017 s.422 — Duty to identify asbestos before disturbance",
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Crane and Lifting (4 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── MOBILE CRANE ──────────────────────────────────────────────────────
+    {
+        "keywords": ["mobile crane lift", "crane lift plan", "crane operation",
+                     "crane rigging", "crane exclusion zone"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.8 — Work involving use of crane",
+        "hrcw_license_class": "Crane Licence — CN/C2/C6 class",
+        "ppe": [
+            "Hard hat — mandatory in crane exclusion zone",
+            "High-visibility vest or shirt",
+            "Steel-capped safety boots",
+        ],
+        "certs": [
+            "Dogging licence (DG) — SafeWork NSW",
+            "Rigging licence (RB/RI/RE) — SafeWork NSW",
+            "Crane licence (CN/C2/C6) — SafeWork NSW",
+        ],
+        "permits": [
+            "Lift plan — documented and signed before each lift",
+        ],
+        "qualifications": [
+            "Lift supervisor — responsible for exclusion zone and lift coordination",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Part 5.2 — General duties for plant",
+            "SafeWork NSW Code of Practice: Managing Risks of Plant in the Workplace",
+            "Exclusion zone required — no personnel under suspended loads",
+            "Crane set-up on firm level ground — outrigger pads required",
+        ],
+    },
+
+    # ── FRANNA PICK AND CARRY ─────────────────────────────────────────────
+    {
+        "keywords": ["franna", "pick and carry", "pick carry crane",
+                     "franna crane", "non-slewing crane"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.8 — Work involving use of crane",
+        "hrcw_license_class": "Crane Licence — CN class (non-slewing mobile crane >3t)",
+        "ppe": [
+            "Hard hat — mandatory in crane exclusion zone",
+            "High-visibility vest or shirt",
+            "Steel-capped safety boots",
+        ],
+        "certs": [
+            "Crane licence — CN class (SafeWork NSW)",
+            "Dogging licence (DG) — for directing crane movement",
+        ],
+        "permits": [],
+        "qualifications": [
+            "Spotter — for pick and carry operations near structures",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Pick and carry — travel path must be assessed for ground bearing capacity",
+            "Load chart — verify SWL for pick and carry radius",
+        ],
+    },
+
+    # ── EWP BOOM ──────────────────────────────────────────────────────────
+    {
+        "keywords": ["ewp boom", "boom lift", "boom ewp", "cherry picker",
+                     "knuckle boom", "articulated boom"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.3 — Work at height with risk of fall >2m",
+        "hrcw_license_class": "EWP Licence — WP class (boom over 11m)",
+        "ppe": [
+            "Full-body harness — short-lanyard attachment to EWP anchor point",
+            "Hard hat — mandatory",
+            "High-visibility vest or shirt",
+        ],
+        "certs": [
+            "EWP operator licence — WP class where boom exceeds 11m",
+        ],
+        "permits": [
+            "Working at heights permit — signed before elevated work",
+        ],
+        "qualifications": [
+            "Competent person — pre-start inspection of EWP",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Pre-start checklist — completed and signed before each shift",
+            "Exclusion zone below work area — barricaded",
+            "Wind limit — manufacturer specified, typically 45km/h for boom EWP",
+        ],
+    },
+
+    # ── EWP SCISSOR ───────────────────────────────────────────────────────
+    {
+        "keywords": ["scissor lift", "ewp scissor", "scissor ewp",
+                     "vertical lift platform"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.3 — Work at height with risk of fall >2m",
+        "hrcw_license_class": "EWP Licence — WP class (if platform height >11m)",
+        "ppe": [
+            "Hard hat — mandatory",
+            "High-visibility vest or shirt",
+        ],
+        "certs": [
+            "EWP operator licence — WP class where platform exceeds 11m",
+        ],
+        "permits": [
+            "Working at heights permit — signed before elevated work",
+        ],
+        "qualifications": [
+            "Competent person — pre-start inspection of scissor lift",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Pre-start checklist — completed and signed before each shift",
+            "Scissor lifts — guardrails provide primary fall protection, harness not typically required",
+            "Level ground required — check manufacturer slope limit",
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Formwork and Falsework (2 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── FORMWORK ──────────────────────────────────────────────────────────
+    {
+        "keywords": ["formwork", "formwork erection", "slab formwork",
+                     "beam formwork", "column formwork", "strip formwork"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat — mandatory during formwork erection and stripping",
+            "Steel-capped safety boots",
+            "Safety glasses",
+            "Cut-resistant gloves",
+        ],
+        "certs": [
+            "Formwork licence — Intermediate (FI) or Basic (FB) where applicable",
+        ],
+        "permits": [],
+        "qualifications": [
+            "Temporary works engineer — sign-off required before concrete pour",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "AS 3610 — Formwork for concrete",
+            "SafeWork NSW Code of Practice: Managing Risks of Plant in the Workplace",
+            "Formwork design certification required for heights >2m or non-standard configurations",
+        ],
+    },
+
+    # ── FALSEWORK ─────────────────────────────────────────────────────────
+    {
+        "keywords": ["falsework", "temporary works", "propping",
+                     "temporary support structure", "shoring formwork"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.11 — Temporary load-bearing support for structural alterations",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat — mandatory",
+            "Steel-capped safety boots",
+            "Safety glasses",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Temporary works engineer — design and sign-off of falsework system",
+            "Competent person — inspection before loading and at regular intervals",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "AS 3610 — Formwork for concrete (includes falsework requirements)",
+            "Engineer sign-off required before loading falsework",
+            "Progressive stripping sequence documented by engineer",
+        ],
+    },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # STREAM: Fire Systems (3 categories)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── SPRINKLER ISOLATION ───────────────────────────────────────────────
+    {
+        "keywords": ["sprinkler isolation", "fire suppression isolation",
+                     "isolate sprinkler", "fire system isolation", "sprinkler impairment"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [],
+        "certs": [],
+        "permits": [
+            "Fire suppression isolation permit — signed by building manager",
+            "Hot Works Permit — required if welding or cutting near suppression system",
+        ],
+        "qualifications": [
+            "Fire warden — notified of impairment, fire watch posted during isolation",
+        ],
+        "notifications": [
+            "FRA/BCA compliance — fire brigade notification if system impaired >4 hours",
+        ],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "AS 2118 — Automatic fire sprinkler systems",
+            "Maximum isolation period — restore system within shift unless 24hr fire watch",
+            "Impairment log — record isolation start/end, reason, and responsible person",
+        ],
+    },
+
+    # ── PASSIVE FIRE ──────────────────────────────────────────────────────
+    {
+        "keywords": ["passive fire", "fire stopping", "penetration seal",
+                     "fire door installation", "fire collar", "intumescent",
+                     "fire barrier", "fire compartment"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "P2 respirator (minimum) — during fire-stop product application",
+            "Safety glasses",
+            "Nitrile gloves",
+        ],
+        "certs": [
+            "Passive fire installer — accredited to product manufacturer specifications",
+        ],
+        "permits": [],
+        "qualifications": [],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "BCA Section C — Fire resistance and compartmentation",
+            "AS 1530.4 — Fire-resistance tests of elements of building construction",
+            "All penetration seals must be fire-rated to match the element penetrated",
+            "Photographic evidence of each penetration seal required for certification",
+        ],
+    },
+
+    # ── HOT WORKS NEAR SUPPRESSION ────────────────────────────────────────
+    {
+        "keywords": ["hot work suppression", "hot works near sprinkler",
+                     "welding near sprinkler", "hot works fire system"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Fire-resistant clothing",
+            "Welding helmet or face shield",
+        ],
+        "certs": [],
+        "permits": [
+            "Hot Works Permit — signed before any hot work",
+            "Fire suppression isolation permit — dual permit required",
+        ],
+        "qualifications": [
+            "Fire watch — continuous during and 30 minutes after hot work completion",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Sprinkler heads within 3m of hot work — cover with wet cloth or isolate zone",
+            "Fire extinguisher — minimum 4.5kg ABE within 3m of hot work location",
+            "Fire watch duration — minimum 30 minutes after hot work ceases",
+        ],
+    },
+
 ]
 
 # ── Improvement 1: Synonym expansion map ─────────────────────────────────────
@@ -4551,6 +5321,10 @@ SYNONYM_MAP: dict[str, str] = {
     "oxy-acetylene":            "hot work",
     "grinding sparks":          "hot work",
     "angle grinder":            "hot work",
+    # Concrete grinding → silica (primary hazard is dust, not sparks)
+    "angle grinding concrete":  "concrete grinding",
+    "surface grinding":         "concrete grinding",
+    "floor grinding":           "concrete grinding",
     # Confined space
     "manhole":                  "confined space",
     "pit entry":                "confined space",
@@ -4579,6 +5353,59 @@ SYNONYM_MAP: dict[str, str] = {
     "engineered stone":         "silica",
     "benchtop":                 "silica",
     "caesarstone":              "silica",
+    # Electrical stream
+    "live electrical work":     "energised electrical",
+    "working live":             "live electrical",
+    "isolation locks":          "lockout",
+    "energy isolation":         "lockout",
+    "lock and tag":             "lockout",
+    "near power lines":         "overhead powerline",
+    "close to powerlines":      "overhead powerline",
+    "power line exclusion":     "overhead powerline",
+    "asp level 2":              "level 2 asp",
+    "authorised service":       "level 2 asp",
+    "db board":                 "switchboard",
+    "distribution board":       "switchboard",
+    "buried services":          "underground cable",
+    "cable locate":             "underground cable",
+    "dbyd":                     "underground cable",
+    # Confined space stream
+    "stormwater pit":           "confined space entry",
+    "pump station entry":       "confined space entry",
+    "below ground entry":       "confined space entry",
+    "vault entry":              "confined space entry",
+    "gas test":                 "atmospheric testing",
+    "gas monitor":              "atmospheric monitoring",
+    # Asbestos stream
+    "acm inspection":           "asbestos survey",
+    "asbestos check":           "asbestos survey",
+    "friable removal":          "class a removal",
+    "non-friable removal":      "class b removal",
+    "bonded asbestos":          "class b removal",
+    "seal over asbestos":       "asbestos encapsulat",
+    "paint asbestos":           "asbestos encapsulat",
+    "found asbestos":           "unexpected asbestos",
+    "suspected acm":            "unexpected asbestos",
+    # Crane and lifting stream
+    "crane lift":               "mobile crane lift",
+    "lift plan":                "mobile crane lift",
+    "dogman":                   "mobile crane lift",
+    "cherry picker":            "ewp boom",
+    "knuckle boom":             "ewp boom",
+    "articulated boom":         "ewp boom",
+    "vertical lift":            "scissor lift",
+    # Formwork stream
+    "slab pour":                "formwork",
+    "concrete pour":            "formwork",
+    "temporary propping":       "falsework",
+    "temp works":               "falsework",
+    # Fire systems stream
+    "isolate sprinklers":       "sprinkler isolation",
+    "sprinkler impairment":     "sprinkler isolation",
+    "fire stopping":            "passive fire",
+    "penetration sealing":      "passive fire",
+    "fire collar":              "passive fire",
+    "welding near sprinkler":   "hot work suppression",
 }
 
 
@@ -4610,6 +5437,8 @@ CHAIN_MAP: dict[str, list[str]] = {
     "demolition":               ["hazardous materials survey"],
     "strip-out":                ["hazardous materials survey"],
     "fitout removal":           ["hazardous materials survey"],
+    # Concrete grinding generates silica dust — primary hazard
+    "concrete grinding":        ["silica"],
     # Rock breaking generates silica and vibration
     "rock break":               ["silica", "vibration"],
     "rock hammer":              ["silica"],
@@ -4832,6 +5661,28 @@ def infer_requirements(work_description: str) -> Requirements:
             if item not in result.notes:
                 result.notes.append(item)
 
+    # Suppress hot work when silica/concrete grinding is the primary activity
+    # and no actual hot work keywords (welding, oxy, torch, cutting metal) are present
+    _HOT_WORK_CONFIRM = [r"\bweld", r"\boxy\b", r"\bacetylene\b", r"\btorch\b",
+                         r"\bbraz", r"\bsolder", r"\bcutting metal", r"\bmetal cutting",
+                         r"\bplasma cut"]
+    _is_silica_primary = any(k in expanded for k in
+        ("silica", "concrete grinding", "concrete cutting", "masonry cutting"))
+    _has_real_hot_work = any(re.search(pat, original_text) for pat in _HOT_WORK_CONFIRM)
+    if _is_silica_primary and not _has_real_hot_work:
+        _HOT_PHRASES = {"hot work", "welding", "fire watch", "fire warden",
+                        "flame", "ignition", "flammable"}
+        result.ppe = [p for p in result.ppe
+                      if not any(hw in p.lower() for hw in _HOT_PHRASES)]
+        result.certs = [c for c in result.certs
+                        if not any(hw in c.lower() for hw in _HOT_PHRASES)]
+        result.permits = [p for p in result.permits
+                          if not any(hw in p.lower() for hw in _HOT_PHRASES)]
+        result.qualifications = [q for q in result.qualifications
+                                 if not any(hw in q.lower() for hw in _HOT_PHRASES)]
+        result.notes = [n for n in result.notes
+                        if not any(hw in n.lower() for hw in _HOT_PHRASES)]
+
     # Improvement 4: deduplicate all merged lists
     result.ppe           = _dedup_list(result.ppe)
     result.certs         = _dedup_list(result.certs)
@@ -4839,6 +5690,68 @@ def infer_requirements(work_description: str) -> Requirements:
     result.qualifications = _dedup_list(result.qualifications)
     result.notifications = _dedup_list(result.notifications)
     result.notes         = _dedup_list(result.notes)
+
+    # Infer plant and equipment from matched keywords and licence class
+    _PLANT_RULES = [
+        (lambda: result.hrcw_license_class and "ewp" in result.hrcw_license_class.lower(),
+         "Elevated Work Platform (EWP)"),
+        (lambda: any(k in expanded for k in ("scaffold", "mobile scaffold")),
+         "Scaffolding"),
+        (lambda: any(k in expanded for k in ("crane", "rigging", "franna")),
+         "Mobile crane"),
+        (lambda: any(k in expanded for k in ("concrete", "grinding", "grinder", "angle grind")),
+         "Angle grinder"),
+        (lambda: any(k in expanded for k in ("concrete saw", "concrete cut", "demolition saw")),
+         "Concrete saw"),
+        (lambda: any(k in expanded for k in ("excavat", "trench", "dig")),
+         "Excavator"),
+        (lambda: any(k in expanded for k in ("traffic", "tcp", "traffic control")),
+         "Traffic control equipment"),
+    ]
+    for check, item in _PLANT_RULES:
+        if check() and item not in result.plant:
+            result.plant.append(item)
+
+    # Compute individual HRCW boolean flags for checkbox ticking
+    result.hrcw_flags = {}
+    cat = (result.hrcw_category or "").lower()
+    # falling_2m — from keywords or category
+    result.hrcw_flags["falling_2m"] = any(k in expanded for k in (
+        "at height", "above ground", "elevated", "roof", "ewp", "boom lift",
+        "scissor lift", "cherry picker", "ladder", "scaffold", "platform",
+        "mezzanine", "working at heights"))
+    # tiltup_precast
+    result.hrcw_flags["tiltup_precast"] = any(k in expanded for k in (
+        "tilt-up", "tilt up", "tiltup", "precast", "precast concrete",
+        "tilt-up panel", "precast panel", "concrete panel", "panel erection"))
+    # mobile_plant
+    result.hrcw_flags["mobile_plant"] = any(k in expanded for k in (
+        "crane", "mobile crane", "franna", "ewp", "boom lift", "scissor lift",
+        "cherry picker", "mobile plant", "forklift", "telehandler", "excavat"))
+    # demolition
+    result.hrcw_flags["demolition"] = any(k in expanded for k in (
+        "demolition", "demolish", "strip out", "strip-out"))
+    # asbestos
+    result.hrcw_flags["asbestos"] = any(k in expanded for k in (
+        "asbestos", "acm", "fibro", "asbestos cement"))
+    # confined_space
+    result.hrcw_flags["confined_space"] = any(k in expanded for k in (
+        "confined space", "confined", "tank entry", "sewer", "manhole"))
+    # electrical
+    result.hrcw_flags["electrical"] = any(k in expanded for k in (
+        "electrical", "live electrical", "switchboard", "high voltage"))
+    # shaft_trench
+    result.hrcw_flags["shaft_trench"] = any(k in expanded for k in (
+        "trench", "shaft", "tunnel", "excavat"))
+    # chemical_fuel
+    result.hrcw_flags["chemical_fuel"] = any(k in expanded for k in (
+        "chemical", "fuel", "flammable", "combustible"))
+    # traffic_corridor
+    result.hrcw_flags["traffic_corridor"] = any(k in expanded for k in (
+        "traffic", "roadway", "road work", "public road"))
+    # temp_support
+    result.hrcw_flags["temp_support"] = any(k in expanded for k in (
+        "temporary support", "formwork", "falsework", "propping"))
 
     return result
 
@@ -4904,13 +5817,14 @@ async def infer_with_claude(work_description: str, api_key: str = "") -> dict:
         return keyword_result
 
 
-def infer_to_dict(work_description: str) -> dict:
+def infer_to_dict(work_description: str, jurisdiction: str = "AU") -> dict:
     """Return inference result as a plain dict for JSON serialisation."""
     r = infer_requirements(work_description)
-    return {
+    result = {
         "hrcw": r.hrcw,
         "hrcw_category": r.hrcw_category,
         "hrcw_license_class": r.hrcw_license_class,
+        "hrcw_flags": getattr(r, "hrcw_flags", {}),
         "safework_notification_required": r.safework_notification,
         "epa_license_required": r.epa_license,
         "ppe": r.ppe,
@@ -4919,7 +5833,219 @@ def infer_to_dict(work_description: str) -> dict:
         "qualifications": r.qualifications,
         "notifications": r.notifications,
         "regulatory_notes": r.notes,
+        "plant": r.plant,
+        "jurisdiction": jurisdiction,
+        "jurisdiction_notes": [],
     }
+
+    # Append jurisdiction-specific regulatory notes based on matched categories
+    if jurisdiction != "AU":
+        result["jurisdiction_notes"] = _jurisdiction_notes(
+            jurisdiction, work_description.lower(), result
+        )
+
+    return result
+
+
+def _jurisdiction_notes(jurisdiction: str, text: str, inference: dict) -> list[str]:
+    """Generate jurisdiction-specific regulatory notes based on matched hazard categories."""
+    notes: list[str] = []
+
+    if jurisdiction == "NZ":
+        notes.append("Health and Safety at Work Act 2015 (HSWA) — PCBU duties")
+        if inference.get("hrcw"):
+            notes.append("WorkSafe NZ Approved Code of Practice applies to this high-risk work")
+        if any(k in text for k in ("asbestos", "fibro", "ace sheet")):
+            notes.append("WorkSafe NZ ACP: Management and Removal of Asbestos")
+        if any(k in text for k in ("height", "elevated", "roof", "scaffold", "ewp", "ladder")):
+            notes.append("WorkSafe NZ ACP: Working at Height")
+        if any(k in text for k in ("confined space", "confined", "tank", "vessel")):
+            notes.append("WorkSafe NZ ACP: Confined Spaces")
+        if any(k in text for k in ("crane", "rigging", "lift", "hoist")):
+            notes.append("WorkSafe NZ ACP: Cranes")
+        if any(k in text for k in ("excavat", "trench", "dig")):
+            notes.append("WorkSafe NZ ACP: Excavation Safety")
+        if any(k in text for k in ("electri", "power", "switchboard", "cable")):
+            notes.append("Electricity Act 1992 (NZ)")
+
+    elif jurisdiction == "UK":
+        notes.append("CDM Regulations 2015 — Principal Designer and Principal Contractor duties")
+        if any(k in text for k in ("chemical", "hazardous substance", "solvent", "epoxy", "resin")):
+            notes.append("COSHH Regulations 2002 — Control of Substances Hazardous to Health")
+        if any(k in text for k in ("height", "elevated", "roof", "scaffold", "ewp", "ladder")):
+            notes.append("Work at Height Regulations 2005")
+        if any(k in text for k in ("confined space", "confined", "tank", "vessel")):
+            notes.append("Confined Spaces Regulations 1997")
+        if any(k in text for k in ("asbestos", "fibro")):
+            notes.append("Control of Asbestos Regulations 2012")
+        if any(k in text for k in ("silica", "dust", "grinding", "cutting")):
+            notes.append("BS EN 689 — Workplace exposure assessment")
+        if any(k in text for k in ("scaffold",)):
+            notes.append("BS EN 12811 — Temporary works equipment: Scaffolds")
+
+    elif jurisdiction == "US":
+        notes.append("OSHA 29 CFR 1926 — Construction Industry Standards")
+        if any(k in text for k in ("fall", "height", "elevated", "roof", "scaffold", "ewp", "ladder")):
+            notes.append("29 CFR 1926.502 — Fall Protection Systems Criteria")
+        if any(k in text for k in ("scaffold",)):
+            notes.append("29 CFR 1926.451 — Scaffolds — General Requirements")
+        if any(k in text for k in ("excavat", "trench", "dig")):
+            notes.append("29 CFR 1926.651 — Excavations — General Requirements")
+        if any(k in text for k in ("confined space", "confined", "tank", "vessel")):
+            notes.append("29 CFR 1926.1201 — Confined Spaces in Construction")
+        if any(k in text for k in ("crane", "rigging", "hoist")):
+            notes.append("29 CFR 1926.1400 — Cranes and Derricks in Construction")
+        if any(k in text for k in ("silica", "grinding", "cutting", "concrete")):
+            notes.append("29 CFR 1926.1153 — Respirable Crystalline Silica")
+        if any(k in text for k in ("asbestos", "fibro")):
+            notes.append("29 CFR 1926.1101 — Asbestos")
+        if any(k in text for k in ("electri", "power", "switchboard", "cable")):
+            notes.append("29 CFR 1926.400 — Electrical — General Requirements")
+
+    elif jurisdiction == "CA":
+        notes.append("Canada Labour Code Part II — employer duties")
+        notes.append("WHMIS 2015 — Hazardous Products Regulations")
+        if any(k in text for k in ("confined space", "confined", "tank", "vessel")):
+            notes.append("CSA Z1006 — Management of Work in Confined Spaces")
+        if any(k in text for k in ("height", "elevated", "roof", "scaffold", "ewp", "ladder")):
+            notes.append("Fall protection requirements per provincial OHS regulation")
+        if any(k in text for k in ("excavat", "trench", "dig")):
+            notes.append("Excavation and trenching requirements per provincial OHS regulation")
+        if any(k in text for k in ("asbestos", "fibro")):
+            notes.append("Provincial asbestos abatement regulations apply")
+        if any(k in text for k in ("silica", "grinding", "cutting", "concrete")):
+            notes.append("Silica exposure limits per provincial OHS regulation")
+        if any(k in text for k in ("crane", "rigging", "hoist")):
+            notes.append("CSA Z150 — Safety Code on Mobile Cranes")
+        if any(k in text for k in ("electri", "power", "switchboard", "cable")):
+            notes.append("CSA C22.1 — Canadian Electrical Code")
+
+    return notes
+
+
+# ── Risk Assessment hazard list generation ───────────────────────────────────
+
+def _risk_level(score: int) -> str:
+    """Return risk level string from L x C score."""
+    if score >= 17:
+        return "Extreme"
+    elif score >= 10:
+        return "High"
+    elif score >= 5:
+        return "Medium"
+    else:
+        return "Low"
+
+
+def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
+    """
+    Build a structured hazard list for Risk Assessment documents.
+    Derives hazards from the same inference categories used for SWMS,
+    with likelihood/consequence scores based on the H/M/L risk scoring.
+    """
+    text = work_description.lower()
+    hazards: list[dict] = []
+
+    # Map MATRIX entries to RA hazard rows
+    expanded = _expand_description(text)
+
+    for entry in MATRIX:
+        score = _score_entry(entry, expanded)
+        if score < CONFIDENCE_THRESHOLD:
+            continue
+        primary_kw = entry["keywords"][0]
+        if _is_negated(primary_kw, text):
+            continue
+
+        # Derive hazard description from entry keywords and category
+        hazard_name = primary_kw.replace("_", " ").title()
+        if entry.get("hrcw_category"):
+            # Use the descriptive part after the regulation reference
+            cat = entry["hrcw_category"]
+            if "\u2014" in cat:
+                hazard_name = cat.split("\u2014", 1)[1].strip()
+            elif "—" in cat:
+                hazard_name = cat.split("—", 1)[1].strip()
+            else:
+                hazard_name = cat
+
+        # Score based on HRCW status and hazard severity
+        _SEVERE_KEYWORDS = ("silica", "asbestos", "lead paint", "confined space",
+                            "electrical", "excavat", "demolition", "crane")
+        is_severe = any(k in primary_kw.lower() for k in _SEVERE_KEYWORDS)
+        if entry.get("hrcw"):
+            likelihood, consequence = 4, 5
+        elif entry.get("safework_notification") or is_severe:
+            likelihood, consequence = 4, 4
+        else:
+            likelihood, consequence = 3, 3
+
+        risk_rating = likelihood * consequence
+
+        # Build controls hierarchy
+        controls = {
+            "engineering": entry.get("notes", [])[:2] if entry.get("notes") else ["Refer to site-specific controls"],
+            "admin": entry.get("qualifications", [])[:2] if entry.get("qualifications") else [],
+            "ppe": entry.get("ppe", [])[:3],
+        }
+
+        # Residual risk after controls
+        res_likelihood = max(1, likelihood - 2)
+        res_consequence = max(1, consequence - 1)
+        residual_risk = res_likelihood * res_consequence
+
+        who_at_risk_parts = ["Workers performing task"]
+        if any(k in text for k in ("public", "traffic", "occupied")):
+            who_at_risk_parts.append("public/occupants")
+        if any(k in text for k in ("nearby", "adjacent")):
+            who_at_risk_parts.append("nearby workers")
+
+        hazards.append({
+            "hazard": hazard_name,
+            "who_at_risk": ", ".join(who_at_risk_parts),
+            "likelihood": likelihood,
+            "consequence": consequence,
+            "risk_rating": risk_rating,
+            "risk_level": _risk_level(risk_rating),
+            "controls": controls,
+            "residual_likelihood": res_likelihood,
+            "residual_consequence": res_consequence,
+            "residual_risk": residual_risk,
+            "residual_level": _risk_level(residual_risk),
+            "responsible": "Supervisor",
+        })
+
+    # Always add baseline construction hazards if none matched
+    if not hazards:
+        hazards.append({
+            "hazard": "General construction hazards",
+            "who_at_risk": "All workers on site",
+            "likelihood": 2,
+            "consequence": 3,
+            "risk_rating": 6,
+            "risk_level": "Medium",
+            "controls": {
+                "engineering": ["Site-specific risk controls as per project requirements"],
+                "admin": ["Site induction completed", "Toolbox talk before work"],
+                "ppe": list(BASELINE_PPE),
+            },
+            "residual_likelihood": 1,
+            "residual_consequence": 2,
+            "residual_risk": 2,
+            "residual_level": "Low",
+            "responsible": "Supervisor",
+        })
+
+    return hazards
+
+
+def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
+                     ca_province: str = "") -> dict:
+    """Return inference result with hazard_list for Risk Assessment documents."""
+    result = infer_to_dict(work_description, jurisdiction=jurisdiction)
+    result["hazard_list"] = _build_hazard_list(work_description, result)
+    result["document_type"] = "ra"
+    return result
 
 
 # ── CLI test ──────────────────────────────────────────────────────────────────

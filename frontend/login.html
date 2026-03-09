@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple SWMS — Australian Construction Safety</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #ffffff;
+  color: #444444;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Animations ─────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade { opacity: 0; animation: fadeIn 0.5s ease forwards; }
+.fade-d1 { animation-delay: 0s; }
+.fade-d2 { animation-delay: 0.15s; }
+.fade-d3 { animation-delay: 0.25s; }
+.fade-d4 { animation-delay: 0.35s; }
+.fade-d5 { animation-delay: 0.45s; }
+
+/* ── Nav ────────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 64px; background: #000000;
+  border-bottom: 1px solid #222222;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+}
+.nav-wordmark {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px; color: #ffffff;
+  text-decoration: none;
+}
+.nav-buttons { display: flex; gap: 12px; }
+.btn-nav-login {
+  background: transparent; border: 1px solid #ffffff;
+  color: #ffffff; font-family: 'Outfit', sans-serif;
+  font-size: 13px; font-weight: 500; padding: 8px 20px;
+  border-radius: 6px; cursor: pointer; transition: background 0.2s;
+}
+.btn-nav-login:hover { background: rgba(255,255,255,0.1); }
+.btn-nav-get-started {
+  background: #ffffff; border: 1px solid #ffffff;
+  color: #000000; font-family: 'Outfit', sans-serif;
+  font-size: 13px; font-weight: 700; padding: 8px 20px;
+  border-radius: 6px; cursor: pointer; transition: background 0.2s;
+}
+.btn-nav-get-started:hover { background: #e0e0e0; }
+
+/* ── Hero ───────────────────────────────────────── */
+.hero {
+  text-align: center; max-width: 640px; margin: 0 auto;
+  padding: 144px 24px 48px;
+}
+.hero-tagline {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 4px; color: #888888;
+  margin-bottom: 20px;
+}
+.hero-headline {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: clamp(28px, 5vw, 44px);
+  color: #000000; line-height: 1.15; margin-bottom: 16px;
+}
+.hero-sub {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300; font-size: 15px; color: #444444;
+  line-height: 1.7; margin-bottom: 28px;
+}
+.hero-trust {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; font-weight: 400; color: #888888;
+  letter-spacing: 0.5px;
+}
+
+/* ── Form + Features Row ────────────────────────── */
+.form-features-row {
+  max-width: 960px; margin: 0 auto 60px; padding: 0 24px;
+  display: flex; gap: 24px; align-items: stretch;
+}
+
+/* ── Form Card ──────────────────────────────────── */
+.form-card {
+  flex: 0 0 480px; width: 480px;
+  background: #f8f8f8; border: 1px solid #e0e0e0;
+  border-radius: 8px; padding: 36px;
+  display: flex; flex-direction: column;
+}
+.form-card .tabs { flex-shrink: 0; }
+.form-card .form-panel.active {
+  flex: 1; display: flex; flex-direction: column;
+}
+.form-card .form-panel.active form {
+  flex: 1; display: flex; flex-direction: column;
+}
+.form-card .form-panel.active form .btn-primary { margin-top: auto; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 1px solid #e0e0e0; margin-bottom: 28px; }
+.tab {
+  flex: 1; text-align: center; padding: 0 0 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px; color: #888888; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  background: none; border-top: none; border-left: none; border-right: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab.active {
+  color: #000000; font-weight: 700;
+  border-bottom: 2px solid #000000;
+}
+
+/* Fields */
+.form-panel { display: none; }
+.form-panel.active { display: block; }
+.field { margin-bottom: 16px; }
+.field label {
+  display: block; font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700; color: #444444;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.field label .req { color: #000000; }
+.field input {
+  width: 100%; background: #ffffff; border: 1px solid #cccccc;
+  border-radius: 6px; padding: 11px 14px;
+  font-family: 'Outfit', sans-serif; font-size: 14px;
+  color: #000000; outline: none; transition: border-color 0.2s;
+}
+.field input:focus { border-color: #000000; }
+.field .hint {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; color: #888888; margin-top: 6px;
+}
+
+/* Buttons */
+.btn-primary {
+  width: 100%; background: #000000; color: #ffffff;
+  border: 1px solid #000000; border-radius: 6px;
+  padding: 12px; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: background 0.2s; margin-top: 8px;
+}
+.btn-primary:hover { background: #333333; }
+.btn-secondary {
+  width: 100%; background: #ffffff; color: #000000;
+  border: 1px solid #000000; border-radius: 6px;
+  padding: 12px; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-secondary:hover { background: #f0f0f0; }
+
+/* Divider */
+.divider {
+  display: flex; align-items: center; margin: 20px 0;
+  gap: 12px;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: #e0e0e0;
+}
+.divider span {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; color: #888888; font-weight: 500;
+}
+
+/* Form footer */
+.form-footer {
+  text-align: center; margin-top: 20px;
+  font-size: 11px; color: #888888; line-height: 1.5;
+}
+.form-footer a { color: #000000; text-decoration: underline; }
+
+/* ── Feature Cards ──────────────────────────────── */
+.features {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 12px;
+  justify-content: space-between;
+}
+.feature-card {
+  background: #ffffff; border: 1px solid #000000;
+  border-radius: 8px; padding: 20px;
+  transition: background 0.2s;
+}
+.feature-card:hover { background: #f8f8f8; }
+.features-heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 15px; color: #000000;
+  line-height: 1.4; padding-bottom: 4px;
+}
+.feature-card .icon {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px; color: #000000; margin-bottom: 10px;
+  display: block;
+}
+.feature-card h3 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700; font-size: 14px; color: #000000;
+  margin-bottom: 8px;
+}
+.feature-card p {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; color: #444444; line-height: 1.6;
+}
+
+/* ── Customise Section ──────────────────────────── */
+.customise {
+  max-width: 860px; margin: 0 auto; padding: 48px 24px;
+}
+.customise-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: 3px; color: #888888;
+  margin-bottom: 12px;
+}
+.customise-heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 22px; color: #000000;
+  margin-bottom: 32px;
+}
+.customise-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+.customise-card {
+  background: #ffffff; border: 1px solid #000000;
+  border-radius: 8px; padding: 24px;
+  transition: background 0.2s;
+}
+.customise-card:hover { background: #f8f8f8; }
+.customise-card .icon {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px; color: #000000; margin-bottom: 14px;
+  display: block;
+}
+.customise-card .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 900; font-size: 28px; color: #000000;
+  display: block; margin-bottom: 12px;
+}
+.customise-card h3 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700; font-size: 14px; color: #000000;
+  margin-bottom: 8px;
+}
+.customise-card p {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; color: #444444; line-height: 1.6;
+}
+.customise-cta {
+  display: block; max-width: 400px; margin: 40px auto 0;
+  background: #000000; color: #ffffff;
+  border: 1px solid #000000; border-radius: 8px;
+  padding: 14px 40px; font-family: 'Outfit', sans-serif;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  text-align: center; transition: background 0.2s;
+}
+.customise-cta:hover { background: #333333; }
+
+/* ── Verified Reference Layer ──────────────────── */
+.vrl-section {
+  max-width: 860px; margin: 0 auto; padding: 48px 24px 56px;
+  text-align: center;
+}
+.vrl-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 3px; color: #888888;
+  margin-bottom: 12px;
+}
+.vrl-heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 28px; color: #000000;
+  margin-bottom: 24px;
+}
+.vrl-body {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300; font-size: 15px; color: #444444;
+  line-height: 1.8; max-width: 640px; margin: 0 auto 16px;
+  text-align: center;
+}
+.vrl-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px; margin-top: 36px;
+}
+.vrl-stat-card {
+  background: #ffffff; border: 1px solid #000000;
+  border-radius: 8px; padding: 24px;
+  display: flex; flex-direction: column; align-items: center;
+  transition: background 0.2s;
+}
+.vrl-stat-card:hover { background: #f8f8f8; }
+.vrl-number {
+  font-family: 'Fraunces', serif;
+  font-weight: 900; font-size: 36px; color: #000000;
+  display: block; margin-bottom: 8px;
+}
+.vrl-stat-label {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 400; font-size: 13px; color: #444444;
+  display: block; margin-bottom: 4px;
+}
+.vrl-stat-sub {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300; font-size: 12px; color: #888888;
+  display: block; line-height: 1.5;
+}
+
+/* ── Footer ─────────────────────────────────────── */
+.footer {
+  background: #000000; padding: 20px 40px;
+  display: flex; justify-content: space-between;
+  align-items: center;
+}
+.footer-left {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; color: #888888;
+}
+.footer-right {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; color: #666666;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 860px) {
+  .form-features-row { flex-direction: column; align-items: stretch; }
+  .form-card { flex: none; width: 100%; max-width: 480px; margin: 0 auto; }
+  .features { margin-top: 24px; max-width: 480px; margin-left: auto; margin-right: auto; width: 100%; }
+}
+@media (max-width: 640px) {
+  .customise-grid { grid-template-columns: 1fr; }
+  .vrl-stats { grid-template-columns: 1fr; }
+  .btn-nav-login { display: none; }
+  .form-card { padding: 24px 16px; }
+  .footer {
+    flex-direction: column; gap: 8px;
+    text-align: center; padding: 20px 24px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav fade fade-d1">
+  <a href="#" class="nav-wordmark">Simple SWMS</a>
+  <div class="nav-buttons">
+    <button class="btn-nav-login" onclick="switchTab('login');document.getElementById('form-card').scrollIntoView({behavior:'smooth'})">Log In</button>
+    <button class="btn-nav-get-started" onclick="switchTab('signup');document.getElementById('form-card').scrollIntoView({behavior:'smooth'})">Get Started</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero fade fade-d2">
+  <div class="hero-tagline">NAILED IT</div>
+  <h1 class="hero-headline">Create Specialist Safety Risk Assessments, Matched To Your Job</h1>
+  <p class="hero-sub">Purpose-built for construction safety across Australia, New Zealand, the UK, and the US. Powered by AI trained on Model WHS Act 2011, HSWA 2015, CDM 2015, and OSHA 29 CFR 1926. Kept clear and simple so it makes sense on site and works in real life.</p>
+  <div class="hero-trust">Safe Work Australia &mdash; WorkSafe NZ &mdash; HSE (UK) &mdash; OSHA (US) &mdash; Plain English Output</div>
+</section>
+
+<!-- Form + Features Row -->
+<div class="form-features-row fade fade-d3">
+
+<!-- Form Card -->
+<div class="form-card" id="form-card">
+  <div class="tabs">
+    <button class="tab active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+    <button class="tab" id="tab-login" onclick="switchTab('login')">Log In</button>
+  </div>
+
+  <!-- Auth message -->
+  <div id="auth-message" style="display:none;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;"></div>
+
+  <!-- Sign Up Panel -->
+  <div class="form-panel active" id="panel-signup">
+    <form id="signup-form" onsubmit="handleSignUp(event)">
+      <div class="field">
+        <label>Full Name <span class="req">*</span></label>
+        <input type="text" id="signup-name" required placeholder="Your full name">
+      </div>
+      <div class="field">
+        <label>Work Email <span class="req">*</span></label>
+        <input type="email" id="signup-email" required placeholder="you@company.com.au">
+      </div>
+      <div class="field">
+        <label>Password <span class="req">*</span></label>
+        <input type="password" id="signup-password" required placeholder="Create a password" minlength="8">
+        <div class="hint">Min 8 characters &mdash; include a capital letter and special character</div>
+      </div>
+      <button type="submit" class="btn-primary" id="signup-btn">Sign Up Free</button>
+      <div class="divider"><span>OR</span></div>
+      <button type="button" class="btn-secondary" onclick="switchTab('login')">Log In</button>
+    </form>
+    <div class="form-footer">By signing up you agree to our <a href="/terms">Terms &amp; Conditions</a> and <a href="/terms">Privacy Policy</a>.</div>
+  </div>
+
+  <!-- Log In Panel -->
+  <div class="form-panel" id="panel-login">
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label>Email <span class="req">*</span></label>
+        <input type="email" id="login-email" required placeholder="you@company.com.au">
+      </div>
+      <div class="field">
+        <label>Password <span class="req">*</span></label>
+        <input type="password" id="login-password" required placeholder="Your password">
+      </div>
+      <button type="submit" class="btn-primary" id="login-btn">Log In</button>
+      <div class="divider"><span>OR</span></div>
+      <button type="button" class="btn-secondary" onclick="switchTab('signup')">Create Free Account</button>
+    </form>
+  </div>
+</div>
+
+<!-- Customise Cards (sidebar) -->
+<div class="features">
+  <div class="features-heading">Add site-specific detail to get a SWMS that reflects your actual job &mdash; not a generic template.</div>
+  <div class="feature-card">
+    <span class="icon">&#9633;</span>
+    <h3>Site Plans &amp; Drawings</h3>
+    <p>Upload site plans, floor plans, or drawings. We'll extract access routes, fall hazards, and exclusion zones relevant to your scope.</p>
+  </div>
+  <div class="feature-card">
+    <span class="icon">&#9633;</span>
+    <h3>Site Photos</h3>
+    <p>Upload photos of the work area. We'll identify visible hazards, access constraints, and site conditions to include in your controls.</p>
+  </div>
+  <div class="feature-card">
+    <span class="icon">&#9633;</span>
+    <h3>Scope of Works</h3>
+    <p>Paste or upload your scope of works, subcontract schedule, or tender documents. We'll align your SWMS tasks directly to the contracted scope.</p>
+  </div>
+</div>
+
+</div><!-- end form-features-row -->
+
+<!-- Feature Cards Section -->
+<section class="customise fade fade-d4">
+  <div class="customise-label">WHAT YOU GET</div>
+  <div class="customise-grid">
+    <div class="customise-card">
+      <span class="num">01</span>
+      <h3>Generate in Seconds</h3>
+      <p>Describe your job in plain language. Get a complete compliant SWMS or Risk Assessment in under 60 seconds.</p>
+    </div>
+    <div class="customise-card">
+      <span class="num">02</span>
+      <h3>143 Hazard Categories</h3>
+      <p>Asbestos, confined space, WAH, silica, electrical, traffic &mdash; every High Risk Construction Work category covered.</p>
+    </div>
+    <div class="customise-card">
+      <span class="num">03</span>
+      <h3>Plain English Guaranteed</h3>
+      <p>Safe Work Australia plain English principles enforced on every output. Workers actually read it.</p>
+    </div>
+    <div class="customise-card">
+      <span class="num">04</span>
+      <h3>Upgrade Existing Documents</h3>
+      <p>Upload your current SWMS or Risk Assessment and we'll identify gaps, outdated references, and plain English failures &mdash; then rewrite to current standards.</p>
+    </div>
+  </div>
+  <button class="customise-cta" onclick="switchTab('signup');document.getElementById('form-card').scrollIntoView({behavior:'smooth'})">Get Started &mdash; Build My SWMS</button>
+</section>
+
+<!-- Verified Reference Layer Section -->
+<section class="vrl-section fade fade-d5">
+  <div class="vrl-label">WHY SIMPLE SWMS IS DIFFERENT</div>
+  <h2 class="vrl-heading">Always Referenced. Never Guessed.</h2>
+  <p class="vrl-body">AI can hallucinate. It can generate plausible-looking standard numbers that don&rsquo;t exist, or reference legislation that has been superseded. On a safety document reviewed by a regulator or handed to a principal contractor, that is a serious problem.</p>
+  <p class="vrl-body">Simple SWMS solves this with a Verified Reference Layer &mdash; a curated registry of current standards and codes of practice across all five jurisdictions we support. Every document is checked against this registry before you see it. Unverified citations are stripped. Only real, current references make it through.</p>
+  <div class="vrl-stats">
+    <div class="vrl-stat-card">
+      <span class="vrl-number">200+</span>
+      <span class="vrl-stat-label">Verified Standards</span>
+      <span class="vrl-stat-sub">Across AU, NZ, UK, US and CA</span>
+    </div>
+    <div class="vrl-stat-card">
+      <span class="vrl-number">5</span>
+      <span class="vrl-stat-label">Jurisdictions Covered</span>
+      <span class="vrl-stat-sub">Safe Work Australia &mdash; WorkSafe NZ &mdash; HSE &mdash; OSHA &mdash; CCOHS</span>
+    </div>
+    <div class="vrl-stat-card">
+      <span class="vrl-number">0</span>
+      <span class="vrl-stat-label">Phantom Standards</span>
+      <span class="vrl-stat-sub">Every citation verified before your document is generated</span>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-left">&copy; 2026 Simple SWMS &mdash; Australian Construction Safety</div>
+  <div class="footer-right">Model WHS Act 2011 &mdash; Model WHS Regulations 2017 &mdash; Safe Work Australia</div>
+</footer>
+
+<script>
+const API = window.location.origin;
+
+// Check if already logged in
+(function() {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(r => { if (r.ok) window.location.href = '/app'; })
+      .catch(() => {});
+  }
+})();
+
+function switchTab(tab) {
+  const tabSignup = document.getElementById('tab-signup');
+  const tabLogin = document.getElementById('tab-login');
+  const panelSignup = document.getElementById('panel-signup');
+  const panelLogin = document.getElementById('panel-login');
+  hideMessage();
+  if (tab === 'login') {
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+    panelLogin.classList.add('active');
+    panelSignup.classList.remove('active');
+  } else {
+    tabSignup.classList.add('active');
+    tabLogin.classList.remove('active');
+    panelSignup.classList.add('active');
+    panelLogin.classList.remove('active');
+  }
+}
+
+function showMessage(text, isError) {
+  const el = document.getElementById('auth-message');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.background = isError ? '#fff0f0' : '#f0fff0';
+  el.style.border = '1px solid ' + (isError ? '#ffcccc' : '#ccffcc');
+  el.style.color = isError ? '#cc0000' : '#006600';
+}
+
+function hideMessage() {
+  document.getElementById('auth-message').style.display = 'none';
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  if (loading) {
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = 'Please wait...';
+  } else {
+    btn.textContent = btn.dataset.originalText || btn.textContent;
+  }
+}
+
+async function handleSignUp(e) {
+  e.preventDefault();
+  hideMessage();
+  setLoading('signup-btn', true);
+  try {
+    const res = await fetch(API + '/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('signup-email').value,
+        password: document.getElementById('signup-password').value,
+        full_name: document.getElementById('signup-name').value,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Sign up failed');
+    if (data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      localStorage.setItem('user_email', data.user?.email || '');
+      window.location.href = '/app';
+    } else {
+      showMessage('Account created. Please check your email to confirm, then log in.', false);
+      switchTab('login');
+    }
+  } catch (err) {
+    showMessage(err.message, true);
+  } finally {
+    setLoading('signup-btn', false);
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  hideMessage();
+  setLoading('login-btn', true);
+  try {
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Login failed');
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    localStorage.setItem('user_email', data.user?.email || data.email || '');
+    window.location.href = '/app';
+  } catch (err) {
+    showMessage(err.message, true);
+  } finally {
+    setLoading('login-btn', false);
+  }
+}
+</script>
+</body>
+</html>

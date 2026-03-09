@@ -18,7 +18,7 @@ from pathlib import Path
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import parse_xml
+from docx.oxml import parse_xml, OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt, RGBColor
 from lxml import etree
@@ -132,26 +132,199 @@ def _add_section_rule(para) -> None:
 
 # ── Cell builders ───────────────────────────────────────────────────────────────────────
 
-def _header_cell(cell, text: str) -> None:
+def _header_cell(cell, text: str, size_pt: int = 8) -> None:
     _shade(cell, BLUE)
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p, text, bold=True)
+    _run(p, text, bold=True, size_pt=size_pt)
 
-def _risk_cell(cell, text: str) -> None:
+def _risk_cell(cell, text: str, size_pt: int = 10) -> None:
     s = text.strip()
-    if s.startswith("High"):     bg, fg = RED_BG, WHITE
-    elif s.startswith("Medium"): bg, fg = YLW_BG, BLACK
-    else:                        bg, fg = GRN_BG, BLACK
+    # Expand single-letter codes to full words
+    _RISK_LABELS = {
+        "H": "High", "M": "Medium", "L": "Low",
+        "High": "High", "Medium": "Medium", "Low": "Low",
+    }
+    # Handle formats like "H", "High", "High(6)", "M" etc.
+    key = s.split("(")[0].strip()
+    label = _RISK_LABELS.get(key, s)
+    # Preserve score suffix if present e.g. "High(6)"
+    if "(" in s:
+        label = label + s[s.index("("):]
+
+    if label.startswith("High"):     bg, fg = RED_BG, WHITE
+    elif label.startswith("Medium"): bg, fg = YLW_BG, BLACK
+    else:                            bg, fg = GRN_BG, BLACK
     _shade(cell, bg)
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p, text, bold=True, color=fg, size_pt=10)
+    _run(p, label, bold=True, color=fg, size_pt=size_pt)
 
-def _controls_cell(cell, task: TaskBlock) -> None:
+def _set_table_cell_margins(table, top=0, start=108, bottom=0, end=108):
+    """Set uniform cell margins on every cell in a table. Values in DXA."""
+    tbl = table._tbl
+    tblPr = tbl.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+    for existing in tblPr.findall(qn('w:tblCellMar')):
+        tblPr.remove(existing)
+    tblCellMar = OxmlElement('w:tblCellMar')
+    for side, val in [('top', top), ('start', start),
+                      ('bottom', bottom), ('end', end)]:
+        node = OxmlElement(f'w:{side}')
+        node.set(qn('w:w'), str(val))
+        node.set(qn('w:type'), 'dxa')
+        tblCellMar.append(node)
+    tblPr.append(tblCellMar)
+
+
+def _strip_para_indent(para) -> None:
+    """Remove any explicit indent from a paragraph so it inherits cell margin."""
+    para.paragraph_format.left_indent = None
+    para.paragraph_format.first_line_indent = None
+    pPr = para._p.find(qn('w:pPr'))
+    if pPr is not None:
+        for ind in pPr.findall(qn('w:ind')):
+            pPr.remove(ind)
+
+
+def _clear_cell_default_indent(cell) -> None:
+    """Remove any default indent from cell paragraphs so bullet indent sticks."""
+    tc = cell._tc
+    for p in tc.findall('.//' + qn('w:p')):
+        pPr = p.find(qn('w:pPr'))
+        if pPr is not None:
+            for ind_el in pPr.findall(qn('w:ind')):
+                pPr.remove(ind_el)
+
+
+def _apply_bullet_indent(para) -> None:
+    """Set hanging indent on paragraph via XML + paragraph_format.
+
+    Pt(18) = 360 DXA left, Pt(-9) = -180 DXA first_line (= hanging 180).
+    Bullet at 180 DXA, text starts at 360 DXA, wrapped lines return to 360.
+    """
+    pPr = para._p.get_or_add_pPr()
+    # Remove pStyle so cell default style cannot override
+    for ps in pPr.findall(qn('w:pStyle')):
+        pPr.remove(ps)
+    # Clear any existing indent
+    for existing in pPr.findall(qn('w:ind')):
+        pPr.remove(existing)
+    ind = OxmlElement('w:ind')
+    ind.set(qn('w:left'), '360')
+    ind.set(qn('w:hanging'), '180')
+    pPr.append(ind)
+    # Also set via paragraph_format (these produce identical DXA values)
+    para.paragraph_format.left_indent = Pt(18)
+    para.paragraph_format.first_line_indent = Pt(-9)
+
+
+def _write_bullet_para(cell, text: str, size_pt: int = 9, bold: bool = False,
+                       color: RGBColor = None, highlight: bool = False,
+                       first: bool = False, rule: bool = False):
+    """Write a single bullet paragraph with correct hanging indent.
+
+    Nuclear approach: clears paragraph style, sets indent via XML AND
+    paragraph_format, re-applies indent after adding runs.
+    left=360 DXA, hanging=180 DXA.
+    """
+    para = cell.paragraphs[0] if first else cell.add_paragraph()
+
+    if rule:
+        _add_section_rule(para)
+
+    # 1. Clear paragraph style so cell default cannot override
+    pPr = para._p.get_or_add_pPr()
+    for ps in pPr.findall(qn('w:pStyle')):
+        pPr.remove(ps)
+
+    # 2. Set indent BEFORE adding runs
+    _apply_bullet_indent(para)
+
+    # 3. Set spacing
+    for sp in pPr.findall(qn('w:spacing')):
+        pPr.remove(sp)
+    pPr.append(parse_xml(
+        '<w:spacing {ns} w:before="0" w:after="20" w:line="240" w:lineRule="auto"/>'.format(ns=_NS)
+    ))
+
+    # 4. Bullet run (two spaces after bullet)
+    bullet_run = para.add_run('\u2022  ')
+    bullet_run.font.name = FONT
+    bullet_run.font.size = Pt(size_pt)
+    bullet_run.bold = bold
+
+    # 5. Text run
+    text_run = para.add_run(text)
+    text_run.font.name = FONT
+    text_run.font.size = Pt(size_pt)
+    text_run.bold = bold
+    if color:
+        text_run.font.color.rgb = color
+    if highlight:
+        rPr = text_run._r.get_or_add_rPr()
+        hl = OxmlElement('w:highlight')
+        hl.set(qn('w:val'), 'yellow')
+        rPr.append(hl)
+
+    # 6. Re-apply indent AFTER runs (in case adding runs reset it)
+    _apply_bullet_indent(para)
+
+    return para
+
+
+import re as _re
+
+_STOP_WORK_PREFIX = _re.compile(
+    r"^(\U0001f6d1\s*)?STOP\s+WORK\s+(if\s*:\s*)?",
+    _re.IGNORECASE,
+)
+
+_HOLD_POINT_PREFIX = _re.compile(
+    r"^(\u26a0\ufe0f?\s*)?HOLD\s+POINT\s*(\u2014\s*)?(do\s+not\s+\w+\s+until\s*:\s*)?",
+    _re.IGNORECASE,
+)
+
+
+def _strip_stop_work_label(text: str) -> str:
+    """Remove leading '🛑 STOP WORK if:' from a bullet item."""
+    cleaned = _STOP_WORK_PREFIX.sub("", text).strip()
+    # Capitalise first letter
+    return cleaned[0].upper() + cleaned[1:] if cleaned else text
+
+
+def _strip_hold_point_label(text: str) -> str:
+    """Remove leading '⚠️ HOLD POINT — do not X until:' from a bullet item."""
+    cleaned = _HOLD_POINT_PREFIX.sub("", text).strip()
+    return cleaned[0].upper() + cleaned[1:] if cleaned else text
+
+
+def _hazard_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+    """Populate hazard column with bulleted hazard items."""
+    _clear_cell_default_indent(cell)
+    # Gather hazard items — split any compound items on comma/semicolon
+    raw_items = task.hazards if task.hazards else [task.scope or ""]
+    items = []
+    for raw in raw_items:
+        # Split on semicolons or commas followed by a capital letter (new hazard)
+        parts = _re.split(r'[;]\s*|\n', raw)
+        for part in parts:
+            stripped = part.strip()
+            if stripped:
+                items.append(stripped)
+    # Write each hazard as a bulleted paragraph
+    for hi, haz in enumerate(items):
+        _write_bullet_para(cell, haz, size_pt=size_pt, first=(hi == 0))
+
+
+def _controls_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+    _clear_cell_default_indent(cell)
     first = [True]
 
-    def _p(text, bold=False, color=None, highlight=False, rule=False):
+    def _label(text, bold=False, color=None, highlight=False, rule=False):
+        """Write a non-bullet label paragraph (Engineering:, Admin:, etc.)."""
         if first[0]:
             p = cell.paragraphs[0]
             first[0] = False
@@ -159,47 +332,73 @@ def _controls_cell(cell, task: TaskBlock) -> None:
             p = cell.add_paragraph()
         if rule:
             _add_section_rule(p)
-        _run(p, text, bold=bold, color=color, highlight=highlight)
+        _run(p, text, bold=bold, color=color, highlight=highlight, size_pt=size_pt)
 
-    for item in task.controls:
-        _p(item)
+    def _bullet(text, rule=False):
+        """Write a bullet item using _write_bullet_para."""
+        first[0] = False  # never use paragraphs[0] after first label
+        _write_bullet_para(cell, text, size_pt=size_pt, rule=rule)
 
+    # Engineering: header always first
+    _label("Engineering:", bold=True)
+    if task.controls:
+        for item in task.controls:
+            _bullet(item)
+    else:
+        _bullet("Refer to site-specific risk assessment")
+
+    # Admin
     if task.admin:
-        _p("Admin:", bold=True, rule=bool(task.controls))
+        _label("Admin:", bold=True, rule=True)
         for item in task.admin:
-            _p(item)
+            _bullet(item)
 
+    # PPE
     if task.ppe:
-        _p("PPE:", bold=True, rule=bool(task.controls or task.admin))
+        _label("PPE:", bold=True, rule=True)
         for item in task.ppe:
-            _p(item)
+            _bullet(item)
 
+    # Hold points
     if task.hold_points:
-        _p(
+        _label(
             "\u26a0\ufe0f HOLD POINT \u2014 do not start until:",
-            bold=True, highlight=True,
-            rule=bool(task.controls or task.admin or task.ppe),
+            bold=True, highlight=True, rule=True,
         )
         for item in task.hold_points:
-            _p(item, highlight=True)
+            _bullet(_strip_hold_point_label(item))
 
+    # Stop work
     if task.stop_work:
-        _p(
+        _label(
             "\U0001f6d1 STOP WORK if:",
-            bold=True, color=RED,
-            rule=bool(task.controls or task.admin or task.ppe or task.hold_points),
+            bold=True, color=RED, highlight=True, rule=True,
         )
         for item in task.stop_work:
-            _p(item, color=RED)
+            _bullet(_strip_stop_work_label(item))
 
-def _responsibility_cell(cell, task: TaskBlock) -> None:
-    first = True
+def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+    _clear_cell_default_indent(cell)
+    is_first = True
     for role, obligation in task.responsibility.items():
-        p = cell.paragraphs[0] if first else cell.add_paragraph()
-        first = False
-        _run(p, role, bold=True)
+        text = role
         if obligation:
-            _run(p, " \u2014 %s" % obligation)
+            text += " \u2014 %s" % obligation
+        _write_bullet_para(cell, text, size_pt=size_pt, bold=False, first=is_first)
+        # Make the role portion bold by modifying the text run we just created
+        para = cell.paragraphs[0] if is_first else cell.paragraphs[-1]
+        # The text run is the last run; replace it with bold role + normal obligation
+        text_run = para.runs[-1]
+        text_run.text = ""
+        r_role = para.add_run(role)
+        r_role.font.name = FONT
+        r_role.font.size = Pt(size_pt)
+        r_role.bold = True
+        if obligation:
+            r_obl = para.add_run(" \u2014 %s" % obligation)
+            r_obl.font.name = FONT
+            r_obl.font.size = Pt(size_pt)
+        is_first = False
 
 # ── Monitoring table ─────────────────────────────────────────────────────────────────
 
@@ -274,8 +473,8 @@ def render_docx(task: TaskBlock) -> bytes:
     if task.scope:
         _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY)
 
-    # Col 1 — Hazard
-    _run(c[1].paragraphs[0], task.scope or "")
+    # Col 1 — Hazards (bulleted)
+    _hazard_cell(c[1], task)
 
     # Col 2 — Risk Pre
     _risk_cell(c[2], task.risk_pre or "")
@@ -297,6 +496,582 @@ def render_docx(task: TaskBlock) -> bytes:
     # Monitoring table
     _monitoring_table(doc, task)
 
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+# ── HRCW checkbox map ────────────────────────────────────────────────────────
+# Maps hrcw_category keywords to (row, col) in Table 0 of SWMS-260306-V1.docx.
+# Each HRCW checkbox occupies two merged columns; we write into the first.
+
+_HRCW_TICK_MAP = {
+    "falling_2m":       (3, 1),
+    "telecom_tower":    (3, 3),
+    "demolition":       (3, 5),
+    "asbestos":         (4, 1),
+    "temp_support":     (4, 3),
+    "confined_space":   (4, 5),
+    "shaft_trench":     (5, 1),
+    "explosives":       (5, 3),
+    "pressurised_gas":  (5, 5),
+    "chemical_fuel":    (6, 1),
+    "electrical":       (6, 3),
+    "contaminated_atmo":(6, 5),
+    "tiltup_precast":   (7, 1),
+    "traffic_corridor": (7, 3),
+    "mobile_plant":     (7, 5),
+    "extreme_temp":     (8, 1),
+    "drowning":         (8, 3),
+    "diving":           (8, 5),
+}
+
+
+def render_swms_document(
+    tasks: list[TaskBlock],
+    project_meta: dict,
+    inference: dict,
+    jurisdiction: str = "AU",
+) -> bytes:
+    """
+    Multi-task SWMS renderer.  Populates the SWMS-260306-V1.docx template
+    in-place using the 9-table structure:
+
+        Table 0  cover page        — project_meta + HRCW ticks
+        Table 1  task table        — header row kept, task rows added
+        Table 2  amendments mid    — untouched
+        Table 3  risk matrix       — untouched
+        Table 4  legislation       — col 1 row 0
+        Table 5  PPE / requirements— col 1 all rows
+        Table 6  worker signoff    — untouched
+        Table 7  CCVS monitoring   — header row kept, data rows added
+        Table 8  amendments end    — untouched
+
+    Args:
+        tasks:        list of TaskBlock objects (one per task row)
+        project_meta: dict with keys like pcbu, site_name, manager,
+                      supervisor, principal_contractor, work_activity, date
+        inference:    dict from infer_to_dict() — keys: hrcw, hrcw_category,
+                      ppe, certifications, permits, qualifications,
+                      notifications, regulatory_notes, etc.
+
+    Returns:
+        bytes — the rendered .docx file content.
+    """
+    from datetime import date
+    from core.jurisdictions import get_jurisdiction
+    jur = get_jurisdiction(jurisdiction)
+
+    template_path = Path(__file__).parent.parent / "src" / "SWMS-260306-V1.docx"
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template not found: {template_path}")
+
+    doc = Document(str(template_path))
+
+    if len(doc.tables) != 9:
+        raise ValueError(
+            f"Template has {len(doc.tables)} tables, expected 9. "
+            "Wrong template file — render_swms_document requires SWMS-260306-V1.docx"
+        )
+
+    # ── Body paragraph 0: Description ────────────────────────────────────
+    description = project_meta.get("project_name", project_meta.get("description", ""))
+    if description and doc.paragraphs:
+        p0 = doc.paragraphs[0]
+        if "[Insert description here]" in p0.text:
+            p0.clear()
+            _run(p0, f"\u25a0 Description: {description}", bold=True, size_pt=16)
+
+    # ── Table 0: Cover page ─────────────────────────────────────────────
+    t0 = doc.tables[0]
+
+    def _set_cover(row: int, col: int, value: str) -> None:
+        """Replace placeholder text in a cover-page cell."""
+        cell = t0.cell(row, col)
+        for para in cell.paragraphs:
+            para.clear()
+        _run(cell.paragraphs[0], value)
+
+    pcbu = project_meta.get("pcbu", project_meta.get("principal_contractor", ""))
+    manager = project_meta.get("manager", "")
+    work_activity = (project_meta.get("work_activity")
+                      or project_meta.get("description")
+                      or project_meta.get("project_name", ""))
+    site_name = (project_meta.get("site_name")
+                  or project_meta.get("site_address", ""))
+    pc = project_meta.get("principal_contractor", "")
+    supervisor = project_meta.get("supervisor", "")
+    doc_date = project_meta.get("date", date.today().strftime(jur["date_format"]))
+
+    # Row 0: PCBU + Site
+    _set_cover(0, 1, pcbu)
+    _set_cover(0, 6, site_name)
+    # Row 1: Manager + Date
+    _set_cover(1, 1, manager)
+    _set_cover(1, 6, doc_date)
+    # Row 2: Work activity + PC
+    _set_cover(2, 1, work_activity)
+    _set_cover(2, 6, pc)
+    # Row 9: Supervisor + Date received
+    _set_cover(9, 2, supervisor)
+    _set_cover(9, 5, doc_date)
+    # Row 11: Manager reviewer + Date
+    _set_cover(11, 2, manager)
+    _set_cover(11, 5, doc_date)
+    # Row 13: Reviewer signature + Date
+    _set_cover(13, 2, manager)
+    _set_cover(13, 5, doc_date)
+
+    # HRCW ticks — rows 3-8
+    hrcw = inference.get("hrcw", False)
+    hrcw_category = inference.get("hrcw_category", "") or ""
+
+    def _tick_checkbox(cell) -> None:
+        """Tick a checkbox cell, bold all runs, and yellow-highlight the label."""
+        ticked = False
+        for para in cell.paragraphs:
+            runs = para.runs
+            for i, run in enumerate(runs):
+                # Single-run checkbox: [   ] or [ ... ]
+                if "[" in run.text and "]" in run.text and "\u2713" not in run.text:
+                    import re as _re_cb
+                    run.text = _re_cb.sub(r'\[\s*\]', '[\u2713]', run.text)
+                    ticked = True
+                    break
+                # Two-run: '[ ' + '  ]' — bracket split across runs
+                if "[" in run.text and "]" not in run.text and i + 1 < len(runs):
+                    if "]" in runs[i + 1].text:
+                        run.text = "[\u2713"
+                        runs[i + 1].text = "]" + runs[i + 1].text.split("]", 1)[-1]
+                        ticked = True
+                        break
+                # Multi-run: '[' then whitespace then ']'
+                if run.text.strip() == "[" and i + 1 < len(runs):
+                    if runs[i + 1].text.strip() == "":
+                        runs[i + 1].text = "\u2713"
+                        ticked = True
+                        break
+            if ticked:
+                # Bold all runs and yellow-highlight the entire cell text
+                for run in para.runs:
+                    run.bold = True
+                    rpr = run._r.get_or_add_rPr()
+                    # Remove existing highlight if any
+                    for hl in rpr.findall(qn("w:highlight")):
+                        rpr.remove(hl)
+                    hl = etree.SubElement(rpr, qn("w:highlight"))
+                    hl.set(qn("w:val"), "yellow")
+                return
+
+    # Tick HRCW checkboxes from hrcw_flags (individual booleans)
+    hrcw_flags = inference.get("hrcw_flags", {})
+    for key, (row, col) in _HRCW_TICK_MAP.items():
+        if hrcw_flags.get(key):
+            _tick_checkbox(t0.cell(row, col))
+
+    # Also tick based on task data
+    for task in tasks:
+        if task.wah_applicable:
+            _tick_checkbox(t0.cell(3, 1))  # falling_2m
+
+    # Set Table 0 runs: rows 0-2 and 9+ at 10pt, rows 3-8 (HRCW) at 9pt
+    for ri, row in enumerate(t0.rows):
+        sz = Pt(9) if 3 <= ri <= 8 else Pt(10)
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = sz
+
+    # ── Table 1: Task table ─────────────────────────────────────────────
+    t1 = doc.tables[1]
+    _set_table_cell_margins(t1)
+
+    # Remove the blank data row (row index 1), keep header (row 0)
+    if len(t1.rows) > 1:
+        tr = t1.rows[1]._tr
+        tr.getparent().remove(tr)
+
+    _SZ = 9  # Font size for task table, monitoring table, requirements table
+
+    # Re-format Table 1 header row at 9pt
+    for i, h in enumerate(_HEADERS):
+        cell = t1.rows[0].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Add one row per task
+    for task in tasks:
+        row = t1.add_row()
+        c = row.cells
+        for i, w in enumerate(_COL_W):
+            c[i].width = Cm(w)
+
+        # Col 0 — Task + scope
+        _run(c[0].paragraphs[0], task.task, bold=True, size_pt=_SZ)
+        if task.scope:
+            _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY, size_pt=_SZ)
+
+        # Col 1 — Hazards (genuine hazard descriptions, bulleted)
+        _hazard_cell(c[1], task, size_pt=_SZ)
+
+        # Col 2 — Risk Pre (10pt bold)
+        _risk_cell(c[2], task.risk_pre or "", size_pt=10)
+
+        # Col 3 — Controls
+        _controls_cell(c[3], task, size_pt=_SZ)
+
+        # Col 4 — Risk Post (10pt bold)
+        _risk_cell(c[4], task.risk_post or "", size_pt=10)
+
+        # Col 5 — Responsibility
+        _responsibility_cell(c[5], task, size_pt=_SZ)
+
+        # Col 6 — CCVS code
+        p6 = c[6].paragraphs[0]
+        p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _run(p6, task.ccvs_code or "N/A", bold=True, size_pt=_SZ)
+
+    # ── Table 3: Risk matrix — font only (content untouched) ────────────
+    t3 = doc.tables[3]
+    for row in t3.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+    # ── Table 4: Legislation ────────────────────────────────────────────
+    t4 = doc.tables[4]
+
+    # Set all existing runs to Aptos 9pt (content untouched)
+    for row in t4.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+    # Jurisdiction-aware legislation
+    _base_parts = jur["base_legislation_string"].split(" \u2014 ")
+    _BASE_LEGISLATION = [p.strip() for p in _base_parts if p.strip()]
+
+    reg_notes = inference.get("regulatory_notes", [])
+    jur_notes = inference.get("jurisdiction_notes", [])
+    # Clean NSW references from regulatory notes
+    _cleaned_notes = []
+    _base_lower = [b.lower() for b in _BASE_LEGISLATION]
+    for n in reg_notes + jur_notes:
+        if n.lower() in _base_lower:
+            continue
+        if n in _cleaned_notes:
+            continue
+        if jurisdiction == "AU":
+            cleaned = (n.replace("(NSW)", "").replace("SafeWork NSW", "Safe Work Australia")
+                        .replace("WHS Act 2011 (NSW)", "Model WHS Act 2011")
+                        .replace("WHS Regulation 2017 (NSW)", "Model WHS Regulations 2017")
+                        .replace("Applicable NSW Codes of Practice", "Safe Work Australia Codes of Practice")
+                        .strip())
+        else:
+            cleaned = n.strip()
+        if cleaned and cleaned not in _cleaned_notes:
+            _cleaned_notes.append(cleaned)
+    all_legislation = _BASE_LEGISLATION + _cleaned_notes
+    cell = t4.cell(0, 1)
+    for para in cell.paragraphs:
+        para.clear()
+    # Single paragraph with bold em-dash separators
+    p = cell.paragraphs[0]
+    for i, note in enumerate(all_legislation):
+        if i > 0:
+            _run(p, " \u2014 ", bold=True, size_pt=_SZ)
+        _run(p, note, size_pt=_SZ)
+
+    # ── Table 5: PPE and requirements ───────────────────────────────────
+    t5 = doc.tables[5]
+    _set_table_cell_margins(t5)
+
+    # Re-format Table 5 existing text at 9pt (both columns, all rows)
+    for row in t5.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+    def _fill_req_cell(row_idx: int, items: list[str]) -> None:
+        """Populate col 1 of Table 5 — single paragraph, bold em-dash separated."""
+        cell = t5.cell(row_idx, 1)
+        # Always clear all paragraphs first (remove template placeholders)
+        for pi in range(len(cell.paragraphs) - 1, 0, -1):
+            cell.paragraphs[pi]._element.getparent().remove(cell.paragraphs[pi]._element)
+        cell.paragraphs[0].clear()
+        if not items:
+            _run(cell.paragraphs[0], "\u2014", size_pt=_SZ)
+            _strip_para_indent(cell.paragraphs[0])
+            return
+        p = cell.paragraphs[0]
+        for i, item in enumerate(items):
+            if i > 0:
+                _run(p, " \u2014 ", bold=True, size_pt=_SZ)
+            _run(p, item, size_pt=_SZ)
+        _strip_para_indent(p)
+
+    # Row 0: PPE — always include baseline, then add inference PPE
+    from vocab.swms_vocabulary import enforce_vocabulary as _enforce_vocab
+    # Determine glove type from job context
+    _job_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
+    _CHEM_KW = ("epoxy", "resin", "hardener", "solvent", "chemical", "acid", "alkali",
+                "caustic", "adhesive", "primer", "paint", "coating", "membrane",
+                "sealant", "grout", "mortar", "waterproof")
+    _has_chemicals = any(kw in _job_text for kw in _CHEM_KW)
+    _glove_type = ("chemical-resistant gloves (nitrile or task-appropriate)"
+                   if _has_chemicals else "cut-resistant gloves")
+    _BASELINE_PPE = [
+        "steel-capped footwear",
+        "hi-viz shirt or vest",
+        "eye protection",
+        "hearing protection (>85dB)",
+        _glove_type,
+    ]
+    raw_ppe = inference.get("ppe", [])
+    # Enforce vocabulary on each raw PPE item
+    enforced_ppe = [_enforce_vocab(item) for item in raw_ppe]
+    # Build deduplicated PPE list: baseline first, then extras
+    # Normalize keys to catch variants like "safety boots" vs "footwear"
+    _PPE_NORM = {
+        "steel-capped footwear": "footwear", "steel-capped safety boots": "footwear",
+        "safety boots": "footwear", "steel cap boots": "footwear",
+        "steel-capped boots": "footwear", "safety footwear": "footwear",
+        "hi-viz shirt or vest": "hiviz", "hi-viz vest or shirt": "hiviz",
+        "high-visibility vest": "hiviz", "high-visibility vest or shirt": "hiviz",
+        "hi-vis vest": "hiviz", "hi-vis shirt": "hiviz", "hi-vis vest or shirt": "hiviz",
+        "eye protection": "eye", "safety glasses": "eye", "safety goggles": "eye",
+        "hearing protection": "hearing", "hearing protection (>85db)": "hearing",
+        "ear plugs": "hearing", "ear muffs": "hearing",
+    }
+    def _ppe_key(item):
+        base = item.lower().split("\u2014")[0].strip()
+        return _PPE_NORM.get(base, base)
+    seen_keys = set()
+    final_ppe = []
+    for item in _BASELINE_PPE + enforced_ppe:
+        key = _ppe_key(item)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            final_ppe.append(item)
+    _fill_req_cell(0, final_ppe)
+    # Row 1: Permits / certificates / approvals
+    _fill_req_cell(1, inference.get("permits", []))
+    # Row 2: Site-specific training
+    _fill_req_cell(2, inference.get("qualifications", []))
+    # Row 3: Certifications / HRW licences
+    _fill_req_cell(3, inference.get("certifications", []))
+    # Row 5 first (need maintenance items to derive plant list)
+    # Row 5: Maintenance checks — auto-populate from tasks and inference
+    _MAINTENANCE_LOOKUP = {
+        "ewp": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls, tyres, outriggers checked \u2014 log book current",
+        "elevated work platform": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls inspected",
+        "mobile crane": "Mobile crane \u2014 pre-start checklist \u2014 outriggers, boom, load chart, slew ring \u2014 engineer ground bearing certificate sighted",
+        "crane": "Crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
+        "franna": "Franna crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
+        "angle grinder": "Angle grinder \u2014 check guard intact and disc undamaged before each use \u2014 RCD test tag current (AS/NZS 3012 3-monthly)",
+        "grinder": "Grinder \u2014 guard intact, disc undamaged, RCD test tag current (AS/NZS 3012 3-monthly)",
+        "hepa vacuum": "HEPA vacuum \u2014 check filter condition before each shift",
+        "vacuum": "Vacuum \u2014 check filter condition before use",
+        "mixing containers": "Mixing containers \u2014 clean and dry before use",
+        "scaffold": "Scaffold \u2014 daily pre-use inspection by competent person \u2014 tag current",
+        "ladder": "Ladder \u2014 AS/NZS 1892 compliant \u2014 inspect feet, rungs, locks before each use",
+        "scissor lift": "Scissor lift \u2014 pre-start checklist completed \u2014 platform, guardrails, controls checked",
+        "boom lift": "Boom lift \u2014 pre-start checklist completed \u2014 boom, basket, controls, outriggers checked",
+        "forklift": "Forklift \u2014 pre-start checklist \u2014 mast, forks, brakes, lights, seatbelt checked",
+        "concrete saw": "Concrete saw \u2014 guard intact, blade undamaged, water supply connected",
+        "jackhammer": "Jackhammer \u2014 inspect chisel retention, check hose connections before each use",
+    }
+    _task_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
+    _plant_text = " ".join(p.lower() for p in inference.get("plant", []))
+    maint_items = list(project_meta.get("maintenance_checks", []))
+    if not maint_items:
+        # Auto-generate from plant list + task text
+        _search_text = _task_text + " " + _plant_text
+        _seen_maint_names = set()
+        for kw, entry in _MAINTENANCE_LOOKUP.items():
+            if kw in _search_text:
+                # Deduplicate by equipment name (text before first em-dash)
+                equip_name = entry.split("\u2014")[0].strip().lower()
+                if equip_name not in _seen_maint_names:
+                    maint_items.append(entry)
+                    _seen_maint_names.add(equip_name)
+        # Fallback checks for common items
+        if any(k in _task_text for k in ("epoxy", "resin", "coating")) and not any("Mixing" in m for m in maint_items):
+            maint_items.append("Mixing containers \u2014 clean and dry before use")
+    _fill_req_cell(5, maint_items)
+
+    # Row 4: Plant and equipment — merge inference + project_meta + maintenance-derived
+    plant_items = list(inference.get("plant", []))
+    for item in project_meta.get("plant_equipment", project_meta.get("plant", [])):
+        if item not in plant_items:
+            plant_items.append(item)
+    # Extract plant names from maintenance entries (text before " — check" or first em-dash)
+    for mitem in maint_items:
+        plant_name = mitem.split("\u2014")[0].strip()
+        if plant_name and plant_name.lower() not in [p.lower() for p in plant_items]:
+            plant_items.append(plant_name)
+    # Also scan task controls for common plant keywords
+    _PLANT_KEYWORDS = {
+        "grinder": "Angle grinder", "angle grinder": "Angle grinder",
+        "ewp": "EWP (elevated work platform)", "scissor lift": "Scissor lift",
+        "vacuum": "HEPA vacuum", "hepa vacuum": "HEPA vacuum",
+        "saw": "Power saw", "jackhammer": "Jackhammer",
+        "drill": "Power drill", "mixer": "Mixing equipment",
+    }
+    _task_text_lower = _task_text  # already computed above
+    for kw, pname in _PLANT_KEYWORDS.items():
+        if kw in _task_text_lower and pname.lower() not in [p.lower() for p in plant_items]:
+            plant_items.append(pname)
+    if not plant_items:
+        plant_items = ["As per task requirements \u2014 see controls column"]
+    _fill_req_cell(4, plant_items)
+
+    # Row 6: Hazardous substances — auto-populate from task content and inference
+    haz_sub_items = list(project_meta.get("hazardous_substances", []))
+    if not haz_sub_items:
+        _has_silica = any("silica" in n.lower() for n in inference.get("regulatory_notes", []))
+        _has_epoxy_sub = any(k in _task_text for k in ("epoxy", "resin"))
+        _has_primer = any(k in _task_text for k in ("primer", "solvent"))
+        _has_tiltup = hrcw_flags.get("tiltup_precast", False)
+        _has_crane_ewp = any(k in _plant_text for k in ("crane", "ewp", "boom", "forklift"))
+        if _has_silica:
+            haz_sub_items.append(
+                "Respirable crystalline silica (RCS) \u2014 SDS on site "
+                "\u2014 WES 0.05 mg/m\u00b3 TWA \u2014 P2 minimum, half-face RPE for prolonged exposure"
+            )
+        if _has_epoxy_sub:
+            haz_sub_items.append(
+                "Epoxy resin (Part A) \u2014 SDS on site \u2014 skin/eye sensitiser "
+                "\u2014 chemical-resistant gloves, eye protection mandatory"
+            )
+            haz_sub_items.append(
+                "Epoxy hardener (Part B) \u2014 SDS on site \u2014 corrosive "
+                "\u2014 chemical resistant gloves, eye protection"
+            )
+        if _has_primer:
+            haz_sub_items.append(
+                "Epoxy primer \u2014 SDS on site \u2014 flammable liquid "
+                "\u2014 store per AS 1940, ventilate during use"
+            )
+        if _has_tiltup:
+            haz_sub_items.append(
+                "Concrete release agent \u2014 SDS on site \u2014 skin/eye irritant "
+                "\u2014 nitrile gloves and eye protection required"
+            )
+        if _has_crane_ewp:
+            haz_sub_items.append(
+                "Hydraulic fluid \u2014 SDS on site \u2014 skin sensitiser "
+                "\u2014 gloves required"
+            )
+    if not haz_sub_items:
+        haz_sub_items = [
+            "No hazardous substances identified for this scope \u2014 "
+            "confirm with site supervisor before work commences"
+        ]
+    _fill_req_cell(6, haz_sub_items)
+
+    # Row 7: WAH risk assessment — ALWAYS populated (mandatory text)
+    # Use same pattern as _fill_req_cell: keep paragraphs[0], clear it, add more
+    _wah_cell = t5.cell(7, 1)
+    for pi in range(len(_wah_cell.paragraphs) - 1, 0, -1):
+        _wah_cell.paragraphs[pi]._element.getparent().remove(
+            _wah_cell.paragraphs[pi]._element
+        )
+    _wah_cell.paragraphs[0].clear()
+
+    _wah_texts = [
+        (True, "Fall prevention hierarchy applied: eliminate > isolate > minimise. "
+               "Guardrails preferred. Fall restraint before fall arrest. "
+               "Rescue plan documented for all harness work. "
+               "Working at Heights licence/training verified before elevated work commences."),
+        (False, "A-frame ladders may be used for short-duration tasks where a "
+                "site-specific Working at Heights Risk Assessment (WaH RA) confirms "
+                "ladder use is reasonably practicable; ladder must be AS/NZS 1892 "
+                "compliant, stable, fully opened and used without overreaching."),
+        (False, "Working at Heights Risk Assessment (if >2m): "
+                "Height of task: _______ duration of task: _______ "
+                "ground stable and level: Yes / No, "
+                "heavy exertion required: Yes / No, "
+                "overreaching required: Yes / No, "
+                "scaffold reasonably practicable: Yes / No, "
+                "EWP reasonably practicable: Yes / No, "
+                "A-frame ladder appropriate control: Yes / No "
+                "Assessed by: ________________ Date: ________ "
+                "This creates documentary evidence."),
+    ]
+
+    for i, (is_bold, text) in enumerate(_wah_texts):
+        p = _wah_cell.paragraphs[0] if i == 0 else _wah_cell.add_paragraph()
+        _run(p, text, bold=is_bold, size_pt=_SZ)
+        _strip_para_indent(p)
+
+    # ── Table 7: CCVS monitoring ────────────────────────────────────────
+    t7 = doc.tables[7]
+    _set_table_cell_margins(t7)
+
+    # Re-format Table 7 header row at 9pt
+    for i, h in enumerate(_MON_HEADERS):
+        cell = t7.rows[0].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Remove blank data row (row 1), keep header
+    if len(t7.rows) > 1:
+        tr = t7.rows[1]._tr
+        tr.getparent().remove(tr)
+
+    # Add monitoring rows for tasks that have monitoring entries
+    for task in tasks:
+        if task.monitoring is None:
+            continue
+        m = task.monitoring
+        row = t7.add_row()
+        vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
+        for i, w in enumerate(_MON_W):
+            row.cells[i].width = Cm(w)
+        for i, val in enumerate(vals):
+            _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
+
+    # ── Footer ─────────────────────────────────────────────────────────
+    import re as _re
+    proj_name = project_meta.get("project_name", "UNKNOWN")
+    # Strip unsafe filename characters
+    proj_name = _re.sub(r'[\\/:*?"<>|]', "-", proj_name)
+    # Format date as DDMMYYYY
+    footer_date = project_meta.get("date", "")
+    if not footer_date:
+        footer_date = date.today().strftime("%d%m%Y")
+    else:
+        # If date is DD/MM/YYYY, strip slashes
+        footer_date = footer_date.replace("/", "")
+    # Append jurisdiction act abbreviation
+    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926"}
+    jur_ref = _JUR_FOOTER.get(jurisdiction, "")
+    footer_text = f"SWMS-{proj_name}-{footer_date}-V01"
+    if jur_ref:
+        footer_text += f" | {jur_ref}"
+
+    section = doc.sections[0]
+    footer = section.footer
+    footer.is_linked_to_previous = False
+    if footer.paragraphs:
+        fp = footer.paragraphs[0]
+        fp.clear()
+    else:
+        fp = footer.add_paragraph()
+    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _run(fp, footer_text, size_pt=_SZ)
+
+    # ── Save and return ─────────────────────────────────────────────────
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()

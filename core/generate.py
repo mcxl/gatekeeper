@@ -91,6 +91,23 @@ When ccvs_code = N/A: omit monitoring field entirely (null).
 
 
 
+PLAIN ENGLISH WRITING RULES (WorkCover NSW Guidelines):
+- Start each control with an action verb (Wear, Install, Check, Remove,
+  Barricade — not 'Workers are to wear' or 'It is required that')
+- Use active voice not passive (Wear gloves — not Gloves must be worn)
+- Keep sentences under 18 words
+- Use simple words: start not commence, use not utilise, before not
+  prior to, check not inspect, fix not rectify, need not require,
+  must not shall
+- Use verbs not nouns: 'isolate' not 'isolation of', 'maintain' not
+  'maintenance of', 'assess' not 'assessment of'
+- Never use: ensure, utilise, commence, prior to, shall, rectify,
+  discontinue, subsequent to, in accordance with, in the event that,
+  due to the fact that, for the purpose of
+- Avoid redundancies: absolutely essential (use essential),
+  advance warning (use warning), end result (use result),
+  each and every (use each)
+
 CONTROL ORDER (always this sequence):
 1. hold_point (only if CCVS triggers)
 2. engineering controls
@@ -103,7 +120,7 @@ FORMATTING RULES
 - Never use semicolon character
 - Use em dash as separator — bold verification phrase
 - One control per bullet
-- Verb first (Verify, Install, Inspect, Barricade, Record, Tag-out)
+- Verb first (Verify, Install, Check, Barricade, Record, Tag-out)
 - 6-12 words per bullet, 18-word hard cap
 - WAH cross-reference line exempt from word cap
 - WAH cross-reference line only permitted when wah_applicable is true
@@ -114,10 +131,19 @@ Role — specific obligation (max 10 words)
 Roles: SUP, WKR, SUB, PM, OP
 Never include role names in controls fields.
 
+HAZARD DESCRIPTIONS
+The "hazards" field must list genuine risks — what could go wrong and harm workers.
+Not task methods or scope. Examples:
+- "Respirable crystalline silica dust — lung disease, silicosis"
+- "Skin sensitisation from uncured epoxy resin — chemical burns, dermatitis"
+- "Struck by falling objects — head/body injury"
+Minimum 2 hazards per task.
+
 OUTPUT — TaskBlock schema:
 {
   "task": "task name",
   "scope": "scope note",
+  "hazards": ["hazard description 1", "hazard description 2"],
   "risk_pre": "High(6)",
   "risk_post": "Low(2)",
   "hold_points": ["item 1", "item 2"],
@@ -220,6 +246,7 @@ def _parse_task(raw: str) -> TaskBlock:
     return TaskBlock(
         task=data.get("task", ""),
         scope=data.get("scope", ""),
+        hazards=data.get("hazards", []),
         risk_pre=data.get("risk_pre", ""),
         risk_post=data.get("risk_post", ""),
         hold_points=data.get("hold_points", []),

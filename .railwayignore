@@ -1,0 +1,11 @@
+output/
+.claude/
+tests/
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+.env
+RAILWAY_ENV_VARS.txt

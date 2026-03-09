@@ -3,7 +3,41 @@ output/
 .env
 __pycache__/
 *.pyc
+*.pyo
 Thumbs.db
 .DS_Store
 desktop.ini
 ~$*
+venv/
+node_modules/
+RAILWAY_ENV_VARS.txt
+
+# Patch files
+patch_*.py
+
+# Backup files
+*.bak
+*.bak_*
+*.bak2
+*.bak3
+*.bak4
+
+# Test output documents
+*.docx
+*.pdf
+real_job_*.docx
+real_job_*.pdf
+test_*.docx
+test_*.pdf
+bullet_test.*
+_level3_test.*
+
+# Misc
+font html.txt
+font.html
+
+# Python cache
+src/__pycache__/
+
+# Database
+db/gatekeeper.db

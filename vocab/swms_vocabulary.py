@@ -485,3 +485,207 @@ def build_admin(*phrases):
             print(f"  WARNING: Raw string in admin controls: '{p[:60]}'")
             resolved.append(p)
     return " \u2014 ".join(resolved)
+
+
+# ============================================================
+# PLAIN ENGLISH — WorkCover NSW Guidelines
+# ============================================================
+# Appendix 1: Formal → plain substitutions
+# Appendix 2: Redundant phrases to eliminate
+
+PLAIN_ENGLISH_SUBSTITUTIONS = {
+    "ensure": "make sure",
+    "commence": "start",
+    "utilise": "use",
+    "prior to": "before",
+    "rectify": "fix",
+    "discontinue": "stop",
+    "relocate": "move",
+    "at all times": "always",
+    "in accordance with": "according to",
+    "in the event that": "if",
+    "due to the fact that": "because",
+    "at this point in time": "now",
+    "without further delay": "immediately",
+    "in the near future": "soon",
+    "for the purpose of": "for",
+    "subsequent to": "after",
+    "notify": "tell",
+    "require": "need",
+    "shall": "must",
+    "inspect": "check",
+    "dispatch": "send",
+    "adhere to": "follow",
+    "regarding": "about",
+    "in reference to": "about",
+    "observe": "follow",
+    "calculate": "work out",
+    "allocate": "give",
+    "assist": "help",
+    # Conjugated forms (word-boundary matching misses these)
+    "commencing": "starting",
+    "utilising": "using",
+    "ensuring": "making sure",
+    "rectifying": "fixing",
+    "relocating": "moving",
+    "notifying": "telling",
+    # PPE controlled vocabulary
+    "safety glasses": "eye protection",
+    "safety goggles": "eye protection",
+    "steel-capped safety boots": "steel-capped footwear",
+    "Steel-capped safety boots": "steel-capped footwear",
+    "safety boots": "steel-capped footwear",
+    "steel cap boots": "steel-capped footwear",
+    "steel capped boots": "steel-capped footwear",
+    "steel toe boots": "steel-capped footwear",
+    "work boots": "steel-capped footwear",
+    "safety footwear": "steel-capped footwear",
+    "P2 respirator": "P2 mask/respirator (fit-tested)",
+    "P2 mask": "P2 mask/respirator (fit-tested)",
+    "half-face respirator": "P2 mask/respirator (fit-tested)",
+    "safety gloves": "cut-resistant gloves",
+    "work gloves": "cut-resistant gloves",
+    "protective gloves": "cut-resistant gloves",
+    "nitrile gloves": "chemical-resistant gloves",
+    "chemical resistant gloves": "chemical-resistant gloves",
+    "long sleeve shirt": "hi-viz shirt or vest",
+    "long sleeved shirt": "hi-viz shirt or vest",
+    "long sleeves": "hi-viz shirt or vest",
+    "high-vis vest": "hi-viz shirt or vest",
+    "high visibility vest": "hi-viz shirt or vest",
+    "hi-vis vest": "hi-viz shirt or vest",
+    "high-vis shirt": "hi-viz shirt or vest",
+    "goggles": "eye protection",
+}
+
+REDUNDANCIES = [
+    "absolutely essential",   # use: essential
+    "advance warning",        # use: warning
+    "end result",             # use: result
+    "final outcome",          # use: outcome
+    "past history",           # use: history
+    "repeat again",           # use: repeat
+    "refer back",             # use: refer
+    "each and every",         # use: each
+    "completely eliminate",   # use: eliminate
+    "consensus of opinion",   # use: consensus
+]
+
+# Map redundancies to their simpler replacements
+_REDUNDANCY_REPLACEMENTS = {
+    "absolutely essential": "essential",
+    "advance warning": "warning",
+    "end result": "result",
+    "final outcome": "outcome",
+    "past history": "history",
+    "repeat again": "repeat",
+    "refer back": "refer",
+    "each and every": "each",
+    "completely eliminate": "eliminate",
+    "consensus of opinion": "consensus",
+}
+
+
+def check_vocabulary(text: str) -> list[str]:
+    """
+    Scan text for vocabulary issues. Returns list of warning strings.
+    Checks for:
+    - Plain English substitution opportunities (WorkCover NSW Appendix 1)
+    - Redundant phrases (WorkCover NSW Appendix 2)
+    """
+    import re as _re
+    warnings = []
+
+    # Check substitutions (longer phrases first, word-boundary matching)
+    for formal in sorted(PLAIN_ENGLISH_SUBSTITUTIONS, key=len, reverse=True):
+        if len(formal.split()) > 1:
+            pattern = _re.compile(_re.escape(formal), _re.IGNORECASE)
+        else:
+            pattern = _re.compile(r'\b' + _re.escape(formal) + r'\b', _re.IGNORECASE)
+        if pattern.search(text):
+            plain = PLAIN_ENGLISH_SUBSTITUTIONS[formal]
+            warnings.append(
+                f"Plain English: replace '{formal}' with '{plain}'"
+            )
+
+    # Check redundancies
+    for phrase in REDUNDANCIES:
+        if _re.search(_re.escape(phrase), text, _re.IGNORECASE):
+            replacement = _REDUNDANCY_REPLACEMENTS.get(phrase, phrase.split()[-1])
+            warnings.append(
+                f"Redundancy: '{phrase}' — use '{replacement}' instead"
+            )
+
+    return warnings
+
+
+
+# Phrases that must never be touched by further substitution once present
+_DO_NOT_SUBSTITUTE = [
+    "P2 mask/respirator (fit-tested)",
+    "chemical-resistant gloves",
+    "cut-resistant gloves",
+    "steel-capped footwear",
+    "eye protection",
+    "hi-viz shirt or vest",
+]
+
+
+def enforce_vocabulary(text: str) -> str:
+    """
+    Auto-replace formal phrases with plain English equivalents.
+    Processes longest phrases first to avoid partial matches.
+    Uses word-boundary matching for ALL rules to prevent partial-word corruption.
+    Also replaces redundant phrases and normalises PPE terms.
+    """
+    import re
+
+    # Protect already-correct phrases by replacing with placeholders
+    _placeholders = {}
+    for i, phrase in enumerate(_DO_NOT_SUBSTITUTE):
+        placeholder = f"\x00PHOLD{i}\x00"
+        _placeholders[placeholder] = phrase
+        text = text.replace(phrase, placeholder)
+
+    # Skip rules whose target is already present (prevents double-substitution)
+    _SKIP_IF_PRESENT = {
+        "P2 respirator": "fit-tested",
+        "P2 mask": "fit-tested",
+        "half-face respirator": "fit-tested",
+    }
+
+    # Replace multi-word phrases first (longest first) — word-boundary matching
+    for formal in sorted(PLAIN_ENGLISH_SUBSTITUTIONS, key=len, reverse=True):
+        if len(formal.split()) > 1:
+            skip_marker = _SKIP_IF_PRESENT.get(formal)
+            if skip_marker and skip_marker in text.lower():
+                continue
+            pattern = re.compile(r'\b' + re.escape(formal) + r'\b', re.IGNORECASE)
+            text = pattern.sub(PLAIN_ENGLISH_SUBSTITUTIONS[formal], text)
+
+    # Replace single-word substitutions (whole word only)
+    for formal in sorted(PLAIN_ENGLISH_SUBSTITUTIONS, key=len, reverse=True):
+        if len(formal.split()) == 1:
+            skip_marker = _SKIP_IF_PRESENT.get(formal)
+            if skip_marker and skip_marker in text.lower():
+                continue
+            pattern = re.compile(r'\b' + re.escape(formal) + r'\b', re.IGNORECASE)
+            text = pattern.sub(PLAIN_ENGLISH_SUBSTITUTIONS[formal], text)
+
+    # Replace redundancies
+    for phrase, replacement in _REDUNDANCY_REPLACEMENTS.items():
+        pattern = re.compile(r'\b' + re.escape(phrase) + r'\b', re.IGNORECASE)
+        text = pattern.sub(replacement, text)
+
+    # Restore protected phrases from placeholders
+    for placeholder, phrase in _placeholders.items():
+        text = text.replace(placeholder, phrase)
+
+    # PPE cleanup pass — normalise suffixed variants
+    text = re.sub(r'closed[- ]toe\s+steel', 'steel', text, flags=re.IGNORECASE)
+    text = re.sub(r'steel-capped footwear\b[^,;\n\u2014]*', 'steel-capped footwear', text)
+    text = re.sub(r'eye protection\b[^,;\n\u2014]*', 'eye protection', text)
+    text = re.sub(r'long[- ]sleeved? shirts?', 'hi-viz shirt or vest', text, flags=re.IGNORECASE)
+    text = re.sub(r'hi-viz shirt or vest\b[^,;\n\u2014]*', 'hi-viz shirt or vest', text)
+
+    return text

@@ -23,6 +23,12 @@ RISK MATRIX — 3x3:
   Consequence:  1=Minor     2=Moderate  3=Severe
   Score = L x C:  1-2=L   3-4=M   6-9=H
 
+PLAIN ENGLISH WRITING RULES (WorkCover NSW Guidelines):
+- Use simple words: start not commence, use not utilise, before not
+  prior to, check not inspect, fix not rectify
+- Write hazard descriptions in plain English — specific and observable
+- Use active voice
+
 RULES:
 - List all credible hazards per task — minimum 2, maximum 6
 - Be specific: "fall from height — swing stage failure" not "fall hazard"

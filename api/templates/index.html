@@ -28,11 +28,41 @@
       border-radius: 6px;
       box-shadow: 0 1px 4px rgba(0,0,0,.12);
       padding: 28px 32px;
+      margin-bottom: 20px;
     }
     .card h2 { font-size: 15px; color: #1a3a5c; margin-bottom: 20px; font-weight: 700; }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #d0d6de;
+    }
+    .mode-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: #666;
+      border: none;
+      background: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s;
+    }
+    .mode-tab:hover { color: #1a3a5c; }
+    .mode-tab.active {
+      color: #1a3a5c;
+      border-bottom-color: #1a3a5c;
+    }
+    .mode-panel { display: none; }
+    .mode-panel.active { display: block; }
+
+    /* Form elements */
     .form-row { margin-bottom: 16px; }
     label { display: block; font-size: 12px; font-weight: 700; color: #555; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
-    input[type="text"], select {
+    input[type="text"], select, textarea {
       width: 100%;
       padding: 9px 12px;
       border: 1px solid #d0d6de;
@@ -41,11 +71,12 @@
       font-family: Arial, sans-serif;
       background: #fafafa;
     }
-    input[type="text"]:focus, select:focus {
+    input[type="text"]:focus, select:focus, textarea:focus {
       outline: none;
       border-color: #1a3a5c;
       background: #fff;
     }
+    textarea { resize: vertical; min-height: 120px; }
     .radio-group { display: flex; gap: 20px; }
     .radio-group label { font-weight: 400; text-transform: none; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .btn {
@@ -61,6 +92,49 @@
     }
     .btn:hover { background: #14304e; }
     .btn:disabled { background: #999; cursor: not-allowed; }
+    .btn-secondary {
+      background: #2e7d32;
+    }
+    .btn-secondary:hover { background: #245e27; }
+    .hint { font-size: 11px; color: #888; margin-top: 4px; }
+    datalist option { font-size: 13px; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #b0c4d8;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #1a3a5c;
+      background: #f0f4f8;
+      color: #1a3a5c;
+    }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone .icon { font-size: 32px; margin-bottom: 8px; display: block; }
+    .drop-zone .label { font-size: 14px; font-weight: 700; }
+    .drop-zone .sub { font-size: 12px; margin-top: 4px; }
+
+    /* Gap analysis banner */
+    .gap-banner {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .gap-banner h3 { font-size: 13px; color: #e65100; margin-bottom: 8px; }
+    .gap-banner p { font-size: 12px; color: #666; margin-bottom: 10px; }
+    .gap-results { margin-top: 12px; font-size: 12px; }
+    .gap-results .gap-item { color: #c62828; padding: 2px 0; }
+    .gap-results .match-item { color: #2e7d32; padding: 2px 0; }
+
+    /* Status and output */
     #status {
       margin-top: 20px;
       padding: 12px 16px;
@@ -72,44 +146,26 @@
     #status.ok    { background: #e6f4ea; color: #1a5c2a; border: 1px solid #a8d5b5; }
     #status.error { background: #fce8e8; color: #8b0000; border: 1px solid #e8a0a0; }
     #downloads { margin-top: 16px; display: none; }
-    #downloads a {
+    #downloads a, #downloads button.dl-btn {
       display: inline-block;
       margin-right: 12px;
+      margin-bottom: 10px;
       padding: 8px 16px;
       background: #2e7d32;
       color: #fff;
+      border: none;
       border-radius: 4px;
       text-decoration: none;
       font-size: 13px;
       font-weight: 700;
+      cursor: pointer;
     }
-    #downloads a:hover { background: #245e27; }
-    #downloads a.md-link { background: #555; }
-    #downloads a.md-link:hover { background: #333; }
+    #downloads a:hover, #downloads button.dl-btn:hover { background: #245e27; }
     #result-meta {
       margin-top: 12px;
       font-size: 12px;
       color: #666;
     }
-    #markdown-preview {
-      margin-top: 20px;
-      display: none;
-    }
-    #markdown-preview h3 { font-size: 13px; color: #555; margin-bottom: 8px; }
-    #markdown-preview pre {
-      background: #f8f8f8;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 12px;
-      font-size: 12px;
-      font-family: 'Courier New', monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .hint { font-size: 11px; color: #888; margin-top: 4px; }
-    datalist option { font-size: 13px; }
   </style>
 </head>
 <body>
@@ -117,280 +173,138 @@
 <header>
   <div>
     <h1>Gatekeeper — SWMS Generator</h1>
-    <p>Robertson's Remedial and Painting Pty Ltd · Sydney NSW</p>
+    <p>Robertson's Remedial and Painting Pty Ltd &middot; Sydney NSW</p>
   </div>
 </header>
 
 <div class="container">
+
+  <!-- Optional SWMS gap analysis banner -->
+  <div class="gap-banner">
+    <h3>Have an existing SWMS? Upload for gap analysis (optional)</h3>
+    <p>Upload your current SWMS document and we'll identify gaps against WHS Regulation 2017 requirements.</p>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <input type="file" id="gap-file" accept=".pdf,.docx" style="font-size:12px;">
+      <button class="btn btn-secondary" id="gap-upload-btn" style="margin-top:0;padding:8px 16px;font-size:12px;">Analyse Gaps</button>
+    </div>
+    <div id="gap-results" class="gap-results" style="display:none;"></div>
+  </div>
+
   <div class="card">
     <h2>Generate Safe Work Method Statement</h2>
 
-    <form id="swms-form">
+    <!-- Mode selector tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="guided">Answer Questions</button>
+      <button class="mode-tab" data-mode="upload">Upload Documents</button>
+      <button class="mode-tab" data-mode="describe">Describe in Words</button>
+    </div>
 
-      <div class="form-row">
-        <label for="task_name">Task Name</label>
-        <input
-          type="text"
-          id="task_name"
-          name="task_name"
-          list="task-suggestions"
-          placeholder="e.g. Work at Height — EWP Operation"
-          autocomplete="off"
-          required
-        >
-        <datalist id="task-suggestions"></datalist>
-        <p class="hint">Start typing to see library matches. If not in library, AI will generate a new task.</p>
-      </div>
-
-      <div class="form-row">
-        <label for="site_name">Site Name</label>
-        <input
-          type="text"
-          id="site_name"
-          name="site_name"
-          placeholder="e.g. 22 Smith Street, Double Bay"
-        >
-      </div>
-
-      <div class="form-row">
-        <label for="trade_type">Trade Type</label>
-        <select id="trade_type" name="trade_type">
-          <option value="">— Select —</option>
-          <option>Remedial</option>
-          <option>Painting</option>
-          <option>Waterproofing</option>
-          <option>Cladding</option>
-          <option>Structural</option>
-          <option>Civil</option>
-          <option>Mechanical</option>
-          <option>Electrical</option>
-          <option>Work at Height</option>
-          <option>Demolition</option>
-          <option>Groundworks</option>
-          <option>Scaffolding</option>
-        </select>
-      </div>
-
-      <div class="form-row">
-        <label for="principal_contractor">Principal Contractor</label>
-        <select id="principal_contractor" name="principal_contractor">
-          <option value="General">General (no PC overlay)</option>
-          <option value="Hansen Yuncken">Hansen Yuncken</option>
-          <option value="Multiplex">Multiplex</option>
-          <option value="Lendlease">Lendlease</option>
-          <option value="Built">Built</option>
-          <option value="Richard Crookes">Richard Crookes</option>
-        </select>
-      </div>
-
-      <div class="form-row">
-        <label>Output Format</label>
-        <div class="radio-group">
-          <label><input type="radio" name="output_format" value="both" checked> Word + Markdown</label>
-          <label><input type="radio" name="output_format" value="docx"> Word only</label>
-          <label><input type="radio" name="output_format" value="md"> Markdown only</label>
+    <!-- Panel 1: Guided Questions -->
+    <div class="mode-panel active" id="panel-guided">
+      <form id="swms-form">
+        <div class="form-row">
+          <label for="task_name">Q1. Work Description / Task Name</label>
+          <input
+            type="text"
+            id="task_name"
+            name="task_name"
+            list="task-suggestions"
+            placeholder="e.g. Work at Height — EWP Operation"
+            autocomplete="off"
+            required
+          >
+          <datalist id="task-suggestions"></datalist>
+          <p class="hint">Start typing to see library matches. If not in library, AI will generate a new task.</p>
         </div>
+
+        <div class="form-row">
+          <label for="site_name">Q2. Site Name / Address</label>
+          <input
+            type="text"
+            id="site_name"
+            name="site_name"
+            placeholder="e.g. 22 Smith Street, Double Bay"
+          >
+        </div>
+
+        <div class="form-row">
+          <label for="principal_contractor">Q3. Principal Contractor</label>
+          <select id="principal_contractor" name="principal_contractor"></select>
+        </div>
+
+        <div class="form-row">
+          <label for="trade_type">Q4. Trade Type</label>
+          <select id="trade_type" name="trade_type"></select>
+        </div>
+
+        <div class="form-row">
+          <label for="plant_equipment">Q5. Plant & Equipment</label>
+          <input
+            type="text"
+            id="plant_equipment"
+            name="plant_equipment"
+            placeholder="e.g. EWP, scaffold, angle grinder"
+          >
+        </div>
+
+        <div class="form-row">
+          <label for="permits">Q6. Permits / Licences Required</label>
+          <input
+            type="text"
+            id="permits"
+            name="permits"
+            placeholder="e.g. Hot work permit, confined space entry"
+          >
+        </div>
+
+        <div class="form-row">
+          <label>Output Format</label>
+          <div class="radio-group">
+            <label><input type="radio" name="output_format" value="both" checked> Word + Markdown</label>
+            <label><input type="radio" name="output_format" value="docx"> Word only</label>
+            <label><input type="radio" name="output_format" value="md"> Markdown only</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" id="generate-btn">Generate SWMS</button>
+      </form>
+    </div>
+
+    <!-- Panel 2: Document Upload -->
+    <div class="mode-panel" id="panel-upload">
+      <div class="drop-zone" id="upload-drop-zone">
+        <span class="icon">+</span>
+        <span class="label">Drop a scope document here</span>
+        <span class="sub">PDF, DOCX, PNG, or JPG — we'll extract details and pre-fill the form</span>
+        <input type="file" id="upload-file" accept=".pdf,.docx,.png,.jpg,.jpeg">
       </div>
+      <p class="hint">After extraction, you'll review the pre-filled fields before generating.</p>
+      <div id="upload-status" style="margin-top:12px;font-size:13px;display:none;"></div>
+    </div>
 
-      <button type="submit" class="btn" id="generate-btn">Generate SWMS</button>
-    </form>
+    <!-- Panel 3: Plain Description -->
+    <div class="mode-panel" id="panel-describe">
+      <div class="form-row">
+        <label for="describe-text">Describe the work in your own words</label>
+        <textarea id="describe-text" placeholder="e.g. We need to do remedial concrete repairs on Level 3 balconies at 45 Ocean Ave, Bondi. Hansen Yuncken is the PC. Work involves angle grinding, epoxy injection, and working from scaffolding at approx 8m height."></textarea>
+      </div>
+      <button class="btn" id="describe-btn">Extract & Pre-fill</button>
+      <p class="hint" style="margin-top:8px;">We'll extract key details and switch to the guided form for your review.</p>
+      <div id="describe-status" style="margin-top:12px;font-size:13px;display:none;"></div>
+    </div>
 
+    <!-- Shared output zone -->
     <div id="status"></div>
     <div id="downloads"></div>
     <div id="result-meta"></div>
-    <div id="markdown-preview">
-      <h3>Markdown Preview</h3>
-      <pre id="md-content"></pre>
-    </div>
   </div>
 </div>
 
 <script>
-  // Populate autocomplete from task library
-  const taskNames = {{ task_names|safe }};
-  const dl = document.getElementById('task-suggestions');
-  taskNames.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    dl.appendChild(opt);
-  });
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  function setStatus(cls, text) {
-    const s = document.getElementById('status');
-    s.className = cls;
-    s.style.display = 'block';
-    s.textContent = text;
-  }
-
-  function initTable() {
-    const downloads = document.getElementById('downloads');
-    downloads.innerHTML = '';
-    downloads.style.display = 'block';
-    const table = document.createElement('table');
-    table.id = 'task-table';
-    table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;';
-    table.innerHTML = `
-      <thead>
-        <tr style="background:#1a3a5c;color:#fff;">
-          <th style="padding:6px 8px;text-align:left;">#</th>
-          <th style="padding:6px 8px;text-align:left;">Task</th>
-          <th style="padding:6px 8px;">Risk</th>
-          <th style="padding:6px 8px;">CCVS</th>
-          <th style="padding:6px 8px;">Controls</th>
-        </tr>
-      </thead>
-      <tbody id="task-tbody"></tbody>`;
-    downloads.appendChild(table);
-    return document.getElementById('task-tbody');
-  }
-
-  function appendTaskRow(tbody, t, index) {
-    const bg = index % 2 === 0 ? '#f8f9fa' : '#fff';
-    const ccvs = t.ccvs_code || 'N/A';
-    const ccvsColor = ccvs !== 'N/A' ? '#c62828' : '#666';
-    const riskPre = t.risk_pre || '?';
-    const riskPost = t.risk_post || '?';
-    const ctrlCount = (t.controls || []).length;
-    const tr = document.createElement('tr');
-    tr.style.cssText = `background:${bg};border-bottom:1px solid #e0e0e0;`;
-    tr.innerHTML = `
-      <td style="padding:5px 8px;color:#999;">${index + 1}</td>
-      <td style="padding:5px 8px;">${t.task || '?'}</td>
-      <td style="padding:5px 8px;text-align:center;">${riskPre} → ${riskPost}</td>
-      <td style="padding:5px 8px;text-align:center;color:${ccvsColor};font-weight:700;">${ccvs}</td>
-      <td style="padding:5px 8px;text-align:center;">${ctrlCount}</td>`;
-    tbody.appendChild(tr);
-  }
-
-  function addJsonDownload(allTasks, inference) {
-    const downloads = document.getElementById('downloads');
-    const payload = { tasks: allTasks, inference };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'swms_tasks.json';
-    a.textContent = '⬇ Download JSON';
-    a.style.cssText = 'display:inline-block;margin-bottom:10px;padding:8px 16px;background:#2e7d32;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;font-weight:700;';
-    downloads.insertBefore(a, downloads.firstChild);
-  }
-
-  // ── Form submit ────────────────────────────────────────────────────────────
-
-  document.getElementById('swms-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const btn = document.getElementById('generate-btn');
-    const meta = document.getElementById('result-meta');
-    const downloads = document.getElementById('downloads');
-    const mdPreview = document.getElementById('markdown-preview');
-
-    btn.disabled = true;
-    btn.textContent = 'Generating…';
-    setStatus('info', 'Analysing work description…');
-    downloads.style.display = 'none';
-    downloads.innerHTML = '';
-    mdPreview.style.display = 'none';
-    meta.textContent = '';
-
-    const fd = new FormData(this);
-    const payload = {
-      description: fd.get('task_name'),
-      project_meta: {
-        project_name: fd.get('site_name') || '',
-        site_address: fd.get('site_name') || '',
-        principal_contractor: fd.get('principal_contractor') || 'General',
-        trade_type: fd.get('trade_type') || '',
-      },
-    };
-
-    let tbody = null;
-    let allTasks = [];
-    let lastInference = null;
-    let taskTotal = 0;
-    let tasksDone = 0;
-
-    try {
-      const resp = await fetch('/generate/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp.ok) {
-        setStatus('error', `Server error: ${resp.status}`);
-        return;
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop(); // keep incomplete line
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          let event;
-          try { event = JSON.parse(line.slice(6)); }
-          catch { continue; }
-
-          if (event.type === 'route') {
-            lastInference = event.inference;
-            const route = event.route;
-            const hrcw = event.inference?.hrcw ? ' — HRCW' : '';
-            setStatus('info', `Pipeline: ${route}${hrcw} — waiting for tasks…`);
-          }
-
-          else if (event.type === 'task_count') {
-            taskTotal = event.count;
-            setStatus('info', `Generating ${taskTotal} tasks…`);
-            tbody = initTable();
-          }
-
-          else if (event.type === 'task') {
-            tasksDone++;
-            allTasks.push(event.task);
-            if (!tbody) tbody = initTable();
-            appendTaskRow(tbody, event.task, event.index);
-            setStatus('info', `Generated ${tasksDone} of ${taskTotal} tasks…`);
-          }
-
-          else if (event.type === 'done') {
-            setStatus('ok', `✓ Generated — pipeline: ${event.route || 'full'} — ${event.task_count} tasks`);
-            if (allTasks.length > 0 && lastInference) {
-              addJsonDownload(allTasks, lastInference);
-            }
-            if (lastInference) {
-              const inf = lastInference;
-              let parts = [];
-              if (inf.hrcw) parts.push(`HRCW: ${inf.hrcw_category || 'Yes'}`);
-              if (inf.safework_notification_required) parts.push('SafeWork notification required');
-              meta.textContent = parts.length > 0 ? parts.join(' | ') : 'Standard work — no HRCW triggers';
-            }
-          }
-
-          else if (event.type === 'error') {
-            setStatus('error', 'Error: ' + event.message);
-          }
-        }
-      }
-
-    } catch(err) {
-      setStatus('error', 'Network error: ' + err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Generate SWMS';
-    }
-  });
+  window.GATEKEEPER = {{ gatekeeper_data|safe }};
 </script>
+<script src="/static/intake.js"></script>
 
 </body>
 </html>
