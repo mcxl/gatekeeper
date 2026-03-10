@@ -766,7 +766,7 @@ def _build_task_table(doc, tasks) -> None:
 
 def _format_risk_matrix(doc) -> None:
     """Apply font to Table 3 — risk matrix (content untouched)."""
-    t3 = doc.tables[3]
+    t3 = doc.tables[4]
     for row in t3.rows:
         for cell in row.cells:
             for para in cell.paragraphs:
@@ -777,7 +777,7 @@ def _format_risk_matrix(doc) -> None:
 
 def _fill_legislation_table(doc, inference, jur, jurisdiction) -> None:
     """Populate Table 4 — legislation references."""
-    t4 = doc.tables[4]
+    t4 = doc.tables[5]
 
     # Set all existing runs to Aptos 9pt (content untouched)
     for row in t4.rows:
@@ -823,7 +823,7 @@ def _fill_legislation_table(doc, inference, jur, jurisdiction) -> None:
 
 def _fill_requirements_table(doc, tasks, inference, project_meta) -> None:
     """Populate Table 5 — PPE, permits, qualifications, plant, maintenance, hazardous substances, WAH."""
-    t5 = doc.tables[5]
+    t5 = doc.tables[6]
     _set_table_cell_margins(t5)
 
     # Re-format Table 5 existing text at 9pt (both columns, all rows)
@@ -1039,19 +1039,19 @@ def _fill_requirements_table(doc, tasks, inference, project_meta) -> None:
 
 def _build_ccvs_table(doc, tasks) -> None:
     """Populate Table 7 — CCVS monitoring rows."""
-    t7 = doc.tables[7]
-    _set_table_cell_margins(t7)
+    t2 = doc.tables[2]
+    _set_table_cell_margins(t2)
 
-    # Re-format Table 7 header row at 9pt
+    # Re-format Table 2 header row at 9pt
     for i, h in enumerate(_MON_HEADERS):
-        cell = t7.rows[0].cells[i]
+        cell = t2.rows[0].cells[i]
         for para in cell.paragraphs:
             para.clear()
         _header_cell(cell, h, size_pt=_SZ)
 
     # Remove blank data row (row 1), keep header
-    if len(t7.rows) > 1:
-        tr = t7.rows[1]._tr
+    if len(t2.rows) > 1:
+        tr = t2.rows[1]._tr
         tr.getparent().remove(tr)
 
     # Add monitoring rows — only tasks with a real CCVS code and monitoring data
@@ -1061,7 +1061,7 @@ def _build_ccvs_table(doc, tasks) -> None:
         if validate_ccvs_code(task.ccvs_code or "N/A") == "N/A":
             continue
         m = task.monitoring
-        row = t7.add_row()
+        row = t2.add_row()
         vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
         for i, w in enumerate(_MON_W):
             row.cells[i].width = Cm(w)
@@ -1071,8 +1071,8 @@ def _build_ccvs_table(doc, tasks) -> None:
 
 def _fill_signoff_table(doc) -> None:
     """Prevent sign-off table (Table 6) rows from splitting across pages."""
-    if len(doc.tables) > 6:
-        for _row in doc.tables[6].rows:
+    if len(doc.tables) > 7:
+        for _row in doc.tables[7].rows:
             _trPr = _row._tr.find(qn('w:trPr'))
             if _trPr is None:
                 _trPr = etree.SubElement(_row._tr, qn('w:trPr'))
@@ -1151,12 +1151,12 @@ def render_swms_document(
 
         Table 0  cover page        — project_meta + HRCW ticks
         Table 1  task table        — header row kept, task rows added
-        Table 2  amendments mid    — untouched
-        Table 3  risk matrix       — untouched
-        Table 4  legislation       — col 1 row 0
-        Table 5  PPE / requirements— col 1 all rows
-        Table 6  worker signoff    — untouched
-        Table 7  CCVS monitoring   — header row kept, data rows added
+        Table 2  CCVS monitoring   — header row kept, data rows added
+        Table 3  amendments mid    — untouched
+        Table 4  risk matrix       — untouched
+        Table 5  legislation       — col 1 row 0
+        Table 6  PPE / requirements— col 1 all rows
+        Table 7  worker signoff    — untouched
         Table 8  amendments end    — untouched
 
     Args:
