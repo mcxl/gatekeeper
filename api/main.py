@@ -42,6 +42,7 @@ sentry_sdk.init(
 
 from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -61,6 +62,7 @@ from slowapi.errors import RateLimitExceeded
 from api.upload_routes import router as upload_router
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
