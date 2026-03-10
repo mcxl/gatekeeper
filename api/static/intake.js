@@ -1,3 +1,10 @@
+function escapeHtml(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
 /**
  * intake.js — Gatekeeper SWMS Generator frontend
  *
@@ -252,7 +259,7 @@ document.getElementById('gap-upload-btn').addEventListener('click', async functi
     const data = await resp.json();
     if (data.error) {
       resultsDiv.style.display = 'block';
-      resultsDiv.innerHTML = '<div style="color:#8b0000;">Error: ' + data.error + '</div>';
+      resultsDiv.innerHTML = '<div style="color:#8b0000;">Error: ' + escapeHtml(data.error) + '</div>';
       return;
     }
 
@@ -261,19 +268,19 @@ document.getElementById('gap-upload-btn').addEventListener('click', async functi
 
     if (data.gaps && data.gaps.length > 0) {
       html += '<strong style="color:#c62828;">Gaps Found:</strong><br>';
-      data.gaps.forEach(g => { html += '<div class="gap-item">&#x2717; ' + g + '</div>'; });
+      data.gaps.forEach(g => { html += '<div class="gap-item">&#x2717; ' + escapeHtml(g) + '</div>'; });
       html += '<br>';
     }
     if (data.matched && data.matched.length > 0) {
       html += '<strong style="color:#2e7d32;">Requirements Met:</strong><br>';
-      data.matched.forEach(m => { html += '<div class="match-item">&#x2713; ' + m + '</div>'; });
+      data.matched.forEach(m => { html += '<div class="match-item">&#x2713; ' + escapeHtml(m) + '</div>'; });
     }
 
     resultsDiv.style.display = 'block';
     resultsDiv.innerHTML = html;
   } catch (err) {
     resultsDiv.style.display = 'block';
-    resultsDiv.innerHTML = '<div style="color:#8b0000;">Error: ' + err.message + '</div>';
+    resultsDiv.innerHTML = '<div style="color:#8b0000;">Error: ' + escapeHtml(err.message) + '</div>';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Analyse Gaps';
@@ -447,7 +454,7 @@ function appendTaskRow(tbody, t, index) {
   tr.style.cssText = 'background:' + bg + ';border-bottom:1px solid #e0e0e0;';
   tr.innerHTML =
     '<td style="padding:5px 8px;color:#999;">' + (index + 1) + '</td>' +
-    '<td style="padding:5px 8px;">' + (t.task || '?') + '</td>' +
+    '<td style="padding:5px 8px;">' + escapeHtml(t.task || '?') + '</td>' +
     '<td style="padding:5px 8px;text-align:center;">' + riskPre + ' &rarr; ' + riskPost + '</td>' +
     '<td style="padding:5px 8px;text-align:center;color:' + ccvsColor + ';font-weight:700;">' + ccvs + '</td>' +
     '<td style="padding:5px 8px;text-align:center;">' + ctrlCount + '</td>';

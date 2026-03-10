@@ -46,7 +46,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from typing import Literal
+from pydantic import BaseModel, EmailStr, Field
 
 from core.auth import (
     get_current_user, get_optional_user,
@@ -126,6 +127,12 @@ class AuthRefresh(BaseModel):
 
 class AuthResetPassword(BaseModel):
     email: str
+
+class ContactRequest(BaseModel):
+    name: str = Field(..., max_length=100)
+    email: EmailStr
+    subject: str = Field(..., max_length=200)
+    message: str = Field(..., max_length=2000)
 
 
 # ============================================================
@@ -289,8 +296,9 @@ async def generate(
         return JSONResponse(content=result)
 
     except Exception as exc:
+        logger.error(f"Generate failed:\n{traceback.format_exc()}")
         return JSONResponse(
-            content={"error": str(exc)},
+            content={"detail": "An internal error occurred. Please try again."},
             status_code=500,
         )
 
@@ -354,7 +362,8 @@ async def upload_extract(
         return JSONResponse(content=fields)
 
     except Exception as exc:
-        return JSONResponse(content={"error": str(exc)}, status_code=500)
+        logger.error(f"Upload extract failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 @app.post("/upload/swms-gap")
@@ -407,7 +416,8 @@ Return ONLY the JSON object.""",
         return JSONResponse(content=result)
 
     except Exception as exc:
-        return JSONResponse(content={"error": str(exc)}, status_code=500)
+        logger.error(f"SWMS gap analysis failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 # ============================================================
@@ -466,7 +476,8 @@ async def generate_auto(request: dict, user: dict = Depends(get_current_user)):
         )
         return result
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Generate auto failed:\n{traceback.format_exc()}")
+        return {"detail": "An internal error occurred. Please try again."}
 
 
 @app.post("/generate/full")
@@ -481,7 +492,8 @@ async def generate_full(request: dict, user: dict = Depends(get_current_user)):
         )
         return result
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Generate full failed:\n{traceback.format_exc()}")
+        return {"detail": "An internal error occurred. Please try again."}
 
 @app.post("/generate/stream")
 async def generate_stream(request: dict, user: dict = Depends(get_current_user)):
@@ -512,7 +524,8 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             import json as _json
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            logger.error(f"Stream generation failed:\n{traceback.format_exc()}")
+            yield f"data: {_json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -696,7 +709,8 @@ async def generate_ra(request: dict, user: dict = Depends(get_current_user)):
             "hazard_count": len(inference.get("hazard_list", [])),
         }
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Generate RA failed:\n{traceback.format_exc()}")
+        return {"detail": "An internal error occurred. Please try again."}
 
 
 @app.post("/render/ra")
@@ -716,7 +730,8 @@ async def render_ra_endpoint(request: dict, user: dict = Depends(get_current_use
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        logger.error(f"Render RA failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 # ============================================================
