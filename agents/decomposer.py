@@ -91,7 +91,7 @@ async def run_decomposer(description: str, inference: dict) -> dict:
         if any(w in q.lower() for w in ["height", "occupied", "traffic", "water", "confined", "hazmat"])
     ]
     if env_flags:
-        env_context = f"\nEnvironment context from pre-analysis:\n" + "\n".join(f"  - {e}" for e in env_flags)
+        env_context = "\nEnvironment context from pre-analysis:\n" + "\n".join(f"  - {e}" for e in env_flags)
 
     user_content = (
         f"Work description:\n{description}"

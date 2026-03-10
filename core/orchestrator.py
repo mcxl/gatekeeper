@@ -642,7 +642,7 @@ def _validate_task_block(tb: dict) -> dict:
 # ── CLI entrypoint ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import json
+    import json  # noqa: F401
     import sys
     import logging
 

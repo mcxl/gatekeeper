@@ -1,0 +1,27 @@
+[flake8]
+max-line-length = 120
+ignore = E501,W503,E221,E226,E241,E128,E131,E127,E231,E302,E303,E305,E306,E401,E402,E701,E702,E741,W291,W391
+exclude =
+    venv,
+    __pycache__,
+    .git,
+    src,
+    patch_*.py,
+    bullet_test.py,
+    main.py,
+    output,
+    test_cranebrook.py
+per-file-ignores =
+    api/main.py: F401,F811
+    core/audit.py: F401
+    core/generate.py: F401
+    core/inference_matrix.py: F601,F841
+    core/library.py: F401
+    core/orchestrator.py: F841
+    db/*.py: F401
+    renderers/docx_renderer.py: F401
+    renderers/pdf_renderer.py: F401
+    renderers/ra_renderer.py: F401
+    renderers/md_renderer.py: F401
+    tests/*.py: F401,F541,F841
+    vocab/swms_vocabulary.py: F541
