@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Re-run Cranebrook job and check 4 formatting fixes."""
-import asyncio
+# LIVE TEST — requires Anthropic API key and network access
+# Run manually: python test_cranebrook.py
+# Not included in CI pytest run
 
+import asyncio
+import pytest
+
+
+@pytest.mark.skip(reason="makes live Anthropic API calls — run manually only")
 async def main():
     from core.orchestrator import generate_swms
     from core.schema import TaskBlock
@@ -70,7 +77,7 @@ async def main():
         print(f'  PASS - all hazard items have bullet + hanging indent')
 
     # CHECK 2: Maintenance checks flat text
-    t5 = doc.tables[5]
+    t5 = doc.tables[6]
     maint_cell = t5.cell(5, 1)
     maint_paras = [p for p in maint_cell.paragraphs if p.text.strip()]
     maint_text = maint_cell.text.strip()

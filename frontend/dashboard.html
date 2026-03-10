@@ -1,19 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  (function() {
+    var t = localStorage.getItem('theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f59e0b">
+<meta name="description" content="Simple SWMS Dashboard — create SWMS and risk assessments matched to your job.">
 <title>Simple SWMS — Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4z' fill='%23f59e0b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <style>
+:root {
+  --bg-primary: #ffffff;
+  --bg-card: #f0f0f0;
+  --bg-card-hover: #e8e8e8;
+  --border-color: #dddddd;
+  --border-hover: #999999;
+  --text-primary: #000000;
+  --text-secondary: #555555;
+  --text-muted: #888888;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-text: #000000;
+  --nav-bg: #000000;
+  --nav-text: #ffffff;
+  --nav-border: #222222;
+  --nav-email: #aaaaaa;
+  --btn-logout-border: #666666;
+  --btn-logout-hover: #222222;
+  --btn-disabled-bg: #cccccc;
+  --btn-disabled-text: #888888;
+  --toast-bg: #333333;
+  --toast-text: #f59e0b;
+  --toast-border: #444444;
+  --footer-bg: #000000;
+  --footer-border: #111111;
+  --footer-text: #555555;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --border-color: #222222;
+  --border-hover: #444444;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-muted: #888888;
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --accent-text: #000000;
+  --nav-bg: #000000;
+  --nav-text: #ffffff;
+  --nav-border: #222222;
+  --nav-email: #aaaaaa;
+  --btn-logout-border: #666666;
+  --btn-logout-hover: #222222;
+  --btn-disabled-bg: #333333;
+  --btn-disabled-text: #666666;
+  --toast-bg: #222222;
+  --toast-text: #f59e0b;
+  --toast-border: #333333;
+  --footer-bg: #000000;
+  --footer-border: #111111;
+  --footer-text: #555555;
+}
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: 'Outfit', sans-serif;
-  background: #000000;
-  color: #ffffff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
@@ -21,29 +87,37 @@ body {
 /* ── Nav ────────────────────────────────────────── */
 .nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: 64px; background: #000000;
-  border-bottom: 1px solid #222222;
+  height: 64px; background: var(--nav-bg);
+  border-bottom: 1px solid var(--nav-border);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 32px;
 }
 .nav-wordmark {
   font-family: 'Fraunces', serif;
-  font-weight: 700; font-size: 18px; color: #ffffff;
+  font-weight: 700; font-size: 18px; color: var(--nav-text);
   text-decoration: none;
 }
 .nav-right {
   display: flex; align-items: center; gap: 16px;
 }
 .nav-email {
-  font-size: 12px; color: #aaaaaa;
+  font-size: 12px; color: var(--nav-email);
 }
 .btn-logout {
-  background: transparent; border: 1px solid #666666;
-  color: #ffffff; font-family: 'Outfit', sans-serif;
+  background: transparent; border: 1px solid var(--btn-logout-border);
+  color: var(--nav-text); font-family: 'Outfit', sans-serif;
   font-size: 12px; font-weight: 500; padding: 6px 14px;
   border-radius: 4px; cursor: pointer; transition: background 0.2s;
 }
-.btn-logout:hover { background: #222222; }
+.btn-logout:hover { background: var(--btn-logout-hover); }
+.theme-toggle {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--nav-border); background: transparent;
+  color: var(--nav-text); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s;
+}
+.theme-toggle:hover { border-color: var(--accent); }
 
 /* ── Main content ───────────────────────────────── */
 .dashboard-container {
@@ -55,7 +129,7 @@ body {
 .dashboard-heading {
   font-family: 'Fraunces', serif;
   font-weight: 900; font-size: 28px;
-  color: #ffffff; margin-bottom: 48px;
+  color: var(--text-primary); margin-bottom: 48px;
   text-align: center;
 }
 
@@ -66,12 +140,12 @@ body {
 }
 
 .card {
-  background: #111111; border: 1px solid #222222;
+  background: var(--bg-card); border: 1px solid var(--border-color);
   border-radius: 12px; padding: 40px 32px;
   text-align: center; transition: border-color 0.2s, transform 0.15s;
 }
 .card:hover {
-  border-color: #444444; transform: translateY(-2px);
+  border-color: var(--border-hover); transform: translateY(-2px);
 }
 .card-icon {
   font-size: 48px; display: block; margin-bottom: 16px;
@@ -79,35 +153,35 @@ body {
 .card-label {
   font-family: 'Fraunces', serif;
   font-weight: 700; font-size: 22px;
-  color: #ffffff; display: block; margin-bottom: 8px;
+  color: var(--text-primary); display: block; margin-bottom: 8px;
 }
 .card-sub {
-  font-size: 13px; color: #888888;
+  font-size: 13px; color: var(--text-muted);
   line-height: 1.6; margin-bottom: 24px;
 }
 .card-btn {
-  display: inline-block; background: #f59e0b;
-  color: #000000; font-family: 'Outfit', sans-serif;
+  display: inline-block; background: var(--accent);
+  color: var(--accent-text); font-family: 'Outfit', sans-serif;
   font-size: 14px; font-weight: 700;
   padding: 12px 32px; border-radius: 6px;
   border: none; cursor: pointer;
   text-decoration: none;
   transition: background 0.2s;
 }
-.card-btn:hover { background: #d97706; }
+.card-btn:hover { background: var(--accent-hover); }
 .card-btn.disabled {
-  background: #333333; color: #666666;
+  background: var(--btn-disabled-bg); color: var(--btn-disabled-text);
   cursor: default;
 }
-.card-btn.disabled:hover { background: #333333; }
+.card-btn.disabled:hover { background: var(--btn-disabled-bg); }
 
 /* ── Toast ──────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: #222222; color: #f59e0b;
+  background: var(--toast-bg); color: var(--toast-text);
   font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 500;
   padding: 14px 28px; border-radius: 8px;
-  border: 1px solid #333333;
+  border: 1px solid var(--toast-border);
   opacity: 0; pointer-events: none;
   transition: opacity 0.3s;
   z-index: 200;
@@ -117,16 +191,45 @@ body {
 /* ── Footer ─────────────────────────────────────── */
 .footer {
   position: fixed; bottom: 0; left: 0; right: 0;
-  background: #000000; border-top: 1px solid #111111;
+  background: var(--footer-bg); border-top: 1px solid var(--footer-border);
   padding: 12px 32px; display: flex;
   justify-content: space-between; align-items: center;
 }
-.footer-text { font-size: 10px; color: #555555; }
+.footer-text { font-size: 10px; color: var(--footer-text); }
 
 /* ── Responsive ─────────────────────────────────── */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .nav { padding: 0 16px; height: 56px; }
+  .nav-wordmark { font-size: 16px; }
+  .dashboard-container { padding: 88px 20px 60px; }
+  .dashboard-heading { font-size: 24px; margin-bottom: 36px; }
+  .card { padding: 32px 24px; }
+  .card-label { font-size: 20px; }
+}
+
+/* Phone */
 @media (max-width: 600px) {
   .card-grid { grid-template-columns: 1fr; max-width: 360px; }
   .dashboard-heading { font-size: 22px; }
+  .footer { flex-direction: column; gap: 8px; text-align: center; padding: 12px 16px; }
+}
+
+/* Small phone */
+@media (max-width: 480px) {
+  .nav { padding: 0 12px; }
+  .nav-right { gap: 10px; }
+  .nav-email { font-size: 11px; }
+  .btn-logout { font-size: 11px; padding: 6px 10px; min-height: 44px; }
+  .dashboard-container { padding: 80px 16px 60px; }
+  .dashboard-heading { font-size: 20px; margin-bottom: 28px; }
+  .card { padding: 28px 20px; }
+  .card-icon { font-size: 36px; }
+  .card-label { font-size: 18px; }
+  .card-sub { font-size: 12px; }
+  .card-btn { padding: 12px 24px; font-size: 14px; min-height: 44px; width: 100%; }
+  .footer-text { font-size: 9px; }
 }
 </style>
 </head>
@@ -136,6 +239,7 @@ body {
   <a href="/app" class="nav-wordmark">Simple SWMS</a>
   <div class="nav-right">
     <span class="nav-email" id="user-email"></span>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
     <button class="btn-logout" onclick="logout()">Log Out</button>
   </div>
 </nav>
@@ -171,6 +275,19 @@ body {
 
 <script>
 const API = window.location.origin;
+
+// ── Theme toggle ─────────────────────────────────
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+(function setThemeIcon() {
+  const t = document.documentElement.getAttribute('data-theme');
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+})();
 
 // ── Auth check ────────────────────────────────────
 (async function checkAuth() {
