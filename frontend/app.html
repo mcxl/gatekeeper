@@ -36,9 +36,9 @@
     });
   }
   if (document.readyState === 'complete') {
-    setTimeout(loadGTM, 3000);
+    setTimeout(loadGTM, 5000);
   } else {
-    window.addEventListener('load', function() { setTimeout(loadGTM, 3000); });
+    window.addEventListener('load', function() { setTimeout(loadGTM, 5000); });
   }
   ['click','scroll','keydown','touchstart'].forEach(function(e) {
     document.addEventListener(e, loadGTM, {once: true});
