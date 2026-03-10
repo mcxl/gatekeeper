@@ -20,3 +20,5 @@ aiofiles
 httpx
 sentry-sdk[fastapi]
 slowapi
+
+email-validator
