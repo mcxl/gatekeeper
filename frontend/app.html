@@ -244,6 +244,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg-primary); color: 
   transition: background 0.2s;
 }
 .btn-analyse:hover { background: var(--accent-hover); }
+.btn-analyse:disabled { background: var(--btn-disabled-bg); color: var(--btn-disabled-text); cursor: not-allowed; }
 
 /* Analysis status */
 .analyse-status {
@@ -908,8 +909,13 @@ function removeFile(index) {
   renderFileChips();
 }
 
+let isAnalysing = false;
 async function runAnalysis() {
-  if (!selectedFiles.length) return;
+  if (!selectedFiles.length || isAnalysing) return;
+  isAnalysing = true;
+
+  const analyseBtn = document.getElementById('btn-analyse');
+  analyseBtn.disabled = true;
 
   const mode = currentTab === 'upgrade' ? '02' : '03';
   const endpoint = mode === '02' ? '/upload/analyse-swms' : '/upload/extract-scope';
@@ -941,6 +947,9 @@ async function runAnalysis() {
     }
   } catch (err) {
     statusEl.textContent = 'Error: ' + err.message;
+  } finally {
+    isAnalysing = false;
+    analyseBtn.disabled = false;
   }
 }
 
@@ -1046,9 +1055,14 @@ let pendingFilename = null;
 let pendingBothData = null;
 
 async function generate() {
+  const genBtn = document.getElementById('btn-generate');
+  if (genBtn.disabled) return;
+  genBtn.disabled = true;
+
   const payload = buildPayload();
   if (!payload.description) {
     alert('Please enter a job description.');
+    genBtn.disabled = false;
     return;
   }
 
@@ -1120,11 +1134,19 @@ async function generate() {
     pendingBothData = renderResult.bothData;
     showDisclaimerModal();
   } catch (err) {
-    alert('Error: ' + err.message);
     console.error(err);
+    ['step-analyse','step-infer','step-tasks','step-render','step-pdf','step-download'].forEach(s => setStep(s, 'pending'));
+    const statusPanel = document.getElementById('status-panel');
+    if (statusPanel) {
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'color:#dc2626;text-align:center;padding:16px;font-weight:600;';
+      errDiv.textContent = 'Error: ' + err.message;
+      statusPanel.appendChild(errDiv);
+    }
   } finally {
     document.getElementById('gen-warning').style.display = 'none';
     window.onbeforeunload = null;
+    document.getElementById('btn-generate').disabled = false;
   }
 }
 
@@ -1140,31 +1162,35 @@ function buildFilename(meta) {
 
 async function renderDocument(docxUrl, pdfUrl, bothUrl, payload, meta) {
   const fmt = currentFormat;
-  if (fmt === 'docx') {
-    const res = await apiCall(API + docxUrl, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Render failed: ' + res.status);
-    return { blob: await res.blob(), filename: buildFilename(meta), bothData: null };
-  }
-  if (fmt === 'pdf') {
-    const res = await apiCall(API + pdfUrl, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('PDF render failed: ' + res.status);
-    return { blob: await res.blob(), filename: buildFilename(meta).replace('.docx', '.pdf'), bothData: null };
-  }
-  // both
-  const res = await apiCall(API + bothUrl, {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const opts = {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error('Render both failed: ' + res.status);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return { blob: null, filename: data.docx_filename, bothData: data };
+    body: JSON.stringify(payload), signal: controller.signal
+  };
+  try {
+    if (fmt === 'docx') {
+      const res = await apiCall(API + docxUrl, opts);
+      if (!res.ok) throw new Error('Render failed: ' + res.status);
+      return { blob: await res.blob(), filename: buildFilename(meta), bothData: null };
+    }
+    if (fmt === 'pdf') {
+      const res = await apiCall(API + pdfUrl, opts);
+      if (!res.ok) throw new Error('PDF render failed: ' + res.status);
+      return { blob: await res.blob(), filename: buildFilename(meta).replace('.docx', '.pdf'), bothData: null };
+    }
+    // both
+    const res = await apiCall(API + bothUrl, opts);
+    if (!res.ok) throw new Error('Render both failed: ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return { blob: null, filename: data.docx_filename, bothData: data };
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Render is taking longer than expected — please try again');
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function downloadBase64(b64, filename, mimeType) {
@@ -1297,7 +1323,7 @@ function checkJurisdiction() {
         detectedJurisdiction = null;
       }
     })
-    .catch(() => {});
+    .catch(() => { console.warn('Jurisdiction check failed — continuing with selected jurisdiction'); });
 }
 
 function switchDetectedJurisdiction() {
