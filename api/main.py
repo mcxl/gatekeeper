@@ -42,6 +42,7 @@ sentry_sdk.init(
 
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -59,11 +60,32 @@ app.include_router(upload_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:8000")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.sentry-cdn.com https://browser.sentry-cdn.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self' https://o4511019411177472.ingest.us.sentry.io"
+        )
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 _STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -521,7 +543,7 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render DOCX failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 def _build_filename(project_meta: dict, ext: str) -> str:
@@ -612,7 +634,7 @@ async def render_pdf_endpoint(request: dict, user: dict = Depends(get_current_us
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render PDF failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 @app.post("/render/both")
@@ -639,7 +661,7 @@ async def render_both_endpoint(request: dict, user: dict = Depends(get_current_u
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render both failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 # ============================================================
@@ -751,7 +773,7 @@ async def render_ra_pdf_endpoint(request: dict, user: dict = Depends(get_current
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render RA PDF failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 @app.post("/render/ra/both")
@@ -773,7 +795,7 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render RA both failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"error": str(e), "traceback": traceback.format_exc()}, status_code=500)
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
 # ============================================================

@@ -679,6 +679,12 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg-primary); color: 
 
 <script>
 const API = window.location.origin;
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
 let currentTab = 'manual';
 let currentJurisdiction = 'AU';
 let currentFormat = 'pdf';
@@ -796,7 +802,7 @@ const REVIEW_DEFAULT_INDICES = [6, 8, 9];
   REVIEW_OPTIONS.forEach((opt, i) => {
     const label = document.createElement('label');
     label.className = 'review-item';
-    label.innerHTML = '<input type="checkbox" id="review-' + i + '"> <span>' + opt + '</span>';
+    label.innerHTML = '<input type="checkbox" id="review-' + i + '"> <span>' + escapeHtml(opt) + '</span>';
     container.appendChild(label);
   });
 })();
@@ -898,7 +904,7 @@ function renderFileChips() {
     chip.className = 'file-chip';
     const isImage = file.type.startsWith('image/');
     const icon = isImage ? '&#128247;' : '&#128196;';
-    chip.innerHTML = icon + ' ' + file.name + ' <button onclick="removeFile(' + i + ')">&times;</button>';
+    chip.innerHTML = icon + ' ' + escapeHtml(file.name) + ' <button onclick="removeFile(' + i + ')">&times;</button>';
     container.appendChild(chip);
   });
   document.getElementById('btn-analyse').style.display = selectedFiles.length > 0 ? 'block' : 'none';
@@ -973,7 +979,7 @@ function showGaps(gaps) {
   const count = document.getElementById('gaps-count');
   panel.classList.add('visible');
   count.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ' identified';
-  list.innerHTML = gaps.map(g => '<li>' + g + '</li>').join('');
+  list.innerHTML = gaps.map(g => '<li>' + escapeHtml(g) + '</li>').join('');
 }
 
 function toggleGaps() {
@@ -1219,7 +1225,7 @@ function showInference(inf) {
     ['Permits Required', (inf.permits || []).join(', ') || '\u2014'],
     ['Plant Detected', (inf.plant || []).join(', ') || '\u2014'],
   ];
-  list.innerHTML = items.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
+  list.innerHTML = items.map(([k, v]) => '<dt>' + escapeHtml(k) + '</dt><dd>' + escapeHtml(v) + '</dd>').join('');
 }
 
 function toggleInference() {

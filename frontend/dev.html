@@ -461,6 +461,12 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 
 <script>
 const API = window.location.origin;
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
 let currentJurisdiction = 'AU';
 let currentDocType = 'swms';
 let currentFormat = 'pdf';
@@ -590,7 +596,7 @@ function updateLabels() {
   const docNameFull = dt === 'swms' ? (SWMS_LABELS[jur] || 'SWMS') : 'Risk Assessment';
 
   // Page title
-  document.getElementById('page-title').innerHTML = 'Build Your ' + docName + ' &mdash; ' + d.title;
+  document.getElementById('page-title').innerHTML = 'Build Your ' + escapeHtml(docName) + ' &mdash; ' + escapeHtml(d.title);
 
   // Subtitle
   document.getElementById('page-sub').textContent =
@@ -947,7 +953,7 @@ function showInference(inf) {
   if (inf.hazard_list) {
     items.push(['Hazards Identified', inf.hazard_list.length + ' hazard(s)']);
   }
-  list.innerHTML = items.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
+  list.innerHTML = items.map(([k, v]) => '<dt>' + escapeHtml(k) + '</dt><dd>' + escapeHtml(v) + '</dd>').join('');
 }
 
 function toggleInference() {
@@ -979,7 +985,7 @@ function acceptAndDownload() {
   if (pendingBothData) {
     // Both format — two downloads
     const data = pendingBothData;
-    document.getElementById('dl-done-label').innerHTML = '&#10003; Your ' + pendingDocLabel + ' is ready (Word + PDF)';
+    document.getElementById('dl-done-label').innerHTML = '&#10003; Your ' + escapeHtml(pendingDocLabel) + ' is ready (Word + PDF)';
     document.getElementById('dl-filename').textContent = data.docx_filename + ' + ' + data.pdf_filename;
     const btn = document.getElementById('dl-btn');
     btn.textContent = 'Download ' + pendingDocLabel + ' (Both)';
@@ -993,7 +999,7 @@ function acceptAndDownload() {
     btn.click();
   } else {
     // Single format (docx or pdf)
-    document.getElementById('dl-done-label').innerHTML = '&#10003; Your ' + pendingDocLabel + ' is ready';
+    document.getElementById('dl-done-label').innerHTML = '&#10003; Your ' + escapeHtml(pendingDocLabel) + ' is ready';
     document.getElementById('dl-filename').textContent = pendingFilename;
     const btn = document.getElementById('dl-btn');
     btn.textContent = 'Download ' + pendingDocLabel;
