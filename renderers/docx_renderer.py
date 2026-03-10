@@ -1143,11 +1143,10 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
         footer_date = date.today().strftime("%d%m%Y")
     else:
         footer_date = footer_date.replace("/", "")
-    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926", "CA": "Canada OHS"}
-    jur_ref = _JUR_FOOTER.get(jurisdiction, "")
-    footer_text = f"SWMS-{_slug}-{footer_date}-V01"
-    if jur_ref:
-        footer_text += f" | {jur_ref}"
+    _pcbu = (project_meta.get("pcbu_name") or "").strip()
+    if not _pcbu or len(_pcbu) < 4:
+        _pcbu = "Safe Method"
+    footer_text = f"SWMS-{_slug}-{footer_date}-V01 | {_pcbu}"
 
     section = doc.sections[0]
     footer = section.footer
