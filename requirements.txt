@@ -21,4 +21,4 @@ httpx
 sentry-sdk[fastapi]
 slowapi
 
-email-validator
+pydantic[email]
