@@ -16,6 +16,19 @@
   gtag('js', new Date());
   gtag('config', 'G-MRKVHVKF6Q');
 </script>
+<!-- Sentry Error Tracking -->
+<script
+  src="https://js.sentry-cdn.com/988efe01bc9f4fe5a4691a5d98566086.min.js"
+  crossorigin="anonymous"
+></script>
+<script>
+  Sentry.onLoad(function() {
+    Sentry.init({
+      environment: 'production',
+      tracesSampleRate: 0.2,
+    });
+  });
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#f59e0b">
