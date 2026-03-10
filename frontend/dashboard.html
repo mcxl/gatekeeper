@@ -28,6 +28,9 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Safe Method">
 <meta name="theme-color" content="#f59e0b">
 <meta name="description" content="Safe Method Dashboard — create SWMS and risk assessments matched to your job.">
 <title>Safe Method — Dashboard</title>
@@ -367,5 +370,6 @@ function showComingSoon() {
   setTimeout(() => toast.classList.remove('visible'), 2500);
 }
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/static/sw.js');});}</script>
 </body>
 </html>

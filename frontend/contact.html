@@ -28,6 +28,9 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Safe Method">
 <meta name="theme-color" content="#f59e0b">
 <meta name="description" content="Contact Safe Method — get in touch for support, feedback, or general enquiries about SWMS generation.">
 <title>Safe Method — Contact Us</title>
@@ -371,5 +374,6 @@ async function submitForm(e) {
   }
 }
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/static/sw.js');});}</script>
 </body>
 </html>
