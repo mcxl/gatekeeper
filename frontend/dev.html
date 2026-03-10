@@ -244,7 +244,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
   </div>
   <div class="field">
     <label>Site Address</label>
-    <input type="text" id="m1-site" placeholder="e.g. 218 Vincent Rd Cranebrook NSW 2749">
+    <input type="text" id="m1-site" placeholder="e.g. 14 George St, Sydney NSW 2000">
     <div style="font-size:11px;color:#888;font-style:italic;margin-top:4px">Double-check spelling — used in document footer</div>
   </div>
   <div class="field">
@@ -304,12 +304,12 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
   </div>
   <div class="field">
     <label>Site Address</label>
-    <input type="text" id="m2-site" placeholder="e.g. 218 Vincent Rd Cranebrook NSW 2749">
+    <input type="text" id="m2-site" placeholder="e.g. 14 George St, Sydney NSW 2000">
     <div style="font-size:11px;color:#888;font-style:italic;margin-top:4px">Double-check spelling — used in document footer</div>
   </div>
   <div class="field">
     <label>Principal Contractor</label>
-    <input type="text" id="m2-pc" placeholder="e.g. mCXI">
+    <input type="text" id="m2-pc" placeholder="e.g. Lendlease">
   </div>
   <div class="field">
     <label>Access Method</label>
@@ -341,7 +341,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 
   <div class="qa-step" id="qa-3" style="display:none">
     <div class="qa-question">Who is the principal contractor?</div>
-    <div class="field"><input type="text" id="q3" placeholder="e.g. Hansen Yuncken, Lendlease, mCXI"></div>
+    <div class="field"><input type="text" id="q3" placeholder="e.g. Hansen Yuncken, Lendlease"></div>
   </div>
 
   <div class="qa-step" id="qa-4" style="display:none">
@@ -541,7 +541,7 @@ function logout() {
 
 // ── Jurisdiction + doc type data ──────────────────
 const JUR_DATA = {
-  AU: { title: 'Australia', site: '218 Vincent Rd Cranebrook NSW 2749', pc: 'mCXI' },
+  AU: { title: 'Australia', site: '', pc: '' },
   NZ: { title: 'New Zealand', site: '42 Quay Street, Auckland CBD 1010', pc: 'Fletcher Building' },
   UK: { title: 'United Kingdom', site: "14 King's Cross Road, London WC1X 9HX", pc: 'Balfour Beatty' },
   US: { title: 'United States', site: '350 Fifth Avenue, New York, NY 10118', pc: 'Turner Construction' },

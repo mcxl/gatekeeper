@@ -363,8 +363,8 @@ body {
 
 <!-- Hero -->
 <section class="hero fade fade-d2">
-  <div class="hero-tagline">NAILED IT</div>
-  <h1 class="hero-headline">Create Specialist Safety Risk Assessments, Matched To Your Job</h1>
+  <div class="hero-tagline">Always referenced, never guessed.</div>
+  <h1 class="hero-headline">Create risk assessments and safe work method statements matched to your job</h1>
   <p class="hero-sub">Purpose-built for construction safety across Australia, New Zealand, the UK, and the US. Powered by AI trained on Model WHS Act 2011, HSWA 2015, CDM 2015, and OSHA 29 CFR 1926. Kept clear and simple so it makes sense on site and works in real life.</p>
   <div class="hero-trust">Safe Work Australia &mdash; WorkSafe NZ &mdash; HSE (UK) &mdash; OSHA (US) &mdash; Plain English Output</div>
 </section>
@@ -427,17 +427,17 @@ body {
 <div class="features">
   <div class="features-heading">Add site-specific detail to get a SWMS that reflects your actual job &mdash; not a generic template.</div>
   <div class="feature-card">
-    <span class="icon">&#9633;</span>
+
     <h3>Site Plans &amp; Drawings</h3>
     <p>Upload site plans, floor plans, or drawings. We'll extract access routes, fall hazards, and exclusion zones relevant to your scope.</p>
   </div>
   <div class="feature-card">
-    <span class="icon">&#9633;</span>
+
     <h3>Site Photos</h3>
     <p>Upload photos of the work area. We'll identify visible hazards, access constraints, and site conditions to include in your controls.</p>
   </div>
   <div class="feature-card">
-    <span class="icon">&#9633;</span>
+
     <h3>Scope of Works</h3>
     <p>Paste or upload your scope of works, subcontract schedule, or tender documents. We'll align your SWMS tasks directly to the contracted scope.</p>
   </div>
@@ -580,6 +580,7 @@ async function handleSignUp(e) {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('user_email', data.user?.email || '');
+      localStorage.setItem('user_name', document.getElementById('signup-name').value || '');
       window.location.href = '/app';
     } else {
       showMessage('Account created. Please check your email to confirm, then log in.', false);

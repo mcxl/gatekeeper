@@ -144,7 +144,12 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: no sub claim",
             )
-        return {"user_id": user_id, "email": payload.get("email")}
+        meta = payload.get("user_metadata") or {}
+        return {
+            "user_id": user_id,
+            "email": payload.get("email"),
+            "full_name": meta.get("full_name", ""),
+        }
     except JWTError as e:
         logger.error(f"JWT decode failed: {e}")
         raise HTTPException(
