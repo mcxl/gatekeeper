@@ -114,8 +114,10 @@ import sqlite3
 DB_PATH = os.path.join(_ROOT, "db", "gatekeeper.db")
 
 
-def _html_response(path: str) -> FileResponse:
-    return FileResponse(path, headers={"Cache-Control": "no-cache"})
+def _html_response(path: str) -> HTMLResponse:
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
 
 def _get_approved_tasks() -> list[dict]:
