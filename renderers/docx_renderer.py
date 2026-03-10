@@ -550,6 +550,8 @@ def render_docx(task: TaskBlock) -> bytes:
 # Maps hrcw_category keywords to (row, col) in Table 0 of SWMS-260306-V1.docx.
 # Each HRCW checkbox occupies two merged columns; we write into the first.
 
+_SZ = 9  # Font size for task table, monitoring table, requirements table
+
 _HRCW_TICK_MAP = {
     "falling_2m":       (3, 1),
     "telecom_tower":    (3, 3),
@@ -570,6 +572,542 @@ _HRCW_TICK_MAP = {
     "drowning":         (8, 3),
     "diving":           (8, 5),
 }
+
+
+# ── Builder functions for render_swms_document() ──────────────────────────────
+
+
+def _tick_checkbox(cell) -> None:
+    """Tick a checkbox cell, bold all runs, and yellow-highlight the label."""
+    ticked = False
+    for para in cell.paragraphs:
+        runs = para.runs
+        for i, run in enumerate(runs):
+            # Single-run checkbox: [   ] or [ ... ]
+            if "[" in run.text and "]" in run.text and "\u2713" not in run.text:
+                import re as _re_cb
+                run.text = _re_cb.sub(r'\[\s*\]', '[\u2713]', run.text)
+                ticked = True
+                break
+            # Two-run: '[ ' + '  ]' — bracket split across runs
+            if "[" in run.text and "]" not in run.text and i + 1 < len(runs):
+                if "]" in runs[i + 1].text:
+                    run.text = "[\u2713"
+                    runs[i + 1].text = "]" + runs[i + 1].text.split("]", 1)[-1]
+                    ticked = True
+                    break
+            # Multi-run: '[' then whitespace then ']'
+            if run.text.strip() == "[" and i + 1 < len(runs):
+                if runs[i + 1].text.strip() == "":
+                    runs[i + 1].text = "\u2713"
+                    ticked = True
+                    break
+        if ticked:
+            # Bold all runs and yellow-highlight the entire cell text
+            for run in para.runs:
+                run.bold = True
+                rpr = run._r.get_or_add_rPr()
+                # Remove existing highlight if any
+                for hl in rpr.findall(qn("w:highlight")):
+                    rpr.remove(hl)
+                hl = etree.SubElement(rpr, qn("w:highlight"))
+                hl.set(qn("w:val"), "yellow")
+            return
+
+
+def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> None:
+    """Populate Table 0 — cover page fields and HRCW checkboxes."""
+    from datetime import date
+    t0 = doc.tables[0]
+
+    def _set_cover(row: int, col: int, value: str) -> None:
+        cell = t0.cell(row, col)
+        for para in cell.paragraphs:
+            para.clear()
+        _run(cell.paragraphs[0], value)
+
+    pcbu = (project_meta.get("pcbu_name")
+            or project_meta.get("pcbu")
+            or project_meta.get("principal_contractor", ""))
+    manager = (project_meta.get("manager_name")
+               or project_meta.get("manager", ""))
+    site_name = (project_meta.get("project_address")
+                 or project_meta.get("site_name")
+                 or project_meta.get("site_address", ""))
+    pc = project_meta.get("principal_contractor", pcbu)
+    supervisor = project_meta.get("supervisor", "")
+    work_activity = project_meta.get("work_activity_summary", "")
+    if not work_activity:
+        work_activity = (project_meta.get("work_activity")
+                         or project_meta.get("description")
+                         or project_meta.get("project_name", ""))
+        if site_name and site_name in work_activity:
+            work_activity = work_activity.replace(site_name, "").strip(" ,at-")
+        work_activity = work_activity[:120]
+
+    # Row 0: PCBU + Site
+    _set_cover(0, 1, pcbu)
+    _set_cover(0, 6, site_name)
+    # Row 1: Manager + Date
+    _set_cover(1, 1, manager)
+    _set_cover(1, 6, doc_date)
+    # Row 2: Work activity + PC
+    _set_cover(2, 1, work_activity)
+    _set_cover(2, 6, pc)
+    # Row 9: Supervisor + Date received
+    _set_cover(9, 2, supervisor)
+    _set_cover(9, 5, doc_date)
+    # Row 11: Manager reviewer + Date
+    _set_cover(11, 2, manager)
+    _set_cover(11, 5, doc_date)
+    # Row 13: Reviewer signature + Date
+    _set_cover(13, 2, manager)
+    _set_cover(13, 5, doc_date)
+
+    # HRCW ticks — rows 3-8
+    hrcw_flags = inference.get("hrcw_flags", {})
+    for key, (row, col) in _HRCW_TICK_MAP.items():
+        if hrcw_flags.get(key):
+            _tick_checkbox(t0.cell(row, col))
+
+    # Also tick based on task data
+    for task in tasks:
+        if task.wah_applicable:
+            _tick_checkbox(t0.cell(3, 1))  # falling_2m
+
+    # Set Table 0 runs: rows 0-2 and 9+ at 10pt, rows 3-8 (HRCW) at 9pt
+    for ri, row in enumerate(t0.rows):
+        sz = Pt(9) if 3 <= ri <= 8 else Pt(10)
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = sz
+
+
+def _build_task_table(doc, tasks) -> None:
+    """Populate Table 1 — one row per task."""
+    t1 = doc.tables[1]
+    _set_table_cell_margins(t1)
+
+    # Remove the blank data row (row index 1), keep header (row 0)
+    if len(t1.rows) > 1:
+        tr = t1.rows[1]._tr
+        tr.getparent().remove(tr)
+
+    # Re-format Table 1 header row at 9pt
+    for i, h in enumerate(_HEADERS):
+        cell = t1.rows[0].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Add one row per task
+    for task in tasks:
+        row = t1.add_row()
+        c = row.cells
+        for i, w in enumerate(_COL_W):
+            c[i].width = Cm(w)
+
+        # Col 0 — Task + scope
+        _run(c[0].paragraphs[0], task.task, bold=True, size_pt=_SZ)
+        if task.scope:
+            _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY, size_pt=_SZ)
+
+        # Col 1 — Hazards (genuine hazard descriptions, bulleted)
+        _hazard_cell(c[1], task, size_pt=_SZ)
+
+        # Col 2 — Risk Pre (10pt bold)
+        _risk_cell(c[2], task.risk_pre or "", size_pt=10)
+
+        # Col 3 — Controls
+        _controls_cell(c[3], task, size_pt=_SZ)
+
+        # Col 4 — Risk Post (10pt bold)
+        _risk_cell(c[4], task.risk_post or "", size_pt=10)
+
+        # Col 5 — Responsibility
+        _responsibility_cell(c[5], task, size_pt=_SZ)
+
+        # Col 6 — CCVS code (validated)
+        p6 = c[6].paragraphs[0]
+        p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=_SZ)
+
+
+def _format_risk_matrix(doc) -> None:
+    """Apply font to Table 3 — risk matrix (content untouched)."""
+    t3 = doc.tables[3]
+    for row in t3.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+
+def _fill_legislation_table(doc, inference, jur, jurisdiction) -> None:
+    """Populate Table 4 — legislation references."""
+    t4 = doc.tables[4]
+
+    # Set all existing runs to Aptos 9pt (content untouched)
+    for row in t4.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+    # Jurisdiction-aware legislation
+    _base_parts = jur["base_legislation_string"].split(" \u2014 ")
+    _BASE_LEGISLATION = [p.strip() for p in _base_parts if p.strip()]
+
+    reg_notes = inference.get("regulatory_notes", [])
+    jur_notes = inference.get("jurisdiction_notes", [])
+    # Deduplicate regulatory notes against base legislation
+    _cleaned_notes = []
+    _base_lower = [b.lower() for b in _BASE_LEGISLATION]
+    for n in reg_notes + jur_notes:
+        if n.lower() in _base_lower:
+            continue
+        if n in _cleaned_notes:
+            continue
+        cleaned = n.strip()
+        if jurisdiction == "AU":
+            cleaned = (cleaned
+                       .replace("Model WHS Act 2011", "WHS Act 2011 (NSW)")
+                       .replace("Model WHS Regulations 2017", "WHS Regulation 2017 (NSW)")
+                       .replace("Safe Work Australia Codes of Practice", "SafeWork NSW Codes of Practice"))
+        if cleaned and cleaned.lower() not in _base_lower and cleaned not in _cleaned_notes:
+            _cleaned_notes.append(cleaned)
+    all_legislation = _BASE_LEGISLATION + _cleaned_notes
+    cell = t4.cell(0, 1)
+    for para in cell.paragraphs:
+        para.clear()
+    # Single paragraph with bold em-dash separators
+    p = cell.paragraphs[0]
+    for i, note in enumerate(all_legislation):
+        if i > 0:
+            _run(p, " \u2014 ", bold=True, size_pt=_SZ)
+        _run(p, note, size_pt=_SZ)
+
+
+def _fill_requirements_table(doc, tasks, inference, project_meta) -> None:
+    """Populate Table 5 — PPE, permits, qualifications, plant, maintenance, hazardous substances, WAH."""
+    t5 = doc.tables[5]
+    _set_table_cell_margins(t5)
+
+    # Re-format Table 5 existing text at 9pt (both columns, all rows)
+    for row in t5.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    run.font.name = FONT
+                    run.font.size = Pt(_SZ)
+
+    def _fill_req_cell(row_idx: int, items: list[str]) -> None:
+        """Populate col 1 of Table 5 — single paragraph, bold em-dash separated."""
+        cell = t5.cell(row_idx, 1)
+        for pi in range(len(cell.paragraphs) - 1, 0, -1):
+            cell.paragraphs[pi]._element.getparent().remove(cell.paragraphs[pi]._element)
+        cell.paragraphs[0].clear()
+        if not items:
+            _run(cell.paragraphs[0], "\u2014", size_pt=_SZ)
+            _strip_para_indent(cell.paragraphs[0])
+            return
+        p = cell.paragraphs[0]
+        for i, item in enumerate(items):
+            if i > 0:
+                _run(p, " \u2014 ", bold=True, size_pt=_SZ)
+            _run(p, item, size_pt=_SZ)
+        _strip_para_indent(p)
+
+    # Row 0: PPE — always include baseline, then add inference PPE
+    from vocab.swms_vocabulary import enforce_vocabulary as _enforce_vocab
+    _job_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
+    _CHEM_KW = ("epoxy", "resin", "hardener", "solvent", "chemical", "acid", "alkali",
+                "caustic", "adhesive", "primer", "paint", "coating", "membrane",
+                "sealant", "grout", "mortar", "waterproof")
+    _has_chemicals = any(kw in _job_text for kw in _CHEM_KW)
+    _glove_type = ("chemical-resistant gloves (nitrile or task-appropriate)"
+                   if _has_chemicals else "cut-resistant gloves")
+    _BASELINE_PPE = [
+        "steel-capped footwear",
+        "hi-viz shirt or vest",
+        "eye protection",
+        "hearing protection (>85dB)",
+        _glove_type,
+    ]
+    raw_ppe = inference.get("ppe", [])
+    enforced_ppe = [_enforce_vocab(item) for item in raw_ppe]
+    _PPE_NORM = {
+        "steel-capped footwear": "footwear", "steel-capped safety boots": "footwear",
+        "safety boots": "footwear", "steel cap boots": "footwear",
+        "steel-capped boots": "footwear", "safety footwear": "footwear",
+        "hi-viz shirt or vest": "hiviz", "hi-viz vest or shirt": "hiviz",
+        "high-visibility vest": "hiviz", "high-visibility vest or shirt": "hiviz",
+        "hi-vis vest": "hiviz", "hi-vis shirt": "hiviz", "hi-vis vest or shirt": "hiviz",
+        "eye protection": "eye", "safety glasses": "eye", "safety goggles": "eye",
+        "hearing protection": "hearing", "hearing protection (>85db)": "hearing",
+        "ear plugs": "hearing", "ear muffs": "hearing",
+    }
+    def _ppe_key(item):
+        base = item.lower().split("\u2014")[0].strip()
+        return _PPE_NORM.get(base, base)
+    seen_keys = set()
+    final_ppe = []
+    for item in _BASELINE_PPE + enforced_ppe:
+        key = _ppe_key(item)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            final_ppe.append(item)
+    _fill_req_cell(0, final_ppe)
+    # Row 1: Permits / certificates / approvals
+    _fill_req_cell(1, inference.get("permits", []))
+    # Row 2: Site-specific training
+    _fill_req_cell(2, inference.get("qualifications", []))
+    # Row 3: Certifications / HRW licences
+    _fill_req_cell(3, inference.get("certifications", []))
+    # Row 5 first (need maintenance items to derive plant list)
+    _MAINTENANCE_LOOKUP = {
+        "ewp": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls, tyres, outriggers checked \u2014 log book current",
+        "elevated work platform": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls inspected",
+        "mobile crane": "Mobile crane \u2014 pre-start checklist \u2014 outriggers, boom, load chart, slew ring \u2014 engineer ground bearing certificate sighted",
+        "crane": "Crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
+        "franna": "Franna crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
+        "angle grinder": "Angle grinder \u2014 check guard intact and disc undamaged before each use \u2014 RCD test tag current (AS/NZS 3012 3-monthly)",
+        "grinder": "Grinder \u2014 guard intact, disc undamaged, RCD test tag current (AS/NZS 3012 3-monthly)",
+        "hepa vacuum": "HEPA vacuum \u2014 check filter condition before each shift",
+        "vacuum": "Vacuum \u2014 check filter condition before use",
+        "mixing containers": "Mixing containers \u2014 clean and dry before use",
+        "scaffold": "Scaffold \u2014 daily pre-use inspection by competent person \u2014 tag current",
+        "ladder": "Ladder \u2014 AS/NZS 1892 compliant \u2014 inspect feet, rungs, locks before each use",
+        "scissor lift": "Scissor lift \u2014 pre-start checklist completed \u2014 platform, guardrails, controls checked",
+        "boom lift": "Boom lift \u2014 pre-start checklist completed \u2014 boom, basket, controls, outriggers checked",
+        "forklift": "Forklift \u2014 pre-start checklist \u2014 mast, forks, brakes, lights, seatbelt checked",
+        "concrete saw": "Concrete saw \u2014 guard intact, blade undamaged, water supply connected",
+        "jackhammer": "Jackhammer \u2014 inspect chisel retention, check hose connections before each use",
+    }
+    _task_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
+    _plant_text = " ".join(p.lower() for p in inference.get("plant", []))
+    maint_items = list(project_meta.get("maintenance_checks", []))
+    if not maint_items:
+        _search_text = _task_text + " " + _plant_text
+        _seen_maint_names = set()
+        for kw, entry in _MAINTENANCE_LOOKUP.items():
+            if kw in _search_text:
+                equip_name = entry.split("\u2014")[0].strip().lower()
+                if equip_name not in _seen_maint_names:
+                    maint_items.append(entry)
+                    _seen_maint_names.add(equip_name)
+        if any(k in _task_text for k in ("epoxy", "resin", "coating")) and not any("Mixing" in m for m in maint_items):
+            maint_items.append("Mixing containers \u2014 clean and dry before use")
+    _fill_req_cell(5, maint_items)
+
+    # Row 4: Plant and equipment
+    plant_items = list(inference.get("plant", []))
+    for item in project_meta.get("plant_equipment", project_meta.get("plant", [])):
+        if item not in plant_items:
+            plant_items.append(item)
+    for mitem in maint_items:
+        plant_name = mitem.split("\u2014")[0].strip()
+        if plant_name and plant_name.lower() not in [p.lower() for p in plant_items]:
+            plant_items.append(plant_name)
+    _PLANT_KEYWORDS = {
+        "grinder": "Angle grinder", "angle grinder": "Angle grinder",
+        "ewp": "EWP (elevated work platform)", "scissor lift": "Scissor lift",
+        "vacuum": "HEPA vacuum", "hepa vacuum": "HEPA vacuum",
+        "saw": "Power saw", "jackhammer": "Jackhammer",
+        "drill": "Power drill", "mixer": "Mixing equipment",
+    }
+    _task_text_lower = _task_text
+    for kw, pname in _PLANT_KEYWORDS.items():
+        if kw in _task_text_lower and pname.lower() not in [p.lower() for p in plant_items]:
+            plant_items.append(pname)
+    if not plant_items:
+        plant_items = ["As per task requirements \u2014 see controls column"]
+    _fill_req_cell(4, plant_items)
+
+    # Row 6: Hazardous substances
+    hrcw_flags = inference.get("hrcw_flags", {})
+    haz_sub_items = list(project_meta.get("hazardous_substances", []))
+    if not haz_sub_items:
+        _has_silica = any("silica" in n.lower() for n in inference.get("regulatory_notes", []))
+        _has_epoxy_sub = any(k in _task_text for k in ("epoxy", "resin"))
+        _has_primer = any(k in _task_text for k in ("primer", "solvent"))
+        _has_tiltup = hrcw_flags.get("tiltup_precast", False)
+        _has_crane_ewp = any(k in _plant_text for k in ("crane", "ewp", "boom", "forklift"))
+        if _has_silica:
+            haz_sub_items.append(
+                "Respirable crystalline silica (RCS) \u2014 SDS on site "
+                "\u2014 WES 0.05 mg/m\u00b3 TWA \u2014 P2 minimum, half-face RPE for prolonged exposure"
+            )
+        if _has_epoxy_sub:
+            haz_sub_items.append(
+                "Epoxy resin (Part A) \u2014 SDS on site \u2014 skin/eye sensitiser "
+                "\u2014 chemical-resistant gloves, eye protection mandatory"
+            )
+            haz_sub_items.append(
+                "Epoxy hardener (Part B) \u2014 SDS on site \u2014 corrosive "
+                "\u2014 chemical resistant gloves, eye protection"
+            )
+        if _has_primer:
+            haz_sub_items.append(
+                "Epoxy primer \u2014 SDS on site \u2014 flammable liquid "
+                "\u2014 store per AS 1940, ventilate during use"
+            )
+        if _has_tiltup:
+            haz_sub_items.append(
+                "Concrete release agent \u2014 SDS on site \u2014 skin/eye irritant "
+                "\u2014 nitrile gloves and eye protection required"
+            )
+        if _has_crane_ewp:
+            haz_sub_items.append(
+                "Hydraulic fluid \u2014 SDS on site \u2014 skin sensitiser "
+                "\u2014 gloves required"
+            )
+    if not haz_sub_items:
+        haz_sub_items = [
+            "No hazardous substances identified for this scope \u2014 "
+            "confirm with site supervisor before work commences"
+        ]
+    _fill_req_cell(6, haz_sub_items)
+
+    # Row 7: WAH risk assessment — ALWAYS populated (mandatory text)
+    _wah_cell = t5.cell(7, 1)
+    for pi in range(len(_wah_cell.paragraphs) - 1, 0, -1):
+        _wah_cell.paragraphs[pi]._element.getparent().remove(
+            _wah_cell.paragraphs[pi]._element
+        )
+    _wah_cell.paragraphs[0].clear()
+
+    _wah_texts = [
+        (True, "Fall prevention hierarchy applied: eliminate > isolate > minimise. "
+               "Guardrails preferred. Fall restraint before fall arrest. "
+               "Rescue plan documented for all harness work. "
+               "Working at Heights licence/training verified before elevated work commences."),
+        (False, "A-frame ladders may be used for short-duration tasks where a "
+                "site-specific Working at Heights Risk Assessment (WaH RA) confirms "
+                "ladder use is reasonably practicable; ladder must be AS/NZS 1892 "
+                "compliant, stable, fully opened and used without overreaching."),
+        (False, "Working at Heights Risk Assessment (if >2m): "
+                "Height of task: _______ duration of task: _______ "
+                "ground stable and level: Yes / No, "
+                "heavy exertion required: Yes / No, "
+                "overreaching required: Yes / No, "
+                "scaffold reasonably practicable: Yes / No, "
+                "EWP reasonably practicable: Yes / No, "
+                "A-frame ladder appropriate control: Yes / No "
+                "Assessed by: ________________ Date: ________ "
+                "This creates documentary evidence."),
+    ]
+
+    for i, (is_bold, text) in enumerate(_wah_texts):
+        p = _wah_cell.paragraphs[0] if i == 0 else _wah_cell.add_paragraph()
+        _run(p, text, bold=is_bold, size_pt=_SZ)
+        _strip_para_indent(p)
+
+
+def _build_ccvs_table(doc, tasks) -> None:
+    """Populate Table 7 — CCVS monitoring rows."""
+    t7 = doc.tables[7]
+    _set_table_cell_margins(t7)
+
+    # Re-format Table 7 header row at 9pt
+    for i, h in enumerate(_MON_HEADERS):
+        cell = t7.rows[0].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Remove blank data row (row 1), keep header
+    if len(t7.rows) > 1:
+        tr = t7.rows[1]._tr
+        tr.getparent().remove(tr)
+
+    # Add monitoring rows — only tasks with a real CCVS code and monitoring data
+    for task in tasks:
+        if task.monitoring is None:
+            continue
+        if validate_ccvs_code(task.ccvs_code or "N/A") == "N/A":
+            continue
+        m = task.monitoring
+        row = t7.add_row()
+        vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
+        for i, w in enumerate(_MON_W):
+            row.cells[i].width = Cm(w)
+        for i, val in enumerate(vals):
+            _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
+
+
+def _fill_signoff_table(doc) -> None:
+    """Prevent sign-off table (Table 6) rows from splitting across pages."""
+    if len(doc.tables) > 6:
+        for _row in doc.tables[6].rows:
+            _trPr = _row._tr.find(qn('w:trPr'))
+            if _trPr is None:
+                _trPr = etree.SubElement(_row._tr, qn('w:trPr'))
+            _cs = _trPr.find(qn('w:cantSplit'))
+            if _cs is None:
+                _cs = etree.SubElement(_trPr, qn('w:cantSplit'))
+            _cs.set(qn('w:val'), '1')
+
+
+def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
+    """Build document footer with SWMS ID slug and jurisdiction reference."""
+    import re as _re
+    from datetime import date
+    _address = (project_meta.get("project_address")
+                or project_meta.get("site_name")
+                or project_meta.get("site_address", ""))
+    if _address:
+        _slug_parts = _address.split(",")[0].strip()
+        _slug = _re.sub(r'[^a-zA-Z0-9\s]', '', _slug_parts)
+        _slug = _re.sub(r'\s+', '-', _slug.strip())
+        _suburb_match = _re.search(r',\s*([A-Za-z]+)', _address)
+        if _suburb_match:
+            _slug += '-' + _suburb_match.group(1)
+    else:
+        _slug = project_meta.get("project_name", "UNKNOWN")
+    _slug = _re.sub(r'[\\/:*?"<>|]', "-", _slug)
+    footer_date = project_meta.get("date", "")
+    if not footer_date:
+        footer_date = date.today().strftime("%d%m%Y")
+    else:
+        footer_date = footer_date.replace("/", "")
+    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926", "CA": "Canada OHS"}
+    jur_ref = _JUR_FOOTER.get(jurisdiction, "")
+    footer_text = f"SWMS-{_slug}-{footer_date}-V01"
+    if jur_ref:
+        footer_text += f" | {jur_ref}"
+
+    section = doc.sections[0]
+    footer = section.footer
+    footer.is_linked_to_previous = False
+    if footer.paragraphs:
+        fp = footer.paragraphs[0]
+        fp.clear()
+    else:
+        fp = footer.add_paragraph()
+    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _run(fp, footer_text, size_pt=_SZ)
+
+    # Resolve footer tokens in all sections
+    _FOOTER_TOKENS = {
+        "{doc_ref}":  project_meta.get("doc_ref", f"SWMS-{_slug}"),
+        "{revision}": project_meta.get("revision", "V01"),
+        "{project}":  project_meta.get("project_name", ""),
+        "{date}":     project_meta.get("issue_date", doc_date),
+    }
+    for _sec in doc.sections:
+        for _fp in _sec.footer.paragraphs:
+            for _fr in _fp.runs:
+                for _tok, _val in _FOOTER_TOKENS.items():
+                    if _tok in _fr.text:
+                        _fr.text = _fr.text.replace(_tok, _val)
+
+
+# ── Main SWMS document renderer ──────────────────────────────────────────────
 
 
 def render_swms_document(
@@ -624,7 +1162,6 @@ def render_swms_document(
                   or project_meta.get("work_activity")
                   or project_meta.get("description")
                   or project_meta.get("project_name", ""))
-    # Strip address if provided separately
     _p0_address = (project_meta.get("project_address")
                    or project_meta.get("site_address", ""))
     if _p0_address and _p0_address in _desc_text:
@@ -634,14 +1171,12 @@ def render_swms_document(
         if "[Insert description here]" in p0.text:
             p0.clear()
             _run(p0, f"\u25a0 Description: {_desc_text}", bold=True, size_pt=16)
-        # Keep P0 tight against cover table — no spacing, no page break
         p0.paragraph_format.space_after = Pt(0)
         p0.paragraph_format.space_before = Pt(0)
 
     # Remove any page breaks between P0 and Table 0
     for para in doc.paragraphs:
         if para._element.getnext() is not None and para._element.getnext().tag.endswith('}tbl'):
-            # Clear any page-break-before on this paragraph
             pPr = para._element.find(qn('w:pPr'))
             if pPr is not None:
                 for pb in pPr.findall(qn('w:pageBreakBefore')):
@@ -652,519 +1187,17 @@ def render_swms_document(
     if doc.sections:
         doc.sections[0].top_margin = Cm(1.0)
 
-    # ── Table 0: Cover page ─────────────────────────────────────────────
-    t0 = doc.tables[0]
-
-    def _set_cover(row: int, col: int, value: str) -> None:
-        """Replace placeholder text in a cover-page cell."""
-        cell = t0.cell(row, col)
-        for para in cell.paragraphs:
-            para.clear()
-        _run(cell.paragraphs[0], value)
-
-    pcbu = (project_meta.get("pcbu_name")
-            or project_meta.get("pcbu")
-            or project_meta.get("principal_contractor", ""))
-    manager = (project_meta.get("manager_name")
-               or project_meta.get("manager", ""))
-    site_name = (project_meta.get("project_address")
-                 or project_meta.get("site_name")
-                 or project_meta.get("site_address", ""))
-    pc = project_meta.get("principal_contractor", pcbu)
-    supervisor = project_meta.get("supervisor", "")
-    # Work Activity: use explicit summary, fall back to description with address stripped
-    work_activity = project_meta.get("work_activity_summary", "")
-    if not work_activity:
-        work_activity = (project_meta.get("work_activity")
-                         or project_meta.get("description")
-                         or project_meta.get("project_name", ""))
-        # Strip address from work_activity if address is provided separately
-        if site_name and site_name in work_activity:
-            work_activity = work_activity.replace(site_name, "").strip(" ,at-")
-        work_activity = work_activity[:120]
     doc_date = project_meta.get("date", date.today().strftime(jur["date_format"]))
 
-    # Row 0: PCBU + Site
-    _set_cover(0, 1, pcbu)
-    _set_cover(0, 6, site_name)
-    # Row 1: Manager + Date
-    _set_cover(1, 1, manager)
-    _set_cover(1, 6, doc_date)
-    # Row 2: Work activity + PC
-    _set_cover(2, 1, work_activity)
-    _set_cover(2, 6, pc)
-    # Row 9: Supervisor + Date received
-    _set_cover(9, 2, supervisor)
-    _set_cover(9, 5, doc_date)
-    # Row 11: Manager reviewer + Date
-    _set_cover(11, 2, manager)
-    _set_cover(11, 5, doc_date)
-    # Row 13: Reviewer signature + Date
-    _set_cover(13, 2, manager)
-    _set_cover(13, 5, doc_date)
-
-    # HRCW ticks — rows 3-8
-    hrcw = inference.get("hrcw", False)
-    hrcw_category = inference.get("hrcw_category", "") or ""
-
-    def _tick_checkbox(cell) -> None:
-        """Tick a checkbox cell, bold all runs, and yellow-highlight the label."""
-        ticked = False
-        for para in cell.paragraphs:
-            runs = para.runs
-            for i, run in enumerate(runs):
-                # Single-run checkbox: [   ] or [ ... ]
-                if "[" in run.text and "]" in run.text and "\u2713" not in run.text:
-                    import re as _re_cb
-                    run.text = _re_cb.sub(r'\[\s*\]', '[\u2713]', run.text)
-                    ticked = True
-                    break
-                # Two-run: '[ ' + '  ]' — bracket split across runs
-                if "[" in run.text and "]" not in run.text and i + 1 < len(runs):
-                    if "]" in runs[i + 1].text:
-                        run.text = "[\u2713"
-                        runs[i + 1].text = "]" + runs[i + 1].text.split("]", 1)[-1]
-                        ticked = True
-                        break
-                # Multi-run: '[' then whitespace then ']'
-                if run.text.strip() == "[" and i + 1 < len(runs):
-                    if runs[i + 1].text.strip() == "":
-                        runs[i + 1].text = "\u2713"
-                        ticked = True
-                        break
-            if ticked:
-                # Bold all runs and yellow-highlight the entire cell text
-                for run in para.runs:
-                    run.bold = True
-                    rpr = run._r.get_or_add_rPr()
-                    # Remove existing highlight if any
-                    for hl in rpr.findall(qn("w:highlight")):
-                        rpr.remove(hl)
-                    hl = etree.SubElement(rpr, qn("w:highlight"))
-                    hl.set(qn("w:val"), "yellow")
-                return
-
-    # Tick HRCW checkboxes from hrcw_flags (individual booleans)
-    hrcw_flags = inference.get("hrcw_flags", {})
-    for key, (row, col) in _HRCW_TICK_MAP.items():
-        if hrcw_flags.get(key):
-            _tick_checkbox(t0.cell(row, col))
-
-    # Also tick based on task data
-    for task in tasks:
-        if task.wah_applicable:
-            _tick_checkbox(t0.cell(3, 1))  # falling_2m
-
-    # Set Table 0 runs: rows 0-2 and 9+ at 10pt, rows 3-8 (HRCW) at 9pt
-    for ri, row in enumerate(t0.rows):
-        sz = Pt(9) if 3 <= ri <= 8 else Pt(10)
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT
-                    run.font.size = sz
-
-    # ── Table 1: Task table ─────────────────────────────────────────────
-    t1 = doc.tables[1]
-    _set_table_cell_margins(t1)
-
-    # Remove the blank data row (row index 1), keep header (row 0)
-    if len(t1.rows) > 1:
-        tr = t1.rows[1]._tr
-        tr.getparent().remove(tr)
-
-    _SZ = 9  # Font size for task table, monitoring table, requirements table
-
-    # Re-format Table 1 header row at 9pt
-    for i, h in enumerate(_HEADERS):
-        cell = t1.rows[0].cells[i]
-        for para in cell.paragraphs:
-            para.clear()
-        _header_cell(cell, h, size_pt=_SZ)
-
-    # Add one row per task
-    for task in tasks:
-        row = t1.add_row()
-        c = row.cells
-        for i, w in enumerate(_COL_W):
-            c[i].width = Cm(w)
-
-        # Col 0 — Task + scope
-        _run(c[0].paragraphs[0], task.task, bold=True, size_pt=_SZ)
-        if task.scope:
-            _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY, size_pt=_SZ)
-
-        # Col 1 — Hazards (genuine hazard descriptions, bulleted)
-        _hazard_cell(c[1], task, size_pt=_SZ)
-
-        # Col 2 — Risk Pre (10pt bold)
-        _risk_cell(c[2], task.risk_pre or "", size_pt=10)
-
-        # Col 3 — Controls
-        _controls_cell(c[3], task, size_pt=_SZ)
-
-        # Col 4 — Risk Post (10pt bold)
-        _risk_cell(c[4], task.risk_post or "", size_pt=10)
-
-        # Col 5 — Responsibility
-        _responsibility_cell(c[5], task, size_pt=_SZ)
-
-        # Col 6 — CCVS code (validated)
-        p6 = c[6].paragraphs[0]
-        p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=_SZ)
-
-    # ── Table 3: Risk matrix — font only (content untouched) ────────────
-    t3 = doc.tables[3]
-    for row in t3.rows:
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT
-                    run.font.size = Pt(_SZ)
-
-    # ── Table 4: Legislation ────────────────────────────────────────────
-    t4 = doc.tables[4]
-
-    # Set all existing runs to Aptos 9pt (content untouched)
-    for row in t4.rows:
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT
-                    run.font.size = Pt(_SZ)
-
-    # Jurisdiction-aware legislation
-    _base_parts = jur["base_legislation_string"].split(" \u2014 ")
-    _BASE_LEGISLATION = [p.strip() for p in _base_parts if p.strip()]
-
-    reg_notes = inference.get("regulatory_notes", [])
-    jur_notes = inference.get("jurisdiction_notes", [])
-    # Deduplicate regulatory notes against base legislation
-    _cleaned_notes = []
-    _base_lower = [b.lower() for b in _BASE_LEGISLATION]
-    for n in reg_notes + jur_notes:
-        if n.lower() in _base_lower:
-            continue
-        if n in _cleaned_notes:
-            continue
-        cleaned = n.strip()
-        if jurisdiction == "AU":
-            # Normalise Model Act references to NSW-specific
-            cleaned = (cleaned
-                       .replace("Model WHS Act 2011", "WHS Act 2011 (NSW)")
-                       .replace("Model WHS Regulations 2017", "WHS Regulation 2017 (NSW)")
-                       .replace("Safe Work Australia Codes of Practice", "SafeWork NSW Codes of Practice"))
-        if cleaned and cleaned.lower() not in _base_lower and cleaned not in _cleaned_notes:
-            _cleaned_notes.append(cleaned)
-    all_legislation = _BASE_LEGISLATION + _cleaned_notes
-    cell = t4.cell(0, 1)
-    for para in cell.paragraphs:
-        para.clear()
-    # Single paragraph with bold em-dash separators
-    p = cell.paragraphs[0]
-    for i, note in enumerate(all_legislation):
-        if i > 0:
-            _run(p, " \u2014 ", bold=True, size_pt=_SZ)
-        _run(p, note, size_pt=_SZ)
-
-    # ── Table 5: PPE and requirements ───────────────────────────────────
-    t5 = doc.tables[5]
-    _set_table_cell_margins(t5)
-
-    # Re-format Table 5 existing text at 9pt (both columns, all rows)
-    for row in t5.rows:
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT
-                    run.font.size = Pt(_SZ)
-
-    def _fill_req_cell(row_idx: int, items: list[str]) -> None:
-        """Populate col 1 of Table 5 — single paragraph, bold em-dash separated."""
-        cell = t5.cell(row_idx, 1)
-        # Always clear all paragraphs first (remove template placeholders)
-        for pi in range(len(cell.paragraphs) - 1, 0, -1):
-            cell.paragraphs[pi]._element.getparent().remove(cell.paragraphs[pi]._element)
-        cell.paragraphs[0].clear()
-        if not items:
-            _run(cell.paragraphs[0], "\u2014", size_pt=_SZ)
-            _strip_para_indent(cell.paragraphs[0])
-            return
-        p = cell.paragraphs[0]
-        for i, item in enumerate(items):
-            if i > 0:
-                _run(p, " \u2014 ", bold=True, size_pt=_SZ)
-            _run(p, item, size_pt=_SZ)
-        _strip_para_indent(p)
-
-    # Row 0: PPE — always include baseline, then add inference PPE
-    from vocab.swms_vocabulary import enforce_vocabulary as _enforce_vocab
-    # Determine glove type from job context
-    _job_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
-    _CHEM_KW = ("epoxy", "resin", "hardener", "solvent", "chemical", "acid", "alkali",
-                "caustic", "adhesive", "primer", "paint", "coating", "membrane",
-                "sealant", "grout", "mortar", "waterproof")
-    _has_chemicals = any(kw in _job_text for kw in _CHEM_KW)
-    _glove_type = ("chemical-resistant gloves (nitrile or task-appropriate)"
-                   if _has_chemicals else "cut-resistant gloves")
-    _BASELINE_PPE = [
-        "steel-capped footwear",
-        "hi-viz shirt or vest",
-        "eye protection",
-        "hearing protection (>85dB)",
-        _glove_type,
-    ]
-    raw_ppe = inference.get("ppe", [])
-    # Enforce vocabulary on each raw PPE item
-    enforced_ppe = [_enforce_vocab(item) for item in raw_ppe]
-    # Build deduplicated PPE list: baseline first, then extras
-    # Normalize keys to catch variants like "safety boots" vs "footwear"
-    _PPE_NORM = {
-        "steel-capped footwear": "footwear", "steel-capped safety boots": "footwear",
-        "safety boots": "footwear", "steel cap boots": "footwear",
-        "steel-capped boots": "footwear", "safety footwear": "footwear",
-        "hi-viz shirt or vest": "hiviz", "hi-viz vest or shirt": "hiviz",
-        "high-visibility vest": "hiviz", "high-visibility vest or shirt": "hiviz",
-        "hi-vis vest": "hiviz", "hi-vis shirt": "hiviz", "hi-vis vest or shirt": "hiviz",
-        "eye protection": "eye", "safety glasses": "eye", "safety goggles": "eye",
-        "hearing protection": "hearing", "hearing protection (>85db)": "hearing",
-        "ear plugs": "hearing", "ear muffs": "hearing",
-    }
-    def _ppe_key(item):
-        base = item.lower().split("\u2014")[0].strip()
-        return _PPE_NORM.get(base, base)
-    seen_keys = set()
-    final_ppe = []
-    for item in _BASELINE_PPE + enforced_ppe:
-        key = _ppe_key(item)
-        if key not in seen_keys:
-            seen_keys.add(key)
-            final_ppe.append(item)
-    _fill_req_cell(0, final_ppe)
-    # Row 1: Permits / certificates / approvals
-    _fill_req_cell(1, inference.get("permits", []))
-    # Row 2: Site-specific training
-    _fill_req_cell(2, inference.get("qualifications", []))
-    # Row 3: Certifications / HRW licences
-    _fill_req_cell(3, inference.get("certifications", []))
-    # Row 5 first (need maintenance items to derive plant list)
-    # Row 5: Maintenance checks — auto-populate from tasks and inference
-    _MAINTENANCE_LOOKUP = {
-        "ewp": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls, tyres, outriggers checked \u2014 log book current",
-        "elevated work platform": "EWP \u2014 pre-start checklist completed \u2014 boom, basket, controls inspected",
-        "mobile crane": "Mobile crane \u2014 pre-start checklist \u2014 outriggers, boom, load chart, slew ring \u2014 engineer ground bearing certificate sighted",
-        "crane": "Crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
-        "franna": "Franna crane \u2014 pre-start checklist \u2014 outriggers, load chart, slew ring inspected",
-        "angle grinder": "Angle grinder \u2014 check guard intact and disc undamaged before each use \u2014 RCD test tag current (AS/NZS 3012 3-monthly)",
-        "grinder": "Grinder \u2014 guard intact, disc undamaged, RCD test tag current (AS/NZS 3012 3-monthly)",
-        "hepa vacuum": "HEPA vacuum \u2014 check filter condition before each shift",
-        "vacuum": "Vacuum \u2014 check filter condition before use",
-        "mixing containers": "Mixing containers \u2014 clean and dry before use",
-        "scaffold": "Scaffold \u2014 daily pre-use inspection by competent person \u2014 tag current",
-        "ladder": "Ladder \u2014 AS/NZS 1892 compliant \u2014 inspect feet, rungs, locks before each use",
-        "scissor lift": "Scissor lift \u2014 pre-start checklist completed \u2014 platform, guardrails, controls checked",
-        "boom lift": "Boom lift \u2014 pre-start checklist completed \u2014 boom, basket, controls, outriggers checked",
-        "forklift": "Forklift \u2014 pre-start checklist \u2014 mast, forks, brakes, lights, seatbelt checked",
-        "concrete saw": "Concrete saw \u2014 guard intact, blade undamaged, water supply connected",
-        "jackhammer": "Jackhammer \u2014 inspect chisel retention, check hose connections before each use",
-    }
-    _task_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
-    _plant_text = " ".join(p.lower() for p in inference.get("plant", []))
-    maint_items = list(project_meta.get("maintenance_checks", []))
-    if not maint_items:
-        # Auto-generate from plant list + task text
-        _search_text = _task_text + " " + _plant_text
-        _seen_maint_names = set()
-        for kw, entry in _MAINTENANCE_LOOKUP.items():
-            if kw in _search_text:
-                # Deduplicate by equipment name (text before first em-dash)
-                equip_name = entry.split("\u2014")[0].strip().lower()
-                if equip_name not in _seen_maint_names:
-                    maint_items.append(entry)
-                    _seen_maint_names.add(equip_name)
-        # Fallback checks for common items
-        if any(k in _task_text for k in ("epoxy", "resin", "coating")) and not any("Mixing" in m for m in maint_items):
-            maint_items.append("Mixing containers \u2014 clean and dry before use")
-    _fill_req_cell(5, maint_items)
-
-    # Row 4: Plant and equipment — merge inference + project_meta + maintenance-derived
-    plant_items = list(inference.get("plant", []))
-    for item in project_meta.get("plant_equipment", project_meta.get("plant", [])):
-        if item not in plant_items:
-            plant_items.append(item)
-    # Extract plant names from maintenance entries (text before " — check" or first em-dash)
-    for mitem in maint_items:
-        plant_name = mitem.split("\u2014")[0].strip()
-        if plant_name and plant_name.lower() not in [p.lower() for p in plant_items]:
-            plant_items.append(plant_name)
-    # Also scan task controls for common plant keywords
-    _PLANT_KEYWORDS = {
-        "grinder": "Angle grinder", "angle grinder": "Angle grinder",
-        "ewp": "EWP (elevated work platform)", "scissor lift": "Scissor lift",
-        "vacuum": "HEPA vacuum", "hepa vacuum": "HEPA vacuum",
-        "saw": "Power saw", "jackhammer": "Jackhammer",
-        "drill": "Power drill", "mixer": "Mixing equipment",
-    }
-    _task_text_lower = _task_text  # already computed above
-    for kw, pname in _PLANT_KEYWORDS.items():
-        if kw in _task_text_lower and pname.lower() not in [p.lower() for p in plant_items]:
-            plant_items.append(pname)
-    if not plant_items:
-        plant_items = ["As per task requirements \u2014 see controls column"]
-    _fill_req_cell(4, plant_items)
-
-    # Row 6: Hazardous substances — auto-populate from task content and inference
-    haz_sub_items = list(project_meta.get("hazardous_substances", []))
-    if not haz_sub_items:
-        _has_silica = any("silica" in n.lower() for n in inference.get("regulatory_notes", []))
-        _has_epoxy_sub = any(k in _task_text for k in ("epoxy", "resin"))
-        _has_primer = any(k in _task_text for k in ("primer", "solvent"))
-        _has_tiltup = hrcw_flags.get("tiltup_precast", False)
-        _has_crane_ewp = any(k in _plant_text for k in ("crane", "ewp", "boom", "forklift"))
-        if _has_silica:
-            haz_sub_items.append(
-                "Respirable crystalline silica (RCS) \u2014 SDS on site "
-                "\u2014 WES 0.05 mg/m\u00b3 TWA \u2014 P2 minimum, half-face RPE for prolonged exposure"
-            )
-        if _has_epoxy_sub:
-            haz_sub_items.append(
-                "Epoxy resin (Part A) \u2014 SDS on site \u2014 skin/eye sensitiser "
-                "\u2014 chemical-resistant gloves, eye protection mandatory"
-            )
-            haz_sub_items.append(
-                "Epoxy hardener (Part B) \u2014 SDS on site \u2014 corrosive "
-                "\u2014 chemical resistant gloves, eye protection"
-            )
-        if _has_primer:
-            haz_sub_items.append(
-                "Epoxy primer \u2014 SDS on site \u2014 flammable liquid "
-                "\u2014 store per AS 1940, ventilate during use"
-            )
-        if _has_tiltup:
-            haz_sub_items.append(
-                "Concrete release agent \u2014 SDS on site \u2014 skin/eye irritant "
-                "\u2014 nitrile gloves and eye protection required"
-            )
-        if _has_crane_ewp:
-            haz_sub_items.append(
-                "Hydraulic fluid \u2014 SDS on site \u2014 skin sensitiser "
-                "\u2014 gloves required"
-            )
-    if not haz_sub_items:
-        haz_sub_items = [
-            "No hazardous substances identified for this scope \u2014 "
-            "confirm with site supervisor before work commences"
-        ]
-    _fill_req_cell(6, haz_sub_items)
-
-    # Row 7: WAH risk assessment — ALWAYS populated (mandatory text)
-    # Use same pattern as _fill_req_cell: keep paragraphs[0], clear it, add more
-    _wah_cell = t5.cell(7, 1)
-    for pi in range(len(_wah_cell.paragraphs) - 1, 0, -1):
-        _wah_cell.paragraphs[pi]._element.getparent().remove(
-            _wah_cell.paragraphs[pi]._element
-        )
-    _wah_cell.paragraphs[0].clear()
-
-    _wah_texts = [
-        (True, "Fall prevention hierarchy applied: eliminate > isolate > minimise. "
-               "Guardrails preferred. Fall restraint before fall arrest. "
-               "Rescue plan documented for all harness work. "
-               "Working at Heights licence/training verified before elevated work commences."),
-        (False, "A-frame ladders may be used for short-duration tasks where a "
-                "site-specific Working at Heights Risk Assessment (WaH RA) confirms "
-                "ladder use is reasonably practicable; ladder must be AS/NZS 1892 "
-                "compliant, stable, fully opened and used without overreaching."),
-        (False, "Working at Heights Risk Assessment (if >2m): "
-                "Height of task: _______ duration of task: _______ "
-                "ground stable and level: Yes / No, "
-                "heavy exertion required: Yes / No, "
-                "overreaching required: Yes / No, "
-                "scaffold reasonably practicable: Yes / No, "
-                "EWP reasonably practicable: Yes / No, "
-                "A-frame ladder appropriate control: Yes / No "
-                "Assessed by: ________________ Date: ________ "
-                "This creates documentary evidence."),
-    ]
-
-    for i, (is_bold, text) in enumerate(_wah_texts):
-        p = _wah_cell.paragraphs[0] if i == 0 else _wah_cell.add_paragraph()
-        _run(p, text, bold=is_bold, size_pt=_SZ)
-        _strip_para_indent(p)
-
-    # ── Table 7: CCVS monitoring ────────────────────────────────────────
-    t7 = doc.tables[7]
-    _set_table_cell_margins(t7)
-
-    # Re-format Table 7 header row at 9pt
-    for i, h in enumerate(_MON_HEADERS):
-        cell = t7.rows[0].cells[i]
-        for para in cell.paragraphs:
-            para.clear()
-        _header_cell(cell, h, size_pt=_SZ)
-
-    # Remove blank data row (row 1), keep header
-    if len(t7.rows) > 1:
-        tr = t7.rows[1]._tr
-        tr.getparent().remove(tr)
-
-    # Add monitoring rows — only tasks with a real CCVS code and monitoring data
-    for task in tasks:
-        if task.monitoring is None:
-            continue
-        if validate_ccvs_code(task.ccvs_code or "N/A") == "N/A":
-            continue
-        m = task.monitoring
-        row = t7.add_row()
-        vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
-        for i, w in enumerate(_MON_W):
-            row.cells[i].width = Cm(w)
-        for i, val in enumerate(vals):
-            _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
-
-    # ── Footer ─────────────────────────────────────────────────────────
-    import re as _re
-    # Build SWMS ID slug from site address (preferred) or project_name
-    _address = (project_meta.get("project_address")
-                or project_meta.get("site_name")
-                or project_meta.get("site_address", ""))
-    if _address:
-        # "218 Vincent Rd, Cranebrook NSW 2749" → "218-Vincent-Rd-Cranebrook"
-        _slug_parts = _address.split(",")[0].strip()
-        _slug = _re.sub(r'[^a-zA-Z0-9\s]', '', _slug_parts)
-        _slug = _re.sub(r'\s+', '-', _slug.strip())
-        # Add suburb if present after comma
-        _suburb_match = _re.search(r',\s*([A-Za-z]+)', _address)
-        if _suburb_match:
-            _slug += '-' + _suburb_match.group(1)
-    else:
-        _slug = project_meta.get("project_name", "UNKNOWN")
-    # Strip unsafe filename characters
-    _slug = _re.sub(r'[\\/:*?"<>|]', "-", _slug)
-    # Format date as DDMMYYYY
-    footer_date = project_meta.get("date", "")
-    if not footer_date:
-        footer_date = date.today().strftime("%d%m%Y")
-    else:
-        footer_date = footer_date.replace("/", "")
-    # Append jurisdiction act abbreviation
-    _JUR_FOOTER = {"AU": "WHS Act 2011", "NZ": "HSWA 2015", "UK": "CDM 2015", "US": "OSHA 29 CFR 1926", "CA": "Canada OHS"}
-    jur_ref = _JUR_FOOTER.get(jurisdiction, "")
-    footer_text = f"SWMS-{_slug}-{footer_date}-V01"
-    if jur_ref:
-        footer_text += f" | {jur_ref}"
-
-    section = doc.sections[0]
-    footer = section.footer
-    footer.is_linked_to_previous = False
-    if footer.paragraphs:
-        fp = footer.paragraphs[0]
-        fp.clear()
-    else:
-        fp = footer.add_paragraph()
-    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    _run(fp, footer_text, size_pt=_SZ)
+    # ── Populate tables via builder functions ─────────────────────────────
+    _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
+    _build_task_table(doc, tasks)
+    _format_risk_matrix(doc)
+    _fill_legislation_table(doc, inference, jur, jurisdiction)
+    _fill_requirements_table(doc, tasks, inference, project_meta)
+    _build_ccvs_table(doc, tasks)
+    _fill_signoff_table(doc)
+    _build_footer(doc, project_meta, jur, jurisdiction, doc_date)
 
     # ── Post-render validation ────────────────────────────────────────
     warnings = validate_output(doc)
