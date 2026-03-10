@@ -100,10 +100,20 @@ app.add_middleware(SecurityHeadersMiddleware)
 _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 _STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 templates = Jinja2Templates(directory=_TEMPLATE_DIR)
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+class CachedStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "public, max-age=31536000"
+        return response
+
+app.mount("/static", CachedStaticFiles(directory=_STATIC_DIR), name="static")
 
 import sqlite3
 DB_PATH = os.path.join(_ROOT, "db", "gatekeeper.db")
+
+
+def _html_response(path: str) -> FileResponse:
+    return FileResponse(path, headers={"Cache-Control": "no-cache"})
 
 
 def _get_approved_tasks() -> list[dict]:
@@ -190,28 +200,28 @@ _FRONTEND_DIR = os.path.join(_ROOT, "frontend")
 
 @app.get("/app", response_class=HTMLResponse)
 async def serve_app():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
 @app.get("/swms", response_class=HTMLResponse)
 async def serve_swms():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "app.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "app.html"))
 
 
 @app.get("/ra", response_class=HTMLResponse)
 async def serve_ra():
     # RA spec TBD — serve dashboard for now
-    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
 @app.get("/contact", response_class=HTMLResponse)
 async def serve_contact():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "contact.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "contact.html"))
 
 
 @app.post("/contact")
@@ -231,7 +241,7 @@ async def submit_contact(body: ContactRequest):
 async def serve_terms():
     terms_path = os.path.join(_FRONTEND_DIR, "terms.html")
     if os.path.isfile(terms_path):
-        return FileResponse(terms_path)
+        return _html_response(terms_path)
     return HTMLResponse("<h1>Terms &amp; Conditions</h1><p>Coming soon.</p>")
 
 
@@ -251,14 +261,17 @@ PRINCIPAL_CONTRACTORS = [
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "login.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "login.html"))
 
 
 @app.get("/tasks")
 async def list_tasks():
     """Return all approved tasks as JSON."""
     tasks = _get_approved_tasks()
-    return JSONResponse(content={"tasks": tasks, "count": len(tasks)})
+    return JSONResponse(
+        content={"tasks": tasks, "count": len(tasks)},
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @app.post("/generate")
@@ -316,7 +329,10 @@ async def generate(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return JSONResponse(
+        content={"status": "ok"},
+        headers={"Cache-Control": "public, max-age=60"},
+    )
 
 
 @app.post("/upload/extract")
@@ -452,9 +468,11 @@ def infer_endpoint(
     """
     if document_type == "ra":
         from core.inference_matrix import infer_to_dict_ra
-        return infer_to_dict_ra(q, jurisdiction=jurisdiction)
-    from core.inference_matrix import infer_to_dict
-    return infer_to_dict(q, jurisdiction=jurisdiction)
+        result = infer_to_dict_ra(q, jurisdiction=jurisdiction)
+    else:
+        from core.inference_matrix import infer_to_dict
+        result = infer_to_dict(q, jurisdiction=jurisdiction)
+    return JSONResponse(content=result, headers={"Cache-Control": "private, max-age=60"})
 
 
 @app.get("/generate/route")
@@ -844,7 +862,8 @@ def check_jurisdiction(q: str, selected: str = "AU"):
     Detect if job description contains signals for a different jurisdiction.
     """
     from vocab.standards_registry import detect_jurisdiction_from_query
-    return detect_jurisdiction_from_query(q, selected)
+    result = detect_jurisdiction_from_query(q, selected)
+    return JSONResponse(content=result, headers={"Cache-Control": "private, max-age=60"})
 
 
 if __name__ == "__main__":
