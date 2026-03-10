@@ -41,3 +41,4 @@ src/__pycache__/
 
 # Database
 db/gatekeeper.db
+*.zip
