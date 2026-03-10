@@ -64,6 +64,40 @@ def resolve_field(value: str, field_key: str) -> tuple[str, bool]:
     return placeholder, True
 
 
+def _summarise_work_activity(text: str, max_lines: int = 8, max_chars: int = 800) -> str:
+    """Condense work activity text to max_lines / max_chars using Claude API.
+    Always returns complete sentences only — never truncates mid-word or mid-sentence."""
+    try:
+        import anthropic
+        client = anthropic.Anthropic()
+        resp = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=400,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Condense this construction work activity description to "
+                    f"{max_lines} lines and under {max_chars} characters. "
+                    f"Use complete sentences only. Keep all key tasks, trades, "
+                    f"and hazard categories. Return only the condensed text, "
+                    f"no preamble:\n\n{text}"
+                ),
+            }],
+        )
+        result = resp.content[0].text.strip()
+    except Exception:
+        result = text
+    # Enforce hard caps: 800 chars at last full stop, 8 lines
+    if len(result) > max_chars:
+        truncated = result[:max_chars]
+        last_stop = truncated.rfind(".")
+        result = truncated[:last_stop + 1] if last_stop > 0 else truncated.rsplit(" ", 1)[0]
+    lines = result.split("\n")
+    if len(lines) > max_lines:
+        result = "\n".join(lines[:max_lines])
+    return result
+
+
 # ── Text sanitisation — catches duplicate tokens before they reach the document ──
 _DUPLICATE_TOKENS = [
     ("steel-capped steel-capped", "steel-capped"),
@@ -655,9 +689,12 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
             para.clear()
         _run(cell.paragraphs[0], value)
 
-    pcbu = (project_meta.get("pcbu_name")
-            or project_meta.get("pcbu")
-            or project_meta.get("principal_contractor", ""))
+    _raw_pcbu = (project_meta.get("pcbu_name")
+                 or project_meta.get("pcbu")
+                 or project_meta.get("principal_contractor", ""))
+    pcbu = sanitise_text(_raw_pcbu)
+    if not pcbu or (pcbu == pcbu.lower() and " " not in pcbu) or len(pcbu) < 4:
+        pcbu = "[Insert PCBU here]"
     manager = (project_meta.get("manager_name")
                or project_meta.get("manager", ""))
     site_name = (project_meta.get("project_address")
@@ -672,7 +709,9 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
                          or project_meta.get("project_name", ""))
         if site_name and site_name in work_activity:
             work_activity = work_activity.replace(site_name, "").strip(" ,at-")
-        work_activity = work_activity[:120]
+    # Cap work activity at 8 lines; summarise with Claude if over
+    if work_activity and work_activity.count("\n") >= 8:
+        work_activity = _summarise_work_activity(work_activity)
 
     # Row 0: PCBU + Site
     _set_cover(0, 1, pcbu)
@@ -1186,22 +1225,30 @@ def render_swms_document(
             "Wrong template file — render_swms_document requires SWMS-260306-V1.docx"
         )
 
-    # ── Body paragraph 0: Description ────────────────────────────────────
-    _desc_text = (project_meta.get("work_activity_summary")
-                  or project_meta.get("work_activity")
-                  or project_meta.get("description")
-                  or project_meta.get("project_name", ""))
-    _p0_address = (project_meta.get("project_address")
-                   or project_meta.get("site_address", ""))
-    if _p0_address and _p0_address in _desc_text:
-        _desc_text = _desc_text.replace(_p0_address, "").strip(" ,at-")
-    if _desc_text and doc.paragraphs:
+    # ── Body paragraph 0: Description (title-only, max 100 chars) ───────
+    _p0_text = (project_meta.get("title") or "").strip()
+    if not _p0_text:
+        # Fallback: first sentence of description, capped
+        _fallback = (project_meta.get("work_activity_summary")
+                     or project_meta.get("work_activity")
+                     or project_meta.get("description")
+                     or project_meta.get("project_name", ""))
+        _p0_address = (project_meta.get("project_address")
+                       or project_meta.get("site_address", ""))
+        if _p0_address and _p0_address in _fallback:
+            _fallback = _fallback.replace(_p0_address, "").strip(" ,at-")
+        _p0_text = _fallback.split(". ")[0].split(".\n")[0].rstrip(".") if _fallback else ""
+    # Hard cap 100 chars, truncate at last word boundary
+    if len(_p0_text) > 100:
+        _p0_text = _p0_text[:100].rsplit(" ", 1)[0]
+    if _p0_text and doc.paragraphs:
         p0 = doc.paragraphs[0]
         if "[Insert description here]" in p0.text:
             p0.clear()
-            _run(p0, f"\u25a0 Description: {_desc_text}", bold=True, size_pt=16)
+            _run(p0, f"\u25a0 Description: {_p0_text}", bold=True, size_pt=16)
         p0.paragraph_format.space_after = Pt(0)
         p0.paragraph_format.space_before = Pt(0)
+        p0.paragraph_format.keep_with_next = True
 
     # Remove any page breaks between P0 and Table 0
     for para in doc.paragraphs:

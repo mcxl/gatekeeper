@@ -38,6 +38,7 @@ Analyse this SWMS and return a JSON object with exactly this structure:
   "manager_name": "manager or supervisor name found, or empty string",
   "principal_contractor": "PC name found, or empty string",
   "jurisdiction": "AU",
+  "title": "3-6 word job title only e.g. Painting project — 23 Bill St Kiama",
   "work_activity_summary": "one sentence — what work is being done",
   "description": "detailed rewritten job description capturing all tasks,
                   trade types, location context, HRCW categories, materials
@@ -70,6 +71,7 @@ Extract the work scope and return a JSON object with exactly this structure:
   "manager_name": "project manager or supervisor if found, else empty string",
   "principal_contractor": "principal contractor if found, else empty string",
   "jurisdiction": "AU",
+  "title": "3-6 word job title only e.g. Painting project — 23 Bill St Kiama",
   "work_activity_summary": "one sentence — what construction work is being done",
   "description": "detailed job description capturing: all trade types and work
                   activities, access methods (scaffold/EWP/ladder), materials
