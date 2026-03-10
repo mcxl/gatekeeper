@@ -8,26 +8,37 @@
     document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-MRKVHVKF6Q"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google Tag Manager - loads after interaction or 5s -->
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'G-MRKVHVKF6Q');
+  function loadGTM() {
+    if (window._gtmLoaded) return;
+    window._gtmLoaded = true;
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-MRKVHVKF6Q';
+    s.async = true;
+    document.head.appendChild(s);
+  }
+  ['click','scroll','keydown','touchstart'].forEach(function(e) {
+    window.addEventListener(e, loadGTM, {once: true, passive: true});
+  });
+  setTimeout(loadGTM, 5000);
 </script>
-<!-- Sentry Error Tracking -->
-<script async src="https://js.sentry-cdn.com/988efe01bc9f4fe5a4691a5d98566086.min.js" crossorigin="anonymous"></script>
+<!-- Sentry Error Tracking - deferred -->
+<script defer src="https://js.sentry-cdn.com/988efe01bc9f4fe5a4691a5d98566086.min.js" crossorigin="anonymous"></script>
 <script>
-  Sentry.onLoad(function() {
+  window.sentryOnLoad = function() {
     Sentry.init({
       environment: 'production',
       tracesSampleRate: 0.2,
     });
-  });
+  };
 </script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="/static/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Safe Method">
@@ -39,7 +50,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap"></noscript>
-<link rel="preload" as="font" href="https://fonts.gstatic.com/s/fraunces/v24/6NUu8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c.woff2" type="font/woff2" crossorigin>
 <style>
 :root {
   --bg-primary: #ffffff;
@@ -69,7 +79,7 @@
   --btn-nav-hover: #e0e0e0;
   --divider-color: #e0e0e0;
   --footer-bg: #000000;
-  --footer-text: #888888;
+  --footer-text: #aaaaaa;
   --footer-text-faint: #666666;
 }
 
@@ -101,7 +111,7 @@
   --btn-nav-hover: #e0e0e0;
   --divider-color: #333333;
   --footer-bg: #000000;
-  --footer-text: #888888;
+  --footer-text: #aaaaaa;
   --footer-text-faint: #555555;
 }
 
@@ -493,6 +503,7 @@ body {
 </style>
 </head>
 <body>
+<main>
 
 <!-- Nav -->
 <nav class="nav fade fade-d1">
@@ -642,7 +653,8 @@ body {
 </section>
 
 <!-- Footer -->
-<footer class="footer">
+</main>
+  <footer class="footer">
   <div class="footer-left">&copy; 2026 Safe Method &mdash; Australian Construction Safety</div>
   <div class="footer-right"><a href="/contact" style="color:inherit;text-decoration:none">Contact Us</a> &mdash; Model WHS Act 2011 &mdash; Model WHS Regulations 2017 &mdash; Safe Work Australia</div>
 </footer>
