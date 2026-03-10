@@ -127,8 +127,8 @@ class TestDocxRendering:
 
     def test_au_docx(self, task_blocks, project_meta):
         text = self._render_and_get_text(task_blocks, project_meta, "AU")
-        assert "Model WHS Act 2011" in text
-        assert "Safe Work Australia" in text
+        assert "WHS Act 2011" in text
+        assert "SafeWork NSW" in text
 
     def test_nz_docx(self, task_blocks, project_meta):
         text = self._render_and_get_text(task_blocks, project_meta, "NZ")

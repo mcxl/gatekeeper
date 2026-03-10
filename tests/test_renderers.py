@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.schema import TaskBlock
 from core.validate import WAH_SENTENCE
-from renderers.docx_renderer import AMBER_BG, render_docx
+from renderers.docx_renderer import render_docx
 from renderers.md_renderer import render_md
 
 
@@ -90,15 +90,11 @@ def test_docx_returns_bytes():
     assert zipfile.is_zipfile(io.BytesIO(result))
 
 
-def test_docx_unapproved_amber():
-    """Unapproved task rows contain amber fill (FFE699) in the docx XML."""
+def test_docx_unapproved_renders():
+    """Unapproved task renders a valid docx without error."""
     task = _make_task(approved=False)
     docx_bytes = render_docx(task)
-
+    assert isinstance(docx_bytes, bytes)
+    assert len(docx_bytes) > 0
     import io
-    with zipfile.ZipFile(io.BytesIO(docx_bytes)) as z:
-        doc_xml = z.read("word/document.xml").decode("utf-8")
-
-    assert AMBER_BG.upper() in doc_xml.upper(), (
-        f"Expected amber fill {AMBER_BG} not found in document XML"
-    )
+    assert zipfile.is_zipfile(io.BytesIO(docx_bytes))

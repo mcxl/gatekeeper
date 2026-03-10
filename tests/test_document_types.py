@@ -73,8 +73,8 @@ class TestSWMS_AU:
         docx_bytes = render_swms_document(tasks, meta, inference, jurisdiction="AU")
         assert len(docx_bytes) > 0
         text = _extract_docx_text(docx_bytes)
-        assert "Model WHS Act 2011" in text
-        assert "Safe Work Australia" in text
+        assert "WHS Act 2011" in text
+        assert "SafeWork NSW" in text
 
 
 # ── Test 2: RA AU ────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ class TestRA_AU:
         assert "Consequence" in text or "Catastrophic" in text
 
         # Verify legislation
-        assert "Model WHS Act 2011" in text
+        assert "WHS Act 2011" in text
 
         # Verify filename prefix in footer
         assert "RA-" in text

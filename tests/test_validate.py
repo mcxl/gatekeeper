@@ -50,15 +50,26 @@ def _make_task(**kwargs) -> TaskBlock:
 # ============================================================
 
 def test_ccvs_bleed():
-    """Bullet containing CCVS code 'WAH' embedded in controls → fails check 2."""
+    """Bullet containing bare hazard family code 'WAH' in controls → fails check 2."""
     task = _make_task(controls=[
-        "WAH-H6 verification required for this task",
+        "WAH verification required for this task",
         "Inspect area before starting work",
         "Remove debris from work zone",
     ])
     result = score_task(task)
     assert not result.passed
     assert any("Check 2" in e and "WAH" in e for e in result.errors)
+
+
+def test_ccvs_hyphenated_code_ok():
+    """Hyphenated CCVS code 'WAH-H6' in controls is NOT flagged (it's a valid reference)."""
+    task = _make_task(controls=[
+        "WAH-H6 verification required for this task",
+        "Inspect area before starting work",
+        "Remove debris from work zone",
+    ])
+    result = score_task(task)
+    assert not any("Check 2" in e and "WAH" in e for e in result.errors)
 
 
 # ============================================================

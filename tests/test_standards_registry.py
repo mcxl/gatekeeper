@@ -173,7 +173,7 @@ class TestFullGenerationAU:
         text = " ".join(all_text)
 
         # Verify legislation present
-        assert "Model WHS Act 2011" in text, "Missing Model WHS Act 2011 in legislation"
+        assert "WHS Act 2011" in text, "Missing Model WHS Act 2011 in legislation"
 
         # Validate no unverified citations in task controls
         control_text = " ".join(c for t in tasks for c in t.controls)

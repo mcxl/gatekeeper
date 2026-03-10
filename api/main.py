@@ -41,8 +41,10 @@ from core.auth import (
     signup, login, refresh_session, sign_out, reset_password,
     FRONTEND_URL,
 )
+from api.upload_routes import router as upload_router
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
+app.include_router(upload_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,7 +139,23 @@ _FRONTEND_DIR = os.path.join(_ROOT, "frontend")
 
 @app.get("/app", response_class=HTMLResponse)
 async def serve_app():
-    return FileResponse(os.path.join(_FRONTEND_DIR, "dev.html"))
+    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def serve_dashboard():
+    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+
+
+@app.get("/swms", response_class=HTMLResponse)
+async def serve_swms():
+    return FileResponse(os.path.join(_FRONTEND_DIR, "app.html"))
+
+
+@app.get("/ra", response_class=HTMLResponse)
+async def serve_ra():
+    # RA spec TBD — serve dashboard for now
+    return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
 @app.get("/terms", response_class=HTMLResponse)
@@ -240,7 +258,7 @@ async def upload_extract(
     Accept a file (PDF/DOCX/PNG/JPG) or JSON {text}, extract text,
     call Claude for structured field extraction, return fields.
     """
-    from core.extract import (
+    from core.document_extractor import (
         extract_from_text,
         extract_from_image,
         extract_text_from_pdf,
@@ -294,7 +312,7 @@ async def upload_swms_gap(file: UploadFile = File(...)):
     Accept an existing SWMS file (PDF/DOCX), extract its content,
     and return a gap analysis comparing it against Gatekeeper standards.
     """
-    from core.extract import extract_text_from_pdf, extract_text_from_docx
+    from core.document_extractor import extract_text_from_pdf, extract_text_from_docx
 
     try:
         file_bytes = await file.read()

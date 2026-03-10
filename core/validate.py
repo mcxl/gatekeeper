@@ -353,3 +353,60 @@ def score_task(task: TaskBlock) -> ValidationResult:
 
 # Alias used by generate.py and library.py
 validate_task = score_task
+
+
+# ============================================================
+# PRE-RENDER GUARDS (FIX_G)
+# ============================================================
+
+MAX_ADMIN = 20
+
+def guard_tasks(tasks: list) -> list:
+    """Apply pre-render guards to a list of task dicts/objects.
+
+    G1: Force wah_applicable=False if ccvs_code doesn't start with WAH.
+    G2: Cap admin controls at MAX_ADMIN items.
+    Returns the (mutated) list.
+    """
+    for task in tasks:
+        # G1 — WAH flag guard
+        ccvs = ""
+        if hasattr(task, "ccvs_code"):
+            ccvs = task.ccvs_code or ""
+        elif isinstance(task, dict):
+            ccvs = task.get("ccvs_code", "") or ""
+        if not ccvs.startswith("WAH"):
+            if hasattr(task, "wah_applicable"):
+                task.wah_applicable = False
+            elif isinstance(task, dict):
+                task["wah_applicable"] = False
+
+        # G2 — Admin controls hard cap
+        if hasattr(task, "admin"):
+            task.admin = task.admin[:MAX_ADMIN]
+        elif isinstance(task, dict) and "admin_controls" in task:
+            task["admin_controls"] = task["admin_controls"][:MAX_ADMIN]
+    return tasks
+
+
+HALLUCINATED_REFS = {"AS/NZS 3580", "AS/NZS3580"}
+
+def strip_hallucinated_refs(citations: list[str]) -> list[str]:
+    """Remove known hallucinated standard references (H2)."""
+    return [c for c in citations if c not in HALLUCINATED_REFS]
+
+
+def set_cell_fill(cell, colour: str = "FFFFFF") -> None:
+    """Set a cell's background fill colour (G3 — white cell fill)."""
+    from docx.oxml.ns import qn
+    from lxml import etree
+    tc = cell._tc
+    tcPr = tc.find(qn('w:tcPr'))
+    if tcPr is None:
+        tcPr = etree.SubElement(tc, qn('w:tcPr'))
+    shd = tcPr.find(qn('w:shd'))
+    if shd is None:
+        shd = etree.SubElement(tcPr, qn('w:shd'))
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), colour)
