@@ -158,6 +158,24 @@ async def serve_ra():
     return FileResponse(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
+@app.get("/contact", response_class=HTMLResponse)
+async def serve_contact():
+    return FileResponse(os.path.join(_FRONTEND_DIR, "contact.html"))
+
+
+@app.post("/contact")
+async def submit_contact(request: Request):
+    data = await request.json()
+    logger.info(
+        "CONTACT FORM: name=%s email=%s subject=%s message=%s",
+        data.get("name", ""),
+        data.get("email", ""),
+        data.get("subject", ""),
+        data.get("message", "")[:200],
+    )
+    return JSONResponse({"status": "ok"})
+
+
 @app.get("/terms", response_class=HTMLResponse)
 async def serve_terms():
     terms_path = os.path.join(_FRONTEND_DIR, "terms.html")

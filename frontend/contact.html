@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function() {
+    var t = localStorage.getItem('theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f59e0b">
+<meta name="description" content="Contact Safe Method — get in touch for support, feedback, or general enquiries about SWMS generation.">
+<title>Safe Method — Contact Us</title>
+<meta property="og:title" content="Contact Safe Method">
+<meta property="og:description" content="Get in touch for support, feedback, or general enquiries about SWMS generation.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4z' fill='%23f59e0b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #ffffff;
+  --bg-card: #f0f0f0;
+  --bg-card-hover: #e8e8e8;
+  --border-color: #dddddd;
+  --border-hover: #999999;
+  --text-primary: #000000;
+  --text-secondary: #555555;
+  --text-muted: #888888;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-text: #000000;
+  --nav-bg: #000000;
+  --nav-text: #ffffff;
+  --nav-border: #222222;
+  --nav-email: #aaaaaa;
+  --btn-logout-border: #666666;
+  --btn-logout-hover: #222222;
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --input-focus: #000000;
+  --input-placeholder: #aaaaaa;
+  --success-bg: #f0fff0;
+  --success-border: #ccffcc;
+  --success-text: #006600;
+  --error-bg: #fff0f0;
+  --error-border: #ffcccc;
+  --error-text: #cc0000;
+  --footer-bg: #000000;
+  --footer-border: #111111;
+  --footer-text: #555555;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --border-color: #222222;
+  --border-hover: #444444;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-muted: #888888;
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --accent-text: #000000;
+  --nav-bg: #000000;
+  --nav-text: #ffffff;
+  --nav-border: #222222;
+  --nav-email: #aaaaaa;
+  --btn-logout-border: #666666;
+  --btn-logout-hover: #222222;
+  --input-bg: #111111;
+  --input-border: #333333;
+  --input-focus: #f59e0b;
+  --input-placeholder: #666666;
+  --success-bg: #0a1a0a;
+  --success-border: #1a3a1a;
+  --success-text: #66cc66;
+  --error-bg: #1a0a0a;
+  --error-border: #3a1a1a;
+  --error-text: #ff6666;
+  --footer-bg: #000000;
+  --footer-border: #111111;
+  --footer-text: #555555;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Nav ────────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 64px; background: var(--nav-bg);
+  border-bottom: 1px solid var(--nav-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+}
+.nav-wordmark {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px; color: var(--nav-text);
+  text-decoration: none;
+}
+.nav-back {
+  font-size: 13px; color: var(--nav-email); text-decoration: none; margin-left: 20px;
+}
+.nav-back:hover { color: var(--nav-text); }
+.nav-right {
+  display: flex; align-items: center; gap: 16px;
+}
+.theme-toggle {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--nav-border); background: transparent;
+  color: var(--nav-text); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+
+/* ── Main content ───────────────────────────────── */
+.contact-container {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 100px 24px 60px;
+}
+
+.contact-heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 900; font-size: 28px;
+  color: var(--text-primary); margin-bottom: 8px;
+  text-align: center;
+}
+.contact-sub {
+  font-size: 15px; color: var(--text-muted);
+  text-align: center; margin-bottom: 40px;
+}
+
+/* ── Form ──────────────────────────────────────── */
+.contact-form {
+  width: 100%; max-width: 520px;
+}
+.field { margin-bottom: 20px; }
+.field label {
+  display: block; font-size: 12px; font-weight: 700;
+  color: var(--text-secondary); text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%; background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px; padding: 12px 14px;
+  font-family: 'Outfit', sans-serif; font-size: 14px;
+  color: var(--text-primary); outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--input-focus);
+}
+.field textarea { resize: vertical; min-height: 120px; }
+.field input::placeholder,
+.field textarea::placeholder {
+  font-style: italic; color: var(--input-placeholder);
+}
+.field select { cursor: pointer; }
+
+.btn-submit {
+  display: block; width: 100%; padding: 14px;
+  background: var(--accent); color: var(--accent-text);
+  font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700;
+  border: none; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-submit:hover { background: var(--accent-hover); }
+.btn-submit:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+
+/* ── Messages ──────────────────────────────────── */
+.form-message {
+  margin-top: 16px; padding: 14px 18px;
+  border-radius: 8px; font-size: 14px;
+  text-align: center; display: none;
+}
+.form-message.success {
+  display: block;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success-text);
+}
+.form-message.error {
+  display: block;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+}
+
+/* ── Footer ─────────────────────────────────────── */
+.footer {
+  background: var(--footer-bg); border-top: 1px solid var(--footer-border);
+  padding: 12px 32px; display: flex;
+  justify-content: space-between; align-items: center;
+}
+.footer-text { font-size: 10px; color: var(--footer-text); }
+.footer-text a { color: var(--footer-text); text-decoration: none; }
+.footer-text a:hover { color: var(--accent); }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav { padding: 0 16px; height: 56px; }
+  .nav-wordmark { font-size: 16px; }
+  .nav-back { margin-left: 12px; font-size: 12px; }
+  .contact-container { padding: 88px 20px 60px; }
+  .contact-heading { font-size: 24px; }
+}
+
+@media (max-width: 600px) {
+  .footer { flex-direction: column; gap: 8px; text-align: center; padding: 12px 16px; }
+}
+
+@media (max-width: 480px) {
+  .nav { padding: 0 12px; }
+  .nav-right { gap: 10px; }
+  .nav-back { font-size: 11px; margin-left: 8px; }
+  .contact-container { padding: 80px 16px 60px; }
+  .contact-heading { font-size: 20px; margin-bottom: 6px; }
+  .contact-sub { font-size: 13px; margin-bottom: 28px; }
+  .field input, .field textarea, .field select { padding: 12px; font-size: 16px; }
+  .btn-submit { min-height: 48px; }
+  .footer-text { font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div>
+    <a href="/app" class="nav-wordmark">Safe Method</a>
+    <a href="/app" class="nav-back" aria-label="Back to dashboard">&larr; Dashboard</a>
+  </div>
+  <div class="nav-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle dark mode"></button>
+  </div>
+</nav>
+
+<main class="contact-container">
+  <h1 class="contact-heading">Contact Us</h1>
+  <p class="contact-sub">We'd love to hear from you. Send us a message and we'll respond within 1 business day.</p>
+
+  <form class="contact-form" id="contact-form" onsubmit="submitForm(event)" novalidate>
+    <div class="field">
+      <label for="contact-name">Name</label>
+      <input type="text" id="contact-name" name="name" placeholder="Your full name" required aria-required="true">
+    </div>
+
+    <div class="field">
+      <label for="contact-email">Email</label>
+      <input type="email" id="contact-email" name="email" placeholder="you@example.com" required aria-required="true">
+    </div>
+
+    <div class="field">
+      <label for="contact-subject">Subject</label>
+      <select id="contact-subject" name="subject" required aria-required="true">
+        <option value="">Select a subject...</option>
+        <option value="General Enquiry">General Enquiry</option>
+        <option value="Technical Support">Technical Support</option>
+        <option value="Billing">Billing</option>
+        <option value="Feedback">Feedback</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="contact-message">Message</label>
+      <textarea id="contact-message" name="message" placeholder="How can we help?" required aria-required="true"></textarea>
+    </div>
+
+    <button type="submit" class="btn-submit" id="btn-submit">Send Message</button>
+    <div class="form-message" id="form-message" role="alert" aria-live="polite"></div>
+  </form>
+</main>
+
+<footer class="footer">
+  <span class="footer-text">&copy; 2026 Safe Method &mdash; AuditCo (mcxi.com.au)</span>
+  <span class="footer-text">Gatekeeper v1.0</span>
+</footer>
+
+<script>
+// ── Theme toggle ─────────────────────────────────
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+(function setThemeIcon() {
+  const t = document.documentElement.getAttribute('data-theme');
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+})();
+
+// ── Form submission ──────────────────────────────
+async function submitForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-submit');
+  const msg = document.getElementById('form-message');
+
+  const name = document.getElementById('contact-name').value.trim();
+  const email = document.getElementById('contact-email').value.trim();
+  const subject = document.getElementById('contact-subject').value;
+  const message = document.getElementById('contact-message').value.trim();
+
+  if (!name || !email || !subject || !message) {
+    msg.className = 'form-message error';
+    msg.textContent = 'Please fill in all fields.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  msg.className = 'form-message';
+  msg.style.display = 'none';
+
+  try {
+    const res = await fetch(window.location.origin + '/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, subject, message })
+    });
+    if (!res.ok) throw new Error('Failed to send');
+    msg.className = 'form-message success';
+    msg.textContent = "Thanks \u2014 we'll get back to you within 1 business day.";
+    document.getElementById('contact-form').reset();
+  } catch (err) {
+    msg.className = 'form-message error';
+    msg.textContent = 'Something went wrong. Please try again or email us directly.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Message';
+  }
+}
+</script>
+</body>
+</html>
