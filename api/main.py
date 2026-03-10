@@ -40,7 +40,7 @@ sentry_sdk.init(
     integrations=[FastApiIntegration(), StarletteIntegration()],
 )
 
-from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
@@ -54,9 +54,18 @@ from core.auth import (
     signup, login, refresh_session, sign_out, reset_password,
     FRONTEND_URL,
 )
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 from api.upload_routes import router as upload_router
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.include_router(upload_router)
 
 app.add_middleware(
@@ -140,12 +149,14 @@ class ContactRequest(BaseModel):
 # ============================================================
 
 @app.post("/auth/signup")
-async def auth_signup(body: AuthSignup):
+@limiter.limit("5/minute")
+async def auth_signup(request: Request, body: AuthSignup):
     result = signup(body.email, body.password, body.full_name)
     return result
 
 @app.post("/auth/login")
-async def auth_login(body: AuthLogin):
+@limiter.limit("10/minute")
+async def auth_login(request: Request, body: AuthLogin):
     result = login(body.email, body.password)
     return result
 
@@ -204,14 +215,14 @@ async def serve_contact():
 
 
 @app.post("/contact")
-async def submit_contact(request: Request):
-    data = await request.json()
+async def submit_contact(body: ContactRequest):
+    masked_email = body.email[:2] + "***@***" if body.email else ""
     logger.info(
         "CONTACT FORM: name=%s email=%s subject=%s message=%s",
-        data.get("name", ""),
-        data.get("email", ""),
-        data.get("subject", ""),
-        data.get("message", "")[:200],
+        body.name,
+        masked_email,
+        body.subject,
+        body.message[:200],
     )
     return JSONResponse({"status": "ok"})
 
@@ -333,6 +344,8 @@ async def upload_extract(
             text = body.get("text", "")
             if not text.strip():
                 return JSONResponse(content={"error": "Empty text"}, status_code=400)
+            if len(text) > 50000:
+                return JSONResponse(content={"error": "Text exceeds 50,000 character limit"}, status_code=400)
             fields = extract_from_text(text)
             return JSONResponse(content=fields)
 
@@ -425,7 +438,13 @@ Return ONLY the JSON object.""",
 # ============================================================
 
 @app.get("/infer")
-def infer_endpoint(q: str, jurisdiction: str = "AU", document_type: str = "swms"):
+@limiter.limit("30/minute")
+def infer_endpoint(
+    request: Request,
+    q: str = Query(..., max_length=500),
+    jurisdiction: Literal["AU", "NZ", "UK", "US", "CA"] = "AU",
+    document_type: Literal["swms", "ra"] = "swms",
+):
     """
     GET /infer?q=<work description>&jurisdiction=AU&document_type=swms
     Returns inferred WHS requirements. No Claude call — pure inference.
@@ -454,12 +473,13 @@ def check_route(description: str):
 
 
 @app.post("/generate/auto")
-async def generate_auto(request: dict, user: dict = Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def generate_auto(request: Request, body: dict, user: dict = Depends(get_current_user)):
     from core.orchestrator import generate_swms
     try:
-        description = request.get("description", "")
-        project_meta = request.get("project_meta", {})
-        jurisdiction = request.get("jurisdiction", "AU")
+        description = body.get("description", "")
+        project_meta = body.get("project_meta", {})
+        jurisdiction = body.get("jurisdiction", "AU")
         # Ensure work_activity and description are populated
         if not project_meta.get("work_activity"):
             # Use first sentence of description as work activity
@@ -470,8 +490,8 @@ async def generate_auto(request: dict, user: dict = Depends(get_current_user)):
         result = await generate_swms(
             description=description,
             project_meta=project_meta,
-            force_full=request.get("force_full", False),
-            force_simple=request.get("force_simple", False),
+            force_full=body.get("force_full", False),
+            force_simple=body.get("force_simple", False),
             jurisdiction=jurisdiction,
         )
         return result
