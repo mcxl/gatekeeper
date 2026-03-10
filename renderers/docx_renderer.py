@@ -35,6 +35,35 @@ BLACK     = RGBColor(0x00, 0x00, 0x00)
 WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
 GREY      = RGBColor(0x44, 0x44, 0x44)
 
+# ── Field placeholder fallback ────────────────────────────────────────────────────────────
+
+FIELD_PLACEHOLDERS = {
+    'pcbu_name':            '[Insert PCBU here]',
+    'manager_name':         '[Insert Manager name here]',
+    'project_address':      '[Insert Site Address Here]',
+    'description':          '[Insert description here]',
+    'principal_contractor': '[Insert Principal Contractor Name Here]',
+    'supervisor_name':      '[Insert Supervisor name here]',
+    'reviewer_name':        '[Insert Manager name here]',
+    'work_activity':        '[Insert work activity here]',
+    'swms_date':            None,  # use today's date — never placeholder
+}
+
+
+def resolve_field(value: str, field_key: str) -> tuple[str, bool]:
+    """
+    Returns (text_to_render, is_placeholder).
+    Caller applies italic formatting if is_placeholder is True.
+    """
+    if value and value.strip():
+        return value.strip(), False
+    if field_key == 'swms_date':
+        from datetime import date
+        return date.today().strftime('%d/%m/%Y'), False
+    placeholder = FIELD_PLACEHOLDERS.get(field_key, '[Insert here]')
+    return placeholder, True
+
+
 # ── Text sanitisation — catches duplicate tokens before they reach the document ──
 _DUPLICATE_TOKENS = [
     ("steel-capped steel-capped", "steel-capped"),

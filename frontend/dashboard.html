@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple SWMS — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #000000;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Nav ────────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 64px; background: #000000;
+  border-bottom: 1px solid #222222;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+}
+.nav-wordmark {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 18px; color: #ffffff;
+  text-decoration: none;
+}
+.nav-right {
+  display: flex; align-items: center; gap: 16px;
+}
+.nav-email {
+  font-size: 12px; color: #aaaaaa;
+}
+.btn-logout {
+  background: transparent; border: 1px solid #666666;
+  color: #ffffff; font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 500; padding: 6px 14px;
+  border-radius: 4px; cursor: pointer; transition: background 0.2s;
+}
+.btn-logout:hover { background: #222222; }
+
+/* ── Main content ───────────────────────────────── */
+.dashboard-container {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100vh;
+  padding: 100px 24px 60px;
+}
+
+.dashboard-heading {
+  font-family: 'Fraunces', serif;
+  font-weight: 900; font-size: 28px;
+  color: #ffffff; margin-bottom: 48px;
+  text-align: center;
+}
+
+/* ── Cards ──────────────────────────────────────── */
+.card-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 24px; max-width: 680px; width: 100%;
+}
+
+.card {
+  background: #111111; border: 1px solid #222222;
+  border-radius: 12px; padding: 40px 32px;
+  text-align: center; transition: border-color 0.2s, transform 0.15s;
+}
+.card:hover {
+  border-color: #444444; transform: translateY(-2px);
+}
+.card-icon {
+  font-size: 48px; display: block; margin-bottom: 16px;
+}
+.card-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 22px;
+  color: #ffffff; display: block; margin-bottom: 8px;
+}
+.card-sub {
+  font-size: 13px; color: #888888;
+  line-height: 1.6; margin-bottom: 24px;
+}
+.card-btn {
+  display: inline-block; background: #f59e0b;
+  color: #000000; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 700;
+  padding: 12px 32px; border-radius: 6px;
+  border: none; cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.card-btn:hover { background: #d97706; }
+.card-btn.disabled {
+  background: #333333; color: #666666;
+  cursor: default;
+}
+.card-btn.disabled:hover { background: #333333; }
+
+/* ── Toast ──────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+  background: #222222; color: #f59e0b;
+  font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 500;
+  padding: 14px 28px; border-radius: 8px;
+  border: 1px solid #333333;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 200;
+}
+.toast.visible { opacity: 1; }
+
+/* ── Footer ─────────────────────────────────────── */
+.footer {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #000000; border-top: 1px solid #111111;
+  padding: 12px 32px; display: flex;
+  justify-content: space-between; align-items: center;
+}
+.footer-text { font-size: 10px; color: #555555; }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 600px) {
+  .card-grid { grid-template-columns: 1fr; max-width: 360px; }
+  .dashboard-heading { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/app" class="nav-wordmark">Simple SWMS</a>
+  <div class="nav-right">
+    <span class="nav-email" id="user-email"></span>
+    <button class="btn-logout" onclick="logout()">Log Out</button>
+  </div>
+</nav>
+
+<div class="dashboard-container">
+  <h1 class="dashboard-heading">What would you like to create?</h1>
+
+  <div class="card-grid">
+    <!-- SWMS Card -->
+    <div class="card">
+      <span class="card-icon">&#128203;</span>
+      <span class="card-label">SWMS</span>
+      <p class="card-sub">Safe Work Method Statement<br>Generate a compliant SWMS for any construction task</p>
+      <a href="/swms" class="card-btn">CREATE SWMS</a>
+    </div>
+
+    <!-- Risk Assessment Card -->
+    <div class="card">
+      <span class="card-icon">&#9888;&#65039;</span>
+      <span class="card-label">Risk Assessment</span>
+      <p class="card-sub">Standalone risk assessment document<br>Identify hazards and document controls</p>
+      <button class="card-btn disabled" onclick="showComingSoon()">CREATE RA</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Coming Soon &mdash; Risk Assessment is under development</div>
+
+<footer class="footer">
+  <span class="footer-text">&copy; 2026 Simple SWMS &mdash; AuditCo (mcxi.com.au)</span>
+  <span class="footer-text">Gatekeeper v1.0</span>
+</footer>
+
+<script>
+const API = window.location.origin;
+
+// ── Auth check ────────────────────────────────────
+(async function checkAuth() {
+  const token = localStorage.getItem('access_token');
+  if (!token) { window.location.href = '/'; return; }
+  try {
+    let res = await fetch(API + '/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        res = await fetch(API + '/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('access_token') }
+        });
+      }
+    }
+    if (!res.ok) throw new Error('unauthorized');
+    const data = await res.json();
+    document.getElementById('user-email').textContent = data.email || '';
+  } catch (err) {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/';
+  }
+})();
+
+async function refreshToken() {
+  const rt = localStorage.getItem('refresh_token');
+  if (!rt) return false;
+  try {
+    const res = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    return true;
+  } catch { return false; }
+}
+
+function logout() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_email');
+  window.location.href = '/';
+}
+
+// ── Coming Soon toast ─────────────────────────────
+function showComingSoon() {
+  const toast = document.getElementById('toast');
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+</script>
+</body>
+</html>

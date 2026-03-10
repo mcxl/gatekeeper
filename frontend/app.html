@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple SWMS — Create SWMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Outfit', sans-serif; background: #ffffff; color: #444444; -webkit-font-smoothing: antialiased; }
+
+/* ── Nav ────────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 56px; background: #000000;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.nav-wordmark { font-family: 'Fraunces', serif; font-weight: 700; font-size: 17px; color: #ffffff; text-decoration: none; }
+.nav-back { font-size: 13px; color: #aaaaaa; text-decoration: none; margin-left: 20px; }
+.nav-back:hover { color: #ffffff; }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-email { font-size: 12px; color: #aaaaaa; }
+.btn-logout {
+  background: transparent; border: 1px solid #666666;
+  color: #ffffff; font-family: 'Outfit', sans-serif;
+  font-size: 12px; padding: 6px 14px; border-radius: 4px; cursor: pointer;
+}
+.btn-logout:hover { background: #222222; }
+
+/* ── Page header ────────────────────────────────── */
+.page-header { text-align: center; padding: 76px 24px 0; }
+.page-title { font-family: 'Fraunces', serif; font-weight: 900; font-size: 28px; color: #000000; margin-bottom: 6px; }
+.page-sub { font-weight: 300; font-size: 15px; color: #666666; margin-bottom: 28px; }
+
+/* ── Mode tabs ──────────────────────────────────── */
+.mode-tabs {
+  display: flex; justify-content: center; gap: 0;
+  max-width: 680px; margin: 0 auto 32px;
+  border-bottom: 2px solid #eeeeee;
+}
+.mode-tab {
+  padding: 12px 24px; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 500; color: #888888;
+  cursor: pointer; border: none; background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: color 0.15s, border-color 0.15s;
+}
+.mode-tab:hover { color: #444444; }
+.mode-tab.active { color: #000000; font-weight: 700; border-bottom-color: #000000; }
+
+/* ── Upload section ─────────────────────────────── */
+.upload-section {
+  max-width: 560px; margin: 0 auto 28px; padding: 0 24px;
+  display: none;
+}
+.upload-section.visible { display: block; }
+.upload-label {
+  font-size: 12px; color: #888888; font-style: italic;
+  text-align: center; margin-bottom: 16px;
+}
+.btn-upload {
+  display: block; width: 100%; background: #000000; color: #ffffff;
+  font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700;
+  padding: 14px; border: none; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-upload:hover { background: #333333; }
+
+/* Upload options popup */
+.upload-options {
+  display: none; margin-top: 12px;
+  border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;
+}
+.upload-options.visible { display: block; }
+.upload-opt {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; cursor: pointer; font-size: 14px;
+  color: #000000; border: none; background: #ffffff; width: 100%;
+  font-family: 'Outfit', sans-serif; text-align: left;
+  transition: background 0.15s;
+}
+.upload-opt:hover { background: #f8f8f8; }
+.upload-opt + .upload-opt { border-top: 1px solid #eeeeee; }
+.upload-opt .opt-icon { font-size: 20px; }
+
+/* File chips */
+.file-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 12px;
+}
+.file-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f0f0f0; border-radius: 20px;
+  padding: 6px 14px; font-size: 12px; color: #333333;
+}
+.file-chip button {
+  background: none; border: none; font-size: 14px;
+  color: #888888; cursor: pointer; padding: 0; line-height: 1;
+}
+.file-chip button:hover { color: #000000; }
+
+/* Analyse button */
+.btn-analyse {
+  display: none; margin-top: 16px; width: 100%;
+  background: #f59e0b; color: #000000;
+  font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700;
+  padding: 12px; border: none; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-analyse:hover { background: #d97706; }
+
+/* Analysis status */
+.analyse-status {
+  margin-top: 12px; font-size: 13px; color: #666666;
+  text-align: center; display: none;
+}
+.analyse-status.visible { display: block; }
+
+/* ── Gaps panel ─────────────────────────────────── */
+.gaps-panel {
+  max-width: 560px; margin: 0 auto 24px; padding: 0 24px;
+  display: none;
+}
+.gaps-panel.visible { display: block; }
+.gaps-toggle {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; padding: 14px 18px; cursor: pointer;
+  font-weight: 700; font-size: 13px; color: #92400e;
+  background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px;
+  font-family: 'Outfit', sans-serif; text-align: left;
+}
+.gaps-body {
+  display: none; padding: 12px 18px; font-size: 13px;
+  line-height: 1.7; color: #444444;
+  border: 1px solid #f59e0b; border-top: none;
+  border-radius: 0 0 8px 8px; background: #fffef5;
+}
+.gaps-body.open { display: block; }
+.gaps-body ul { margin: 0; padding-left: 20px; }
+.gaps-body li { margin-bottom: 6px; }
+
+/* ── Direct fields form ─────────────────────────── */
+.form-container {
+  max-width: 560px; margin: 0 auto; padding: 0 24px 40px;
+}
+.form-divider {
+  font-size: 11px; font-weight: 700; color: #888888;
+  text-transform: uppercase; letter-spacing: 2px;
+  text-align: center; margin-bottom: 24px;
+  padding-top: 8px; border-top: 1px solid #eeeeee;
+}
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-size: 12px; font-weight: 700;
+  color: #444444; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.field .helper {
+  font-size: 11px; color: #888888; font-style: normal;
+  margin-top: 4px;
+}
+.field input, .field textarea, .field select {
+  width: 100%; background: #ffffff; border: 1px solid #cccccc;
+  border-radius: 6px; padding: 11px 14px;
+  font-family: 'Outfit', sans-serif; font-size: 14px;
+  color: #000000; outline: none; transition: border-color 0.2s;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: #000000; }
+.field textarea { resize: vertical; }
+.field input::placeholder, .field textarea::placeholder { font-style: italic; color: #aaaaaa; }
+
+/* Review frequency checkboxes */
+.review-section { margin-bottom: 24px; }
+.review-section label.review-title {
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.review-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 0; font-size: 13px; color: #333333;
+  cursor: pointer;
+}
+.review-item input { accent-color: #000000; margin-top: 3px; flex-shrink: 0; }
+
+/* ── Jurisdiction + Format rows ─────────────────── */
+.selector-row {
+  max-width: 560px; margin: 0 auto 16px; padding: 0 24px;
+  display: flex; gap: 10px; justify-content: center;
+}
+.selector-label {
+  font-size: 11px; font-weight: 700; color: #888888;
+  text-transform: uppercase; letter-spacing: 2px;
+  text-align: center; margin-bottom: 8px;
+}
+.sel-btn {
+  background: #ffffff; border: 1px solid #cccccc; border-radius: 6px;
+  padding: 8px 16px; font-family: 'Outfit', sans-serif;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sel-btn:hover { background: #fafafa; }
+.sel-btn.active { border: 2px solid #000000; background: #f8f8f8; font-weight: 700; }
+
+/* ── Generate button ────────────────────────────── */
+.btn-generate {
+  display: block; width: 100%; max-width: 560px;
+  margin: 24px auto 0; padding: 16px;
+  background: #f59e0b; color: #000000;
+  font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700;
+  border: none; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-generate:hover { background: #d97706; }
+.btn-generate:disabled { background: #cccccc; cursor: not-allowed; }
+
+/* ── Status panel ───────────────────────────────── */
+.status-panel { max-width: 480px; margin: 0 auto; padding: 0 24px; }
+.status-step { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: #aaaaaa; }
+.status-step.done { color: #000000; }
+.status-step.active { color: #000000; font-weight: 500; }
+.status-step .tick { width: 20px; text-align: center; font-size: 14px; }
+.status-step.done .tick::before { content: '\2713'; }
+.status-step.active .tick { animation: spin 1s linear infinite; display: inline-block; }
+.status-step.active .tick::before { content: '\25CF'; }
+.status-step.pending .tick::before { content: '\00A0\00A0'; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── Inference preview ──────────────────────────── */
+.inference-panel { max-width: 480px; margin: 20px auto; border: 1px solid #000000; border-radius: 8px; overflow: hidden; }
+.inference-toggle { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; font-weight: 700; font-size: 13px; color: #000000; background: #ffffff; border: none; width: 100%; text-align: left; font-family: 'Outfit', sans-serif; }
+.inference-body { display: none; padding: 0 18px 18px; font-size: 13px; line-height: 1.7; color: #444444; }
+.inference-body.open { display: block; }
+.inference-body dt { font-weight: 700; color: #000000; margin-top: 10px; }
+.inference-body dd { margin-left: 0; }
+
+/* ── Download panel ─────────────────────────────── */
+.download-panel { max-width: 480px; margin: 24px auto; border: 1px solid #000000; border-radius: 8px; padding: 28px 24px; text-align: center; }
+.download-panel .done-label { font-weight: 700; font-size: 16px; color: #000000; margin-bottom: 8px; }
+.download-panel .filename { font-size: 12px; color: #888888; margin-bottom: 20px; }
+
+/* ── Buttons ────────────────────────────────────── */
+.btn-primary { display: block; width: 100%; max-width: 480px; margin: 24px auto 0; background: #000000; color: #ffffff; border: 1px solid #000000; border-radius: 8px; padding: 14px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+.btn-primary:hover { background: #333333; }
+.btn-secondary { display: block; width: 100%; max-width: 480px; margin: 12px auto 0; background: #ffffff; color: #000000; border: 1px solid #000000; border-radius: 8px; padding: 14px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+.btn-secondary:hover { background: #f5f5f5; }
+
+/* ── Disclaimer modal ───────────────────────────── */
+.disclaimer-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+.disclaimer-overlay.visible { display: flex; }
+.disclaimer-box { background: #ffffff; border-radius: 12px; max-width: 560px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+.disclaimer-header { padding: 24px 28px 16px; border-bottom: 1px solid #eeeeee; }
+.disclaimer-header h2 { font-family: 'Fraunces', serif; font-weight: 900; font-size: 22px; color: #000000; margin: 0; }
+.disclaimer-header p { font-size: 13px; color: #666666; margin-top: 6px; }
+.disclaimer-scroll { flex: 1; overflow-y: auto; padding: 20px 28px; font-size: 13px; line-height: 1.7; color: #444444; }
+.disclaimer-scroll h3 { font-size: 14px; font-weight: 700; color: #000000; margin: 16px 0 6px; }
+.disclaimer-scroll h3:first-child { margin-top: 0; }
+.disclaimer-scroll p { margin: 0 0 10px; }
+.disclaimer-bottom { padding: 16px 28px 20px; border-top: 1px solid #eeeeee; background: #fafafa; border-radius: 0 0 12px 12px; }
+.disclaimer-check { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; cursor: pointer; font-size: 13px; color: #000000; }
+.disclaimer-check input { accent-color: #000000; margin-top: 3px; flex-shrink: 0; }
+.disclaimer-actions { display: flex; gap: 12px; }
+.disclaimer-actions .btn-primary, .disclaimer-actions .btn-secondary { flex: 1; margin: 0; max-width: none; padding: 12px; font-size: 14px; }
+
+.declined-msg { max-width: 480px; margin: 16px auto; padding: 16px 20px; background: #fff8f0; border: 1px solid #e0c080; border-radius: 8px; font-size: 13px; color: #665530; text-align: center; display: none; }
+
+/* ── Jurisdiction warning ───────────────────────── */
+.jur-warning { max-width: 560px; margin: 8px auto 0; padding: 12px 16px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #92400e; display: none; }
+.jur-warning .jur-warn-text { margin-bottom: 8px; }
+.jur-warning .jur-switch-btn { background: #ffffff; border: 1px solid #000000; border-radius: 4px; padding: 4px 12px; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; }
+
+/* ── Footer ─────────────────────────────────────── */
+.footer { background: #000000; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; margin-top: 60px; }
+.footer-left { font-size: 10px; color: #888888; }
+.footer-right { font-size: 10px; color: #666666; }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 600px) {
+  .mode-tabs { flex-direction: column; align-items: stretch; }
+  .mode-tab { text-align: center; }
+  .footer { flex-direction: column; gap: 8px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────── -->
+<nav class="nav">
+  <div>
+    <a href="/app" class="nav-wordmark">Simple SWMS</a>
+    <a href="/app" class="nav-back">&larr; Dashboard</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-email" id="user-email"></span>
+    <button class="btn-logout" onclick="logout()">Log Out</button>
+  </div>
+</nav>
+
+<!-- ── Page header ────────────────────────────────── -->
+<div class="page-header">
+  <h1 class="page-title">Create Your SWMS</h1>
+  <p class="page-sub">Choose a starting mode, fill in the details, and generate</p>
+</div>
+
+<!-- ── Mode tabs ──────────────────────────────────── -->
+<div class="mode-tabs">
+  <button class="mode-tab active" onclick="selectTab('manual')" id="tab-manual">Manual</button>
+  <button class="mode-tab" onclick="selectTab('upgrade')" id="tab-upgrade">Upgrade SWMS</button>
+  <button class="mode-tab" onclick="selectTab('scope')" id="tab-scope">Scope of Works or Specification</button>
+</div>
+
+<!-- ── Upload section (Mode 02 + 03) ──────────────── -->
+<div class="upload-section" id="upload-section">
+  <p class="upload-label" id="upload-label">Upload your existing SWMS &mdash; we'll identify gaps and upgrade it</p>
+  <button class="btn-upload" id="btn-upload" onclick="toggleUploadOptions()">UPLOAD OR TAKE PHOTO</button>
+  <div class="upload-options" id="upload-options">
+    <button class="upload-opt" onclick="openFileUpload()">
+      <span class="opt-icon">&#128193;</span> Upload file
+      <span style="font-size:11px;color:#888;margin-left:auto">.pdf .docx .doc .txt</span>
+    </button>
+    <button class="upload-opt" onclick="openPhotoUpload()">
+      <span class="opt-icon">&#128247;</span> Take photo / Upload image
+      <span style="font-size:11px;color:#888;margin-left:auto">.jpg .png .heic</span>
+    </button>
+  </div>
+  <div class="file-chips" id="file-chips"></div>
+  <button class="btn-analyse" id="btn-analyse" onclick="runAnalysis()">ANALYSE</button>
+  <div class="analyse-status" id="analyse-status"></div>
+</div>
+
+<!-- ── Gaps panel (Mode 02 only) ──────────────────── -->
+<div class="gaps-panel" id="gaps-panel">
+  <button class="gaps-toggle" id="gaps-toggle" onclick="toggleGaps()">
+    <span id="gaps-count">0 gaps identified</span>
+    <span id="gaps-icon">+</span>
+  </button>
+  <div class="gaps-body" id="gaps-body">
+    <ul id="gaps-list"></ul>
+  </div>
+</div>
+
+<!-- ── Direct Fields form (always visible) ────────── -->
+<div class="form-container" id="form-container">
+  <div class="form-divider">Project Details</div>
+
+  <div class="field">
+    <label>Your Company or Business Name</label>
+    <input type="text" id="pcbu-name" placeholder="e.g. Smith Building Pty Ltd">
+  </div>
+
+  <div class="field">
+    <label>Your Name</label>
+    <input type="text" id="your-name" placeholder="Your full name">
+  </div>
+
+  <div class="field">
+    <label>Job Site Address</label>
+    <input type="text" id="site-address" placeholder="e.g. 218 Vincent Rd, Cranebrook NSW 2749">
+    <div class="helper">Double-check spelling &mdash; used in document footer</div>
+  </div>
+
+  <div class="field">
+    <label>Job Description</label>
+    <textarea id="job-description" rows="4" placeholder="Describe the work being carried out" onblur="checkJurisdiction()"></textarea>
+    <div class="jur-warning" id="jur-warning">
+      <div class="jur-warn-text" id="jur-warn-text"></div>
+      <button class="jur-switch-btn" id="jur-switch-btn" onclick="switchDetectedJurisdiction()"></button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Principal Contractor</label>
+    <input type="text" id="principal-contractor" placeholder="e.g. Hansen Yuncken">
+    <div class="helper">Who is the builder you are sending this to?</div>
+  </div>
+
+  <div class="field">
+    <label>Person Responsible for Compliance</label>
+    <input type="text" id="compliance-person" placeholder="Name of supervisor or team leader">
+    <div class="helper">Name of supervisor or team leader</div>
+  </div>
+
+  <div class="field">
+    <label>Person Responsible for Reviewing</label>
+    <input type="text" id="review-person" placeholder="Name of project manager">
+    <div class="helper">Name of project manager</div>
+  </div>
+
+  <div class="field">
+    <label>Date</label>
+    <input type="date" id="swms-date">
+  </div>
+
+  <!-- ── Review frequency ───────────────────────── -->
+  <div class="review-section">
+    <label class="review-title" style="display:block;font-size:12px;font-weight:700;color:#444;margin-bottom:12px;">How will the SWMS be reviewed?</label>
+    <div id="review-checks"></div>
+  </div>
+
+  <!-- ── Jurisdiction ───────────────────────────── -->
+  <div class="selector-label">Jurisdiction</div>
+  <div class="selector-row">
+    <button class="sel-btn active" onclick="selectJurisdiction('AU')" id="jur-AU">AU</button>
+    <button class="sel-btn" onclick="selectJurisdiction('NZ')" id="jur-NZ">NZ</button>
+    <button class="sel-btn" onclick="selectJurisdiction('UK')" id="jur-UK">UK</button>
+    <button class="sel-btn" onclick="selectJurisdiction('US')" id="jur-US">US</button>
+    <button class="sel-btn" onclick="selectJurisdiction('CA')" id="jur-CA">CA</button>
+  </div>
+
+  <!-- ── Format ─────────────────────────────────── -->
+  <div class="selector-label" style="margin-top:16px">Output Format</div>
+  <div class="selector-row">
+    <button class="sel-btn" id="fmt-docx" onclick="selectFormat('docx')">Word (.docx)</button>
+    <button class="sel-btn active" id="fmt-pdf" onclick="selectFormat('pdf')">PDF</button>
+    <button class="sel-btn" id="fmt-both" onclick="selectFormat('both')">Both</button>
+  </div>
+</div>
+
+<!-- ── Generate button ────────────────────────────── -->
+<div style="max-width:560px;margin:0 auto;padding:0 24px 40px;">
+  <button class="btn-generate" id="btn-generate" onclick="generate()">GENERATE SWMS</button>
+</div>
+
+<!-- ── Status panel ───────────────────────────────── -->
+<div id="status-panel" style="display:none">
+  <div class="status-panel">
+    <div class="status-step pending" id="step-analyse"><span class="tick"></span> <span id="step-analyse-text">Analysing job description...</span></div>
+    <div class="status-step pending" id="step-infer"><span class="tick"></span> <span id="step-infer-text">Running inference (143 hazard categories)...</span></div>
+    <div class="status-step pending" id="step-tasks"><span class="tick"></span> <span id="step-tasks-text">Generating tasks...</span></div>
+    <div class="status-step pending" id="step-render"><span class="tick"></span> <span id="step-render-text">Rendering document...</span></div>
+    <div class="status-step pending" id="step-pdf" style="display:none"><span class="tick"></span> <span id="step-pdf-text">Converting to PDF...</span></div>
+    <div class="status-step pending" id="step-download"><span class="tick"></span> <span id="step-download-text">Preparing download...</span></div>
+  </div>
+</div>
+
+<!-- ── Inference preview ──────────────────────────── -->
+<div id="inference-panel" class="inference-panel" style="display:none">
+  <button class="inference-toggle" onclick="toggleInference()">
+    Inference Results &mdash; click to expand
+    <span class="toggle-icon" id="inf-icon">+</span>
+  </button>
+  <div class="inference-body" id="inference-body">
+    <dl id="inference-list"></dl>
+  </div>
+</div>
+
+<!-- ── Download panel ─────────────────────────────── -->
+<div id="download-panel" class="download-panel" style="display:none">
+  <div class="done-label" id="dl-done-label">&#10003; Your SWMS is ready</div>
+  <div class="filename" id="dl-filename"></div>
+  <button class="btn-primary" id="dl-btn" style="max-width:320px;margin:0 auto">Download SWMS</button>
+  <button class="btn-secondary" onclick="resetAll()" style="max-width:320px;margin:12px auto 0">Generate Another</button>
+</div>
+
+<!-- ── Disclaimer modal ───────────────────────────── -->
+<div class="disclaimer-overlay" id="disclaimer-overlay">
+  <div class="disclaimer-box">
+    <div class="disclaimer-header">
+      <h2>Disclaimer</h2>
+      <p>Please read and accept before downloading your document.</p>
+    </div>
+    <div class="disclaimer-scroll">
+      <h3>1. AI-Generated Content</h3>
+      <p>This document was generated using artificial intelligence. While it draws on a comprehensive database of hazards, controls, and regulatory references, it has not been reviewed by a human safety professional. AI-generated content may contain errors, omissions, or recommendations that are not appropriate for your specific work environment.</p>
+      <h3>2. Not Professional Advice</h3>
+      <p>This document does not constitute professional safety advice, legal advice, or engineering advice. It is provided as a starting point only. You must engage a competent person to review, validate, and approve this document before it is used on site.</p>
+      <h3>3. Your Responsibility</h3>
+      <p>The PCBU, principal contractor, and all duty holders remain fully responsible for ensuring this document is accurate, complete, site-specific, and compliant with all applicable legislation.</p>
+      <h3>4. Jurisdiction</h3>
+      <p>Regulatory references are based on the jurisdiction you selected. You are responsible for confirming all references are current and applicable.</p>
+      <h3>5. Limitation of Liability</h3>
+      <p>Simple SWMS, its developers, and AuditCo (mcxi.com.au) accept no liability whatsoever for any loss, damage, injury, or death arising from the use of this document.</p>
+      <h3>6. Document Retention</h3>
+      <p>This document is not stored by Simple SWMS after generation. You are responsible for saving and maintaining your own copies.</p>
+    </div>
+    <div class="disclaimer-bottom">
+      <label class="disclaimer-check">
+        <input type="checkbox" id="disclaimer-checkbox" onchange="onDisclaimerCheck()">
+        <span>I have read and understood the above disclaimer. I accept full responsibility for reviewing and validating this document before use.</span>
+      </label>
+      <div class="disclaimer-actions">
+        <button class="btn-secondary" onclick="declineDownload()">Decline</button>
+        <button class="btn-primary" id="disclaimer-accept-btn" onclick="acceptAndDownload()" disabled>Accept &amp; Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="declined-msg" id="declined-msg">You declined the disclaimer. Your document has been discarded. Click "Generate Another" to start over.</div>
+
+<footer class="footer">
+  <div class="footer-left">&copy; 2026 Simple SWMS &mdash; AuditCo (mcxi.com.au)</div>
+  <div class="footer-right">Gatekeeper v1.0</div>
+</footer>
+
+<script>
+const API = window.location.origin;
+let currentTab = 'manual';
+let currentJurisdiction = 'AU';
+let currentFormat = 'pdf';
+
+// ── Auth ───────────────────────────────────────────
+(async function checkAuth() {
+  const token = localStorage.getItem('access_token');
+  if (!token) { window.location.href = '/'; return; }
+  try {
+    let res = await fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.status === 401) {
+      const refreshed = await refreshTokenIfNeeded();
+      if (refreshed) {
+        res = await fetch(API + '/auth/me', { headers: getAuthHeaders() });
+      }
+    }
+    if (!res.ok) throw new Error('unauthorized');
+    const data = await res.json();
+    document.getElementById('user-email').textContent = data.email || '';
+  } catch (err) {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/';
+  }
+})();
+
+function getAuthHeaders() {
+  return { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') };
+}
+
+function getToken() {
+  return localStorage.getItem('access_token') || '';
+}
+
+async function refreshTokenIfNeeded() {
+  const rt = localStorage.getItem('refresh_token');
+  if (!rt) return false;
+  try {
+    const res = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    return true;
+  } catch { return false; }
+}
+
+async function apiCall(url, options = {}) {
+  options.headers = { ...(options.headers || {}), ...getAuthHeaders() };
+  let res = await fetch(url, options);
+  if (res.status === 401) {
+    const refreshed = await refreshTokenIfNeeded();
+    if (refreshed) {
+      options.headers = { ...(options.headers || {}), ...getAuthHeaders() };
+      res = await fetch(url, options);
+    }
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/';
+      throw new Error('Session expired');
+    }
+  }
+  return res;
+}
+
+function logout() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_email');
+  window.location.href = '/';
+}
+
+// ── Date default ──────────────────────────────────
+document.getElementById('swms-date').valueAsDate = new Date();
+
+// ── Review frequency ──────────────────────────────
+const REVIEW_OPTIONS = [
+  "Before any change is made to the way the construction work is carried out",
+  "Before a new system of work is introduced",
+  "Before the place where the work is being carried out is changed",
+  "If a new hazard is identified",
+  "If new information about a hazard becomes available",
+  "If a notifiable incident occurs in relation to construction work",
+  "If a control measure does not control the risk",
+  "A request for a review is received from a health and safety representative",
+  "When legislation or codes of practice change, new work methods, products, or equipment are introduced",
+  "Minimum 12-monthly review"
+];
+
+const REVIEW_DEFAULT_INDICES = [6, 8, 9];
+
+(function buildReviewChecks() {
+  const container = document.getElementById('review-checks');
+  REVIEW_OPTIONS.forEach((opt, i) => {
+    const label = document.createElement('label');
+    label.className = 'review-item';
+    label.innerHTML = '<input type="checkbox" id="review-' + i + '"> <span>' + opt + '</span>';
+    container.appendChild(label);
+  });
+})();
+
+function getReviewText() {
+  const checked = REVIEW_OPTIONS.filter((_, i) =>
+    document.getElementById('review-' + i).checked
+  );
+  const selected = checked.length > 0 ? checked : REVIEW_OPTIONS.filter((_, i) => REVIEW_DEFAULT_INDICES.includes(i));
+  return "This SWMS will be reviewed: " + selected.join(" \u2014 ");
+}
+
+// ── Tab selector ──────────────────────────────────
+function selectTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  const uploadSection = document.getElementById('upload-section');
+  const uploadLabel = document.getElementById('upload-label');
+
+  if (tab === 'manual') {
+    uploadSection.classList.remove('visible');
+  } else {
+    uploadSection.classList.add('visible');
+    if (tab === 'upgrade') {
+      uploadLabel.textContent = "Upload your existing SWMS \u2014 we'll identify gaps and upgrade it";
+    } else {
+      uploadLabel.textContent = "Upload your Scope of Works or Specification document";
+    }
+  }
+
+  // Reset upload state when switching tabs
+  selectedFiles = [];
+  renderFileChips();
+  document.getElementById('upload-options').classList.remove('visible');
+  document.getElementById('gaps-panel').classList.remove('visible');
+  document.getElementById('analyse-status').classList.remove('visible');
+}
+
+// ── Jurisdiction selector ─────────────────────────
+function selectJurisdiction(code) {
+  currentJurisdiction = code;
+  document.querySelectorAll('.selector-row .sel-btn').forEach(b => {
+    if (b.id && b.id.startsWith('jur-')) {
+      b.classList.toggle('active', b.id === 'jur-' + code);
+    }
+  });
+}
+
+// ── Format selector ───────────────────────────────
+function selectFormat(fmt) {
+  currentFormat = fmt;
+  document.querySelectorAll('.sel-btn').forEach(b => {
+    if (b.id && b.id.startsWith('fmt-')) {
+      b.classList.toggle('active', b.id === 'fmt-' + fmt);
+    }
+  });
+}
+
+// ── Upload handling ───────────────────────────────
+let selectedFiles = [];
+
+function toggleUploadOptions() {
+  document.getElementById('upload-options').classList.toggle('visible');
+}
+
+function openFileUpload() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = '.pdf,.docx,.doc,.txt';
+  input.onchange = (e) => handleFilesSelected(e.target.files);
+  input.click();
+  document.getElementById('upload-options').classList.remove('visible');
+}
+
+function openPhotoUpload() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = 'image/*';
+  input.setAttribute('capture', 'environment');
+  input.onchange = (e) => handleFilesSelected(e.target.files);
+  input.click();
+  document.getElementById('upload-options').classList.remove('visible');
+}
+
+function handleFilesSelected(fileList) {
+  selectedFiles = [...selectedFiles, ...Array.from(fileList)];
+  renderFileChips();
+}
+
+function renderFileChips() {
+  const container = document.getElementById('file-chips');
+  container.innerHTML = '';
+  selectedFiles.forEach((file, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'file-chip';
+    const isImage = file.type.startsWith('image/');
+    const icon = isImage ? '&#128247;' : '&#128196;';
+    chip.innerHTML = icon + ' ' + file.name + ' <button onclick="removeFile(' + i + ')">&times;</button>';
+    container.appendChild(chip);
+  });
+  document.getElementById('btn-analyse').style.display = selectedFiles.length > 0 ? 'block' : 'none';
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  renderFileChips();
+}
+
+async function runAnalysis() {
+  if (!selectedFiles.length) return;
+
+  const mode = currentTab === 'upgrade' ? '02' : '03';
+  const endpoint = mode === '02' ? '/upload/analyse-swms' : '/upload/extract-scope';
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('files', f));
+
+  const statusEl = document.getElementById('analyse-status');
+  statusEl.textContent = 'Analysing document...';
+  statusEl.classList.add('visible');
+
+  try {
+    const res = await fetch(API + endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + getToken() },
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Analysis failed');
+    }
+    const result = await res.json();
+    prefillDirectFields(result.job_data);
+
+    if (mode === '02' && result.gaps && result.gaps.length) {
+      showGaps(result.gaps);
+      statusEl.textContent = 'Analysis complete \u2014 ' + result.gaps.length + ' gaps identified. Review fields and generate.';
+    } else {
+      statusEl.textContent = 'Scope extracted. Review fields and generate.';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+  }
+}
+
+function prefillDirectFields(jobData) {
+  if (jobData.pcbu_name) setIfEmpty('pcbu-name', jobData.pcbu_name);
+  if (jobData.manager_name) setIfEmpty('your-name', jobData.manager_name);
+  if (jobData.project_address) setIfEmpty('site-address', jobData.project_address);
+  if (jobData.description) setIfEmpty('job-description', jobData.description);
+  if (jobData.principal_contractor) setIfEmpty('principal-contractor', jobData.principal_contractor);
+}
+
+function setIfEmpty(id, value) {
+  const el = document.getElementById(id);
+  if (el && !el.value.trim()) el.value = value;
+}
+
+// ── Gaps panel ────────────────────────────────────
+function showGaps(gaps) {
+  const panel = document.getElementById('gaps-panel');
+  const list = document.getElementById('gaps-list');
+  const count = document.getElementById('gaps-count');
+  panel.classList.add('visible');
+  count.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ' identified';
+  list.innerHTML = gaps.map(g => '<li>' + g + '</li>').join('');
+}
+
+function toggleGaps() {
+  const body = document.getElementById('gaps-body');
+  const icon = document.getElementById('gaps-icon');
+  const open = body.classList.toggle('open');
+  icon.textContent = open ? '\u2212' : '+';
+}
+
+// ── Build payload ─────────────────────────────────
+function getField(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function getSelectedFormat() {
+  return currentFormat;
+}
+
+function buildPayload() {
+  const today = new Date().toLocaleDateString('en-AU', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+
+  const description = getField('job-description');
+  const siteAddress = getField('site-address');
+  const pcbu = getField('pcbu-name');
+  const pc = getField('principal-contractor') || pcbu;
+  const manager = getField('your-name');
+  const supervisor = getField('compliance-person');
+  const reviewer = getField('review-person');
+  const swmsDate = getField('swms-date') || today;
+  const reviewText = getReviewText();
+
+  return {
+    description: description,
+    project_meta: {
+      project_name: siteAddress || 'Untitled Project',
+      site_address: siteAddress,
+      project_address: siteAddress,
+      pcbu_name: pcbu,
+      principal_contractor: pc,
+      manager_name: manager,
+      manager: manager,
+      supervisor: supervisor,
+      reviewer: reviewer,
+      work_activity: description,
+      date: swmsDate,
+      review_frequency: reviewText,
+      version: '1.0'
+    },
+    jurisdiction: currentJurisdiction,
+    format: getSelectedFormat()
+  };
+}
+
+// ── Status helpers ────────────────────────────────
+function setStep(id, state) {
+  document.getElementById(id).className = 'status-step ' + state;
+}
+
+function showStatusPanel() {
+  document.getElementById('form-container').style.display = 'none';
+  document.getElementById('btn-generate').parentElement.style.display = 'none';
+  document.getElementById('upload-section').classList.remove('visible');
+  document.getElementById('gaps-panel').classList.remove('visible');
+  document.querySelector('.mode-tabs').style.display = 'none';
+  document.getElementById('status-panel').style.display = 'block';
+  ['step-analyse','step-infer','step-tasks','step-render','step-pdf','step-download'].forEach(s => setStep(s, 'pending'));
+  document.getElementById('step-pdf').style.display = (currentFormat === 'pdf' || currentFormat === 'both') ? 'flex' : 'none';
+}
+
+// ── Generate ──────────────────────────────────────
+let lastInference = null;
+let lastTasks = null;
+let lastMeta = null;
+let pendingBlob = null;
+let pendingFilename = null;
+let pendingBothData = null;
+
+async function generate() {
+  const payload = buildPayload();
+  if (!payload.description) {
+    alert('Please enter a job description.');
+    return;
+  }
+
+  showStatusPanel();
+  lastMeta = payload.project_meta;
+
+  try {
+    // Step 1: Infer
+    setStep('step-analyse', 'active');
+    const inferRes = await apiCall(API + '/infer?q=' + encodeURIComponent(payload.description) + '&jurisdiction=' + currentJurisdiction + '&document_type=swms');
+    if (!inferRes.ok) throw new Error('Inference failed: ' + inferRes.status);
+    lastInference = await inferRes.json();
+    setStep('step-analyse', 'done');
+
+    // Step 2: Generate tasks
+    setStep('step-infer', 'active');
+    const genRes = await apiCall(API + '/generate/auto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description: payload.description,
+        project_meta: payload.project_meta,
+        force_full: true,
+        jurisdiction: currentJurisdiction
+      })
+    });
+    if (!genRes.ok) throw new Error('Generate failed: ' + genRes.status);
+    const genData = await genRes.json();
+    if (genData.error) throw new Error(genData.error);
+    lastTasks = genData.tasks;
+    if (genData.inference) lastInference = genData.inference;
+    setStep('step-infer', 'done');
+
+    // Step 3: Tasks done
+    setStep('step-tasks', 'active');
+    await sleep(200);
+    setStep('step-tasks', 'done');
+
+    showInference(lastInference);
+
+    // Step 4: Render
+    setStep('step-render', 'active');
+    const renderPayload = {
+      tasks: lastTasks,
+      project_meta: payload.project_meta,
+      inference: lastInference,
+      jurisdiction: currentJurisdiction
+    };
+    const renderResult = await renderDocument('/render/docx', '/render/pdf', '/render/both', renderPayload, payload.project_meta);
+    setStep('step-render', 'done');
+
+    // Step 4b: PDF step
+    if (currentFormat === 'pdf' || currentFormat === 'both') {
+      setStep('step-pdf', 'active');
+      await sleep(100);
+      setStep('step-pdf', 'done');
+    }
+
+    // Step 5: Disclaimer
+    setStep('step-download', 'active');
+    pendingBlob = renderResult.blob;
+    pendingFilename = renderResult.filename;
+    pendingBothData = renderResult.bothData;
+    showDisclaimerModal();
+  } catch (err) {
+    alert('Error: ' + err.message);
+    console.error(err);
+  }
+}
+
+function buildFilename(meta) {
+  const site = (meta.site_address || meta.project_name || 'SWMS')
+    .replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, '-').substring(0, 40);
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  return 'SWMS-' + site + '-' + dd + mm + yyyy + '-V01.docx';
+}
+
+async function renderDocument(docxUrl, pdfUrl, bothUrl, payload, meta) {
+  const fmt = currentFormat;
+  if (fmt === 'docx') {
+    const res = await apiCall(API + docxUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Render failed: ' + res.status);
+    return { blob: await res.blob(), filename: buildFilename(meta), bothData: null };
+  }
+  if (fmt === 'pdf') {
+    const res = await apiCall(API + pdfUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('PDF render failed: ' + res.status);
+    return { blob: await res.blob(), filename: buildFilename(meta).replace('.docx', '.pdf'), bothData: null };
+  }
+  // both
+  const res = await apiCall(API + bothUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Render both failed: ' + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return { blob: null, filename: data.docx_filename, bothData: data };
+}
+
+function downloadBase64(b64, filename, mimeType) {
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) { arr[i] = bytes.charCodeAt(i); }
+  const blob = new Blob([arr], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  URL.revokeObjectURL(url); a.remove();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Inference preview ─────────────────────────────
+function showInference(inf) {
+  const panel = document.getElementById('inference-panel');
+  const list = document.getElementById('inference-list');
+  panel.style.display = 'block';
+  const items = [
+    ['HRCW', inf.hrcw ? 'Yes \u2014 ' + (inf.hrcw_category || '') : 'No'],
+    ['Codes Detected', (inf.ccvs_codes || []).join(', ') || '\u2014'],
+    ['PPE Identified', (inf.ppe || []).join(', ') || '\u2014'],
+    ['Permits Required', (inf.permits || []).join(', ') || '\u2014'],
+    ['Plant Detected', (inf.plant || []).join(', ') || '\u2014'],
+  ];
+  list.innerHTML = items.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
+}
+
+function toggleInference() {
+  const body = document.getElementById('inference-body');
+  const icon = document.getElementById('inf-icon');
+  const open = body.classList.toggle('open');
+  icon.textContent = open ? '\u2212' : '+';
+}
+
+// ── Disclaimer modal ──────────────────────────────
+function showDisclaimerModal() {
+  document.getElementById('disclaimer-checkbox').checked = false;
+  document.getElementById('disclaimer-accept-btn').disabled = true;
+  document.getElementById('disclaimer-overlay').classList.add('visible');
+}
+
+function onDisclaimerCheck() {
+  document.getElementById('disclaimer-accept-btn').disabled = !document.getElementById('disclaimer-checkbox').checked;
+}
+
+function acceptAndDownload() {
+  document.getElementById('disclaimer-overlay').classList.remove('visible');
+  setStep('step-download', 'done');
+  document.getElementById('step-download-text').textContent = 'Disclaimer accepted \u2014 downloaded';
+
+  const panel = document.getElementById('download-panel');
+  panel.style.display = 'block';
+
+  if (pendingBothData) {
+    const data = pendingBothData;
+    document.getElementById('dl-done-label').innerHTML = '&#10003; Your SWMS is ready (Word + PDF)';
+    document.getElementById('dl-filename').textContent = data.docx_filename + ' + ' + data.pdf_filename;
+    const btn = document.getElementById('dl-btn');
+    btn.textContent = 'Download SWMS (Both)';
+    btn.onclick = function() {
+      downloadBase64(data.docx, data.docx_filename,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      setTimeout(function() {
+        downloadBase64(data.pdf, data.pdf_filename, 'application/pdf');
+      }, 600);
+    };
+    btn.click();
+  } else {
+    document.getElementById('dl-done-label').innerHTML = '&#10003; Your SWMS is ready';
+    document.getElementById('dl-filename').textContent = pendingFilename;
+    const btn = document.getElementById('dl-btn');
+    btn.textContent = 'Download SWMS';
+    btn.onclick = function() {
+      const url = URL.createObjectURL(pendingBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = pendingFilename; a.click();
+      URL.revokeObjectURL(url);
+    };
+    btn.click();
+  }
+}
+
+function declineDownload() {
+  document.getElementById('disclaimer-overlay').classList.remove('visible');
+  pendingBlob = null; pendingFilename = null; pendingBothData = null;
+  setStep('step-download', 'done');
+  document.getElementById('step-download-text').textContent = 'Disclaimer declined \u2014 document discarded';
+  document.getElementById('download-panel').style.display = 'none';
+  document.getElementById('declined-msg').style.display = 'block';
+}
+
+// ── Reset ─────────────────────────────────────────
+function resetAll() {
+  document.getElementById('status-panel').style.display = 'none';
+  document.getElementById('inference-panel').style.display = 'none';
+  document.getElementById('download-panel').style.display = 'none';
+  document.getElementById('declined-msg').style.display = 'none';
+  document.getElementById('disclaimer-overlay').classList.remove('visible');
+  document.getElementById('inference-body').classList.remove('open');
+  document.getElementById('form-container').style.display = 'block';
+  document.getElementById('btn-generate').parentElement.style.display = 'block';
+  document.querySelector('.mode-tabs').style.display = 'flex';
+  pendingBlob = null; pendingFilename = null; pendingBothData = null;
+  selectTab(currentTab);
+}
+
+// ── Jurisdiction mismatch check ───────────────────
+let detectedJurisdiction = null;
+function checkJurisdiction() {
+  const desc = getField('job-description');
+  if (!desc || desc.length < 10) {
+    document.getElementById('jur-warning').style.display = 'none';
+    return;
+  }
+  fetch(API + '/check-jurisdiction?q=' + encodeURIComponent(desc) + '&selected=' + currentJurisdiction)
+    .then(r => r.json())
+    .then(data => {
+      const warn = document.getElementById('jur-warning');
+      if (data.mismatch) {
+        detectedJurisdiction = data.detected;
+        document.getElementById('jur-warn-text').textContent = data.warning;
+        document.getElementById('jur-switch-btn').textContent = 'Switch to ' + data.detected;
+        warn.style.display = 'block';
+      } else {
+        warn.style.display = 'none';
+        detectedJurisdiction = null;
+      }
+    })
+    .catch(() => {});
+}
+
+function switchDetectedJurisdiction() {
+  if (detectedJurisdiction) {
+    selectJurisdiction(detectedJurisdiction);
+    document.getElementById('jur-warning').style.display = 'none';
+    detectedJurisdiction = null;
+  }
+}
+</script>
+</body>
+</html>
