@@ -1,4 +1,4 @@
-![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/mcxl/gatekeeper/actions/workflows/ci.yml/badge.svg)
 
 # Gatekeeper — WHS Governance Architecture
 ### Robertson's Remedial and Painting Pty Ltd
