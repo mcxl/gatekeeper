@@ -6,10 +6,14 @@ Accepts files (PDF/DOCX/TXT) and images (JPG/PNG) including multiple files.
 """
 
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+import traceback
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from typing import List
 from pathlib import Path
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from core.auth import get_current_user
 from core.document_extractor import (
@@ -19,11 +23,22 @@ from core.document_extractor import (
 from core.swms_analyser import analyse_existing_swms, extract_scope_from_document
 
 logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024   # 10MB per file
 MAX_FILES = 10                      # max photos/files per upload
 ALLOWED_EXTENSIONS = DOC_EXTENSIONS | IMAGE_EXTENSIONS
+
+# Magic bytes for file type verification
+_MAGIC_BYTES = {
+    ".pdf": (b"%PDF",),
+    ".docx": (b"PK",),
+    ".doc": (b"\xd0\xcf\x11\xe0",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".png": (b"\x89PNG",),
+}
 
 
 def validate_files(files: List[UploadFile]):
@@ -42,6 +57,19 @@ def validate_files(files: List[UploadFile]):
         )
 
 
+def validate_magic_bytes(contents: bytes, filename: str):
+    """Verify file content matches declared extension via magic bytes."""
+    ext = Path(filename).suffix.lower()
+    expected = _MAGIC_BYTES.get(ext)
+    if expected is None:
+        return  # .txt and other text files — no magic bytes to check
+    if not any(contents[:8].startswith(sig) for sig in expected):
+        raise HTTPException(
+            status_code=400,
+            detail="File content does not match declared file type"
+        )
+
+
 def build_job_data(result: dict) -> dict:
     """Extract job_data fields from analyser result."""
     return {
@@ -56,7 +84,9 @@ def build_job_data(result: dict) -> dict:
 
 
 @router.post("/analyse-swms")
+@limiter.limit("10/minute")
 async def analyse_swms(
+    request: Request,
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -74,6 +104,7 @@ async def analyse_swms(
                 status_code=400,
                 detail=f"'{file.filename}' exceeds 10MB limit."
             )
+        validate_magic_bytes(contents, file.filename)
         file_tuples.append((contents, file.filename))
 
     try:
@@ -98,12 +129,14 @@ async def analyse_swms(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"analyse-swms error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"analyse-swms error:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/extract-scope")
+@limiter.limit("10/minute")
 async def extract_scope(
+    request: Request,
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -121,6 +154,7 @@ async def extract_scope(
                 status_code=400,
                 detail=f"'{file.filename}' exceeds 10MB limit."
             )
+        validate_magic_bytes(contents, file.filename)
         file_tuples.append((contents, file.filename))
 
     try:
@@ -143,5 +177,5 @@ async def extract_scope(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"extract-scope error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"extract-scope error:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

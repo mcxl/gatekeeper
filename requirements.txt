@@ -19,3 +19,4 @@ passlib[bcrypt]
 aiofiles
 httpx
 sentry-sdk[fastapi]
+slowapi
