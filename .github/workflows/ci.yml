@@ -16,6 +16,8 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
       FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      ENVIRONMENT: test
 
     steps:
       - name: Checkout code

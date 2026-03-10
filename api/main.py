@@ -29,6 +29,17 @@ sys.path.insert(0, _ROOT)
 from dotenv import load_dotenv
 load_dotenv(os.path.join(_ROOT, ".env"))
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    traces_sample_rate=0.2,
+    environment=os.getenv("ENVIRONMENT", "production"),
+    integrations=[FastApiIntegration(), StarletteIntegration()],
+)
+
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse

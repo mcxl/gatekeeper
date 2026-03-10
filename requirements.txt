@@ -18,3 +18,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 aiofiles
 httpx
+sentry-sdk[fastapi]
