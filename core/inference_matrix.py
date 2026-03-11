@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 import re
 
+MODEL = 'claude-sonnet-4-6'
+
 # ── Data model ────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -5800,7 +5802,7 @@ async def infer_with_claude(work_description: str, api_key: str = "") -> dict:
                 "https://api.anthropic.com/v1/messages",
                 headers=headers,
                 json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": MODEL,
                     "max_tokens": 2048,
                     "system": system_prompt,
                     "messages": [{"role": "user", "content": user_prompt}],

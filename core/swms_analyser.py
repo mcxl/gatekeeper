@@ -12,6 +12,8 @@ from anthropic import AsyncAnthropic
 logger = logging.getLogger(__name__)
 client = AsyncAnthropic()
 
+MODEL = 'claude-sonnet-4-6'
+
 
 def _parse_json_response(text: str) -> dict:
     """Strip markdown fences and parse JSON."""
@@ -110,7 +112,7 @@ async def analyse_existing_swms(swms_text: str) -> dict:
     """Mode 02: Analyse uploaded SWMS, return gap analysis + job data."""
     try:
         response = await client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=MODEL,
             max_tokens=2000,
             messages=[{
                 "role": "user",
@@ -127,7 +129,7 @@ async def extract_scope_from_document(doc_text: str) -> dict:
     """Mode 03: Extract work scope from Scope of Works / Specification."""
     try:
         response = await client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=MODEL,
             max_tokens=4000,
             messages=[{
                 "role": "user",
