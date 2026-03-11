@@ -60,6 +60,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
+from api.intake_routes import router as intake_router
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -69,6 +70,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(upload_router)
+app.include_router(intake_router)
 
 app.add_middleware(
     CORSMiddleware,
