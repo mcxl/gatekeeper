@@ -1433,7 +1433,15 @@ async function intakeConfirmGenerate() {
   document.getElementById('istep-generate').classList.add('active');
 
   const statusPanel = document.getElementById('intake-status-panel');
-  statusPanel.innerHTML = '<div class="status-step">\u23f3 Generating SWMS\u2026</div>';
+  statusPanel.innerHTML = '<div class="status-step">\u23f3 Generating SWMS \u2014 please wait, do not close this page\u2026</div>';
+
+  // Show a progress heartbeat so user knows it is running
+  let dots = 0;
+  const heartbeat = setInterval(() => {
+    dots = (dots + 1) % 4;
+    const el = statusPanel.querySelector('.status-step');
+    if (el) el.textContent = '\u23f3 Generating SWMS \u2014 please wait' + '.'.repeat(dots);
+  }, 2000);
 
   try {
     const token = localStorage.getItem('access_token');
@@ -1461,8 +1469,13 @@ async function intakeConfirmGenerate() {
       throw new Error(msg);
     }
 
+    clearInterval(heartbeat);
     const blob = await res.blob();
     console.log('blob size:', blob.size, 'type:', blob.type);
+
+    if (blob.size < 100) {
+      throw new Error('Document generation failed \u2014 empty response');
+    }
 
     // Trigger download
     const disposition = res.headers.get('Content-Disposition') || '';

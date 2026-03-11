@@ -699,9 +699,20 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
                          or project_meta.get("project_name", ""))
         if site_name and site_name in work_activity:
             work_activity = work_activity.replace(site_name, "").strip(" ,at-")
-    # Cap work activity at 8 lines; summarise with Claude if over
-    if work_activity and work_activity.count("\n") >= 8:
-        work_activity = _summarise_work_activity(work_activity)
+    if work_activity and len(work_activity.split()) <= 3:
+        # Single word or very short — fall back to description truncated to one sentence
+        fallback = project_meta.get("description", "")
+        if fallback:
+            work_activity = fallback.split(". ")[0].rstrip(".")
+    # Cap work activity at 8 lines OR 500 chars
+    if work_activity and (work_activity.count("\n") >= 8 or len(work_activity) > 500):
+        # Truncate at sentence boundary within 500 chars
+        truncated = work_activity[:500]
+        last_stop = max(truncated.rfind('. '), truncated.rfind('.\n'))
+        if last_stop > 100:
+            work_activity = truncated[:last_stop + 1]
+        else:
+            work_activity = truncated.rstrip() + '\u2026'
 
     # Row 0: PCBU + Site
     _set_cover(0, 1, pcbu)
