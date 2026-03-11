@@ -643,6 +643,18 @@ function selectTab(tab) {
 
   const uploadSection = document.getElementById('upload-section');
   const uploadLabel = document.getElementById('upload-label');
+  const formContainer = document.getElementById('form-container');
+  const intakePanel = document.getElementById('intake-panel');
+
+  const isIntake = tab === 'intake';
+  formContainer.style.display = isIntake ? 'none' : 'block';
+  intakePanel.style.display = isIntake ? 'block' : 'none';
+
+  document.querySelectorAll('.selector-row').forEach(el => {
+    el.style.display = isIntake ? 'none' : 'flex';
+  });
+  const genBtn = document.getElementById('btn-generate');
+  if (genBtn) genBtn.parentElement.style.display = isIntake ? 'none' : 'block';
 
   if (tab === 'manual') {
     uploadSection.classList.remove('visible');
@@ -657,7 +669,6 @@ function selectTab(tab) {
     }
   }
 
-  // Reset upload state when switching tabs
   selectedFiles = [];
   renderFileChips();
   document.getElementById('upload-options').classList.remove('visible');
