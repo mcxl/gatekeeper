@@ -66,10 +66,24 @@ DOCUMENT TEXT:
 Extract the work scope and return a JSON object with exactly this structure:
 
 {{
-  "pcbu_name": "company name if found, else empty string",
+  "project_name": "project name if found, else empty string",
   "project_address": "site address if found, else empty string",
-  "manager_name": "project manager or supervisor if found, else empty string",
   "principal_contractor": "principal contractor if found, else empty string",
+  "site_contact": "site contact person if found, else empty string",
+  "site_phone": "site contact phone if found, else empty string",
+  "pcbu_name": "company name (PCBU) if found, else empty string",
+  "project_description": "brief project description if found, else empty string",
+  "site_conditions": "site conditions mentioned e.g. occupied, heritage, high-rise, else empty string",
+  "access_constraints": "access restrictions or constraints mentioned, else empty string",
+  "neighbouring_properties": "neighbouring property concerns if mentioned, else empty string",
+  "environmental_considerations": "environmental factors if mentioned, else empty string",
+  "approval_requirements": "approvals or permits mentioned, else empty string",
+  "emergency_assembly_point": "emergency assembly point if found, else empty string",
+  "nearest_hospital": "nearest hospital if found, else empty string",
+  "induction_requirements": "site induction requirements if mentioned, else empty string",
+  "special_permits": "special permits required if mentioned, else empty string",
+  "whs_legislation_state": "state or territory for WHS legislation if found, else empty string",
+  "manager_name": "project manager or supervisor if found, else empty string",
   "jurisdiction": "AU",
   "title": "3-6 word job title only e.g. Painting project — 23 Bill St Kiama",
   "work_activity_summary": "one sentence — what construction work is being done",
@@ -108,7 +122,7 @@ async def extract_scope_from_document(doc_text: str) -> dict:
     try:
         response = await client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[{
                 "role": "user",
                 "content": SCOPE_EXTRACT_PROMPT.format(doc_text=doc_text[:12000])

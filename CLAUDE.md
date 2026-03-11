@@ -1,3 +1,28 @@
+# ── Claude Code Quick Reference ──────────────────────────────
+# Stack: FastAPI + Python 3.11 + Supabase + Railway + python-docx
+# Template: src/SWMS-260306-V1.docx
+# Test command: python -m pytest tests/ -v --tb=short
+# Test count: 64 passing
+# Commit style: feat / fix / refactor / chore / test
+#
+# Table indices: [0]=cover [1]=task [2]=CCVS [3]=amendments
+#                [4]=risk matrix [5]=legislation [6]=PPE
+#                [7]=signoff [8]=amendments large
+#
+# Rules:
+# - Never hardcode secrets — use os.getenv()
+# - Always run pytest before committing
+# - P0 = one line max 100 chars
+# - Work Activity = max 8 lines complete sentences
+# - CCVS = hyphen format e.g. WAH-H6
+# - Footer = SWMS slug + PCBU name
+# - Page 1 must never split
+#
+# Autonomous build pattern:
+# Read BUILD_PLAN.md → implement step → pytest → fix → commit → repeat
+# Stop after 3 failed attempts on one step and summarise blocker
+# ─────────────────────────────────────────────────────────────
+
 # CLAUDE.md — Gatekeeper Project
 ## Robertson's Remedial and Painting Pty Ltd
 ## WHS Governance Architecture + SWMS Generation System
@@ -27,10 +52,76 @@ Downstream files controlled by this reference:
 
 ## Project Structure
 
-This is a Python + Markdown codebase for SWMS (Safe Work Method
-Statements) documents. Source files are Python scripts that generate
-Word (.docx) outputs. When editing SWMS content, update the relevant
-Python source file, then rebuild the document.
+This is a Python/FastAPI project (Gatekeeper SWMS generator). Main app
+entry point is `api/main.py`. Always check for FastAPI app files when
+dealing with server/endpoint issues.
+
+- **Backend:** FastAPI (Python) — `api/main.py`, `core/`, `renderers/`
+- **Frontend:** HTML — `frontend/`
+- **Tests:** Run with `pytest` — ensure all tests pass before committing
+- **SWMS Source:** Python scripts that generate Word (.docx) outputs.
+  When editing SWMS content, update the relevant Python source file,
+  then rebuild the document.
+
+### Directory Layout
+
+```
+gatekeeper/
+├── api/            ← FastAPI app + routes (main.py, upload_routes.py)
+├── agents/         ← 4-agent pipeline (decomposer, risk_assessor, control_writer, assembler)
+├── core/           ← Business logic (orchestrator, generate, validate, inference_matrix, auth, schema)
+├── renderers/      ← DOCX + PDF output (docx_renderer.py, pdf_renderer.py, ra_renderer.py)
+├── vocab/          ← Canonical vocabulary (swms_vocabulary.py, standards_registry.py)
+├── frontend/       ← HTML pages (login, dashboard, app, contact, dev)
+├── db/             ← SQLite DB + seed scripts
+├── tests/          ← pytest suites (64 tests)
+├── src/            ← Legacy SWMS engine (SWMS_BASE_GENERAL.py) + reference docs
+├── outputs/        ← Generated documents
+└── docs/           ← Project documentation
+```
+
+### Running Locally
+
+```bash
+# Activate venv
+source venv/Scripts/activate   # Git Bash on Windows
+
+# Start server (recommended)
+python start.py                # Reads PORT from .env (default 8080)
+
+# Or direct uvicorn
+python -m uvicorn api.main:app --reload --port 8000
+
+# Run tests
+python -m pytest tests/ -v --tb=short
+```
+
+### SWMS Generation Pipeline
+
+```
+User input → GET /infer (inference_matrix, no Claude)
+  → /generate/route (simple or full pipeline)
+  → FULL: decomposer → risk_assessor → control_writer → assembler
+  → /render/docx (docx_renderer.py) → .docx bytes
+  → /render/pdf (LibreOffice conversion) → .pdf bytes
+```
+
+### Key File Locations
+
+| Item | Path |
+|------|------|
+| FastAPI entry | `api/main.py` (30+ endpoints) |
+| Orchestrator | `core/orchestrator.py` |
+| Inference matrix | `core/inference_matrix.py` (304KB) |
+| Validation | `core/validate.py` |
+| Schema (Pydantic) | `core/schema.py` |
+| Auth | `core/auth.py` |
+| DOCX renderer | `renderers/docx_renderer.py` |
+| PPE / hazard vocab | `vocab/swms_vocabulary.py` |
+| Standards registry | `vocab/standards_registry.py` |
+| Vocab CLI tool | `src/vocab_tool.py` |
+| Legacy engine | `src/SWMS_BASE_GENERAL.py` (v16.4) |
+| DB + seeds | `db/gatekeeper.db`, `db/seed*.py` |
 
 ---
 
@@ -489,6 +580,10 @@ Word files) in the commit message.
 
 ## Git Workflow
 
+After completing any code changes, always run the full test suite
+before committing. Never attempt large refactors without explicit
+user confirmation. Commit frequently after each logical unit of work.
+
 Always verify files exist before attempting `git add`. When
 committing, use descriptive commit messages that reference what was
 changed and why. After committing, confirm the commit with
@@ -507,6 +602,22 @@ always commit after saving. Never leave changes uncommitted.
 
 Branch: main
 Remote: origin
+
+---
+
+## Testing
+
+Always run `pytest` after modifying any Python files. Watch for stale
+imports and ensure test assertions match current code output. Target:
+all tests green before any commit.
+
+---
+
+## Terminology Standards
+
+PPE terms must use exact vocabulary: 'P2 respirator' (not dust mask),
+'hearing protection' (not ear protection). When updating terminology,
+check vocabulary enforcer logic to avoid double-prefix bugs.
 
 ---
 

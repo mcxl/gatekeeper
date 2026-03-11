@@ -336,7 +336,25 @@ def _build_inference_block(inferred: dict) -> str:
     )
     return block
 
-def generate_task(raw_input: str, user: str = "system") -> TaskBlock:
+def _build_scope_block(scope_context: dict) -> str:
+    """Format scope_context fields into a readable block for prompts."""
+    if not scope_context:
+        return ""
+    lines = []
+    for key, value in scope_context.items():
+        if value and str(value).strip():
+            label = key.replace("_", " ").title()
+            lines.append(f"  {label}: {value}")
+    if not lines:
+        return ""
+    return (
+        "\n\n--- SCOPE CONTEXT (from uploaded document) ---\n"
+        + "\n".join(lines)
+        + "\n--- END SCOPE CONTEXT ---"
+    )
+
+
+def generate_task(raw_input: str, user: str = "system", scope_context: dict = None) -> TaskBlock:
     """
     Generate a TaskBlock via Claude API.
 
@@ -360,7 +378,8 @@ def generate_task(raw_input: str, user: str = "system") -> TaskBlock:
         _inferred = {}
 
     _inference_block = _build_inference_block(_inferred)
-    prompt = raw_input + _inference_block
+    _scope_block = _build_scope_block(scope_context)
+    prompt = raw_input + _inference_block + _scope_block
     last_result: ValidationResult | None = None
 
     for attempt in range(1, 3):

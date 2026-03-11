@@ -774,7 +774,7 @@ GROUND_NEW = {
         'control': [
             ('Engineering:', 'Compaction equipment with vibration-dampened handles. Dust suppression with water spray during dry conditions. Backfill placed in controlled lifts — Maximum layer thickness per geotechnical specification.'),
             ('Admin:', 'Compaction testing at specified intervals and depths per geotechnical requirements — Test results recorded and compared to specification before next lift placed. Fill material source and quality confirmed — No contaminated or unsuitable material. Vibration exposure log maintained — Tool rotation every 30 minutes. Level checks against survey marks — Final levels verified by surveyor before handover.'),
-            ('PPE:', 'Steel capped footwear. Hearing protection (>85 dB). P2 dust mask in dry/dusty conditions. Cut-resistant gloves. High-vis vest or shirt.'),
+            ('PPE:', 'Steel capped footwear. Hearing protection (>85 dB). P2 respirator (minimum) in dry/dusty conditions. Cut-resistant gloves. High-vis vest or shirt.'),
             ('STOP WORK if:', 'Vibration exposure limit reached — Contaminated or unsuitable fill material identified — Compaction test failures — Trench wall movement during backfill — Dust not controlled.')
         ]
     },
@@ -1688,7 +1688,7 @@ SCREED_NEW = {
         'control': [
             ('Engineering:', 'Mechanical aids for repetitive bag handling where available \u2014 Mesh cut with bolt cutters (not angle grinder) to reduce sparks and noise \u2014 Material staged to minimise carry distances'),
             ('Admin:', 'SDS for cement reviewed \u2014 Correct mix ratio confirmed (1:3 or 1:4 cement:sand per specification) \u2014 Mesh specification and lap requirements confirmed before placement \u2014 Rotate workers on manual handling tasks'),
-            ('PPE:', 'P2 dust mask (dry cement handling), eye protection, chemical-resistant gloves (nitrile), steel-capped footwear, long sleeves'),
+            ('PPE:', 'P2 respirator (minimum) (dry cement handling), eye protection, chemical-resistant gloves (nitrile), steel-capped footwear, long sleeves'),
             ('STOP WORK if:', 'SDS not available for cement product \u2014 Mesh specification not confirmed \u2014 Manual handling of bags >25 kg without mechanical aids'),
         ]
     },

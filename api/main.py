@@ -502,6 +502,7 @@ async def generate_auto(request: Request, body: dict, user: dict = Depends(get_c
         description = body.get("description", "")
         project_meta = body.get("project_meta", {})
         jurisdiction = body.get("jurisdiction", "AU")
+        scope_context = body.get("scope_context", None)
         # Ensure work_activity and description are populated
         if not project_meta.get("work_activity"):
             # Use first sentence of description as work activity
@@ -515,6 +516,7 @@ async def generate_auto(request: Request, body: dict, user: dict = Depends(get_c
             force_full=body.get("force_full", False),
             force_simple=body.get("force_simple", False),
             jurisdiction=jurisdiction,
+            scope_context=scope_context,
         )
         return result
     except Exception as e:

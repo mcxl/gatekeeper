@@ -65,36 +65,18 @@ def resolve_field(value: str, field_key: str) -> tuple[str, bool]:
 
 
 def _summarise_work_activity(text: str, max_lines: int = 8, max_chars: int = 800) -> str:
-    """Condense work activity text to max_lines / max_chars using Claude API.
-    Always returns complete sentences only — never truncates mid-word or mid-sentence."""
-    try:
-        import anthropic
-        client = anthropic.Anthropic()
-        resp = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=400,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Condense this construction work activity description to "
-                    f"{max_lines} lines and under {max_chars} characters. "
-                    f"Use complete sentences only. Keep all key tasks, trades, "
-                    f"and hazard categories. Return only the condensed text, "
-                    f"no preamble:\n\n{text}"
-                ),
-            }],
-        )
-        result = resp.content[0].text.strip()
-    except Exception:
-        result = text
-    # Enforce hard caps: 800 chars at last full stop, 8 lines
+    """Truncate work activity text to max_lines / max_chars.
+    Cuts at last full stop within the limit — never mid-sentence."""
+    result = text.strip()
+    # Cap lines first
+    lines = result.split("\n")
+    if len(lines) > max_lines:
+        result = "\n".join(lines[:max_lines])
+    # Cap chars at last full stop
     if len(result) > max_chars:
         truncated = result[:max_chars]
         last_stop = truncated.rfind(".")
         result = truncated[:last_stop + 1] if last_stop > 0 else truncated.rsplit(" ", 1)[0]
-    lines = result.split("\n")
-    if len(lines) > max_lines:
-        result = "\n".join(lines[:max_lines])
     return result
 
 
@@ -107,8 +89,13 @@ _DUPLICATE_TOKENS = [
     ("  ", " "),
 ]
 
+import re as _re_audit
+_AUDIT_PATTERN = _re_audit.compile(r'AUDIT:\s*[\w\-|,\s]+$', _re_audit.MULTILINE)
+
 def sanitise_text(text: str) -> str:
-    """Remove duplicate tokens and double spaces from generated text."""
+    """Remove duplicate tokens, double spaces, and legacy AUDIT metadata from generated text."""
+    # Strip legacy AUDIT: metadata lines
+    text = _AUDIT_PATTERN.sub('', text).strip()
     for bad, good in _DUPLICATE_TOKENS:
         while bad in text:
             text = text.replace(bad, good)
@@ -135,7 +122,7 @@ def validate_ccvs_code(code: str) -> str:
     upper = code.upper().strip()
     for stream in _VALID_CCVS_STREAMS:
         if upper.startswith(stream):
-            suffix = upper[len(stream):].lstrip('-')
+            suffix = upper[len(stream):].lstrip('- ')
             repaired = f"{stream}-{suffix}"
             if _VALID_CCVS_PATTERN.match(repaired):
                 return repaired
@@ -599,7 +586,7 @@ def render_docx(task: TaskBlock) -> bytes:
     # Col 6 — CCVS code
     p6 = c[6].paragraphs[0]
     p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p6, task.ccvs_code or "N/A", bold=True, size_pt=10)
+    _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=10)
 
     # Monitoring table
     _monitoring_table(doc, task)
@@ -685,6 +672,9 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
 
     def _set_cover(row: int, col: int, value: str) -> None:
         cell = t0.cell(row, col)
+        # Remove w:sdt content controls that prevent text replacement
+        for sdt in cell._tc.findall(qn('w:sdt')):
+            cell._tc.remove(sdt)
         for para in cell.paragraphs:
             para.clear()
         _run(cell.paragraphs[0], value)

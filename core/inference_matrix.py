@@ -4266,7 +4266,7 @@ MATRIX = [
         "hrcw_license_class": None,
         "ppe": [
             "Safety glasses — plasterboard and ceiling grid installation",
-            "Dust mask P2 — plasterboard cutting dust",
+            "P2 respirator (minimum) — plasterboard cutting dust",
             "Hearing protection — power screwdrivers and cutting",
             "Full-body harness — where ceiling work above 2m on elevated platform",
         ],

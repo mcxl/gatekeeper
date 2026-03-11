@@ -17,7 +17,7 @@ from slowapi.util import get_remote_address
 
 from core.auth import get_current_user
 from core.document_extractor import (
-    extract_text, extract_multiple, truncate_for_prompt,
+    extract_text, extract_multiple, truncate_for_prompt, truncate_for_scope,
     IMAGE_EXTENSIONS, DOC_EXTENSIONS
 )
 from core.swms_analyser import analyse_existing_swms, extract_scope_from_document
@@ -163,15 +163,20 @@ async def extract_scope(
         else:
             raw_text = extract_multiple(file_tuples)
 
-        truncated = truncate_for_prompt(raw_text)
+        truncated = truncate_for_scope(raw_text)
         result = await extract_scope_from_document(truncated)
+
+        # Build scope_context from all extracted fields (beyond job_data)
+        scope_context = {k: v for k, v in result.items()
+                         if k not in ("hrcw_categories",) and v}
 
         return JSONResponse({
             "mode": "03",
             "file_count": len(files),
             "char_count": len(raw_text),
             "hrcw_categories": result.get("hrcw_categories", []),
-            "job_data": build_job_data(result)
+            "job_data": build_job_data(result),
+            "scope_context": scope_context
         })
 
     except ValueError as e:

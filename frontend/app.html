@@ -538,6 +538,7 @@ async function runAnalysis() {
       throw new Error(err.detail || 'Analysis failed');
     }
     const result = await res.json();
+    _scopeContext = result.scope_context || null;
     prefillDirectFields(result.job_data);
 
     if (mode === '02' && result.gaps && result.gaps.length) {
@@ -654,6 +655,7 @@ let lastMeta = null;
 let pendingBlob = null;
 let pendingFilename = null;
 let pendingBothData = null;
+let _scopeContext = null;
 
 async function generate() {
   const genBtn = document.getElementById('btn-generate');
@@ -693,7 +695,8 @@ async function generate() {
         description: payload.description,
         project_meta: payload.project_meta,
         force_full: true,
-        jurisdiction: currentJurisdiction
+        jurisdiction: currentJurisdiction,
+        scope_context: _scopeContext
       })
     });
     if (!genRes.ok) throw new Error('Generate failed: ' + genRes.status);

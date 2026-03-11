@@ -18,6 +18,7 @@ Usage:
 
 from __future__ import annotations
 import asyncio
+import functools
 import logging
 from typing import Optional
 
@@ -83,6 +84,7 @@ async def _run_simple_path(
     description: str,
     project_meta: dict,
     inference: dict,
+    scope_context: dict = None,
 ) -> list[dict]:
     """
     Existing single-agent generation. Falls back gracefully if generate.py
@@ -91,7 +93,8 @@ async def _run_simple_path(
     from core.generate import generate_task
     import asyncio
     loop = asyncio.get_event_loop()
-    task = await loop.run_in_executor(None, generate_task, description)
+    fn = functools.partial(generate_task, description, scope_context=scope_context)
+    task = await loop.run_in_executor(None, fn)
     result = task.model_dump() if hasattr(task, 'model_dump') else task
     return [result] if isinstance(result, dict) else result
 
@@ -102,6 +105,7 @@ async def _run_full_pipeline(
     description: str,
     project_meta: dict,
     inference: dict,
+    scope_context: dict = None,
 ) -> tuple[list[dict], dict]:
     """
     Run all four agents in sequence.
@@ -117,7 +121,7 @@ async def _run_full_pipeline(
     # ── Agent 1: Decompose ────────────────────────────────────────────────────
     log.info("Agent 1 — Decomposer starting")
     try:
-        task_manifest = await run_decomposer(description, inference)
+        task_manifest = await run_decomposer(description, inference, scope_context=scope_context)
         agent_outputs["task_manifest"] = task_manifest
         log.info(f"Agent 1 — {task_manifest['total_tasks']} tasks decomposed")
     except Exception as e:
@@ -146,7 +150,7 @@ async def _run_full_pipeline(
         # Agent 3: write controls for this single task
         log.info(f"Agent 3+4 — task {idx+1}/{len(tasks)}: {task['task'][:40]}")
         try:
-            ctrl = await write_controls_single(task, risk, inference)
+            ctrl = await write_controls_single(task, risk, inference, scope_context=scope_context)
         except Exception as e:
             log.error(f"Agent 3 failed for task {idx+1}: {e}")
             raise RuntimeError(f"Control Writer failed for task {idx+1}: {e}") from e
@@ -191,6 +195,7 @@ async def generate_swms(
     force_full: bool = False,
     force_simple: bool = False,
     jurisdiction: str = "AU",
+    scope_context: Optional[dict] = None,
 ) -> dict:
     """
     Main entry point for SWMS generation.
@@ -267,10 +272,10 @@ async def generate_swms(
     agent_outputs: dict = {}
 
     if selected_route == "simple":
-        task_blocks = await _run_simple_path(description, project_meta, inference)
+        task_blocks = await _run_simple_path(description, project_meta, inference, scope_context=scope_context)
     else:
         task_blocks, agent_outputs = await _run_full_pipeline(
-            description, project_meta, inference
+            description, project_meta, inference, scope_context=scope_context
         )
 
     # Post-generation plain English cleanup + CCVS enforcement
@@ -321,6 +326,7 @@ async def generate_swms_stream(
     force_full: bool = False,
     force_simple: bool = False,
     jurisdiction: str = "AU",
+    scope_context: dict | None = None,
 ):
     """
     Async generator version of generate_swms().
@@ -365,7 +371,7 @@ async def generate_swms_stream(
 
     # Step 3: simple path — single task, yield immediately
     if selected_route == "simple":
-        task_blocks = await _run_simple_path(description, project_meta, inference)
+        task_blocks = await _run_simple_path(description, project_meta, inference, scope_context=scope_context)
         yield {"type": "task_count", "count": len(task_blocks)}
         for i, tb in enumerate(task_blocks):
             yield {"type": "task", "index": i, "total": len(task_blocks), "task": tb}
@@ -378,7 +384,7 @@ async def generate_swms_stream(
      run_assembler, run_assembler_single) = _import_agents()
 
     try:
-        task_manifest = await run_decomposer(description, inference)
+        task_manifest = await run_decomposer(description, inference, scope_context=scope_context)
     except Exception as e:
         yield {"type": "error", "message": f"Decomposer failed: {e}"}
         return
@@ -403,7 +409,7 @@ async def generate_swms_stream(
 
         try:
             # Agent 3: controls for this task
-            ctrl = await write_controls_single(task, risk, inference)
+            ctrl = await write_controls_single(task, risk, inference, scope_context=scope_context)
 
             # Agent 4: assemble this task
             single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}

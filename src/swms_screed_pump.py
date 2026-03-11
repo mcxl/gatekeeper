@@ -166,7 +166,7 @@ TASKS = [
             "(1:3 or 1:4 cement:sand per specification) — mesh "
             "specification and lap requirements confirmed before "
             "placement — rotate workers on manual handling tasks.\n"
-            "PPE: P2 dust mask (dry cement handling), eye protection, "
+            "PPE: P2 respirator (minimum) (dry cement handling), eye protection, "
             "chemical-resistant gloves (nitrile), steel-capped footwear, "
             "long sleeves."
         ),
@@ -179,7 +179,7 @@ TASKS = [
         ),
         "control_summary": (
             "Mechanical aids where available, bolt cutters for mesh, "
-            "SDS reviewed, P2 dust mask and nitrile gloves."
+            "SDS reviewed, P2 respirator (minimum) and nitrile gloves."
         ),
     },
 
@@ -289,7 +289,7 @@ PPE_CONTENT = (
     "Steel-capped footwear AS/NZS 2210.3; "
     "Waterproof boots (placement and washout); "
     "Eye protection; "
-    "P2 dust mask (dry cement handling); "
+    "P2 respirator (minimum) (dry cement handling); "
     "Hearing protection >85 dB (pump operation); "
     "Chemical-resistant gloves (nitrile); "
     "Long sleeves (alkaline burn protection)."

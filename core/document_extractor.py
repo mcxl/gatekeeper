@@ -284,6 +284,13 @@ def extract_multiple(files: list[tuple[bytes, str]]) -> str:
     return '\n\n'.join(parts)
 
 
+def truncate_for_scope(text: str, max_chars: int = 8000) -> str:
+    """Truncate document text to a reasonable size for scope extraction."""
+    if not text or len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n[Document truncated for scope extraction]"
+
+
 def truncate_for_prompt(text: str, max_chars: int = 12000) -> str:
     """Truncate text to fit prompt limits, keeping start and end."""
     if len(text) <= max_chars:

@@ -76,7 +76,24 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-async def run_decomposer(description: str, inference: dict) -> dict:
+def _build_scope_context_block(scope_context: dict) -> str:
+    """Format scope_context fields into prompt text for the decomposer."""
+    if not scope_context:
+        return ""
+    lines = []
+    for key, value in scope_context.items():
+        if value and str(value).strip():
+            label = key.replace("_", " ").title()
+            lines.append(f"  {label}: {value}")
+    if not lines:
+        return ""
+    return (
+        "\n\nSCOPE CONTEXT (from uploaded document):\n"
+        + "\n".join(lines)
+    )
+
+
+async def run_decomposer(description: str, inference: dict, scope_context: dict = None) -> dict:
     """
     Run Agent 1 — Task Decomposer.
     Returns TaskManifest dict.
@@ -93,10 +110,13 @@ async def run_decomposer(description: str, inference: dict) -> dict:
     if env_flags:
         env_context = "\nEnvironment context from pre-analysis:\n" + "\n".join(f"  - {e}" for e in env_flags)
 
+    scope_block = _build_scope_context_block(scope_context)
+
     user_content = (
         f"Work description:\n{description}"
         f"{hrcw_context}"
         f"{env_context}"
+        f"{scope_block}"
         f"\n\nDecompose into ordered tasks. Return TaskManifest JSON only."
     )
 

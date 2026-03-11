@@ -138,6 +138,23 @@ Schema:
 }
 """
 
+def _build_scope_context_block(scope_context: dict) -> str:
+    """Format scope_context fields into prompt text for the control writer."""
+    if not scope_context:
+        return ""
+    lines = []
+    for key, value in scope_context.items():
+        if value and str(value).strip():
+            label = key.replace("_", " ").title()
+            lines.append(f"  {label}: {value}")
+    if not lines:
+        return ""
+    return (
+        "\n\nSCOPE CONTEXT (from uploaded document):\n"
+        + "\n".join(lines)
+    )
+
+
 _client: anthropic.Anthropic | None = None
 
 
@@ -152,6 +169,7 @@ async def run_control_writer(
     task_manifest: dict,
     risk_manifest: dict,
     inference: dict,
+    scope_context: dict = None,
 ) -> dict:
     """
     Run Agent 3 — Control Writer.
@@ -163,10 +181,11 @@ async def run_control_writer(
 
     # Build inference context string once — shared across all tasks
     inference_context = _build_inference_context(inference)
+    scope_block = _build_scope_context_block(scope_context)
 
     # Process all tasks concurrently
     results = await asyncio.gather(*[
-        _write_controls_for_task(task, risks[task["sequence"]], inference_context)
+        _write_controls_for_task(task, risks[task["sequence"]], inference_context, scope_block)
         for task in tasks
     ])
 
@@ -177,6 +196,7 @@ async def write_controls_single(
     task: dict,
     risk: dict,
     inference: dict,
+    scope_context: dict = None,
 ) -> dict:
     """
     Write controls for a single task.
@@ -184,13 +204,15 @@ async def write_controls_single(
     Returns a single control entry dict.
     """
     inference_context = _build_inference_context(inference)
-    return await _write_controls_for_task(task, risk, inference_context)
+    scope_block = _build_scope_context_block(scope_context)
+    return await _write_controls_for_task(task, risk, inference_context, scope_block)
 
 
 async def _write_controls_for_task(
     task: dict,
     risk: dict,
     inference_context: str,
+    scope_block: str = "",
 ) -> dict:
     """Write controls for a single task. Called concurrently."""
     hazards_str = "\n".join(f"  - {h}" for h in risk["hazards"])
@@ -206,6 +228,7 @@ async def _write_controls_for_task(
         f"All hazards:\n{hazards_str}"
         f"{hrcw_str}"
         f"\n\nInference pre-fill (mandatory requirements):\n{inference_context}"
+        f"{scope_block}"
         f"\n\nWrite controls for this task. Return single-task JSON only."
     )
 
