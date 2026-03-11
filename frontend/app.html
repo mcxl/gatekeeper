@@ -1393,6 +1393,10 @@ function intakePopulateForm(data) {
        </label>`
     ).join('');
   }
+
+  // Force show compliance/jurisdiction/format sections
+  const intakeSections = document.querySelectorAll('#intake-review-zone .intake-section');
+  intakeSections.forEach(s => s.style.display = 'block');
 }
 
 function intakeMarkEdited(key) {
