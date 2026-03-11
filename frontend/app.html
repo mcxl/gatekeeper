@@ -324,6 +324,49 @@
     <!-- Missing fields warning -->
     <div id="intake-missing-warning" class="intake-missing" style="display:none"></div>
 
+    <div class="intake-section">
+      <div class="intake-section-title">Compliance</div>
+      <div class="intake-field">
+        <label>Person Responsible for Compliance</label>
+        <input type="text" id="iinput-compliance-person"
+               placeholder="Name of supervisor or team leader">
+      </div>
+      <div class="intake-field">
+        <label>Person Responsible for Reviewing</label>
+        <input type="text" id="iinput-review-person"
+               placeholder="Name of project manager">
+      </div>
+      <div class="intake-field">
+        <label>Date</label>
+        <input type="text" id="iinput-swms-date" placeholder="11/03/2026">
+      </div>
+    </div>
+
+    <div class="intake-section">
+      <div class="intake-section-title">How Will the SWMS Be Reviewed?</div>
+      <div id="intake-review-options"></div>
+    </div>
+
+    <div class="intake-section">
+      <div class="intake-section-title">Jurisdiction</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="sel-btn active" id="ijur-AU" onclick="intakeSelectJur('AU')">AU</button>
+        <button class="sel-btn" id="ijur-NZ" onclick="intakeSelectJur('NZ')">NZ</button>
+        <button class="sel-btn" id="ijur-UK" onclick="intakeSelectJur('UK')">UK</button>
+        <button class="sel-btn" id="ijur-US" onclick="intakeSelectJur('US')">US</button>
+        <button class="sel-btn" id="ijur-CA" onclick="intakeSelectJur('CA')">CA</button>
+      </div>
+    </div>
+
+    <div class="intake-section">
+      <div class="intake-section-title">Output Format</div>
+      <div style="display:flex;gap:10px">
+        <button class="sel-btn active" id="ifmt-docx" onclick="intakeSelectFmt('docx')">Word (.docx)</button>
+        <button class="sel-btn" id="ifmt-pdf" onclick="intakeSelectFmt('pdf')">PDF</button>
+        <button class="sel-btn" id="ifmt-both" onclick="intakeSelectFmt('both')">Both</button>
+      </div>
+    </div>
+
     <!-- Action bar -->
     <div class="intake-action-bar">
       <button class="btn-secondary" onclick="intakeReset()">&larr; Start Over</button>
@@ -1324,6 +1367,32 @@ function intakePopulateForm(data) {
       (data.missing_required || []).map(f => labels[f] || f).join(', ') +
       '. Please fill these before generating.';
   }
+
+  // Pre-fill date
+  const dateEl = document.getElementById('iinput-swms-date');
+  if (dateEl) {
+    const today = new Date().toLocaleDateString('en-AU', {
+      day:'2-digit', month:'2-digit', year:'numeric'
+    });
+    dateEl.value = today;
+  }
+
+  // Pre-fill compliance/review person from manager_name
+  const compEl = document.getElementById('iinput-compliance-person');
+  const revEl = document.getElementById('iinput-review-person');
+  if (compEl && fields.manager_name) compEl.value = fields.manager_name;
+  if (revEl && fields.manager_name) revEl.value = fields.manager_name;
+
+  // Populate review options from existing REVIEW_OPTIONS if available
+  const reviewDiv = document.getElementById('intake-review-options');
+  if (reviewDiv && typeof REVIEW_OPTIONS !== 'undefined') {
+    reviewDiv.innerHTML = REVIEW_OPTIONS.map((opt, i) =>
+      `<label class="review-item">
+        <input type="checkbox" ${REVIEW_DEFAULT_INDICES.includes(i) ? 'checked' : ''}>
+        <span>${opt}</span>
+       </label>`
+    ).join('');
+  }
 }
 
 function intakeMarkEdited(key) {
@@ -1370,7 +1439,14 @@ async function intakeConfirmGenerate() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ fields, jurisdiction: currentJurisdiction || 'AU' }),
+      body: JSON.stringify({
+        fields,
+        jurisdiction: _intakeJur,
+        format: _intakeFmt,
+        compliance_person: document.getElementById('iinput-compliance-person')?.value.trim() || '',
+        review_person: document.getElementById('iinput-review-person')?.value.trim() || '',
+        swms_date: document.getElementById('iinput-swms-date')?.value.trim() || '',
+      }),
     });
 
     if (!res.ok) {
@@ -1435,6 +1511,25 @@ function intakeHandleStreamEvent(event, panel) {
     panel.innerHTML +=
       `<div class="status-step" style="color:#c00">Error: ${event.message}</div>`;
   }
+}
+
+let _intakeJur = 'AU';
+let _intakeFmt = 'docx';
+
+function intakeSelectJur(code) {
+  _intakeJur = code;
+  ['AU','NZ','UK','US','CA'].forEach(c => {
+    const btn = document.getElementById('ijur-' + c);
+    if (btn) btn.classList.toggle('active', c === code);
+  });
+}
+
+function intakeSelectFmt(fmt) {
+  _intakeFmt = fmt;
+  ['docx','pdf','both'].forEach(f => {
+    const btn = document.getElementById('ifmt-' + f);
+    if (btn) btn.classList.toggle('active', f === fmt);
+  });
 }
 
 function intakeReset() {
