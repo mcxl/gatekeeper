@@ -216,13 +216,13 @@ async def intake_extract(
 @limiter.limit("5/minute")
 async def intake_generate(
     request: Request,
-    body: dict,
     current_user: dict = Depends(get_current_user)
 ):
     """
     Mode 04: Take confirmed intake form fields and fire generation.
     Streams back the same SSE format as POST /generate/auto.
     """
+    body = await request.json()
     from core.generate import generate_swms
 
     fields = body.get("fields", {})
