@@ -1211,7 +1211,7 @@ async function intakeRunExtract(file) {
   fd.append('files', file);
 
   try {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('access_token');
     const res = await fetch('/intake/extract', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -1352,7 +1352,7 @@ async function intakeConfirmGenerate() {
   statusPanel.innerHTML = '<div class="status-step">\u23f3 Generating SWMS\u2026</div>';
 
   try {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('access_token');
     const res = await fetch('/intake/generate', {
       method: 'POST',
       headers: {
