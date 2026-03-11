@@ -461,7 +461,7 @@ Return ONLY the JSON object.""",
 @limiter.limit("30/minute")
 def infer_endpoint(
     request: Request,
-    q: str = Query(..., max_length=500),
+    q: str = Query(..., max_length=2000),
     jurisdiction: Literal["AU", "NZ", "UK", "US", "CA"] = "AU",
     document_type: Literal["swms", "ra"] = "swms",
 ):
