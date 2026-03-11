@@ -148,52 +148,43 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     if result:
         return result
 
-    # Fallback: scanned PDF — render pages to images via PyMuPDF, extract with Vision
+    # Fallback: native PDF API — Claude reads all pages simultaneously
     try:
-        import fitz  # PyMuPDF
-        pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
-        # Scope docs: useful content almost always in first 10 pages
-        MAX_PAGES = 10
-        pages_to_process = list(enumerate(pdf_doc, 1))[:MAX_PAGES]
-
-        # Render all pages to PNG bytes first (fast, no API calls)
-        page_images = []
-        for page_num, page in pages_to_process:
-            mat = fitz.Matrix(150 / 72, 150 / 72)
-            pix = page.get_pixmap(matrix=mat)
-            page_images.append((page_num, pix.tobytes("png")))
-
-        # Extract text from all pages in parallel
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        page_texts = {}
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {
-                executor.submit(
-                    _extract_image_text, img_bytes, ".png", f"page_{page_num}.png"
-                ): page_num
-                for page_num, img_bytes in page_images
-            }
-            for future in as_completed(futures):
-                page_num = futures[future]
-                try:
-                    text = future.result()
-                    if text:
-                        page_texts[page_num] = text
-                except Exception as e:
-                    logger.warning(f"Page {page_num} OCR failed: {e}")
-
-        # Reassemble in page order
-        result = "\n\n".join(
-            page_texts[n] for n in sorted(page_texts.keys())
-        ).strip()
-        pdf_doc.close()
+        pdf_b64 = base64.standard_b64encode(file_bytes).decode('utf-8')
+        client = _get_client()
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=4000,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "application/pdf",
+                            "data": pdf_b64,
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "This is a construction document — either a Scope of Works, "
+                            "Specification, or Safe Work Method Statement (SWMS). "
+                            "Extract ALL text from this document exactly as written. "
+                            "Preserve headings, lists, and table content. "
+                            "Return only the extracted text, no commentary."
+                        )
+                    }
+                ]
+            }]
+        )
+        result = response.content[0].text.strip()
         if result:
-            logger.info(f"Scanned PDF: extracted {len(result)} chars via Vision OCR")
+            logger.info(f"Native PDF API: extracted {len(result)} chars")
             return result
-    except ImportError:
-        logger.warning("PyMuPDF not available — cannot process scanned PDF")
     except Exception as e:
-        logger.warning(f"Vision OCR fallback failed: {e}")
+        logger.warning(f"Native PDF API fallback failed: {e}")
 
     raise ValueError(
         "No text could be extracted from this PDF. "

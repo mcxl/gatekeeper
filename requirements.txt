@@ -22,4 +22,3 @@ sentry-sdk[fastapi]
 slowapi
 
 pydantic[email]
-pymupdf>=1.27.0
