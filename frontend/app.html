@@ -1453,29 +1453,32 @@ async function intakeConfirmGenerate() {
       }),
     });
 
+    console.log('intake/generate response:', res.status, res.headers.get('Content-Type'), res.headers.get('Content-Disposition'));
+
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Generation failed');
+      let msg = 'Generation failed';
+      try { const err = await res.json(); msg = err.detail || msg; } catch {}
+      throw new Error(msg);
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const blob = await res.blob();
+    console.log('blob size:', blob.size, 'type:', blob.type);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const event = JSON.parse(line.slice(6));
-          intakeHandleStreamEvent(event, statusPanel);
-        } catch {}
-      }
-    }
+    // Trigger download
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const fnMatch = disposition.match(/filename="?([^"]+)"?/);
+    const fname = fnMatch ? fnMatch[1] : 'SWMS.docx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    statusPanel.innerHTML +=
+      '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>';
   } catch (err) {
     statusPanel.innerHTML +=
       `<div class="status-step" style="color:#c00">Error: ${err.message}</div>`;
