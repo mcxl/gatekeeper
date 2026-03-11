@@ -683,7 +683,7 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
                  or project_meta.get("pcbu")
                  or project_meta.get("principal_contractor", ""))
     pcbu = sanitise_text(_raw_pcbu)
-    if not pcbu or (pcbu == pcbu.lower() and " " not in pcbu) or len(pcbu) < 4:
+    if not pcbu or len(pcbu) < 2:
         pcbu = "[Insert PCBU here]"
     manager = (project_meta.get("manager_name")
                or project_meta.get("manager", ""))
@@ -1252,7 +1252,17 @@ def render_swms_document(
     if doc.sections:
         doc.sections[0].top_margin = Cm(1.0)
 
-    doc_date = project_meta.get("date", date.today().strftime(jur["date_format"]))
+    doc_date = project_meta.get("date", "")
+    if doc_date:
+        # Normalise ISO format (2026-03-11) to local format (11/03/2026)
+        import re as _re_date
+        if _re_date.match(r'^\d{4}-\d{2}-\d{2}$', doc_date):
+            from datetime import datetime
+            doc_date = datetime.strptime(doc_date, '%Y-%m-%d').strftime(
+                jur.get("date_format", "%d/%m/%Y")
+            )
+    if not doc_date:
+        doc_date = date.today().strftime(jur.get("date_format", "%d/%m/%Y"))
 
     # ── Populate tables via builder functions ─────────────────────────────
     _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
