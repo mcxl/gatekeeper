@@ -14,7 +14,7 @@ import logging
 import traceback
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse 
 from typing import List
 from pathlib import Path
 
@@ -219,12 +219,15 @@ async def intake_generate(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Mode 04: Take confirmed intake form fields and fire generation.
-    Streams back the same SSE format as POST /generate/auto.
+    Mode 04: Confirmed intake form → generate + render → return DOCX bytes.
+    Same pattern as /generate/auto + /render/docx but in one call.
     """
-    body = await request.json()
-    from core.generate import generate_swms
+    from core.orchestrator import generate_swms
+    from renderers.docx_renderer import render_swms_document
+    from core.schema import TaskBlock
+    from datetime import date
 
+    body = await request.json()
     fields = body.get("fields", {})
     jurisdiction = body.get("jurisdiction", "AU")
 
@@ -240,34 +243,80 @@ async def intake_generate(
         "title":                 fields.get("title", ""),
         "work_activity_summary": fields.get("work_activity_summary", ""),
         "supervisor":            fields.get("manager_name", ""),
+        "work_activity":         fields.get("work_activity_summary", ""),
+        "description":           description,
     }
 
-    scope_context = {
-        "access_method":  fields.get("access_method", ""),
-        "building_type":  fields.get("building_type", ""),
-        "storeys":        fields.get("storeys", ""),
-        "occupancy":      fields.get("occupancy", ""),
-        "hrcw_categories": fields.get("hrcw_categories", []),
-    } if any(fields.get(k) for k in [
-        "access_method", "building_type", "storeys", "occupancy"
-    ]) else None
+    scope_context = None
+    if any(fields.get(k) for k in ["access_method","building_type","storeys","occupancy"]):
+        scope_context = {
+            "access_method":   fields.get("access_method", ""),
+            "building_type":   fields.get("building_type", ""),
+            "storeys":         fields.get("storeys", ""),
+            "occupancy":       fields.get("occupancy", ""),
+            "hrcw_categories": fields.get("hrcw_categories", []),
+        }
 
-    async def stream():
-        import json as _json
+    try:
+        result = await generate_swms(
+            description=description,
+            project_meta=project_meta,
+            force_full=True,
+            jurisdiction=jurisdiction,
+            scope_context=scope_context,
+        )
+    except Exception as e:
+        logger.error(f"intake generate failed:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Generation failed. Please try again.")
+
+    tasks_raw = result.get("tasks", [])
+    inference = result.get("inference", {})
+
+    _VALID_FREQ = {"before each use","each shift start","continuous","daily","weekly"}
+    _FREQ_MAP = {
+        "before use":"before each use","prior to each use":"before each use",
+        "start of shift":"each shift start","shift start":"each shift start",
+        "ongoing":"continuous","continuously":"continuous",
+        "each day":"daily","every day":"daily",
+        "each week":"weekly","every week":"weekly",
+    }
+
+    task_blocks = []
+    for t in tasks_raw:
+        t.setdefault("responsibility", {"SUP":"Supervise task","WKR":"Perform task per SWMS"})
+        t.setdefault("scope", "")
+        t.setdefault("risk_pre", "M")
+        t.setdefault("risk_post", "L")
+        t.setdefault("source", "ai-generated")
+        if t.get("monitoring") and isinstance(t["monitoring"], dict):
+            freq = t["monitoring"].get("frequency","")
+            if freq not in _VALID_FREQ:
+                t["monitoring"]["frequency"] = _FREQ_MAP.get(freq.lower().strip(),"daily")
         try:
-            async for event in generate_swms(
-                description=description,
-                project_meta=project_meta,
-                jurisdiction=jurisdiction,
-                scope_context=scope_context,
-            ):
-                yield f"data: {_json.dumps(event)}\n\n"
-        except Exception as e:
-            logger.error(f"intake-generate stream error: {e}")
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            task_blocks.append(
+                TaskBlock(**{k:v for k,v in t.items() if k in TaskBlock.model_fields})
+            )
+        except Exception:
+            continue
 
-    return StreamingResponse(
-        stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    try:
+        docx_bytes = render_swms_document(
+            task_blocks, project_meta, inference, jurisdiction=jurisdiction
+        )
+    except Exception as e:
+        logger.error(f"intake render failed:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Rendering failed. Please try again.")
+
+    # Build filename
+    addr = (fields.get("project_address") or "SWMS").replace(",","").strip()
+    safe = "".join(c if c.isalnum() or c in " -" else "" for c in addr).strip()
+    safe = safe.replace(" ","-")[:40]
+    d = date.today().strftime("%d%m%Y")
+    filename = f"SWMS-{safe}-{d}-V01.docx"
+
+    from fastapi.responses import Response as FResponse
+    return FResponse(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
