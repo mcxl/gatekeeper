@@ -152,16 +152,41 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     try:
         import fitz  # PyMuPDF
         pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
-        page_texts = []
-        mat = fitz.Matrix(150 / 72, 150 / 72)  # 150 DPI
-        for page_num, page in enumerate(pdf_doc, 1):
+        # Scope docs: useful content almost always in first 10 pages
+        MAX_PAGES = 10
+        pages_to_process = list(enumerate(pdf_doc, 1))[:MAX_PAGES]
+
+        # Render all pages to PNG bytes first (fast, no API calls)
+        page_images = []
+        for page_num, page in pages_to_process:
+            mat = fitz.Matrix(150 / 72, 150 / 72)
             pix = page.get_pixmap(matrix=mat)
-            img_bytes = pix.tobytes("png")
-            page_text = _extract_image_text(img_bytes, ".png", f"page_{page_num}.png")
-            if page_text:
-                page_texts.append(page_text)
+            page_images.append((page_num, pix.tobytes("png")))
+
+        # Extract text from all pages in parallel
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        page_texts = {}
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(
+                    _extract_image_text, img_bytes, ".png", f"page_{page_num}.png"
+                ): page_num
+                for page_num, img_bytes in page_images
+            }
+            for future in as_completed(futures):
+                page_num = futures[future]
+                try:
+                    text = future.result()
+                    if text:
+                        page_texts[page_num] = text
+                except Exception as e:
+                    logger.warning(f"Page {page_num} OCR failed: {e}")
+
+        # Reassemble in page order
+        result = "\n\n".join(
+            page_texts[n] for n in sorted(page_texts.keys())
+        ).strip()
         pdf_doc.close()
-        result = "\n\n".join(page_texts).strip()
         if result:
             logger.info(f"Scanned PDF: extracted {len(result)} chars via Vision OCR")
             return result
