@@ -145,12 +145,35 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(file_bytes))
     pages = [page.extract_text() or "" for page in reader.pages]
     result = "\n".join(pages).strip()
-    if not result:
-        raise ValueError(
-            "No text could be extracted from this PDF. "
-            "The file may be scanned — try taking a photo instead."
-        )
-    return result
+    if result:
+        return result
+
+    # Fallback: scanned PDF — render pages to images via PyMuPDF, extract with Vision
+    try:
+        import fitz  # PyMuPDF
+        pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+        page_texts = []
+        mat = fitz.Matrix(150 / 72, 150 / 72)  # 150 DPI
+        for page_num, page in enumerate(pdf_doc, 1):
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            page_text = _extract_image_text(img_bytes, ".png", f"page_{page_num}.png")
+            if page_text:
+                page_texts.append(page_text)
+        pdf_doc.close()
+        result = "\n\n".join(page_texts).strip()
+        if result:
+            logger.info(f"Scanned PDF: extracted {len(result)} chars via Vision OCR")
+            return result
+    except ImportError:
+        logger.warning("PyMuPDF not available — cannot process scanned PDF")
+    except Exception as e:
+        logger.warning(f"Vision OCR fallback failed: {e}")
+
+    raise ValueError(
+        "No text could be extracted from this PDF. "
+        "The file may be scanned — try taking a photo instead."
+    )
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
