@@ -128,7 +128,7 @@ async def analyse_swms(
 
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.error(f"analyse-swms error:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
@@ -181,6 +181,6 @@ async def extract_scope(
 
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.error(f"extract-scope error:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

@@ -204,7 +204,7 @@ async def intake_extract(
 
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.error(f"intake-extract error:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
@@ -265,7 +265,7 @@ async def intake_generate(
             jurisdiction=jurisdiction,
             scope_context=scope_context,
         )
-    except Exception as e:
+    except Exception:
         logger.error(f"intake generate failed:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Generation failed. Please try again.")
 
@@ -303,7 +303,7 @@ async def intake_generate(
         docx_bytes = render_swms_document(
             task_blocks, project_meta, inference, jurisdiction=jurisdiction
         )
-    except Exception as e:
+    except Exception:
         logger.error(f"intake render failed:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Rendering failed. Please try again.")
 

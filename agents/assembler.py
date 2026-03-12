@@ -9,7 +9,6 @@ Output: list[TaskBlock dict]
 
 from __future__ import annotations
 import json
-import re
 import anthropic
 from core.utils import strip_fences, enforce_wah_flag
 
@@ -245,5 +244,5 @@ def _post_process_task_block(tb: dict) -> None:
     tb.setdefault("version", "1.0")
 
     # Monitoring must be None when ccvs_code is N/A
-    if ccvs == "N/A":
+    if tb.get("ccvs_code", "N/A") == "N/A":
         tb["monitoring"] = None

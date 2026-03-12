@@ -27,7 +27,7 @@ load_dotenv()
 
 from agents.decomposer import run_decomposer
 from agents.risk_assessor import run_risk_assessor
-from agents.control_writer import run_control_writer, write_controls_single
+from agents.control_writer import write_controls_single
 from agents.assembler import run_assembler, run_assembler_single
 
 log = logging.getLogger(__name__)
