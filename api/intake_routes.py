@@ -307,13 +307,31 @@ async def intake_generate(
         logger.error(f"intake render failed:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Rendering failed. Please try again.")
 
-    # Build filename
+    # Build filename stem
     addr = (fields.get("project_address") or "SWMS").replace(",","").strip()
     safe = "".join(c if c.isalnum() or c in " -" else "" for c in addr).strip()
     safe = safe.replace(" ","-")[:40]
     d = date.today().strftime("%d%m%Y")
-    filename = f"SWMS-{safe}-{d}-V01.docx"
 
+    fmt = body.get("format", "docx")
+
+    # TODO: "both" — return a zip containing DOCX + PDF; for now return DOCX only
+    if fmt == "pdf":
+        from renderers.pdf_renderer import docx_to_pdf
+        try:
+            pdf_bytes = docx_to_pdf(docx_bytes)
+        except Exception:
+            logger.error(f"intake pdf conversion failed:\n{traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail="PDF conversion failed. Please try again.")
+        filename = f"SWMS-{safe}-{d}-V01.pdf"
+        from fastapi.responses import Response as FResponse
+        return FResponse(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    filename = f"SWMS-{safe}-{d}-V01.docx"
     from fastapi.responses import Response as FResponse
     return FResponse(
         content=docx_bytes,
