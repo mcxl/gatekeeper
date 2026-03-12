@@ -105,47 +105,38 @@ async def run_assembler(
     project_meta: dict,
 ) -> list[dict]:
     """
-    Run Agent 4 — Assembler.
-    Returns list of TaskBlock dicts.
+    Run Agent 4 — Assembler (deterministic).
+    Merges manifests and finalises each TaskBlock without a Claude call.
     """
-    # Pre-assemble the merged payload — Agent 4 validates and formats
     merged = _pre_merge(task_manifest, risk_manifest, control_manifest)
-
-    project_context = (
-        f"Project: {project_meta.get('project_name', 'Unknown')}\n"
-        f"Site: {project_meta.get('site_address', 'Unknown')}\n"
-        f"Principal contractor: {project_meta.get('principal_contractor', 'Unknown')}\n"
-        f"SWMS version: {project_meta.get('version', '1.0')}"
-    )
-
-    user_content = (
-        f"{project_context}\n\n"
-        f"Merged task data to assemble:\n"
-        f"{json.dumps(merged, indent=2)}\n\n"
-        f"Assemble into final TaskBlock array. Enforce all field limits. "
-        f"Return JSON array only."
-    )
-
-    message = _get_client().messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
-    )
-
-    text = message.content[0].text.strip()
-    text = re.sub(r"^```[a-z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
-
-    task_blocks = json.loads(text)
-    if not isinstance(task_blocks, list):
-        raise ValueError("Assembler must return a JSON array")
-
-    # Post-process: enforce constraints that Claude may miss
-    for tb in task_blocks:
-        _post_process_task_block(tb)
-
+    task_blocks = [_finalise_task_block(m) for m in merged]
     return task_blocks
+
+
+def _finalise_task_block(merged: dict) -> dict:
+    """
+    Deterministic finaliser: fills required fields and enforces constraints.
+    Replaces the Claude call that was previously in run_assembler().
+    """
+    tb = dict(merged)
+
+    # responsibility — required field with no default
+    resp = tb.get("responsibility")
+    if not resp:
+        words = tb.get("task", "task").split()[:5]
+        task_stub = " ".join(words)
+        tb["responsibility"] = {
+            "SUP": f"Supervise {task_stub}",
+            "WKR": f"Perform {task_stub} per SWMS",
+        }
+
+    # wah_applicable must align with ccvs_code
+    ccvs = tb.get("ccvs_code", "N/A")
+    if not isinstance(ccvs, str) or not ccvs.startswith("WAH"):
+        tb["wah_applicable"] = False
+
+    _post_process_task_block(tb)
+    return tb
 
 
 async def run_assembler_single(
