@@ -25,6 +25,11 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 
+from agents.decomposer import run_decomposer
+from agents.risk_assessor import run_risk_assessor
+from agents.control_writer import run_control_writer, write_controls_single
+from agents.assembler import run_assembler, run_assembler_single
+
 log = logging.getLogger(__name__)
 
 # ── Routing thresholds ────────────────────────────────────────────────────────
@@ -37,15 +42,6 @@ SAFEWORK_ALWAYS_FULL: bool = True
 
 # Sentence count above which full pipeline is used
 SENTENCE_THRESHOLD: int = 4
-
-# ── Agent imports (deferred to avoid import errors if agents/ not yet created) ─
-
-def _import_agents():
-    from agents.decomposer import run_decomposer
-    from agents.risk_assessor import run_risk_assessor
-    from agents.control_writer import run_control_writer, write_controls_single
-    from agents.assembler import run_assembler, run_assembler_single
-    return run_decomposer, run_risk_assessor, run_control_writer, write_controls_single, run_assembler, run_assembler_single
 
 
 # ── Routing ───────────────────────────────────────────────────────────────────
@@ -111,10 +107,6 @@ async def _run_full_pipeline(
     Run all four agents in sequence.
     Returns (task_blocks, agent_outputs_debug).
     """
-    (run_decomposer, run_risk_assessor,
-     run_control_writer, write_controls_single,
-     run_assembler, run_assembler_single) = _import_agents()
-
     agent_outputs: dict = {}
     errors: list[str] = []
 
@@ -368,10 +360,6 @@ async def generate_swms_stream(
         return
 
     # Step 4: full pipeline — agents 1+2 on full manifest, then per-task 3→4
-    (run_decomposer, run_risk_assessor,
-     _run_control_writer_batch, write_controls_single,
-     run_assembler, run_assembler_single) = _import_agents()
-
     try:
         task_manifest = await run_decomposer(description, inference, scope_context=scope_context)
     except Exception as e:
