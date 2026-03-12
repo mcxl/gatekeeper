@@ -234,7 +234,7 @@ async def _write_controls_for_task(
 
     message = _get_client().messages.create(
         model="claude-haiku-4-5",
-        max_tokens=8192,
+        max_tokens=2000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )

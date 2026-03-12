@@ -128,7 +128,7 @@ async def run_assembler(
 
     message = _get_client().messages.create(
         model="claude-haiku-4-5",
-        max_tokens=16000,
+        max_tokens=2000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
