@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 import anthropic
-from core.utils import strip_fences
+from core.utils import strip_fences, enforce_wah_flag
 
 SYSTEM_PROMPT = """\
 You are a SWMS document assembler for Australian construction.
@@ -221,8 +221,7 @@ def _post_process_task_block(tb: dict) -> None:
     Mutates in place.
     """
     # wah_applicable must align with ccvs_code
-    ccvs = tb.get("ccvs_code", "N/A")
-    tb["wah_applicable"] = ccvs.startswith("WAH")
+    enforce_wah_flag(tb)
 
     # Deduplicate PPE
     seen = set()

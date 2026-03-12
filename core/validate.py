@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.schema import TaskBlock, ValidationResult
+from core.utils import enforce_wah_flag
 
 # ============================================================
 # CONSTANTS — single source of truth used by validate.py and generate.py
@@ -370,16 +371,10 @@ def guard_tasks(tasks: list) -> list:
     """
     for task in tasks:
         # G1 — WAH flag guard
-        ccvs = ""
-        if hasattr(task, "ccvs_code"):
-            ccvs = task.ccvs_code or ""
-        elif isinstance(task, dict):
-            ccvs = task.get("ccvs_code", "") or ""
-        if not ccvs.startswith("WAH"):
-            if hasattr(task, "wah_applicable"):
-                task.wah_applicable = False
-            elif isinstance(task, dict):
-                task["wah_applicable"] = False
+        if isinstance(task, dict):
+            enforce_wah_flag(task)
+        elif not (getattr(task, "ccvs_code", None) or "").startswith("WAH"):
+            task.wah_applicable = False
 
         # G2 — Admin controls hard cap
         if hasattr(task, "admin"):

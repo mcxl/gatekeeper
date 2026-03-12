@@ -21,6 +21,7 @@ from core.schema import AuditEvent, TaskBlock, ValidationResult
 from core.validate import validate_task
 from core.audit import log_event
 from core.inference_matrix import infer_to_dict
+from core.utils import enforce_wah_flag, strip_fences
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -221,13 +222,7 @@ def _parse_task(raw: str) -> TaskBlock:
         data[field] = cleaned
 
     # Force wah_applicable=False when ccvs_code is not a WAH code.
-    # Guards against model incorrectly setting wah_applicable=true for tasks
-    # like LED-H6 (lead paint ground floor) which trigger Check 4 failures.
-    import re
-    ccvs_code = data.get("ccvs_code") or "N/A"
-    wah_ccvs = str(ccvs_code).startswith("WAH")
-    if not wah_ccvs:
-        data["wah_applicable"] = False
+    enforce_wah_flag(data)
     wah_applicable = bool(data.get("wah_applicable", False))
 
     # Strip WAH cross-reference bullets when wah_applicable is not active.
