@@ -191,12 +191,7 @@ def _call_api(client: anthropic.Anthropic, prompt: str) -> str:
 
 def _parse_task(raw: str) -> TaskBlock:
     """Parse JSON string into TaskBlock. Strips code fences if present."""
-    text = raw.strip()
-    if text.startswith("```"):
-        lines = text.splitlines()
-        text = "\n".join(
-            lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
-        )
+    text = strip_fences(raw)
     data = json.loads(text)
     monitoring_data = data.get("monitoring")
     monitoring = None

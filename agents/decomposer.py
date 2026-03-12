@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import anthropic
+from core.utils import strip_fences
 
 SYSTEM_PROMPT = """\
 You are a construction SWMS task decomposer for Australian construction work.
@@ -127,9 +128,7 @@ async def run_decomposer(description: str, inference: dict, scope_context: dict 
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = message.content[0].text.strip()
-    text = re.sub(r"^```[a-z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
+    text = strip_fences(message.content[0].text)
 
     text = re.sub(r",\s*([}\]])", r"", text)
     manifest = json.loads(text)

@@ -13,6 +13,7 @@ import json
 import re
 import asyncio
 import anthropic
+from core.utils import strip_fences
 
 SYSTEM_PROMPT = """\
 You are an Australian WHS control measure writer for construction SWMS documents.
@@ -239,9 +240,7 @@ async def _write_controls_for_task(
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = message.content[0].text.strip()
-    text = re.sub(r"^```[a-z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
+    text = strip_fences(message.content[0].text)
 
     result = json.loads(text)
     _validate_control_entry(result, task["sequence"])

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import anthropic
+from core.utils import strip_fences
 
 SYSTEM_PROMPT = """\
 You are a SWMS document assembler for Australian construction.
@@ -163,9 +164,7 @@ async def run_assembler_single(
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = message.content[0].text.strip()
-    text = re.sub(r"^```[a-z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
+    text = strip_fences(message.content[0].text)
 
     fixed = json.loads(text)
     _post_process_task_block(fixed)

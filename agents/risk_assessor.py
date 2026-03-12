@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import anthropic
+from core.utils import strip_fences
 
 SYSTEM_PROMPT = """\
 You are an Australian WHS risk assessor for construction work in NSW.
@@ -114,9 +115,7 @@ async def run_risk_assessor(task_manifest: dict, inference: dict) -> dict:
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = message.content[0].text.strip()
-    text = re.sub(r"^```[a-z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
+    text = strip_fences(message.content[0].text)
 
     text = re.sub(r",\s*([}\]])", r"", text)
     manifest = json.loads(text)
