@@ -1351,7 +1351,10 @@ function intakePopulateForm(data) {
     : `<span class="bar-ok">\u2713 All fields extracted \u2014 review and confirm</span>`;
 
   // HRCW flags — editable
-  const hrcw = fields.hrcw_categories || [];
+  let hrcw = fields.hrcw_categories;
+  if (!hrcw) hrcw = [];
+  else if (typeof hrcw === 'string') hrcw = hrcw.split(',').map(s => s.trim()).filter(Boolean);
+  else if (!Array.isArray(hrcw)) hrcw = [];
   _intakeFields.hrcw_categories = hrcw.slice();
   const hrcwSec = document.getElementById('intake-hrcw-section');
   hrcwSec.style.display = 'block';
