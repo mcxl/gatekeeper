@@ -88,6 +88,13 @@
 .badge-edited { background:#dbeafe; color:#1e40af; }
 .intake-source { font-size:11px; color:var(--text-muted); margin-top:3px; font-style:italic; }
 .hrcw-flag { padding:8px 12px; margin-bottom:6px; background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:4px; font-size:13px; }
+.hrcw-flag-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.hrcw-flag-row input { flex:1; background:rgba(245,158,11,0.08); border:1px solid #f59e0b; border-radius:4px; padding:6px 10px; font-family:'Outfit',sans-serif; font-size:13px; color:var(--text-primary); }
+.hrcw-flag-row input:focus { outline:none; border-color:#d97706; }
+.hrcw-flag-del { background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; padding:0 4px; line-height:1; }
+.hrcw-flag-del:hover { color:#c00; }
+.hrcw-flag-add { margin-top:8px; background:none; border:1px dashed var(--tab-border,#333); border-radius:4px; padding:6px 14px; font-family:'Outfit',sans-serif; font-size:12px; color:var(--text-muted); cursor:pointer; width:100%; }
+.hrcw-flag-add:hover { border-color:var(--accent,#f59e0b); color:var(--text-primary); }
 .intake-missing { padding:12px 14px; background:rgba(192,0,0,0.08); border-left:3px solid #c00; border-radius:4px; font-size:13px; color:#c00; margin-bottom:16px; }
 .intake-action-bar { display:flex; justify-content:space-between; align-items:center; padding-top:20px; border-top:1px solid var(--tab-border,#333); margin-top:24px; }
 .progress-bar-wrap { height:4px; background:var(--tab-border,#333); border-radius:2px; margin-top:6px; }
@@ -1343,16 +1350,12 @@ function intakePopulateForm(data) {
     ? `<span class="bar-warn">\u26a0\ufe0f ${absent} field${absent>1?'s':''} not found \u2014 review highlighted fields before generating</span>`
     : `<span class="bar-ok">\u2713 All fields extracted \u2014 review and confirm</span>`;
 
-  // HRCW flags
+  // HRCW flags — editable
   const hrcw = fields.hrcw_categories || [];
+  _intakeFields.hrcw_categories = hrcw.slice();
   const hrcwSec = document.getElementById('intake-hrcw-section');
-  const hrcwDiv = document.getElementById('intake-hrcw-flags');
-  if (hrcw.length > 0) {
-    hrcwSec.style.display = 'block';
-    hrcwDiv.innerHTML = hrcw.map(h =>
-      `<div class="hrcw-flag">\u26a0\ufe0f <strong>${h}</strong></div>`
-    ).join('');
-  }
+  hrcwSec.style.display = 'block';
+  intakeHrcwRender();
 
   // Missing warning
   if (missing > 0) {
@@ -1399,6 +1402,51 @@ function intakePopulateForm(data) {
   intakeSections.forEach(s => s.style.display = 'block');
 }
 
+function intakeHrcwRender() {
+  const div = document.getElementById('intake-hrcw-flags');
+  const flags = _intakeFields.hrcw_categories || [];
+  div.innerHTML = '';
+  flags.forEach((h, i) => {
+    const row = document.createElement('div');
+    row.className = 'hrcw-flag-row';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = h;
+    inp.setAttribute('aria-label', 'HRCW flag');
+    inp.addEventListener('input', () => {
+      _intakeFields.hrcw_categories[i] = inp.value;
+    });
+    const del = document.createElement('button');
+    del.className = 'hrcw-flag-del';
+    del.textContent = '\u00d7';
+    del.title = 'Remove flag';
+    del.addEventListener('click', () => intakeHrcwDelete(i));
+    row.appendChild(inp);
+    row.appendChild(del);
+    div.appendChild(row);
+  });
+  const add = document.createElement('button');
+  add.className = 'hrcw-flag-add';
+  add.textContent = '+ Add HRCW flag';
+  add.addEventListener('click', intakeHrcwAdd);
+  div.appendChild(add);
+}
+
+function intakeHrcwDelete(i) {
+  if (!_intakeFields.hrcw_categories) return;
+  _intakeFields.hrcw_categories.splice(i, 1);
+  intakeHrcwRender();
+}
+
+function intakeHrcwAdd() {
+  if (!_intakeFields.hrcw_categories) _intakeFields.hrcw_categories = [];
+  _intakeFields.hrcw_categories.push('');
+  intakeHrcwRender();
+  // Focus the new input
+  const rows = document.querySelectorAll('#intake-hrcw-flags .hrcw-flag-row');
+  if (rows.length) rows[rows.length - 1].querySelector('input').focus();
+}
+
 function intakeMarkEdited(key) {
   _intakeEdited.add(key);
   const badge = document.getElementById('ibadge-' + key);
@@ -1420,6 +1468,8 @@ async function intakeConfirmGenerate() {
     const el = document.getElementById('iinput-' + key);
     if (el) fields[key] = el.value.trim();
   }
+  // Include edited HRCW flags (filter out blank entries)
+  fields.hrcw_categories = (_intakeFields.hrcw_categories || []).filter(h => h.trim());
 
   if (!fields.description) {
     alert('Scope Description is required before generating.');
