@@ -374,6 +374,13 @@
       </div>
     </div>
 
+    <!-- Email field -->
+    <div class="intake-field" style="margin-bottom:0">
+      <label>Send to email <small>(optional)</small></label>
+      <input type="email" id="intake-email"
+             placeholder="e.g. pm@company.com.au">
+    </div>
+
     <!-- Action bar -->
     <div class="intake-action-bar">
       <button class="btn-secondary" onclick="intakeReset()">&larr; Start Over</button>
@@ -1230,6 +1237,8 @@ function switchDetectedJurisdiction() {
 
 let _intakeFields = {};
 let _intakeEdited = new Set();
+let _intakeLastUrl = null;
+let _intakeLastFilename = null;
 
 (function() {
   const origSelectTab = window.selectTab || selectTab;
@@ -1450,6 +1459,19 @@ function intakeHrcwAdd() {
   if (rows.length) rows[rows.length - 1].querySelector('input').focus();
 }
 
+function intakeDownloadResult() {
+  if (!_intakeLastUrl) {
+    alert('No document available. Please generate a SWMS first.');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = _intakeLastUrl;
+  a.download = _intakeLastFilename || 'SWMS.docx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function intakeMarkEdited(key) {
   _intakeEdited.add(key);
   const badge = document.getElementById('ibadge-' + key);
@@ -1530,7 +1552,7 @@ async function intakeConfirmGenerate() {
       throw new Error('Document generation failed \u2014 empty response');
     }
 
-    // Trigger download
+    // Trigger initial download and store URL for re-download
     const disposition = res.headers.get('Content-Disposition') || '';
     const fnMatch = disposition.match(/filename="?([^"]+)"?/);
     const fname = fnMatch ? fnMatch[1] : 'SWMS.docx';
@@ -1541,10 +1563,26 @@ async function intakeConfirmGenerate() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    // Store for re-download — do NOT revoke immediately
+    _intakeLastUrl = url;
+    _intakeLastFilename = fname;
+
+    // Email placeholder
+    const emailVal = document.getElementById('intake-email')?.value.trim() || '';
+    if (emailVal) {
+      console.log('Email send not yet implemented');
+    }
 
     statusPanel.innerHTML +=
-      '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>';
+      '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>' +
+      '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">' +
+        '<button class="btn-generate" style="flex:1;min-width:160px" onclick="intakeDownloadResult()">' +
+          '\u2B07\uFE0F Download again' +
+        '</button>' +
+        '<button class="btn-secondary" style="flex:1;min-width:140px" onclick="intakeReset()">' +
+          '\u2190 Generate another' +
+        '</button>' +
+      '</div>';
   } catch (err) {
     statusPanel.innerHTML +=
       `<div class="status-step" style="color:#c00">Error: ${err.message}</div>`;
@@ -1608,6 +1646,8 @@ function intakeSelectFmt(fmt) {
 function intakeReset() {
   _intakeFields = {};
   _intakeEdited.clear();
+  if (_intakeLastUrl) { URL.revokeObjectURL(_intakeLastUrl); _intakeLastUrl = null; }
+  _intakeLastFilename = null;
   document.getElementById('intake-upload-zone').style.display = 'block';
   document.getElementById('intake-review-zone').style.display = 'none';
   document.getElementById('intake-generating-zone').style.display = 'none';
