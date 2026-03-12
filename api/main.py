@@ -668,6 +668,8 @@ def _render_tasks_to_docx(request: dict, jurisdiction: str = "AU") -> tuple[byte
         except Exception:
             continue
 
+    from core.validate import guard_tasks
+    task_blocks = guard_tasks(task_blocks)
     docx_bytes = render_swms_document(task_blocks, project_meta, inference, jurisdiction=jurisdiction)
     return docx_bytes, filename
 
