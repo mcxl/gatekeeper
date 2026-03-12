@@ -590,6 +590,7 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
                 strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
                 for ctrl in tb[field]
             ]
+    tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
 
 
