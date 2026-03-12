@@ -301,10 +301,10 @@ def score_task(task: TaskBlock) -> ValidationResult:
     elif hp_count < 2:
         warnings.append(f"Check 11 — hold_points has fewer than 2 items ({hp_count})")
 
-    if ctrl_count > 25:
-        errors.append(f"Check 11 — controls exceeds 25 ({ctrl_count} items)")
-    elif ctrl_count < 3:
-        warnings.append(f"Check 11 — controls has fewer than 3 items ({ctrl_count})")
+    if ctrl_count > 8:
+        errors.append(f'Check 11 - {ctrl_count} controls: maximum 8 per task')
+    elif ctrl_count > 6:
+        warnings.append(f'Check 11 - {ctrl_count} controls: lean standard is max 6')
 
     if sw_count > 10:
         errors.append(f"Check 11 — stop_work exceeds 10 ({sw_count} items)")

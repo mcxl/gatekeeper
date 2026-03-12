@@ -244,10 +244,10 @@ def _post_process_task_block(tb: dict) -> None:
             deduped_ppe.append(item)
     tb["ppe"] = deduped_ppe
 
-    # Enforce controls character limit — trim from end if over 1800
+    # Enforce controls bullet cap — hard limit 8 per task
     controls = tb.get("controls", [])
-    while sum(len(c) for c in controls) > 1800 and len(controls) > 3:
-        controls.pop()
+    if len(controls) > 8:
+        controls = controls[:8]
     tb["controls"] = controls
 
     # Set source/approved/version defaults
