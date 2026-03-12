@@ -278,3 +278,46 @@ def test_full_pass():
     result = score_task(task)
     assert result.passed, f"Expected full pass. Errors: {result.errors}"
     assert result.errors == []
+
+
+# ============================================================
+# CHECK 11 — SECTION COUNT (targeted boundary tests)
+# T5 additions
+# ============================================================
+
+def test_check11_passes_at_6():
+    """6 controls is within the hard limit — no Check 11 error."""
+    task = _make_task(controls=[f"Inspect item number {i} before use" for i in range(6)])
+    result = score_task(task)
+    assert not any("Check 11" in e and "controls" in e for e in result.errors), (
+        f"Unexpected Check 11 error at 6 controls: {result.errors}"
+    )
+
+
+def test_check11_warns_at_7():
+    """7 controls exceeds the lean standard (6) — Check 11 warning issued."""
+    task = _make_task(controls=[f"Inspect item number {i} before use" for i in range(7)])
+    result = score_task(task)
+    assert any("Check 11" in w and "controls" in w for w in result.warnings), (
+        f"Expected Check 11 warning at 7 controls. Warnings: {result.warnings}"
+    )
+
+
+def test_check11_errors_at_9():
+    """9 controls exceeds the hard limit (8) — Check 11 error raised."""
+    task = _make_task(controls=[f"Inspect item number {i} before use" for i in range(9)])
+    result = score_task(task)
+    assert not result.passed
+    assert any("Check 11" in e and "controls" in e for e in result.errors), (
+        f"Expected Check 11 error at 9 controls. Errors: {result.errors}"
+    )
+
+
+def test_check11_regression_25_must_fail():
+    """Regression: 25 controls (original test case) must still fail Check 11."""
+    task = _make_task(controls=[f"Inspect item number {i} before use" for i in range(25)])
+    result = score_task(task)
+    assert not result.passed
+    assert any("Check 11" in e and "controls" in e for e in result.errors), (
+        f"Regression: 25 controls must fail Check 11. Errors: {result.errors}"
+    )
