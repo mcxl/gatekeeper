@@ -278,28 +278,13 @@ async def generate_swms(
             description, project_meta, inference, scope_context=scope_context
         )
 
-    # Post-generation plain English cleanup + CCVS enforcement
-    task_blocks = [_enforce_plain_english(tb) for tb in task_blocks]
+    # Post-generation normalisation (plain English, CCVS repair, risk labels, citation strip)
+    hot_work_ok = _hot_work_legitimate(inference)
+    task_blocks = [_normalise_task(tb, inference, jurisdiction, hot_work_ok) for tb in task_blocks]
     _suppress_false_ccvs(task_blocks, inference)
-    # Validate and repair CCVS codes (fix missing hyphens like "WAHH6" → "WAH-H6")
-    from renderers.docx_renderer import validate_ccvs_code
-    for tb in task_blocks:
-        if "ccvs_code" in tb:
-            tb["ccvs_code"] = validate_ccvs_code(tb["ccvs_code"])
-    # Enrich risk labels with numeric scores: "H" → "High(9)"
-    for tb in task_blocks:
-        _enrich_risk_labels(tb)
 
-    # Strip unverified standard citations from generated task text
-    ccvs_codes = inference.get("ccvs_codes", [])
-    for tb in task_blocks:
-        for field in ("controls", "admin", "stop_work", "hold_points"):
-            if field in tb and isinstance(tb[field], list):
-                tb[field] = [
-                    strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
-                    for ctrl in tb[field]
-                ]
     # Log any flagged citations for monitoring
+    ccvs_codes = inference.get("ccvs_codes", [])
     validation = validate_standard_citations(
         str(task_blocks), jurisdiction, ccvs_codes
     )
@@ -402,6 +387,7 @@ async def generate_swms_stream(
 
     yield {"type": "task_count", "count": total}
 
+    hot_work_ok = _hot_work_legitimate(inference)
     assembled = []
     for idx, task in enumerate(tasks):
         seq = task["sequence"]
@@ -428,8 +414,7 @@ async def generate_swms_stream(
                 except Exception:
                     pass
 
-            tb = _enforce_plain_english(tb)
-            _enrich_risk_labels(tb)
+            tb = _normalise_task(tb, inference, jurisdiction, hot_work_ok)
             assembled.append(tb)
             yield {"type": "task", "index": idx, "total": total, "task": tb}
             await asyncio.sleep(0)
@@ -438,8 +423,6 @@ async def generate_swms_stream(
             yield {"type": "error", "message": f"Task {idx+1} failed: {e}"}
             assembled.append({})
 
-    # Suppress false CCVS codes across all assembled tasks
-    _suppress_false_ccvs(assembled, inference)
     yield {"type": "done", "task_count": len(assembled), "route": selected_route}
 
 
@@ -557,30 +540,53 @@ _HOT_WORK_CONFIRM_PATTERNS = [
 ]
 
 
+def _hot_work_legitimate(inference: dict) -> bool:
+    """Return True if inference indicates real hot work is present in the job."""
+    all_inf = str(inference).lower()
+    return "hot work" in all_inf or "welding" in all_inf
+
+
+def _suppress_false_ccvs_single(tb: dict, hot_work_legitimate: bool) -> None:
+    """Suppress a HOT CCVS code on a single task block if hot work is not real."""
+    if hot_work_legitimate:
+        return
+    ccvs = tb.get("ccvs_code", "N/A")
+    if not ccvs.startswith("HOT"):
+        return
+    task_text = (tb.get("task", "") + " " + tb.get("scope", "")).lower()
+    real_hot = any(p.search(task_text) for p in _HOT_WORK_CONFIRM_PATTERNS)
+    if not real_hot:
+        tb["ccvs_code"] = "N/A"
+        for field in ("controls", "admin", "hold_points", "stop_work"):
+            if field in tb and isinstance(tb[field], list):
+                tb[field] = [item for item in tb[field]
+                             if "hot work" not in item.lower()]
+
+
 def _suppress_false_ccvs(task_blocks: list[dict], inference: dict) -> None:
     """Suppress HOT CCVS codes when inference says no hot work is present."""
-    # Check if the original description has real hot work
-    has_hot_work = any("hot_work" in str(inference.get("permits", [])).lower()
-                       or "hot work" in str(inference.get("notes", [])).lower()
-                       for _ in [1])
-    # Also check if any hot work certs/permits are in inference
-    all_inf = str(inference).lower()
-    has_hot_inf = "hot work" in all_inf or "welding" in all_inf
-    if has_hot_inf:
-        return  # hot work is legitimate
+    hot_work_ok = _hot_work_legitimate(inference)
     for tb in task_blocks:
-        ccvs = tb.get("ccvs_code", "N/A")
-        if ccvs.startswith("HOT"):
-            # Check task name for actual hot work keywords
-            task_text = (tb.get("task", "") + " " + tb.get("scope", "")).lower()
-            real_hot = any(p.search(task_text) for p in _HOT_WORK_CONFIRM_PATTERNS)
-            if not real_hot:
-                tb["ccvs_code"] = "N/A"
-                # Also remove hot work from controls/admin
-                for field in ("controls", "admin", "hold_points", "stop_work"):
-                    if field in tb and isinstance(tb[field], list):
-                        tb[field] = [item for item in tb[field]
-                                     if "hot work" not in item.lower()]
+        _suppress_false_ccvs_single(tb, hot_work_ok)
+
+
+def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: bool) -> dict:
+    """Apply all per-task post-processing in a single call."""
+    from renderers.docx_renderer import validate_ccvs_code
+    from vocab.standards_registry import strip_unverified_citations
+    ccvs_codes = inference.get("ccvs_codes", [])
+    tb = _enforce_plain_english(tb)
+    if "ccvs_code" in tb:
+        tb["ccvs_code"] = validate_ccvs_code(tb["ccvs_code"])
+    _enrich_risk_labels(tb)
+    _suppress_false_ccvs_single(tb, hot_work_ok)
+    for field in ("controls", "admin", "stop_work", "hold_points"):
+        if field in tb and isinstance(tb[field], list):
+            tb[field] = [
+                strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
+                for ctrl in tb[field]
+            ]
+    return tb
 
 
 def _enforce_sil_scoring(tb: dict) -> None:
