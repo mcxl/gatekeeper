@@ -288,6 +288,7 @@ async def generate(
     trade_type: str = Form(""),
     principal_contractor: str = Form("General"),
     output_format: str = Form("both"),
+    user: dict = Depends(get_current_user),
 ):
     """
     Generate SWMS for given task name.
