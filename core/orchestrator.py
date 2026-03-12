@@ -138,24 +138,23 @@ async def _run_full_pipeline(
         log.error(f"Agent 2 failed: {e}")
         raise RuntimeError(f"Risk Assessor failed: {e}") from e
 
-    # ── Per-task loop: Agent 3 (controls) → Agent 4 (assemble) ───────────────
+    # ── Per-task concurrent: Agent 3 (controls) → Agent 4 (assemble) ──────────
     tasks = task_manifest.get("tasks", [])
     risks_by_seq = {r["sequence"]: r for r in risk_manifest.get("risks", [])}
-    task_blocks = []
 
-    for idx, task in enumerate(tasks):
+    async def _process_task(idx: int, task: dict) -> dict:
         seq = task["sequence"]
         risk = risks_by_seq.get(seq, {})
-
-        # Agent 3: write controls for this single task
         log.info(f"Agent 3+4 — task {idx+1}/{len(tasks)}: {task['task'][:40]}")
+
+        # Agent 3: write controls
         try:
             ctrl = await write_controls_single(task, risk, inference, scope_context=scope_context)
         except Exception as e:
-            log.error(f"Agent 3 failed for task {idx+1}: {e}")
-            raise RuntimeError(f"Control Writer failed for task {idx+1}: {e}") from e
+            log.error(f"Agent 3 failed for task {idx+1} ({task['task'][:40]}): {e}")
+            ctrl = {}
 
-        # Agent 4: assemble this single task
+        # Agent 4: assemble
         single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
         single_risk = {**risk_manifest, "risks": [risk] if risk else []}
         single_ctrl = {"controls": [ctrl]}
@@ -165,8 +164,8 @@ async def _run_full_pipeline(
             )
             tb = result[0] if result else {}
         except Exception as e:
-            log.error(f"Agent 4 failed for task {idx+1}: {e}")
-            raise RuntimeError(f"Assembler failed for task {idx+1}: {e}") from e
+            log.error(f"Agent 4 failed for task {idx+1} ({task['task'][:40]}): {e}")
+            return {}
 
         # Validate + retry
         val_result = _validate_task_block(tb)
@@ -177,8 +176,13 @@ async def _run_full_pipeline(
                 errors.extend(val_result["errors"])
             except Exception as e:
                 log.error(f"Retry assembler failed for task {idx+1}: {e}")
-        task_blocks.append(tb)
+
         log.info(f"Task {idx+1}/{len(tasks)} complete")
+        return tb
+
+    task_blocks = list(await asyncio.gather(
+        *[_process_task(idx, task) for idx, task in enumerate(tasks)]
+    ))
 
     agent_outputs["task_blocks_raw"] = task_blocks
     if errors:
