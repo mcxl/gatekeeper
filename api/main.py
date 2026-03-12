@@ -536,6 +536,7 @@ async def generate_full(request: dict, user: dict = Depends(get_current_user)):
             project_meta=request.get("project_meta", {}),
             force_full=True,
             jurisdiction=request.get("jurisdiction", "AU"),
+            scope_context=request.get("scope_context"),
         )
         return result
     except Exception as e:
@@ -558,6 +559,7 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
     force_full = request.get("force_full", False)
     force_simple = request.get("force_simple", False)
     jurisdiction = request.get("jurisdiction", "AU")
+    scope_context = request.get("scope_context")
 
     async def event_generator():
         try:
@@ -567,6 +569,7 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
                 force_full=force_full,
                 force_simple=force_simple,
                 jurisdiction=jurisdiction,
+                scope_context=scope_context,
             ):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
