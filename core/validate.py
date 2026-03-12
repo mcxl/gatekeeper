@@ -384,8 +384,10 @@ def guard_tasks(tasks: list) -> list:
         # G2 — Admin controls hard cap
         if hasattr(task, "admin"):
             task.admin = task.admin[:MAX_ADMIN]
-        elif isinstance(task, dict) and "admin_controls" in task:
-            task["admin_controls"] = task["admin_controls"][:MAX_ADMIN]
+        elif isinstance(task, dict):
+            for _key in ("admin", "admin_controls"):
+                if _key in task:
+                    task[_key] = task[_key][:MAX_ADMIN]
     return tasks
 
 
