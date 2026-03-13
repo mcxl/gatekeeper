@@ -473,6 +473,7 @@
     <button class="sel-btn active" id="fmt-pdf" onclick="selectFormat('pdf')">PDF</button>
     <button class="sel-btn" id="fmt-both" onclick="selectFormat('both')">Both</button>
   </div>
+  <div id="pdf-unavailable-notice" style="display:none;font-size:12px;color:var(--text-muted);text-align:center;margin-top:6px;">PDF export requires LibreOffice — DOCX available</div>
 </div>
 
 <!-- ── Generate button ────────────────────────────── -->
@@ -607,6 +608,14 @@ function toggleTheme() {
             const el = document.getElementById(id);
             if (el) { el.disabled = true; el.title = 'PDF not available on this server'; }
           });
+          if (currentFormat !== 'docx') {
+            currentFormat = 'docx';
+            document.querySelectorAll('#fmt-docx,#fmt-pdf,#fmt-both').forEach(b => b.classList.remove('active'));
+            const docxBtn = document.getElementById('fmt-docx');
+            if (docxBtn) docxBtn.classList.add('active');
+          }
+          const notice = document.getElementById('pdf-unavailable-notice');
+          if (notice) notice.style.display = 'block';
         }
       }
     } catch (e) { console.warn('Health check failed:', e); }

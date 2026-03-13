@@ -18,10 +18,13 @@ import io
 import json
 import logging
 import os
+import shutil
 import sys
 import traceback
 
 logger = logging.getLogger(__name__)
+
+_PDF_AVAILABLE = bool(shutil.which("soffice") or shutil.which("libreoffice"))
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
@@ -337,7 +340,7 @@ async def generate(
 @app.get("/health")
 async def health():
     return JSONResponse(
-        content={"status": "ok"},
+        content={"status": "ok", "pdf_available": _PDF_AVAILABLE},
         headers={"Cache-Control": "public, max-age=60"},
     )
 
