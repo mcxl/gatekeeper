@@ -20,7 +20,7 @@ from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml, OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Mm, Pt, RGBColor
+from docx.shared import Cm, Dxa, Mm, Pt, RGBColor
 from lxml import etree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -138,12 +138,9 @@ RED_BG = "FF0000"
 YLW_BG = "FFFF00"
 GRN_BG = "00FF00"
 
-_USABLE_CM   = 27.7
-_COL_PCT     = [10, 15, 8, 35, 8, 14, 10]
-_COL_W       = [_USABLE_CM * p / 100 for p in _COL_PCT]
-_HEADERS     = ["Task", "Hazard", "Risk\n(Pre)", "Controls", "Risk\n(Post)", "Responsibility", "CCVS\nCode"]
-_MON_PCT     = [16, 28, 14, 14, 28]
-_MON_W       = [_USABLE_CM * p / 100 for p in _MON_PCT]
+# Column widths in DXA — must match Safe_Method_SWMS_Template_V1.docx T1 exactly
+_COL_W_DXA   = [622, 1459, 2379, 875, 4475, 780, 1355, 2743]
+_MON_W_DXA   = [1578, 3744, 2272, 1872, 5348]
 _MON_HEADERS = ["Task", "Critical Control", "Who Checks", "How Often", "What They Look For"]
 
 # ── XML fragments ──────────────────────────────────────────────────────────────────
@@ -514,8 +511,8 @@ def _monitoring_table(doc, task: TaskBlock) -> None:
     table = doc.add_table(rows=2, cols=5)
     _format_table(table)
     for row in table.rows:
-        for i, w in enumerate(_MON_W):
-            row.cells[i].width = Cm(w)
+        for i, w in enumerate(_MON_W_DXA):
+            row.cells[i].width = Dxa(w)
 
     for i, h in enumerate(_MON_HEADERS):
         _header_cell(table.rows[0].cells[i], h)
@@ -552,15 +549,17 @@ def render_docx(task: TaskBlock) -> bytes:
     section.left_margin  = section.right_margin = Cm(1)
     section.top_margin   = section.bottom_margin = Cm(1)
 
-    # Main SWMS table
+    # Main SWMS table (legacy 7-col layout)
+    _legacy_headers = ["Task", "Hazard", "Risk\n(Pre)", "Controls", "Risk\n(Post)", "Responsibility", "CCVS\nCode"]
+    _legacy_w = [622, 1459, 2379, 875, 4475, 780, 2743]
     table = doc.add_table(rows=2, cols=7)
     _format_table(table)
     for row in table.rows:
-        for i, w in enumerate(_COL_W):
-            row.cells[i].width = Cm(w)
+        for i, w in enumerate(_legacy_w):
+            row.cells[i].width = Dxa(w)
 
     # Header row
-    for i, h in enumerate(_HEADERS):
+    for i, h in enumerate(_legacy_headers):
         _header_cell(table.rows[0].cells[i], h)
 
     # Data row — white, risk cells coloured
@@ -767,19 +766,16 @@ def _build_task_table(doc, tasks) -> None:
         tr = t1.rows[1]._tr
         tr.getparent().remove(tr)
 
-    # Re-format Table 1 header row at 9pt
-    for i, h in enumerate(_HEADERS):
-        cell = t1.rows[0].cells[i]
-        for para in cell.paragraphs:
-            para.clear()
-        _header_cell(cell, h, size_pt=_SZ)
+    # Set header row widths
+    for i, w in enumerate(_COL_W_DXA):
+        t1.rows[0].cells[i].width = Dxa(w)
 
     # Add one row per task
     for task in tasks:
         row = t1.add_row()
         c = row.cells
-        for i, w in enumerate(_COL_W):
-            c[i].width = Cm(w)
+        for i, w in enumerate(_COL_W_DXA):
+            c[i].width = Dxa(w)
 
         # Col 0 — Task + scope
         _run(c[0].paragraphs[0], task.task, bold=True, size_pt=_SZ)
@@ -801,10 +797,14 @@ def _build_task_table(doc, tasks) -> None:
         # Col 5 — Responsibility
         _responsibility_cell(c[5], task, size_pt=_SZ)
 
-        # Col 6 — CCVS code (validated)
-        p6 = c[6].paragraphs[0]
-        p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=_SZ)
+        # Col 6 — Hold Point / Verification / Stop-Work Trigger
+        # (content written by _controls_cell or left for future population)
+
+        # Col 7 — CCVS code appended bold grey at bottom
+        ccvs = validate_ccvs_code(task.ccvs_code or "N/A")
+        p7 = c[7].paragraphs[0]
+        p7.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _run(p7, ccvs, bold=True, color=GREY, size_pt=_SZ)
 
 
 def _format_risk_matrix(doc) -> None:
@@ -1106,8 +1106,8 @@ def _build_ccvs_table(doc, tasks) -> None:
         m = task.monitoring
         row = t2.add_row()
         vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
-        for i, w in enumerate(_MON_W):
-            row.cells[i].width = Cm(w)
+        for i, w in enumerate(_MON_W_DXA):
+            row.cells[i].width = Dxa(w)
         for i, val in enumerate(vals):
             _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
 
