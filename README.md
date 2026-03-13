@@ -1,7 +1,6 @@
 ![CI](https://github.com/mcxl/gatekeeper/actions/workflows/ci.yml/badge.svg)
 
 # Gatekeeper — WHS Governance Architecture
-### Robertson's Remedial and Painting Pty Ltd
 
 ---
 
