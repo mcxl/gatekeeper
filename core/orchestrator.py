@@ -429,7 +429,7 @@ def _enrich_risk_labels(tb: dict) -> None:
     Uses risk_pre_score/risk_post_score dicts {likelihood, consequence} if available.
     Falls back to defaults based on letter grade.
     """
-    _DEFAULTS = {"H": 9, "M": 4, "L": 2}
+    _DEFAULTS = {"H": 6, "M": 3, "L": 1}
 
     for field, score_field in [("risk_pre", "risk_pre_score"),
                                 ("risk_post", "risk_post_score")]:
