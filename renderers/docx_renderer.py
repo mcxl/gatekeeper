@@ -772,14 +772,12 @@ def _build_task_table(doc, tasks) -> None:
     t1 = doc.tables[1]
     _set_table_cell_margins(t1)
 
-    # Remove the blank data row (row index 1), keep header (row 0)
+    # Template has row 0 = banner, row 1 = headers (example rows already
+    # cleared by the T1 cleanup block in render_swms_document).
+    # Set header row (row 1) widths — banner row 0 is untouched.
     if len(t1.rows) > 1:
-        tr = t1.rows[1]._tr
-        tr.getparent().remove(tr)
-
-    # Set header row widths
-    for i, w in enumerate(_COL_W_DXA):
-        t1.rows[0].cells[i].width = Dxa(w)
+        for i, w in enumerate(_COL_W_DXA):
+            t1.rows[1].cells[i].width = Dxa(w)
 
     # Add one row per task
     for task in tasks:
