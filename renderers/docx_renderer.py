@@ -20,7 +20,11 @@ from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml, OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Dxa, Mm, Pt, RGBColor
+from docx.shared import Cm, Emu, Mm, Pt, RGBColor
+
+def Dxa(twips: int) -> Emu:
+    """Convert DXA (twentieths of a point) to EMU for python-docx < 1.3."""
+    return Emu(twips * 635)
 from lxml import etree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
