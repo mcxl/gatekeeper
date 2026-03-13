@@ -38,6 +38,28 @@ GREY      = RGBColor(0x44, 0x44, 0x44)
 # ── Template ──────────────────────────────────────────────────────────────
 TEMPLATE_NAME = "Safe_Method_SWMS_Template_V1.docx"
 
+# 18 HRCW flags in template order — (flag_key, checkbox_text)
+_HRCW_FLAGS_ORDERED = [
+    ("falling_2m",       "Risk of a person falling more than 2 metres"),
+    ("asbestos",         "Likely to involve disturbing asbestos"),
+    ("shaft_trench",     "Work in or near a shaft or trench deeper than 1.5 m or a tunnel"),
+    ("chemical_fuel",    "Work on or near chemical, fuel or refrigerant lines"),
+    ("tiltup_precast",   "Tilt-up or precast concrete elements"),
+    ("telecom_tower",    "Work on a telecommunication tower"),
+    ("temp_support",     "Temporary load-bearing support for structural alterations or repairs"),
+    ("explosives",       "Use of explosives"),
+    ("electrical",       "Work on or near energised electrical installations or services"),
+    ("traffic_corridor", "Work on, in or adjacent to a road, railway, shipping lane or other traffic corridor in use by traffic other than pedestrians"),
+    ("demolition",       "Demolition of load-bearing structure"),
+    ("confined_space",   "Work in or near a confined space"),
+    ("pressurised_gas",  "Work on or near pressurised gas mains or piping"),
+    ("contaminated_atmo","Work in an area that may have a contaminated or flammable atmosphere"),
+    ("mobile_plant",     "Work in an area with movement of powered mobile plant"),
+    ("extreme_temp",     "Work in areas with artificial extremes of temperature"),
+    ("drowning",         "Work in or near water or other liquid that involves a risk of drowning"),
+    ("diving",           "Diving work"),
+]
+
 # ── Field placeholder fallback ────────────────────────────────────────────────────────────
 
 FIELD_PLACEHOLDERS = {
@@ -598,73 +620,74 @@ def render_docx(task: TaskBlock) -> bytes:
     return buf.getvalue()
 
 
-# ── HRCW checkbox map ────────────────────────────────────────────────────────
-# Maps hrcw_category keywords to (row, col) in Table 0 of SWMS-260306-V1.docx.
-# Each HRCW checkbox occupies two merged columns; we write into the first.
-
 _SZ = 9  # Font size for task table, monitoring table, requirements table
-
-_HRCW_TICK_MAP = {
-    "falling_2m":       (3, 1),
-    "telecom_tower":    (3, 3),
-    "demolition":       (3, 5),
-    "asbestos":         (4, 1),
-    "temp_support":     (4, 3),
-    "confined_space":   (4, 5),
-    "shaft_trench":     (5, 1),
-    "explosives":       (5, 3),
-    "pressurised_gas":  (5, 5),
-    "chemical_fuel":    (6, 1),
-    "electrical":       (6, 3),
-    "contaminated_atmo":(6, 5),
-    "tiltup_precast":   (7, 1),
-    "traffic_corridor": (7, 3),
-    "mobile_plant":     (7, 5),
-    "extreme_temp":     (8, 1),
-    "drowning":         (8, 3),
-    "diving":           (8, 5),
-}
 
 
 # ── Builder functions for render_swms_document() ──────────────────────────────
 
 
-def _tick_checkbox(cell) -> None:
-    """Tick a checkbox cell, bold all runs, and yellow-highlight the label."""
-    ticked = False
-    for para in cell.paragraphs:
-        runs = para.runs
-        for i, run in enumerate(runs):
-            # Single-run checkbox: [   ] or [ ... ]
-            if "[" in run.text and "]" in run.text and "\u2713" not in run.text:
-                import re as _re_cb
-                run.text = _re_cb.sub(r'\[\s*\]', '[\u2713]', run.text)
-                ticked = True
-                break
-            # Two-run: '[ ' + '  ]' — bracket split across runs
-            if "[" in run.text and "]" not in run.text and i + 1 < len(runs):
-                if "]" in runs[i + 1].text:
-                    run.text = "[\u2713"
-                    runs[i + 1].text = "]" + runs[i + 1].text.split("]", 1)[-1]
-                    ticked = True
-                    break
-            # Multi-run: '[' then whitespace then ']'
-            if run.text.strip() == "[" and i + 1 < len(runs):
-                if runs[i + 1].text.strip() == "":
-                    runs[i + 1].text = "\u2713"
-                    ticked = True
-                    break
-        if ticked:
-            # Bold all runs and yellow-highlight the entire cell text
-            for run in para.runs:
-                run.bold = True
-                rpr = run._r.get_or_add_rPr()
-                # Remove existing highlight if any
-                for hl in rpr.findall(qn("w:highlight")):
-                    rpr.remove(hl)
-                hl = etree.SubElement(rpr, qn("w:highlight"))
-                hl.set(qn("w:val"), "yellow")
-            return
+def _render_hrcw_cell(doc, hrcw_flags: dict, wah_applicable: bool) -> None:
+    """
+    Rebuild the HRCW merged cell in T0 row3 from scratch.
+
+    Template T0 row3 is a single cell spanning all 4 columns.
+    All 18 checkboxes are inline text runs within one paragraph.
+    Ticked items: bold + yellow highlight. Unticked: plain.
+    We clear existing runs and rebuild — do not attempt to toggle
+    existing runs, the unticked items are batched and cannot be
+    individually targeted.
+    """
+    from docx.oxml.ns import qn
+    from lxml import etree
+
+    # falling_2m forced True when any WAH task present
+    flags = dict(hrcw_flags or {})
+    if wah_applicable:
+        flags["falling_2m"] = True
+
+    t0 = doc.tables[0]
+    hrcw_row = t0.rows[3]
+    # Single merged cell
+    cell = hrcw_row.cells[0]
+    para = cell.paragraphs[0]
+
+    # Clear all existing runs
+    p_el = para._p
+    for r in p_el.findall(qn('w:r')):
+        p_el.remove(r)
+
+    def _make_run(text: str, bold: bool = False, highlight: bool = False) -> None:
+        r = OxmlElement('w:r')
+        rPr = OxmlElement('w:rPr')
+        # Font — match template: minorHAnsi theme
+        rFonts = OxmlElement('w:rFonts')
+        rFonts.set(qn('w:asciiTheme'), 'minorHAnsi')
+        rFonts.set(qn('w:eastAsia'), 'Aptos')
+        rFonts.set(qn('w:hAnsiTheme'), 'minorHAnsi')
+        rFonts.set(qn('w:cs'), 'Aptos')
+        rPr.append(rFonts)
+        if bold:
+            rPr.append(OxmlElement('w:b'))
+            rPr.append(OxmlElement('w:bCs'))
+        if highlight:
+            hl = OxmlElement('w:highlight')
+            hl.set(qn('w:val'), 'yellow')
+            rPr.append(hl)
+        r.append(rPr)
+        t_el = OxmlElement('w:t')
+        t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+        t_el.text = text
+        r.append(t_el)
+        p_el.append(r)
+
+    # Label run
+    _make_run("High Risk Construction Work (HRCW):   ", bold=True)
+
+    # One run per flag in template order
+    for flag_key, checkbox_text in _HRCW_FLAGS_ORDERED:
+        ticked = bool(flags.get(flag_key, False))
+        char = "\u2611" if ticked else "\u2610"
+        _make_run(f"{char} {checkbox_text}   ", bold=ticked, highlight=ticked)
 
 
 def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> None:
@@ -735,25 +758,9 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
     _set_cover(13, 2, manager)
     _set_cover(13, 5, doc_date)
 
-    # HRCW ticks — rows 3-8
-    hrcw_flags = inference.get("hrcw_flags", {})
-    for key, (row, col) in _HRCW_TICK_MAP.items():
-        if hrcw_flags.get(key):
-            _tick_checkbox(t0.cell(row, col))
-
-    # Also tick based on task data
-    for task in tasks:
-        if task.wah_applicable:
-            _tick_checkbox(t0.cell(3, 1))  # falling_2m
-
-    # Set Table 0 runs: rows 0-2 and 9+ at 10pt, rows 3-8 (HRCW) at 9pt
-    for ri, row in enumerate(t0.rows):
-        sz = Pt(9) if 3 <= ri <= 8 else Pt(10)
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT
-                    run.font.size = sz
+    # Determine wah_applicable from tasks
+    _wah = any(getattr(t, 'wah_applicable', False) for t in tasks)
+    _render_hrcw_cell(doc, inference.get("hrcw_flags", {}), _wah)
 
 
 def _build_task_table(doc, tasks) -> None:
