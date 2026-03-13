@@ -24,6 +24,7 @@ patch_*.py
 
 # Test output documents
 *.docx
+!src/Safe_Method_SWMS_Template_V1.docx
 *.pdf
 real_job_*.docx
 real_job_*.pdf
