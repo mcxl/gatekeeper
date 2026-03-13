@@ -30,16 +30,19 @@ from lxml import etree
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.schema import TaskBlock, MonitoringEntry
 
-# ── Constants ─────────────────────────────────────────────────────────────────────────────
+# —— Constants ————————————————————————————————————————————————————————————————
 
 FONT      = "Aptos"
 FONT_SIZE = Pt(8)
 RED       = RGBColor(0xC0, 0x00, 0x00)
 BLACK     = RGBColor(0x00, 0x00, 0x00)
 WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
-GREY      = RGBColor(0x44, 0x44, 0x44)
+GREY       = RGBColor(0x44, 0x44, 0x44)
+DARK_BLUE  = RGBColor(0x1F, 0x38, 0x64)  # T1 hierarchy label, step number — template #1F3864
+MID_BLUE   = RGBColor(0x2E, 0x75, 0xB6)  # Hold Point header — template #2E75B6
+CODE_GREY  = RGBColor(0x40, 0x40, 0x40)  # RISK CODE: label — template #404040
 
-# ── Template ──────────────────────────────────────────────────────────────
+# —— Template —————————————————————————————————————————————————————————————
 TEMPLATE_NAME = "Safe_Method_SWMS_Template_V1.docx"
 
 # 18 HRCW flags in template order — (flag_key, checkbox_text)
@@ -64,7 +67,7 @@ _HRCW_FLAGS_ORDERED = [
     ("diving",           "Diving work"),
 ]
 
-# ── Field placeholder fallback ────────────────────────────────────────────────────────────
+# —— Field placeholder fallback ———————————————————————————————————————————————
 
 FIELD_PLACEHOLDERS = {
     'pcbu_name':            '[Insert PCBU here]',
@@ -109,7 +112,7 @@ def _summarise_work_activity(text: str, max_lines: int = 8, max_chars: int = 800
     return result
 
 
-# ── Text sanitisation — catches duplicate tokens before they reach the document ──
+# —— Text sanitisation — catches duplicate tokens before they reach the document ——
 _DUPLICATE_TOKENS = [
     ("steel-capped steel-capped", "steel-capped"),
     ("cut-resistant cut-resistant", "cut-resistant"),
@@ -130,7 +133,7 @@ def sanitise_text(text: str) -> str:
             text = text.replace(bad, good)
     return text
 
-# ── CCVS code validator ──────────────────────────────────────────────────────
+# —— CCVS code validator ——————————————————————————————————————————————————————
 import re as _re_ccvs
 
 _VALID_CCVS_STREAMS = [
@@ -160,16 +163,17 @@ def validate_ccvs_code(code: str) -> str:
     return 'N/A'
 
 BLUE   = "DBE5F1"
-RED_BG = "FF0000"
-YLW_BG = "FFFF00"
-GRN_BG = "00FF00"
+# Risk cell fills — exact template values (forensic read of Safe_Method_SWMS_Template_V1.docx)
+_RISK_HIGH_BG = "FFE0E0"   # High
+_RISK_MED_BG  = "FFF2CC"   # Medium
+_RISK_LOW_BG  = "E2EFDA"   # Low
 
 # Column widths in DXA — must match Safe_Method_SWMS_Template_V1.docx T1 exactly
 _COL_W_DXA   = [622, 1459, 2379, 875, 4475, 780, 1355, 2743]
 _MON_W_DXA   = [1578, 3744, 2272, 1872, 5348]
 _MON_HEADERS = ["Task", "Critical Control", "Who Checks", "How Often", "What They Look For"]
 
-# ── XML fragments ──────────────────────────────────────────────────────────────────
+# —— XML fragments ————————————————————————————————————————————————————————
 
 _NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -191,7 +195,7 @@ _LOOK = (
 
 _SPACING = '<w:spacing {ns} w:line="240" w:lineRule="auto"/>'.format(ns=_NS)
 
-# ── Helpers ──────────────────────────────────────────────────────────────────────────────
+# —— Helpers ——————————————————————————————————————————————————————————————————
 
 def _shade(cell, hex_color: str) -> None:
     tcPr = cell._tc.get_or_add_tcPr()
@@ -251,7 +255,7 @@ def _add_section_rule(para) -> None:
         '</w:pBdr>'.format(ns=_NS)
     ))
 
-# ── Cell builders ───────────────────────────────────────────────────────────────────────
+# —— Cell builders ————————————————————————————————————————————————————————————
 
 def _header_cell(cell, text: str, size_pt: int = 8) -> None:
     _shade(cell, BLUE)
@@ -273,13 +277,13 @@ def _risk_cell(cell, text: str, size_pt: int = 10) -> None:
     if "(" in s:
         label = label + s[s.index("("):]
 
-    if label.startswith("High"):     bg, fg = RED_BG, WHITE
-    elif label.startswith("Medium"): bg, fg = YLW_BG, BLACK
-    else:                            bg, fg = GRN_BG, BLACK
+    if label.startswith("High"):     bg = _RISK_HIGH_BG
+    elif label.startswith("Medium"): bg = _RISK_MED_BG
+    else:                            bg = _RISK_LOW_BG
     _shade(cell, bg)
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p, label, bold=True, color=fg, size_pt=size_pt)
+    _run(p, label, bold=True, size_pt=size_pt)
 
 def _set_table_cell_margins(table, top=0, start=108, bottom=0, end=108):
     """Set uniform cell margins on every cell in a table. Values in DXA."""
@@ -344,41 +348,42 @@ def _apply_bullet_indent(para) -> None:
 
 def _write_bullet_para(cell, text: str, size_pt: int = 9, bold: bool = False,
                        color: RGBColor = None, highlight: bool = False,
-                       first: bool = False, rule: bool = False):
+                       first: bool = False, rule: bool = False,
+                       spacing_after: int = 30):
     """Write a single bullet paragraph with correct hanging indent.
 
-    Nuclear approach: clears paragraph style, sets indent via XML AND
-    paragraph_format, re-applies indent after adding runs.
-    left=360 DXA, hanging=180 DXA.
+    Template forensic values: ind left=160 DXA, hanging=160 DXA, spacing after=30 (T1) / 40 (T9).
+    Bullet character + text are a single run matching template structure.
     """
     para = cell.paragraphs[0] if first else cell.add_paragraph()
 
     if rule:
         _add_section_rule(para)
 
-    # 1. Clear paragraph style so cell default cannot override
+    # 1. Clear paragraph style
     pPr = para._p.get_or_add_pPr()
     for ps in pPr.findall(qn('w:pStyle')):
         pPr.remove(ps)
 
-    # 2. Set indent BEFORE adding runs
-    _apply_bullet_indent(para)
-
-    # 3. Set spacing
+    # 2. Spacing — template: after=30 for T1 bullets, after=40 for T9
     for sp in pPr.findall(qn('w:spacing')):
         pPr.remove(sp)
     pPr.append(parse_xml(
-        '<w:spacing {ns} w:before="0" w:after="20" w:line="240" w:lineRule="auto"/>'.format(ns=_NS)
+        '<w:spacing {ns} w:before="0" w:after="{sa}" w:line="240" w:lineRule="auto"/>'.format(
+            ns=_NS, sa=spacing_after)
     ))
 
-    # 4. Bullet run (two spaces after bullet)
-    bullet_run = para.add_run('\u2022  ')
-    bullet_run.font.name = FONT
-    bullet_run.font.size = Pt(size_pt)
-    bullet_run.bold = bold
+    # 3. Indent — template: left=160 DXA, hanging=160 DXA
+    for existing in pPr.findall(qn('w:ind')):
+        pPr.remove(existing)
+    ind = OxmlElement('w:ind')
+    ind.set(qn('w:left'), '160')
+    ind.set(qn('w:hanging'), '160')
+    pPr.append(ind)
 
-    # 5. Text run
-    text_run = para.add_run(text)
+    # 4. Single run: bullet + two spaces + text (matching template run structure)
+    bullet_text = f'\u2022  {text}'
+    text_run = para.add_run(bullet_text)
     text_run.font.name = FONT
     text_run.font.size = Pt(size_pt)
     text_run.bold = bold
@@ -389,9 +394,6 @@ def _write_bullet_para(cell, text: str, size_pt: int = 9, bold: bool = False,
         hl = OxmlElement('w:highlight')
         hl.set(qn('w:val'), 'yellow')
         rPr.append(hl)
-
-    # 6. Re-apply indent AFTER runs (in case adding runs reset it)
-    _apply_bullet_indent(para)
 
     return para
 
@@ -410,14 +412,14 @@ _HOLD_POINT_PREFIX = _re.compile(
 
 
 def _strip_stop_work_label(text: str) -> str:
-    """Remove leading '🛑 STOP WORK if:' from a bullet item."""
+    """Remove leading 'STOP WORK if:' from a bullet item."""
     cleaned = _STOP_WORK_PREFIX.sub("", text).strip()
     # Capitalise first letter
     return cleaned[0].upper() + cleaned[1:] if cleaned else text
 
 
 def _strip_hold_point_label(text: str) -> str:
-    """Remove leading '⚠️ HOLD POINT — do not X until:' from a bullet item."""
+    """Remove leading 'HOLD POINT — do not X until:' from a bullet item."""
     cleaned = _HOLD_POINT_PREFIX.sub("", text).strip()
     return cleaned[0].upper() + cleaned[1:] if cleaned else text
 
@@ -441,62 +443,52 @@ def _hazard_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
 
 
 def _controls_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+    """Populate T1 col4 — Hierarchy of Control.
+
+    Template structure (forensic):
+    - Hierarchy label: bold, #1F3864, spacing before=40 after=20, no indent
+    - Bullet item:     plain, auto colour, spacing after=30, ind left=160 hanging=160
+
+    PPE is NOT written here — it belongs in T9 Pre-Requisites.
+    Hold points and stop-work triggers are NOT written here — they belong in col7.
+    """
     _clear_cell_default_indent(cell)
     first = [True]
 
-    def _label(text, bold=False, color=None, highlight=False, rule=False):
-        """Write a non-bullet label paragraph (Engineering:, Admin:, etc.)."""
+    def _label(text):
+        """Hierarchy group label: bold #1F3864, spacing before=40 after=20."""
         if first[0]:
             p = cell.paragraphs[0]
             first[0] = False
         else:
             p = cell.add_paragraph()
-        if rule:
-            _add_section_rule(p)
-        _run(p, text, bold=bold, color=color, highlight=highlight, size_pt=size_pt)
+        # Spacing: before=40 after=20 (template forensic values)
+        pPr = p._p.get_or_add_pPr()
+        for s in pPr.findall(qn('w:spacing')):
+            pPr.remove(s)
+        pPr.append(parse_xml(
+            '<w:spacing {ns} w:before="40" w:after="20" w:line="240" w:lineRule="auto"/>'.format(ns=_NS)
+        ))
+        _run(p, text, bold=True, color=DARK_BLUE, size_pt=size_pt)
 
-    def _bullet(text, rule=False):
-        """Write a bullet item using _write_bullet_para."""
-        first[0] = False  # never use paragraphs[0] after first label
-        _write_bullet_para(cell, text, size_pt=size_pt, rule=rule)
+    def _bullet(text):
+        first[0] = False
+        _write_bullet_para(cell, text, size_pt=size_pt, spacing_after=30)
 
-    # Engineering: header always first
-    _label("Engineering:", bold=True)
+    # Engineering controls
     if task.controls:
+        _label("Engineering Controls:")
         for item in task.controls:
             _bullet(item)
     else:
+        _label("Engineering Controls:")
         _bullet("Refer to site-specific risk assessment")
 
-    # Admin
+    # Administrative controls
     if task.admin:
-        _label("Admin:", bold=True, rule=True)
+        _label("Administrative Controls:")
         for item in task.admin:
             _bullet(item)
-
-    # PPE
-    if task.ppe:
-        _label("PPE:", bold=True, rule=True)
-        for item in task.ppe:
-            _bullet(item)
-
-    # Hold points
-    if task.hold_points:
-        _label(
-            "\u26a0\ufe0f HOLD POINT \u2014 do not start until:",
-            bold=True, highlight=True, rule=True,
-        )
-        for item in task.hold_points:
-            _bullet(_strip_hold_point_label(item))
-
-    # Stop work
-    if task.stop_work:
-        _label(
-            "\U0001f6d1 STOP WORK if:",
-            bold=True, color=RED, highlight=True, rule=True,
-        )
-        for item in task.stop_work:
-            _bullet(_strip_stop_work_label(item))
 
 def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
     _clear_cell_default_indent(cell)
@@ -521,7 +513,7 @@ def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
             r_obl.font.size = Pt(size_pt)
         is_first = False
 
-# ── Monitoring table ─────────────────────────────────────────────────────────────────
+# —— Monitoring table ——————————————————————————————————————————————————————
 
 def _monitoring_table(doc, task: TaskBlock) -> None:
     if task.monitoring is None:
@@ -547,7 +539,7 @@ def _monitoring_table(doc, task: TaskBlock) -> None:
     for i, val in enumerate(vals):
         _run(table.rows[1].cells[i].paragraphs[0], val or "")
 
-# ── Main render ──────────────────────────────────────────────────────────────────────────
+# —— Main render ——————————————————————————————————————————————————————————————
 
 def render_docx(task: TaskBlock) -> bytes:
     """Render TaskBlock as a Word .docx table. Returns bytes."""
@@ -627,7 +619,7 @@ def render_docx(task: TaskBlock) -> bytes:
 _SZ = 9  # Font size for task table, monitoring table, requirements table
 
 
-# ── Builder functions for render_swms_document() ──────────────────────────────
+# —— Builder functions for render_swms_document() —————————————————————————
 
 
 def _render_hrcw_cell(doc, hrcw_flags: dict, wah_applicable: bool) -> None:
@@ -767,53 +759,149 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
     _render_hrcw_cell(doc, inference.get("hrcw_flags", {}), _wah)
 
 
+def _col7_cell(cell, task: TaskBlock, step_num: str) -> None:
+    """Populate T1 col7 — Hold Point / Verification / Stop-Work Trigger + CCVS code.
+
+    Template structure (forensic):
+    - HOLD POINT {step_num}   bold #2E75B6  (only if hold_points exist)
+    - 1.  {item}              plain auto    (numbered)
+    - STOP-WORK TRIGGER       bold #C00000  (always)
+    - bullet  {trigger}       plain auto    (ind left=160 hanging=160)
+    - RISK CODE: {ccvs}       bold grey + bold mid-blue on same paragraph (if ccvs != N/A)
+    """
+    _clear_cell_default_indent(cell)
+    first = [True]
+
+    hold_points = task.hold_points or []
+    stop_work = (getattr(task, 'stop_work', None)
+                 or getattr(task, 'stop_work_triggers', None)
+                 or [])
+    ccvs = validate_ccvs_code(task.ccvs_code or 'N/A')
+
+    def _next_para():
+        if first[0]:
+            first[0] = False
+            return cell.paragraphs[0]
+        return cell.add_paragraph()
+
+    def _set_para_spacing(para, before=0, after=20):
+        pPr = para._p.get_or_add_pPr()
+        for s in pPr.findall(qn('w:spacing')):
+            pPr.remove(s)
+        pPr.append(parse_xml(
+            '<w:spacing {ns} w:before="{b}" w:after="{a}" w:line="240" w:lineRule="auto"/>'.format(
+                ns=_NS, b=before, a=after)
+        ))
+
+    def _add_run(para, text, bold=False, color=None):
+        run = para.add_run(sanitise_text(text))
+        run.font.name = FONT
+        run.font.size = Pt(_SZ)
+        run.bold = bold
+        if color:
+            run.font.color.rgb = color
+
+    # —— HOLD POINT ————————————————————————————————————————————————
+    if hold_points:
+        p = _next_para()
+        _add_run(p, f'HOLD POINT {step_num}', bold=True, color=MID_BLUE)
+        _set_para_spacing(p, before=0, after=20)
+        for i, item in enumerate(hold_points, 1):
+            p = _next_para()
+            _add_run(p, f'{i}.  {_strip_hold_point_label(item)}')
+            _set_para_spacing(p, after=20)
+
+    # —— STOP-WORK TRIGGER ————————————————————————————————————————
+    if stop_work:
+        p = _next_para()
+        _add_run(p, 'STOP-WORK TRIGGER', bold=True, color=RED)
+        _set_para_spacing(p, before=(20 if hold_points else 0), after=20)
+        for item in stop_work:
+            p = _next_para()
+            pPr = p._p.get_or_add_pPr()
+            for ind_el in pPr.findall(qn('w:ind')):
+                pPr.remove(ind_el)
+            pPr.append(parse_xml(
+                '<w:ind {ns} w:left="160" w:hanging="160"/>'.format(ns=_NS)
+            ))
+            _add_run(p, f'\u2022  {_strip_stop_work_label(item)}')
+            _set_para_spacing(p, after=20)
+
+    # —— RISK CODE (CCVS) —————————————————————————————————————————
+    if ccvs != 'N/A':
+        p = _next_para()
+        _set_para_spacing(p, before=20, after=0)
+        _add_run(p, 'RISK CODE: ', bold=True, color=CODE_GREY)
+        _add_run(p, ccvs, bold=True, color=MID_BLUE)
+
+
+def _add_phase_banner(t1, text: str) -> None:
+    """Add a black-filled phase banner row spanning all 8 columns — matching template."""
+    row = t1.add_row()
+    # Merge col0 through col7
+    merged = row.cells[0].merge(row.cells[7])
+    _shade(merged, "000000")
+    p = merged.paragraphs[0]
+    _run(p, text, bold=True, color=WHITE, size_pt=_SZ)
+
+
 def _build_task_table(doc, tasks) -> None:
-    """Populate Table 1 — one row per task."""
+    """Populate Table 1 — one row per task.
+
+    Column mapping (template forensic):
+      Col 0: Step number (1.1, 1.2 ...)   bold #1F3864 9pt
+      Col 1: Work Activity / Task          bold black 9pt
+      Col 2: Hazard / Risk                 bulleted 9pt
+      Col 3: Risk Rating (Pre)             coloured fill, bold 10pt
+      Col 4: Controls — Hierarchy          labelled + bulleted 9pt  (NO PPE)
+      Col 5: Risk Rating (Post)            coloured fill, bold 10pt
+      Col 6: Responsible                   bulleted 9pt
+      Col 7: Hold Point / Stop-Work / CCVS 9pt
+    """
     t1 = doc.tables[1]
     _set_table_cell_margins(t1)
 
-    # Template has row 0 = banner, row 1 = headers (example rows already
-    # cleared by the T1 cleanup block in render_swms_document).
-    # Set header row (row 1) widths — banner row 0 is untouched.
+    # Set header row (row 1) widths — banner row 0 is untouched
     if len(t1.rows) > 1:
         for i, w in enumerate(_COL_W_DXA):
             t1.rows[1].cells[i].width = Dxa(w)
 
+    # Phase banner — all tasks under Phase 1 (no phase field in schema yet)
+    _add_phase_banner(t1, "PHASE 1: SAFE WORK ACTIVITIES")
+
     # Add one row per task
-    for task in tasks:
+    for idx, task in enumerate(tasks):
+        step_num = f"1.{idx + 1}"
         row = t1.add_row()
         c = row.cells
         for i, w in enumerate(_COL_W_DXA):
             c[i].width = Dxa(w)
 
-        # Col 0 — Task + scope
-        _run(c[0].paragraphs[0], task.task, bold=True, size_pt=_SZ)
-        if task.scope:
-            _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY, size_pt=_SZ)
+        # Col 0 — Step number: bold, #1F3864, 9pt (template forensic)
+        p0 = c[0].paragraphs[0]
+        _run(p0, step_num, bold=True, color=DARK_BLUE, size_pt=_SZ)
 
-        # Col 1 — Hazards (genuine hazard descriptions, bulleted)
-        _hazard_cell(c[1], task, size_pt=_SZ)
+        # Col 1 — Work Activity / Task name: bold, black, 9pt
+        p1 = c[1].paragraphs[0]
+        _run(p1, task.task, bold=True, size_pt=_SZ)
 
-        # Col 2 — Risk Pre (10pt bold)
-        _risk_cell(c[2], task.risk_pre or "", size_pt=10)
+        # Col 2 — Hazard / Risk: bulleted
+        _hazard_cell(c[2], task, size_pt=_SZ)
 
-        # Col 3 — Controls
-        _controls_cell(c[3], task, size_pt=_SZ)
+        # Col 3 — Risk Rating (Pre): coloured fill, 10pt bold
+        _risk_cell(c[3], task.risk_pre or "", size_pt=10)
 
-        # Col 4 — Risk Post (10pt bold)
-        _risk_cell(c[4], task.risk_post or "", size_pt=10)
+        # Col 4 — Controls — Hierarchy of Control (NO PPE)
+        _controls_cell(c[4], task, size_pt=_SZ)
 
-        # Col 5 — Responsibility
-        _responsibility_cell(c[5], task, size_pt=_SZ)
+        # Col 5 — Risk Rating (Post): coloured fill, 10pt bold
+        _risk_cell(c[5], task.risk_post or "", size_pt=10)
 
-        # Col 6 — Hold Point / Verification / Stop-Work Trigger
-        # (content written by _controls_cell or left for future population)
+        # Col 6 — Responsible
+        _responsibility_cell(c[6], task, size_pt=_SZ)
 
-        # Col 7 — CCVS code appended bold grey at bottom
-        ccvs = validate_ccvs_code(task.ccvs_code or "N/A")
-        p7 = c[7].paragraphs[0]
-        p7.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _run(p7, ccvs, bold=True, color=GREY, size_pt=_SZ)
+        # Col 7 — Hold Point / Stop-Work Trigger / CCVS code
+        _col7_cell(c[7], task, step_num)
 
 
 def _format_risk_matrix(doc) -> None:
@@ -860,24 +948,43 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
 
     def _clear_and_write(row_idx: int, col_idx: int, items: list[str],
                          max_items: int = 6) -> None:
-        """Clear content cell and write bullet items (em-dash separated)."""
+        """Clear content cell and write one bullet paragraph per item.
+
+        Template forensic: each item is a separate paragraph with 'bullet  ' prefix
+        (inline in the run), Aptos 9pt, spacing after=40, ind left=160 hanging=160.
+        """
         cell = t9.cell(row_idx, col_idx)
+        # Clear all paragraphs after the first
         for pi in range(len(cell.paragraphs) - 1, 0, -1):
-            cell.paragraphs[pi]._element.getparent().remove(cell.paragraphs[pi]._element)
+            cell.paragraphs[pi]._element.getparent().remove(
+                cell.paragraphs[pi]._element)
         cell.paragraphs[0].clear()
+
         capped = items[:max_items] if items else []
         if not capped:
             _run(cell.paragraphs[0], "\u2014", size_pt=_SZ)
-            _strip_para_indent(cell.paragraphs[0])
             return
-        p = cell.paragraphs[0]
-        for i, item in enumerate(capped):
-            if i > 0:
-                _run(p, " \u2014 ", bold=True, size_pt=_SZ)
-            _run(p, item, size_pt=_SZ)
-        _strip_para_indent(p)
 
-    # ── (1,1) PPE — All Persons ───────────────────────────────────────────
+        for i, item in enumerate(capped):
+            p = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
+            # Paragraph properties: spacing after=40, ind left=160 hanging=160
+            pPr = p._p.get_or_add_pPr()
+            for s in pPr.findall(qn('w:spacing')):
+                pPr.remove(s)
+            pPr.append(parse_xml(
+                '<w:spacing {ns} w:after="40"/>'.format(ns=_NS)
+            ))
+            for ind_el in pPr.findall(qn('w:ind')):
+                pPr.remove(ind_el)
+            pPr.append(parse_xml(
+                '<w:ind {ns} w:left="160" w:hanging="160"/>'.format(ns=_NS)
+            ))
+            # Single run: bullet + two spaces + item text (matching template)
+            run = p.add_run(f'\u2022  {sanitise_text(item)}')
+            run.font.name = FONT
+            run.font.size = Pt(_SZ)
+
+    # —— (1,1) PPE — All Persons ——————————————————————————————————————
     from vocab.swms_vocabulary import enforce_vocabulary as _enforce_vocab
     _job_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
     _CHEM_KW = ("epoxy", "resin", "hardener", "solvent", "chemical", "acid", "alkali",
@@ -918,7 +1025,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
             final_ppe.append(item)
     _clear_and_write(1, 1, final_ppe)
 
-    # ── (1,3) Additional PPE — Working at Heights ─────────────────────────
+    # —— (1,3) Additional PPE — Working at Heights ————————————————————
     _wah_items = [
         "Fall prevention hierarchy applied: eliminate > isolate > minimise",
         "Guardrails preferred. Fall restraint before fall arrest",
@@ -927,7 +1034,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
     ]
     _clear_and_write(1, 3, _wah_items)
 
-    # ── (2,1) Licences / Qualifications ───────────────────────────────────
+    # —— (2,1) Licences / Qualifications ——————————————————————————————
     qual_items = list(inference.get("qualifications", []))
     cert_items = inference.get("certifications", [])
     for c_item in cert_items:
@@ -935,10 +1042,10 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
             qual_items.append(c_item)
     _clear_and_write(2, 1, qual_items)
 
-    # ── (2,3) Permits & Approvals ─────────────────────────────────────────
+    # —— (2,3) Permits & Approvals ————————————————————————————————————
     _clear_and_write(2, 3, inference.get("permits", []))
 
-    # ── (3,1) Plant & Equipment ───────────────────────────────────────────
+    # —— (3,1) Plant & Equipment ——————————————————————————————————————
     plant_items = list(inference.get("plant", []))
     for item in project_meta.get("plant_equipment", project_meta.get("plant", [])):
         if item not in plant_items:
@@ -957,7 +1064,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
         plant_items = ["As per task requirements \u2014 see controls column"]
     _clear_and_write(3, 1, plant_items)
 
-    # ── (3,3) Hazardous Substances ────────────────────────────────────────
+    # —— (3,3) Hazardous Substances ———————————————————————————————————
     hrcw_flags = inference.get("hrcw_flags", {})
     _plant_text = " ".join(p.lower() for p in inference.get("plant", []))
     haz_sub_items = list(project_meta.get("hazardous_substances", []))
@@ -985,7 +1092,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
         haz_sub_items = ["No hazardous substances identified \u2014 confirm with site supervisor"]
     _clear_and_write(3, 3, haz_sub_items)
 
-    # ── (4,1) Consultation ────────────────────────────────────────────────
+    # —— (4,1) Consultation ———————————————————————————————————————————
     consult_items = list(project_meta.get("consultation", []))
     if not consult_items:
         consult_items = [
@@ -995,7 +1102,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
         ]
     _clear_and_write(4, 1, consult_items)
 
-    # ── (4,3) Legislative Basis ───────────────────────────────────────────
+    # —— (4,3) Legislative Basis ——————————————————————————————————————
     _base_parts = jur["base_legislation_string"].split(" \u2014 ")
     _BASE_LEGISLATION = [p.strip() for p in _base_parts if p.strip()]
 
@@ -1118,7 +1225,7 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
                         _fr.text = _fr.text.replace(_tok, _val)
 
 
-# ── Main SWMS document renderer ──────────────────────────────────────────────
+# —— Main SWMS document renderer ——————————————————————————————————————————
 
 
 def render_swms_document(
@@ -1168,7 +1275,7 @@ def render_swms_document(
             f"Wrong template file — render_swms_document requires {TEMPLATE_NAME}"
         )
 
-    # ── Body paragraph 0: Description (title-only, max 100 chars) ───────
+    # —— Body paragraph 0: Description (title-only, max 100 chars) ————
     _p0_text = (project_meta.get("title") or "").strip()
     if not _p0_text:
         # Fallback: first sentence of description, capped
@@ -1218,7 +1325,7 @@ def render_swms_document(
     if not doc_date:
         doc_date = date.today().strftime(jur.get("date_format", "%d/%m/%Y"))
 
-    # ── Populate tables via builder functions ─────────────────────────────
+    # —— Populate tables via builder functions ————————————————————————
     _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
 
     # Clear T1 example rows — template ships with pre-filled swing-stage
@@ -1235,20 +1342,20 @@ def render_swms_document(
     _fill_signoff_table(doc)
     _build_footer(doc, project_meta, jur, jurisdiction, doc_date)
 
-    # ── Post-render validation ────────────────────────────────────────
+    # —— Post-render validation ———————————————————————————————————
     warnings = validate_output(doc)
     if warnings:
         import logging
         for w in warnings:
             logging.warning(f"RENDER VALIDATION: {w}")
 
-    # ── Save and return ─────────────────────────────────────────────────
+    # —— Save and return ——————————————————————————————————————————————
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
 
 
-# ── Output validation ────────────────────────────────────────────────────────
+# —— Output validation ————————————————————————————————————————————————————————
 
 _KNOWN_PLACEHOLDER_TOKENS = [
     'UNKNOWN', '[Insert', 'mcxico', 'your-company',
