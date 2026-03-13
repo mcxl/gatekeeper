@@ -1280,6 +1280,14 @@ def render_swms_document(
 
     # ── Populate tables via builder functions ─────────────────────────────
     _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
+
+    # Clear T1 example rows — template ships with pre-filled swing-stage
+    # content in rows 2-18. Delete all rows after header (row1) before
+    # writing task rows, or example content bleeds into every output.
+    _t1 = doc.tables[1]
+    for _tr in list(_t1.rows)[2:]:
+        _tr._tr.getparent().remove(_tr._tr)
+
     _build_task_table(doc, tasks)
     _format_risk_matrix(doc)
     _fill_legislation_table(doc, inference, jur, jurisdiction)
