@@ -597,6 +597,19 @@ function toggleTheme() {
     // Auto-fill name and email from authenticated user
     const nameField = document.getElementById('your-name');
     if (nameField && !nameField.value && data.full_name) nameField.value = data.full_name;
+    // Health check — disable PDF buttons if not available
+    try {
+      const hRes = await fetch(API + '/health', { headers: getAuthHeaders() });
+      if (hRes.ok) {
+        const hData = await hRes.json();
+        if (!hData.pdf_available) {
+          ['fmt-pdf','fmt-both','ifmt-pdf','ifmt-both'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.disabled = true; el.title = 'PDF not available on this server'; }
+          });
+        }
+      }
+    } catch (e) { console.warn('Health check failed:', e); }
   } catch (err) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -973,19 +986,18 @@ async function generate() {
     return 'Your SWMS is still generating. If you leave now your document will be lost.';
   };
 
-  try {
-    // Step 1: Infer
-    setStep('step-analyse', 'active');
-    const inferRes = await apiCall(API + '/infer?q=' + encodeURIComponent(payload.description) + '&jurisdiction=' + currentJurisdiction + '&document_type=swms');
-    if (!inferRes.ok) throw new Error('Inference failed: ' + inferRes.status);
-    lastInference = await inferRes.json();
-    setStep('step-analyse', 'done');
+  lastTasks = [];
+  lastInference = {};
 
-    // Step 2: Generate tasks
-    setStep('step-infer', 'active');
-    const genRes = await apiCall(API + '/generate/auto', {
+  try {
+    // Stream generation
+    setStep('step-analyse', 'active');
+    const streamRes = await fetch(API + '/generate/stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getToken()
+      },
       body: JSON.stringify({
         description: payload.description,
         project_meta: payload.project_meta,
@@ -994,19 +1006,41 @@ async function generate() {
         scope_context: _scopeContext
       })
     });
-    if (!genRes.ok) throw new Error('Generate failed: ' + genRes.status);
-    const genData = await genRes.json();
-    if (genData.error) throw new Error(genData.error);
-    lastTasks = genData.tasks;
-    if (genData.inference) lastInference = genData.inference;
-    setStep('step-infer', 'done');
+    if (!streamRes.ok) throw new Error('Stream failed: ' + streamRes.status);
 
-    // Step 3: Tasks done
-    setStep('step-tasks', 'active');
-    await sleep(200);
-    setStep('step-tasks', 'done');
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    showInference(lastInference);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        const line = part.replace(/^data:\s*/, '').trim();
+        if (!line) continue;
+        const event = JSON.parse(line);
+        if (event.type === 'route') {
+          setStep('step-analyse', 'done');
+          showInference(event.inference);
+          lastInference = event.inference;
+        } else if (event.type === 'task_count') {
+          setStep('step-infer', 'active');
+        } else if (event.type === 'task') {
+          lastTasks.push(event.task);
+          const stepLabel = document.getElementById('step-infer');
+          if (stepLabel) stepLabel.querySelector('.step-label').textContent =
+            'Generating task ' + event.index + ' of ' + event.total + '…';
+        } else if (event.type === 'done') {
+          setStep('step-infer', 'done');
+          setStep('step-tasks', 'done');
+        } else if (event.type === 'error') {
+          throw new Error(event.message);
+        }
+      }
+    }
 
     // Step 4: Render
     setStep('step-render', 'active');
