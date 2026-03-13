@@ -35,6 +35,9 @@ BLACK     = RGBColor(0x00, 0x00, 0x00)
 WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
 GREY      = RGBColor(0x44, 0x44, 0x44)
 
+# ── Template ──────────────────────────────────────────────────────────────
+TEMPLATE_NAME = "Safe_Method_SWMS_Template_V1.docx"
+
 # ── Field placeholder fallback ────────────────────────────────────────────────────────────
 
 FIELD_PLACEHOLDERS = {
@@ -1213,16 +1216,16 @@ def render_swms_document(
     from core.jurisdictions import get_jurisdiction
     jur = get_jurisdiction(jurisdiction)
 
-    template_path = Path(__file__).parent.parent / "src" / "SWMS-260306-V1.docx"
+    template_path = Path(__file__).parent.parent / "src" / TEMPLATE_NAME
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
     doc = Document(str(template_path))
 
-    if len(doc.tables) != 9:
+    if len(doc.tables) != 10:
         raise ValueError(
-            f"Template has {len(doc.tables)} tables, expected 9. "
-            "Wrong template file — render_swms_document requires SWMS-260306-V1.docx"
+            f"Template has {len(doc.tables)} tables, expected 10. "
+            f"Wrong template file — render_swms_document requires {TEMPLATE_NAME}"
         )
 
     # ── Body paragraph 0: Description (title-only, max 100 chars) ───────
