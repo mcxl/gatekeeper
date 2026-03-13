@@ -743,24 +743,24 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
         else:
             work_activity = truncated.rstrip() + '\u2026'
 
-    # Row 0: PCBU + Site
+    # Row 0: PCBU + Site address
     _set_cover(0, 1, pcbu)
-    _set_cover(0, 6, site_name)
-    # Row 1: Manager + Date
+    _set_cover(0, 3, site_name)
+    # Row 1: Works Manager + Date provided to PC
     _set_cover(1, 1, manager)
-    _set_cover(1, 6, doc_date)
-    # Row 2: Work activity + PC
+    _set_cover(1, 3, doc_date)
+    # Row 2: Work activity + Principal Contractor
     _set_cover(2, 1, work_activity)
-    _set_cover(2, 6, pc)
-    # Row 9: Supervisor + Date received
-    _set_cover(9, 2, supervisor)
-    _set_cover(9, 5, doc_date)
-    # Row 11: Manager reviewer + Date
-    _set_cover(11, 2, manager)
-    _set_cover(11, 5, doc_date)
-    # Row 13: Reviewer signature + Date
-    _set_cover(13, 2, manager)
-    _set_cover(13, 5, doc_date)
+    _set_cover(2, 3, pc)
+    # Row 4: Supervisor (compliance) + Date received
+    _set_cover(4, 1, supervisor)
+    _set_cover(4, 3, doc_date)
+    # Row 6: Reviewer name + Date received by reviewer
+    _set_cover(6, 1, manager)
+    _set_cover(6, 3, doc_date)
+    # Row 8: Reviewer signature + Review date
+    _set_cover(8, 1, manager)
+    _set_cover(8, 3, doc_date)
 
     # Determine wah_applicable from tasks
     _wah = any(getattr(t, 'wah_applicable', False) for t in tasks)
