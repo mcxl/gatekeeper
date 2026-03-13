@@ -1087,6 +1087,191 @@ def _fill_requirements_table(doc, tasks, inference, project_meta) -> None:
         _strip_para_indent(p)
 
 
+def _fill_prerequisites_table(doc, tasks: list, inference: dict,
+                              project_meta: dict, jur: dict, jurisdiction: str) -> None:
+    """
+    Populate T9 Pre-Requisites (5r x 4col).
+
+    Layout (0-indexed):
+      row0 — banner (span=4, untouched)
+      row1 col0 — label: PPE — All Persons        col1 — content
+      row1 col2 — label: Additional PPE — WAH      col3 — content
+      row2 col0 — label: Licences / Qualifications  col1 — content
+      row2 col2 — label: Permits & Approvals        col3 — content
+      row3 col0 — label: Plant & Equipment          col1 — content
+      row3 col2 — label: Hazardous Substances       col3 — content
+      row4 col0 — label: Consultation               col1 — content
+      row4 col2 — label: Legislative Basis          col3 — content
+
+    Label cells (col0, col2) are untouched.
+    Content cells (col1, col3) are cleared then written.
+    Max 6 bullet items per cell.
+    """
+    t9 = doc.tables[9]
+    _set_table_cell_margins(t9)
+
+    def _clear_and_write(row_idx: int, col_idx: int, items: list[str],
+                         max_items: int = 6) -> None:
+        """Clear content cell and write bullet items (em-dash separated)."""
+        cell = t9.cell(row_idx, col_idx)
+        for pi in range(len(cell.paragraphs) - 1, 0, -1):
+            cell.paragraphs[pi]._element.getparent().remove(cell.paragraphs[pi]._element)
+        cell.paragraphs[0].clear()
+        capped = items[:max_items] if items else []
+        if not capped:
+            _run(cell.paragraphs[0], "\u2014", size_pt=_SZ)
+            _strip_para_indent(cell.paragraphs[0])
+            return
+        p = cell.paragraphs[0]
+        for i, item in enumerate(capped):
+            if i > 0:
+                _run(p, " \u2014 ", bold=True, size_pt=_SZ)
+            _run(p, item, size_pt=_SZ)
+        _strip_para_indent(p)
+
+    # ── (1,1) PPE — All Persons ───────────────────────────────────────────
+    from vocab.swms_vocabulary import enforce_vocabulary as _enforce_vocab
+    _job_text = " ".join(t.task.lower() + " " + t.scope.lower() for t in tasks)
+    _CHEM_KW = ("epoxy", "resin", "hardener", "solvent", "chemical", "acid", "alkali",
+                "caustic", "adhesive", "primer", "paint", "coating", "membrane",
+                "sealant", "grout", "mortar", "waterproof")
+    _has_chemicals = any(kw in _job_text for kw in _CHEM_KW)
+    _glove_type = ("chemical-resistant gloves (nitrile or task-appropriate)"
+                   if _has_chemicals else "cut-resistant gloves")
+    _BASELINE_PPE = [
+        "steel-capped footwear",
+        "hi-viz shirt or vest",
+        "eye protection",
+        "hearing protection (>85dB)",
+        _glove_type,
+    ]
+    raw_ppe = inference.get("ppe", [])
+    enforced_ppe = [_enforce_vocab(item) for item in raw_ppe]
+    _PPE_NORM = {
+        "steel-capped footwear": "footwear", "steel-capped safety boots": "footwear",
+        "safety boots": "footwear", "steel cap boots": "footwear",
+        "steel-capped boots": "footwear", "safety footwear": "footwear",
+        "hi-viz shirt or vest": "hiviz", "hi-viz vest or shirt": "hiviz",
+        "high-visibility vest": "hiviz", "high-visibility vest or shirt": "hiviz",
+        "hi-vis vest": "hiviz", "hi-vis shirt": "hiviz", "hi-vis vest or shirt": "hiviz",
+        "eye protection": "eye", "safety glasses": "eye", "safety goggles": "eye",
+        "hearing protection": "hearing", "hearing protection (>85db)": "hearing",
+        "ear plugs": "hearing", "ear muffs": "hearing",
+    }
+    def _ppe_key(item):
+        base = item.lower().split("\u2014")[0].strip()
+        return _PPE_NORM.get(base, base)
+    seen_keys = set()
+    final_ppe = []
+    for item in _BASELINE_PPE + enforced_ppe:
+        key = _ppe_key(item)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            final_ppe.append(item)
+    _clear_and_write(1, 1, final_ppe)
+
+    # ── (1,3) Additional PPE — Working at Heights ─────────────────────────
+    _wah_items = [
+        "Fall prevention hierarchy applied: eliminate > isolate > minimise",
+        "Guardrails preferred. Fall restraint before fall arrest",
+        "Rescue plan documented for all harness work",
+        "Working at Heights licence/training verified before elevated work",
+    ]
+    _clear_and_write(1, 3, _wah_items)
+
+    # ── (2,1) Licences / Qualifications ───────────────────────────────────
+    qual_items = list(inference.get("qualifications", []))
+    cert_items = inference.get("certifications", [])
+    for c_item in cert_items:
+        if c_item not in qual_items:
+            qual_items.append(c_item)
+    _clear_and_write(2, 1, qual_items)
+
+    # ── (2,3) Permits & Approvals ─────────────────────────────────────────
+    _clear_and_write(2, 3, inference.get("permits", []))
+
+    # ── (3,1) Plant & Equipment ───────────────────────────────────────────
+    plant_items = list(inference.get("plant", []))
+    for item in project_meta.get("plant_equipment", project_meta.get("plant", [])):
+        if item not in plant_items:
+            plant_items.append(item)
+    _PLANT_KEYWORDS = {
+        "grinder": "Angle grinder", "angle grinder": "Angle grinder",
+        "ewp": "EWP (elevated work platform)", "scissor lift": "Scissor lift",
+        "vacuum": "HEPA vacuum", "hepa vacuum": "HEPA vacuum",
+        "saw": "Power saw", "jackhammer": "Jackhammer",
+        "drill": "Power drill", "mixer": "Mixing equipment",
+    }
+    for kw, pname in _PLANT_KEYWORDS.items():
+        if kw in _job_text and pname.lower() not in [p.lower() for p in plant_items]:
+            plant_items.append(pname)
+    if not plant_items:
+        plant_items = ["As per task requirements \u2014 see controls column"]
+    _clear_and_write(3, 1, plant_items)
+
+    # ── (3,3) Hazardous Substances ────────────────────────────────────────
+    hrcw_flags = inference.get("hrcw_flags", {})
+    _plant_text = " ".join(p.lower() for p in inference.get("plant", []))
+    haz_sub_items = list(project_meta.get("hazardous_substances", []))
+    if not haz_sub_items:
+        _has_silica = any("silica" in n.lower() for n in inference.get("regulatory_notes", []))
+        _has_epoxy_sub = any(k in _job_text for k in ("epoxy", "resin"))
+        _has_primer = any(k in _job_text for k in ("primer", "solvent"))
+        _has_tiltup = hrcw_flags.get("tiltup_precast", False)
+        _has_crane_ewp = any(k in _plant_text for k in ("crane", "ewp", "boom", "forklift"))
+        if _has_silica:
+            haz_sub_items.append(
+                "Respirable crystalline silica (RCS) \u2014 SDS on site "
+                "\u2014 WES 0.05 mg/m\u00b3 TWA \u2014 P2 minimum"
+            )
+        if _has_epoxy_sub:
+            haz_sub_items.append("Epoxy resin (Part A) \u2014 SDS on site \u2014 skin/eye sensitiser")
+            haz_sub_items.append("Epoxy hardener (Part B) \u2014 SDS on site \u2014 corrosive")
+        if _has_primer:
+            haz_sub_items.append("Epoxy primer \u2014 SDS on site \u2014 flammable liquid")
+        if _has_tiltup:
+            haz_sub_items.append("Concrete release agent \u2014 SDS on site \u2014 skin/eye irritant")
+        if _has_crane_ewp:
+            haz_sub_items.append("Hydraulic fluid \u2014 SDS on site \u2014 skin sensitiser")
+    if not haz_sub_items:
+        haz_sub_items = ["No hazardous substances identified \u2014 confirm with site supervisor"]
+    _clear_and_write(3, 3, haz_sub_items)
+
+    # ── (4,1) Consultation ────────────────────────────────────────────────
+    consult_items = list(project_meta.get("consultation", []))
+    if not consult_items:
+        consult_items = [
+            "Workers consulted during SWMS development",
+            "Site-specific induction completed before work commences",
+            "Toolbox talk conducted at start of each shift",
+        ]
+    _clear_and_write(4, 1, consult_items)
+
+    # ── (4,3) Legislative Basis ───────────────────────────────────────────
+    _base_parts = jur["base_legislation_string"].split(" \u2014 ")
+    _BASE_LEGISLATION = [p.strip() for p in _base_parts if p.strip()]
+
+    reg_notes = inference.get("regulatory_notes", [])
+    jur_notes = inference.get("jurisdiction_notes", [])
+    _base_lower = [b.lower() for b in _BASE_LEGISLATION]
+    _cleaned_notes = []
+    for n in reg_notes + jur_notes:
+        if n.lower() in _base_lower:
+            continue
+        if n in _cleaned_notes:
+            continue
+        cleaned = n.strip()
+        if jurisdiction == "AU":
+            cleaned = (cleaned
+                       .replace("Model WHS Act 2011", "WHS Act 2011 (NSW)")
+                       .replace("Model WHS Regulations 2017", "WHS Regulation 2017 (NSW)")
+                       .replace("Safe Work Australia Codes of Practice", "SafeWork NSW Codes of Practice"))
+        if cleaned and cleaned.lower() not in _base_lower and cleaned not in _cleaned_notes:
+            _cleaned_notes.append(cleaned)
+    all_legislation = (_BASE_LEGISLATION + _cleaned_notes)[:4]  # max 4 lines
+    _clear_and_write(4, 3, all_legislation)
+
+
 def _build_ccvs_table(doc, tasks) -> None:
     """Populate Table 7 — CCVS monitoring rows."""
     t2 = doc.tables[2]
@@ -1297,8 +1482,7 @@ def render_swms_document(
 
     _build_task_table(doc, tasks)
     _format_risk_matrix(doc)
-    _fill_legislation_table(doc, inference, jur, jurisdiction)
-    _fill_requirements_table(doc, tasks, inference, project_meta)
+    _fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction)
     _build_ccvs_table(doc, tasks)
     _fill_signoff_table(doc)
     _build_footer(doc, project_meta, jur, jurisdiction, doc_date)
