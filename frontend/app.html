@@ -1547,60 +1547,117 @@ async function intakeConfirmGenerate() {
     return;
   }
 
+  // Build project_meta and scope_context for /generate/stream
+  const intakeMeta = {
+    pcbu_name:             fields.pcbu_name || '',
+    project_address:       fields.project_address || '',
+    manager_name:          fields.manager_name || '',
+    principal_contractor:  fields.principal_contractor || '',
+    title:                 fields.title || '',
+    work_activity_summary: fields.work_activity_summary || '',
+    supervisor:            fields.manager_name || '',
+    work_activity:         fields.work_activity_summary || '',
+    description:           fields.description,
+  };
+  let intakeScope = null;
+  if (fields.access_method || fields.building_type || fields.storeys || fields.occupancy) {
+    intakeScope = {
+      access_method:   fields.access_method || '',
+      building_type:   fields.building_type || '',
+      storeys:         fields.storeys || '',
+      occupancy:       fields.occupancy || '',
+      hrcw_categories: fields.hrcw_categories || [],
+    };
+  }
+
   document.getElementById('intake-review-zone').style.display = 'none';
   document.getElementById('intake-generating-zone').style.display = 'block';
   document.getElementById('istep-review').classList.remove('active');
   document.getElementById('istep-generate').classList.add('active');
 
   const statusPanel = document.getElementById('intake-status-panel');
-  statusPanel.innerHTML = '<div class="status-step">\u23f3 Generating SWMS \u2014 please wait, do not close this page\u2026</div>';
+  statusPanel.innerHTML = '<div class="status-step">\u23f3 Analysing job description\u2026</div>';
 
-  // Show a progress heartbeat so user knows it is running
-  let dots = 0;
-  const heartbeat = setInterval(() => {
-    dots = (dots + 1) % 4;
-    const el = statusPanel.querySelector('.status-step');
-    if (el) el.textContent = '\u23f3 Generating SWMS \u2014 please wait' + '.'.repeat(dots);
-  }, 2000);
+  let intakeTasks = [];
+  let intakeInference = {};
 
   try {
+    // Use SSE streaming — same as main generate flow
     const token = localStorage.getItem('access_token');
-    const res = await fetch('/intake/generate', {
+    const streamRes = await fetch(API + '/generate/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': 'Bearer ' + token,
       },
       body: JSON.stringify({
-        fields,
+        description: fields.description,
+        project_meta: intakeMeta,
+        force_full: true,
         jurisdiction: _intakeJur,
-        format: _intakeFmt,
-        compliance_person: document.getElementById('iinput-compliance-person')?.value.trim() || '',
-        review_person: document.getElementById('iinput-review-person')?.value.trim() || '',
-        swms_date: document.getElementById('iinput-swms-date')?.value.trim() || '',
+        scope_context: intakeScope,
       }),
     });
-
-    console.log('intake/generate response:', res.status, res.headers.get('Content-Type'), res.headers.get('Content-Disposition'));
-
-    if (!res.ok) {
+    if (!streamRes.ok) {
       let msg = 'Generation failed';
-      try { const err = await res.json(); msg = err.detail || msg; } catch {}
+      try { const err = await streamRes.json(); msg = err.detail || msg; } catch {}
       throw new Error(msg);
     }
 
-    clearInterval(heartbeat);
-    const blob = await res.blob();
-    console.log('blob size:', blob.size, 'type:', blob.type);
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    if (blob.size < 100) {
-      throw new Error('Document generation failed \u2014 empty response');
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        const line = part.replace(/^data:\s*/, '').trim();
+        if (!line) continue;
+        let event;
+        try { event = JSON.parse(line); } catch { continue; }
+        intakeHandleStreamEvent(event, statusPanel);
+        if (event.type === 'route') {
+          intakeInference = event.inference || {};
+        } else if (event.type === 'task') {
+          intakeTasks.push(event.task);
+        } else if (event.type === 'error') {
+          throw new Error(event.message);
+        }
+      }
     }
 
-    // Trigger initial download and store URL for re-download
-    const disposition = res.headers.get('Content-Disposition') || '';
-    const fnMatch = disposition.match(/filename="?([^"]+)"?/);
-    const fname = fnMatch ? fnMatch[1] : 'SWMS.docx';
+    // Render step
+    statusPanel.innerHTML += '<div class="status-step">\u23f3 Rendering document\u2026</div>';
+    const renderPayload = {
+      tasks: intakeTasks,
+      project_meta: intakeMeta,
+      inference: intakeInference,
+      jurisdiction: _intakeJur,
+    };
+    const renderUrl = _intakeFmt === 'pdf' ? '/render/pdf' : '/render/docx';
+    const renderRes = await fetch(API + renderUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(renderPayload),
+    });
+    if (!renderRes.ok) throw new Error('Render failed: ' + renderRes.status);
+
+    const blob = await renderRes.blob();
+    if (blob.size < 100) throw new Error('Document generation failed \u2014 empty response');
+
+    // Build filename and trigger download
+    const addr = (fields.project_address || 'SWMS').replace(/,/g, '').trim();
+    const safe = addr.replace(/[^a-zA-Z0-9 -]/g, '').trim().replace(/\s+/g, '-').substring(0, 40);
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const ext = _intakeFmt === 'pdf' ? 'pdf' : 'docx';
+    const fname = `SWMS-${safe}-${dd}${mm}${now.getFullYear()}-V01.${ext}`;
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1608,15 +1665,8 @@ async function intakeConfirmGenerate() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    // Store for re-download — do NOT revoke immediately
     _intakeLastUrl = url;
     _intakeLastFilename = fname;
-
-    // Email placeholder
-    const emailVal = document.getElementById('intake-email')?.value.trim() || '';
-    if (emailVal) {
-      console.log('Email send not yet implemented');
-    }
 
     statusPanel.innerHTML +=
       '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>' +
