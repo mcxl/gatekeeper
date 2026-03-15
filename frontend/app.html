@@ -1686,10 +1686,10 @@ async function intakeConfirmGenerate() {
 
 function intakeHandleStreamEvent(event, panel) {
   if (event.type === 'route') {
-    panel.innerHTML = '<div class="status-step">\u2713 Analysed \u2014 building tasks\u2026</div>';
+    panel.innerHTML = '<div class="status-step">\u2713 Analysed \u2014 running inference\u2026</div>';
   } else if (event.type === 'task_count') {
     panel.innerHTML +=
-      `<div class="status-step">\u2713 ${event.count} tasks identified</div>`;
+      `<div class="status-step">\u2713 Inference done \u2014 ${event.count} tasks identified</div>`;
   } else if (event.type === 'task') {
     const pct = Math.round(((event.index + 1) / event.total) * 100);
     const bar = document.getElementById('intake-progress-bar');
@@ -1708,11 +1708,8 @@ function intakeHandleStreamEvent(event, panel) {
         `Writing controls\u2026 ${event.index+1} of ${event.total}`;
     }
   } else if (event.type === 'done') {
-    if (event.docx_b64) {
-      triggerDocxDownload(event.docx_b64, event.filename || 'SWMS.docx');
-    }
     panel.innerHTML +=
-      '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>';
+      '<div class="status-step">\u2713 All tasks complete \u2014 rendering document\u2026</div>';
   } else if (event.type === 'error') {
     panel.innerHTML +=
       `<div class="status-step" style="color:#c00">Error: ${event.message}</div>`;

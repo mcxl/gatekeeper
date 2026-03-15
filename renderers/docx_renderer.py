@@ -1323,7 +1323,9 @@ def render_swms_document(
 
     # Body paragraph 2: Brief description — replace placeholder with description text
     _desc_text = (project_meta.get("description")
+                  or project_meta.get("work_activity_summary")
                   or project_meta.get("work_activity")
+                  or project_meta.get("scope_summary")
                   or project_meta.get("project_name", ""))
     if _desc_text and len(doc.paragraphs) > 2:
         p2 = doc.paragraphs[2]
