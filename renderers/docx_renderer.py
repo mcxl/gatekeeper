@@ -2,12 +2,8 @@
 """
 renderers/docx_renderer.py — TaskBlock -> .docx bytes
 
-Builds a SWMS Word table (header + data row) plus optional monitoring table.
-A4 landscape, 1cm margins, Aptos 8pt throughout.
-
-Uses RPD-MSW-002 as template base — inherits style "a" (single spacing,
-zero margins). All borders use dotted grey matching RPD document pattern.
-No amber fill on data rows. Risk cells Aptos 10pt bold.
+Populates Safe_Method_SWMS_Template_V1.docx (10-table template).
+Aptos 9pt content, 10pt bold risk cells. No amber fill on data rows.
 """
 
 import os
@@ -33,7 +29,6 @@ from core.schema import TaskBlock, MonitoringEntry
 # —— Constants ————————————————————————————————————————————————————————————————
 
 FONT      = "Aptos"
-FONT_SIZE = Pt(8)
 RED       = RGBColor(0xC0, 0x00, 0x00)
 BLACK     = RGBColor(0x00, 0x00, 0x00)
 WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
@@ -424,7 +419,7 @@ def _strip_hold_point_label(text: str) -> str:
     return cleaned[0].upper() + cleaned[1:] if cleaned else text
 
 
-def _hazard_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+def _hazard_cell(cell, task: TaskBlock, size_pt: int = 9) -> None:
     """Populate hazard column with bulleted hazard items."""
     _clear_cell_default_indent(cell)
     # Gather hazard items — split any compound items on comma/semicolon
@@ -442,7 +437,7 @@ def _hazard_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
         _write_bullet_para(cell, haz, size_pt=size_pt, first=(hi == 0))
 
 
-def _controls_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+def _controls_cell(cell, task: TaskBlock, size_pt: int = 9) -> None:
     """Populate T1 col4 — Hierarchy of Control.
 
     Template structure (forensic):
@@ -490,7 +485,7 @@ def _controls_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
         for item in task.admin:
             _bullet(item)
 
-def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
+def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 9) -> None:
     _clear_cell_default_indent(cell)
     is_first = True
     for role, obligation in task.responsibility.items():
@@ -500,9 +495,11 @@ def _responsibility_cell(cell, task: TaskBlock, size_pt: int = 8) -> None:
         _write_bullet_para(cell, text, size_pt=size_pt, bold=False, first=is_first)
         # Make the role portion bold by modifying the text run we just created
         para = cell.paragraphs[0] if is_first else cell.paragraphs[-1]
-        # The text run is the last run; replace it with bold role + normal obligation
+        # The text run is the last run; replace it with bullet + bold role + normal obligation
         text_run = para.runs[-1]
-        text_run.text = ""
+        text_run.text = "\u2022  "  # preserve bullet prefix
+        text_run.font.name = FONT
+        text_run.font.size = Pt(size_pt)
         r_role = para.add_run(role)
         r_role.font.name = FONT
         r_role.font.size = Pt(size_pt)
@@ -542,7 +539,8 @@ def _monitoring_table(doc, task: TaskBlock) -> None:
 # —— Main render ——————————————————————————————————————————————————————————————
 
 def render_docx(task: TaskBlock) -> bytes:
-    """Render TaskBlock as a Word .docx table. Returns bytes."""
+    """DEPRECATED: Legacy single-task renderer (7-col layout, old templates).
+    Used by POST /generate and main.py. New code should use render_swms_document()."""
     root = Path(__file__).parent.parent / "src"
     template = root / "RPD-MSW-002_Remedial_Works_Master_SWMS.docx"
     fallback = root / "SWMS-260306-V1.docx"
@@ -712,7 +710,8 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
                  or project_meta.get("site_name")
                  or project_meta.get("site_address", ""))
     pc = project_meta.get("principal_contractor", pcbu)
-    supervisor = project_meta.get("supervisor", "")
+    supervisor = (project_meta.get("supervisor_name")
+                 or project_meta.get("supervisor", ""))
     work_activity = project_meta.get("work_activity_summary", "")
     if not work_activity:
         work_activity = (project_meta.get("work_activity")
@@ -804,7 +803,7 @@ def _col7_cell(cell, task: TaskBlock, step_num: str) -> None:
     # —— HOLD POINT ————————————————————————————————————————————————
     if hold_points:
         p = _next_para()
-        _add_run(p, f'HOLD POINT {step_num}', bold=True, color=MID_BLUE)
+        _add_run(p, f'\u26a0\ufe0f HOLD POINT {step_num}', bold=True, color=MID_BLUE)
         _set_para_spacing(p, before=0, after=20)
         for i, item in enumerate(hold_points, 1):
             p = _next_para()
@@ -814,7 +813,7 @@ def _col7_cell(cell, task: TaskBlock, step_num: str) -> None:
     # —— STOP-WORK TRIGGER ————————————————————————————————————————
     if stop_work:
         p = _next_para()
-        _add_run(p, 'STOP-WORK TRIGGER', bold=True, color=RED)
+        _add_run(p, '\U0001f6d1 STOP-WORK TRIGGER', bold=True, color=RED)
         _set_para_spacing(p, before=(20 if hold_points else 0), after=20)
         for item in stop_work:
             p = _next_para()
@@ -905,8 +904,8 @@ def _build_task_table(doc, tasks) -> None:
 
 
 def _format_risk_matrix(doc) -> None:
-    """Apply font to Table 3 — risk matrix (content untouched)."""
-    t3 = doc.tables[4]
+    """Apply font to Table 8 — risk matrix (content untouched)."""
+    t3 = doc.tables[8]
     for row in t3.rows:
         for cell in row.cells:
             for para in cell.paragraphs:
@@ -1128,7 +1127,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
 
 
 def _build_ccvs_table(doc, tasks) -> None:
-    """Populate Table 7 — CCVS monitoring rows."""
+    """Populate Table 2 — CCVS monitoring rows."""
     t2 = doc.tables[2]
     _set_table_cell_margins(t2)
 
@@ -1160,9 +1159,11 @@ def _build_ccvs_table(doc, tasks) -> None:
 
 
 def _fill_signoff_table(doc) -> None:
-    """Prevent sign-off table (Table 6) rows from splitting across pages."""
-    if len(doc.tables) > 7:
-        for _row in doc.tables[7].rows:
+    """Prevent sign-off tables (T3-T7) rows from splitting across pages."""
+    for ti in range(3, 8):
+        if len(doc.tables) <= ti:
+            break
+        for _row in doc.tables[ti].rows:
             _trPr = _row._tr.find(qn('w:trPr'))
             if _trPr is None:
                 _trPr = etree.SubElement(_row._tr, qn('w:trPr'))
@@ -1235,18 +1236,19 @@ def render_swms_document(
     jurisdiction: str = "AU",
 ) -> bytes:
     """
-    Multi-task SWMS renderer.  Populates the SWMS-260306-V1.docx template
-    in-place using the 9-table structure:
+    Multi-task SWMS renderer.  Populates Safe_Method_SWMS_Template_V1.docx
+    in-place using the 10-table structure:
 
-        Table 0  cover page        — project_meta + HRCW ticks
-        Table 1  task table        — header row kept, task rows added
-        Table 2  CCVS monitoring   — header row kept, data rows added
-        Table 3  amendments mid    — untouched
-        Table 4  risk matrix       — untouched
-        Table 5  legislation       — col 1 row 0
-        Table 6  PPE / requirements— col 1 all rows
-        Table 7  worker signoff    — untouched
-        Table 8  amendments end    — untouched
+        T0  cover page + HRCW ticks   — project_meta fields + checkbox cell
+        T1  task table (8 cols)       — banner row 0, headers row 1, task rows appended
+        T2  monitoring (5 cols)       — CCVS tasks only
+        T3  worker induction sign-off — untouched (cantSplit applied)
+        T4  worker amendment sign-off — untouched (cantSplit applied)
+        T5  SWMS amendments           — untouched (cantSplit applied)
+        T6  worker amendment sign-off — untouched (cantSplit applied)
+        T7  SWMS amendments           — untouched (cantSplit applied)
+        T8  risk rating matrix        — font pass only
+        T9  pre-requisites (5r x 4c)  — PPE, licences, plant, hazmat, consultation, legislation
 
     Args:
         tasks:        list of TaskBlock objects (one per task row)
