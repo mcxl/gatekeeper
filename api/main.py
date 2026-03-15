@@ -568,20 +568,28 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
     scope_context = request.get("scope_context")
 
     async def event_generator():
+        import asyncio
         try:
-            async for event in generate_swms_stream(
+            stream = generate_swms_stream(
                 description=description,
                 project_meta=project_meta,
                 force_full=force_full,
                 force_simple=force_simple,
                 jurisdiction=jurisdiction,
                 scope_context=scope_context,
-            ):
-                yield f"data: {json.dumps(event)}\n\n"
+            )
+            stream_iter = stream.__aiter__()
+            while True:
+                try:
+                    event = await asyncio.wait_for(stream_iter.__anext__(), timeout=15.0)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except StopAsyncIteration:
+                    break
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
         except Exception as e:
-            import json as _json
             logger.error(f"Stream generation failed:\n{traceback.format_exc()}")
-            yield f"data: {_json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
 
     return StreamingResponse(
         event_generator(),

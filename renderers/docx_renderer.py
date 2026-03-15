@@ -140,8 +140,20 @@ _VALID_CCVS_PATTERN = _re_ccvs.compile(
     r'^(' + '|'.join(_VALID_CCVS_STREAMS) + r')-(H6|H9|M3|M4|L1|L2)$'
 )
 
+# Map stream prefixes to their approved parent code when AI generates invalid sub-codes
+# e.g. WAH-H1 → WAH-H6, ELE-H1 → ELE-H6, DEM-anything → N/A (no approved DEM code)
+_CCVS_PARENT_MAP = {
+    'WAH': 'WAH-H6', 'IRA': 'IRA-H6', 'ELE': 'ELE-H6', 'SIL': 'SIL-H6',
+    'STR': 'STR-H6', 'CFS': 'CFS-H9', 'ENE': 'ENE-H6', 'HOT': 'HOT-H6',
+    'MOB': 'MOB-H6', 'ASB': 'ASB-H6', 'LED': 'LED-H6', 'CHM': 'CHM-H6',
+    'TRF': 'TRF-H6',
+}
+# Streams with NO approved CCVS code — always map to N/A
+_CCVS_NO_CODE_STREAMS = {'DEM', 'SCA', 'SCF', 'CRN', 'EXC', 'MNH', 'NOI',
+                         'TLT', 'FMW', 'WFR', 'WFA', 'ENV'}
+
 def validate_ccvs_code(code: str) -> str:
-    """Normalise and validate a CCVS code. Fixes missing hyphen."""
+    """Normalise and validate a CCVS code. Fixes missing hyphen and invalid sub-codes."""
     if not code or code == 'N/A':
         return 'N/A'
     if _VALID_CCVS_PATTERN.match(code):
@@ -153,6 +165,13 @@ def validate_ccvs_code(code: str) -> str:
             repaired = f"{stream}-{suffix}"
             if _VALID_CCVS_PATTERN.match(repaired):
                 return repaired
+            # Invalid sub-code — map to parent or N/A
+            if stream in _CCVS_NO_CODE_STREAMS:
+                return 'N/A'
+            if stream in _CCVS_PARENT_MAP:
+                import logging
+                logging.info(f"CCVS sub-code {repr(code)} mapped to {_CCVS_PARENT_MAP[stream]}")
+                return _CCVS_PARENT_MAP[stream]
     import logging
     logging.warning(f"Invalid CCVS code could not be repaired: {repr(code)}")
     return 'N/A'
@@ -1370,7 +1389,7 @@ def render_swms_document(
 # —— Output validation ————————————————————————————————————————————————————————
 
 _KNOWN_PLACEHOLDER_TOKENS = [
-    'UNKNOWN', '[Insert', 'mcxico', 'your-company',
+    'UNKNOWN', '[Insert', 'your-company',
     'PCBU_NAME', 'INSERT_', '{{', '}}',
 ]
 
