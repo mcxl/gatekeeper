@@ -2,8 +2,9 @@
 """
 renderers/pdf_renderer.py — Convert DOCX bytes to PDF bytes.
 
-Primary:   LibreOffice headless (Linux/Railway)
-Fallback:  docx2pdf (Microsoft Word COM on Windows)
+Primary:   Gotenberg Docker sidecar (Railway / local Docker)
+Fallback1: LibreOffice headless (Linux/Railway)
+Fallback2: docx2pdf (Microsoft Word COM on Windows)
 """
 
 from __future__ import annotations
@@ -15,17 +16,40 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+GOTENBERG_URL = os.getenv("GOTENBERG_URL", "")
+
+
+def pdf_available() -> bool:
+    """Check if Gotenberg is reachable. Returns True/False."""
+    if not GOTENBERG_URL:
+        return False
+    try:
+        resp = httpx.get(f"{GOTENBERG_URL}/health", timeout=3.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
 
 
 def docx_to_pdf(docx_bytes: bytes) -> bytes:
     """
     Convert docx bytes to PDF bytes.
 
-    Tries LibreOffice headless first, falls back to docx2pdf (Word COM).
-    Raises RuntimeError if neither converter is available.
+    Tries Gotenberg first, then LibreOffice headless, then docx2pdf (Word COM).
+    Raises RuntimeError if no converter is available.
     """
-    # Try LibreOffice first (Linux/Railway)
+    # 1. Gotenberg
+    if GOTENBERG_URL:
+        try:
+            logger.info(f"Using Gotenberg: {GOTENBERG_URL}")
+            return _convert_gotenberg(docx_bytes)
+        except Exception as got_err:
+            logger.warning(f"Gotenberg failed: {got_err}")
+
+    # 2. LibreOffice headless
     try:
         soffice = _find_libreoffice()
         if soffice:
@@ -34,13 +58,25 @@ def docx_to_pdf(docx_bytes: bytes) -> bytes:
     except Exception as lo_err:
         logger.warning(f"LibreOffice failed: {lo_err}")
 
-    # Try docx2pdf second (Windows)
+    # 3. docx2pdf (Windows)
     try:
         return _convert_docx2pdf(docx_bytes)
     except Exception as d2p_err:
         logger.warning(f"docx2pdf failed: {d2p_err}")
 
     raise RuntimeError("No PDF converter available.")
+
+
+def _convert_gotenberg(docx_bytes: bytes) -> bytes:
+    """Convert using Gotenberg /forms/libreoffice/convert endpoint."""
+    resp = httpx.post(
+        f"{GOTENBERG_URL}/forms/libreoffice/convert",
+        files={"files": ("input.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        timeout=60.0,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Gotenberg returned {resp.status_code}: {resp.text[:200]}")
+    return resp.content
 
 
 def _find_libreoffice() -> str | None:
