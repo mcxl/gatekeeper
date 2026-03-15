@@ -84,7 +84,37 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-async def run_risk_assessor(task_manifest: dict, inference: dict) -> dict:
+def _build_scope_context_block(scope_context: dict) -> str:
+    """Format scope_context fields into prompt text for the risk assessor."""
+    if not scope_context:
+        return ""
+    lines = []
+    mapping = {
+        "occupied_building": "Occupied Building",
+        "height_work": "Height Work",
+        "confined_spaces": "Confined Spaces",
+        "hazardous_materials": "Hazardous Materials",
+        "special_conditions": "Special Conditions",
+        "work_areas": "Work Areas",
+    }
+    for key, label in mapping.items():
+        value = scope_context.get(key)
+        if not value:
+            continue
+        if isinstance(value, list):
+            if value:
+                lines.append(f"  {label}: {', '.join(str(v) for v in value)}")
+        elif str(value).strip():
+            lines.append(f"  {label}: {value}")
+    if not lines:
+        return ""
+    return (
+        "\n\nSCOPE CONTEXT (from uploaded document):\n"
+        + "\n".join(lines)
+    )
+
+
+async def run_risk_assessor(task_manifest: dict, inference: dict, scope_context: dict = None) -> dict:
     """
     Run Agent 2 — Risk Assessor.
     Returns RiskManifest dict.
@@ -105,6 +135,7 @@ async def run_risk_assessor(task_manifest: dict, inference: dict) -> dict:
         f"Tasks to assess:\n{tasks_summary}\n"
         f"\nEnvironment: {env_summary}"
         f"{hrcw_notes}"
+        f"{_build_scope_context_block(scope_context)}"
         f"\n\nAssess hazards and risk ratings for each task. Return RiskManifest JSON only."
     )
 

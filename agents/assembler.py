@@ -49,8 +49,8 @@ YOUR JOBS:
    N/A
    Any code not in this list is INVALID — replace with the closest approved code or N/A.
 5. wah_applicable = true ONLY if ccvs_code starts with "WAH"
-6. responsibility.SUP: what the supervisor is responsible for — plain English, ≤20 words
-7. responsibility.WKR: what workers are responsible for — plain English, ≤20 words
+6. responsibility.SUP: what the supervisor is responsible for — plain English, ≤12 words
+7. responsibility.WKR: what workers are responsible for — plain English, ≤12 words
 
 RESPONSIBILITY PATTERNS:
   SUP: "Supervise [task], ensure controls in place, sign off hold points"

@@ -123,7 +123,7 @@ async def _run_full_pipeline(
     # ── Agent 2: Risk assess ──────────────────────────────────────────────────
     log.info("Agent 2 — Risk Assessor starting")
     try:
-        risk_manifest = await run_risk_assessor(task_manifest, inference)
+        risk_manifest = await run_risk_assessor(task_manifest, inference, scope_context)
         agent_outputs["risk_manifest"] = risk_manifest
         log.info(f"Agent 2 — {len(risk_manifest['risks'])} tasks risk-assessed")
     except Exception as e:
@@ -367,7 +367,7 @@ async def generate_swms_stream(
         return
 
     try:
-        risk_manifest = await run_risk_assessor(task_manifest, inference)
+        risk_manifest = await run_risk_assessor(task_manifest, inference, scope_context)
     except Exception as e:
         yield {"type": "error", "message": f"Risk Assessor failed: {e}"}
         return

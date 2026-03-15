@@ -25,7 +25,7 @@ from core.utils import enforce_wah_flag, strip_fences
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from vocab.swms_vocabulary import HAZARDS  # import to confirm vocab path works
+from vocab.swms_vocabulary import HAZARDS, PLAIN_ENGLISH_SUBSTITUTIONS
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 2048
@@ -255,6 +255,42 @@ def _parse_task(raw: str) -> TaskBlock:
 
 
 
+def _count_syllables(word: str) -> int:
+    """Rough syllable count for English words."""
+    word = word.lower().strip()
+    if len(word) <= 3:
+        return 1
+    count = 0
+    vowels = "aeiouy"
+    prev_vowel = False
+    for ch in word:
+        is_vowel = ch in vowels
+        if is_vowel and not prev_vowel:
+            count += 1
+        prev_vowel = is_vowel
+    if word.endswith("e") and count > 1:
+        count -= 1
+    return max(count, 1)
+
+
+def _build_fog_hint() -> str:
+    """Build fog rewrite hint dynamically from PLAIN_ENGLISH_SUBSTITUTIONS."""
+    examples = []
+    for formal, plain in PLAIN_ENGLISH_SUBSTITUTIONS.items():
+        if _count_syllables(formal.split()[0]) >= 3:
+            examples.append(f"'{formal}' -> '{plain}'")
+        if len(examples) >= 6:
+            break
+    examples_str = ", ".join(examples) if examples else "'monitoring' -> 'checking'"
+    return (
+        "\n\nFOG REWRITE RULES — apply to every flagged bullet:"
+        "\n- Replace any word with 3+ syllables with a shorter equivalent"
+        "\n- Maximum 2 polysyllabic words per bullet"
+        f"\n- Examples: {examples_str}"
+        "\n- Rewrite the entire bullet in plain English, verb first, under 12 words"
+    )
+
+
 def _build_inference_block(inferred: dict) -> str:
     """
     Format inferred requirements as a structured prompt block.
@@ -435,15 +471,7 @@ def generate_task(raw_input: str, user: str = "system", scope_context: dict = No
 
             fog_hint = ""
             if fog_errors:
-                fog_hint = (
-                    "\n\nFOG REWRITE RULES — apply to every flagged bullet:"
-                    "\n- Replace any word with 3+ syllables with a shorter equivalent"
-                    "\n- Maximum 2 polysyllabic words per bullet"
-                    "\n- Examples: 'monitoring' -> 'checking', 'confirmed' -> 'sighted',"
-                    " 'application' -> 'use', 'baseline' -> 'reading',"
-                    " 'encapsulation' -> 'sealing', 'containment' -> 'barrier'"
-                    "\n- Rewrite the entire bullet in plain English, verb first, under 12 words"
-                )
+                fog_hint = _build_fog_hint()
 
             check2_hint = ""
             if check2_errors:

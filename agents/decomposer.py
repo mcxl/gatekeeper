@@ -118,6 +118,7 @@ async def run_decomposer(description: str, inference: dict, scope_context: dict 
         f"{hrcw_context}"
         f"{env_context}"
         f"{scope_block}"
+        f"\n\nGenerate between 8 and 12 tasks. Maximum 12 — combine minor steps if needed."
         f"\n\nDecompose into ordered tasks. Return TaskManifest JSON only."
     )
 

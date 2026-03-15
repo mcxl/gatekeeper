@@ -259,6 +259,11 @@ def _build_inference_context(inference: dict) -> str:
         lines.append("Mandatory permits: " + " | ".join(inference["permits"][:4]))
     if inference.get("certifications"):
         lines.append("Required certs: " + " | ".join(inference["certifications"][:4]))
+    if inference.get("plant"):
+        lines.append("Plant and equipment: " + " | ".join(inference["plant"][:4]))
+    if inference.get("regulatory_notes"):
+        for note in inference["regulatory_notes"][:3]:
+            lines.append(f"Regulatory: {note}")
     return "\n".join(lines) if lines else "No mandatory pre-fills identified."
 
 
