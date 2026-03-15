@@ -127,16 +127,23 @@ async def analyse_existing_swms(swms_text: str) -> dict:
 
 async def extract_scope_from_document(doc_text: str) -> dict:
     """Mode 03: Extract work scope from Scope of Works / Specification."""
+    import asyncio
     try:
-        response = await client.messages.create(
-            model=MODEL,
-            max_tokens=4000,
-            messages=[{
-                "role": "user",
-                "content": SCOPE_EXTRACT_PROMPT.format(doc_text=doc_text[:12000])
-            }]
+        response = await asyncio.wait_for(
+            client.messages.create(
+                model=MODEL,
+                max_tokens=4000,
+                messages=[{
+                    "role": "user",
+                    "content": SCOPE_EXTRACT_PROMPT.format(doc_text=doc_text[:8000])
+                }]
+            ),
+            timeout=45.0,
         )
         return _parse_json_response(response.content[0].text)
+    except asyncio.TimeoutError:
+        logger.warning("Scope extraction timed out at 45s — returning partial result")
+        return {"scope_summary": doc_text[:500], "partial": True}
     except Exception as e:
         logger.error(f"Scope extraction error: {e}")
         raise RuntimeError(f"Could not extract scope: {str(e)}")
