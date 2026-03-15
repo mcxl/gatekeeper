@@ -1293,12 +1293,22 @@ def render_swms_document(
         _p0_text = _p0_text[:100].rsplit(" ", 1)[0]
     if _p0_text and doc.paragraphs:
         p0 = doc.paragraphs[0]
-        if "[Insert description here]" in p0.text:
+        if "[Insert" in p0.text or "[insert" in p0.text:
             p0.clear()
             _run(p0, f"\u25a0 Description: {_p0_text}", bold=True, size_pt=16)
         p0.paragraph_format.space_after = Pt(0)
         p0.paragraph_format.space_before = Pt(0)
         p0.paragraph_format.keep_with_next = True
+
+    # Body paragraph 2: Brief description — replace placeholder with description text
+    _desc_text = (project_meta.get("description")
+                  or project_meta.get("work_activity")
+                  or project_meta.get("project_name", ""))
+    if _desc_text and len(doc.paragraphs) > 2:
+        p2 = doc.paragraphs[2]
+        if "[Insert" in p2.text or "[insert" in p2.text:
+            p2.clear()
+            _run(p2, f"Brief description: {_desc_text}", size_pt=9)
 
     # Remove any page breaks between P0 and Table 0
     for para in doc.paragraphs:
