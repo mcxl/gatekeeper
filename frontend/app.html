@@ -1033,17 +1033,19 @@ async function generate() {
         const event = JSON.parse(line);
         if (event.type === 'route') {
           setStep('step-analyse', 'done');
+          setStep('step-infer', 'active');
           showInference(event.inference);
           lastInference = event.inference;
         } else if (event.type === 'task_count') {
-          setStep('step-infer', 'active');
+          setStep('step-infer', 'done');
+          setStep('step-tasks', 'active');
+          document.getElementById('step-tasks-text').textContent =
+            'Generating ' + event.count + ' tasks\u2026';
         } else if (event.type === 'task') {
           lastTasks.push(event.task);
-          const stepLabel = document.getElementById('step-infer');
-          if (stepLabel) stepLabel.querySelector('.step-label').textContent =
-            'Generating task ' + event.index + ' of ' + event.total + '…';
+          document.getElementById('step-tasks-text').textContent =
+            'Generating task ' + event.index + ' of ' + event.total + '\u2026';
         } else if (event.type === 'done') {
-          setStep('step-infer', 'done');
           setStep('step-tasks', 'done');
         } else if (event.type === 'error') {
           throw new Error(event.message);
