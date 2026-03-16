@@ -1177,6 +1177,7 @@ function goToReview() {
   localStorage.setItem('swms_review_inference', JSON.stringify(lastInference));
   localStorage.setItem('swms_review_meta', JSON.stringify(lastMeta));
   localStorage.setItem('swms_format', currentFormat);
+  window.onbeforeunload = null;
   window.location.href = '/review';
 }
 
