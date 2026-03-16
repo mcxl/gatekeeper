@@ -121,71 +121,17 @@ def extract_from_image(image_bytes: bytes, media_type: str) -> dict:
 
 # ── Raw text extraction by file type ─────────────────────────────────────────
 
-def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extract text from a PDF file. Tries pdfplumber first, falls back to pypdf."""
-    # Try pdfplumber (better table/layout extraction)
-    try:
-        import pdfplumber
-        text_parts = []
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
-        result = '\n'.join(text_parts).strip()
-        if result:
-            return result
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.warning(f"pdfplumber failed, trying pypdf: {e}")
-
-    # Fallback to pypdf
+def extract_text_from_pdf(file_bytes: bytes, max_pages: int = 5) -> str:
+    """Extract text from first N pages of a PDF using pypdf."""
     from pypdf import PdfReader
     reader = PdfReader(io.BytesIO(file_bytes))
-    pages = [page.extract_text() or "" for page in reader.pages]
-    result = "\n".join(pages).strip()
+    pages = reader.pages[:max_pages]
+    text_parts = [page.extract_text() or "" for page in pages]
+    result = "\n".join(text_parts).strip()
     if result:
+        if len(reader.pages) > max_pages:
+            logger.info(f"PDF: extracted {len(result)} chars from first {max_pages} of {len(reader.pages)} pages")
         return result
-
-    # Fallback: native PDF API — Claude reads all pages simultaneously
-    try:
-        pdf_b64 = base64.standard_b64encode(file_bytes).decode('utf-8')
-        client = _get_client()
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=4000,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": pdf_b64,
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "This is a construction document — either a Scope of Works, "
-                            "Specification, or Safe Work Method Statement (SWMS). "
-                            "Extract ALL text from this document exactly as written. "
-                            "Preserve headings, lists, and table content. "
-                            "Return only the extracted text, no commentary."
-                        )
-                    }
-                ]
-            }]
-        )
-        result = response.content[0].text.strip()
-        if result:
-            logger.info(f"Native PDF API: extracted {len(result)} chars")
-            return result
-    except Exception as e:
-        logger.warning(f"Native PDF API fallback failed: {e}")
-
     raise ValueError(
         "No text could be extracted from this PDF. "
         "The file may be scanned — try taking a photo instead."
