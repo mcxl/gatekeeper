@@ -146,6 +146,18 @@ DOCUMENT TYPE RECOGNITION:
   inclusions/exclusions lists, item descriptions
 - Mixed: quote with embedded scope narrative
 
+TABLE OF CONTENTS / SCOPE SUMMARY (typically page 2):
+Page 2 typically contains a Table of Contents or scope summary listing all
+work sections. Extract HRCW indicators and trade types by reading the section
+headings in the ToC — you do not need to read every page. If the ToC mentions
+scaffolding, rope access, EWP, demolition, waterproofing at height, balconies,
+facade works — these are HRCW indicators. Extract them from the ToC headings
+directly rather than waiting to read the full content pages.
+
+key_activities should be extracted from ToC section headings on page 2, not
+just page 3 content. A ToC heading like '2.2 Re-Waterproofing of Suites 7, 8,
+11 and 12 Balconies' is a key activity.
+
 For ALL document types, extract the actual work being done — not
 commercial terms, prices, or exclusions.
 
