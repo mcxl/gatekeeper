@@ -378,7 +378,7 @@ async def generate_swms_stream(
     total = len(tasks)
 
     # ── Parallel per-task execution ───────────────────────────
-    _SEM = asyncio.Semaphore(11)
+    _SEM = asyncio.Semaphore(3)
 
     async def _process_single_task(idx: int, task: dict) -> tuple[int, dict]:
         seq = task["sequence"]
