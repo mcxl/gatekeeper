@@ -282,12 +282,32 @@ function toggleTheme() {
 
 // ── Auth helper ──────────────────────────────────
 function getToken() {
+  return localStorage.getItem('access_token') || '';
+}
+
+async function refreshIfNeeded() {
+  const token = getToken();
+  if (!token) return null;
   try {
-    const raw = localStorage.getItem('sb-auth-token') || localStorage.getItem('supabase.auth.token');
-    if (!raw) return '';
-    const parsed = JSON.parse(raw);
-    return parsed.access_token || parsed.currentSession?.access_token || '';
-  } catch { return ''; }
+    const res = await fetch('/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.status === 401) {
+      const refresh = localStorage.getItem('refresh_token');
+      if (!refresh) return null;
+      const r = await fetch('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refresh })
+      });
+      if (!r.ok) return null;
+      const data = await r.json();
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      return data.access_token;
+    }
+    return token;
+  } catch { return token; }
 }
 
 // ── Risk badge ───────────────────────────────────
@@ -463,7 +483,10 @@ async function confirmAndDownload() {
     else if (format === 'pdf') renderUrl = '/render/pdf';
     else renderUrl = '/render/docx';
 
-    const token = getToken();
+    const token = await refreshIfNeeded();
+    if (!token) {
+      throw new Error('Not authenticated — please log in again.');
+    }
     const res = await fetch(API + renderUrl, {
       method: 'POST',
       headers: {
