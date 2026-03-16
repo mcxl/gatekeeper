@@ -147,9 +147,10 @@ _CCVS_PARENT_MAP = {
     'STR': 'STR-H6', 'CFS': 'CFS-H9', 'ENE': 'ENE-H6', 'HOT': 'HOT-H6',
     'MOB': 'MOB-H6', 'ASB': 'ASB-H6', 'LED': 'LED-H6', 'CHM': 'CHM-H6',
     'TRF': 'TRF-H6',
+    'SCA': 'WAH-H6',
 }
 # Streams with NO approved CCVS code — always map to N/A
-_CCVS_NO_CODE_STREAMS = {'DEM', 'SCA', 'SCF', 'CRN', 'EXC', 'MNH', 'NOI',
+_CCVS_NO_CODE_STREAMS = {'DEM', 'SCF', 'CRN', 'EXC', 'MNH', 'NOI',
                          'TLT', 'FMW', 'WFR', 'WFA', 'ENV'}
 
 def validate_ccvs_code(code: str) -> str:

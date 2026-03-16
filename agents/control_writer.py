@@ -79,10 +79,6 @@ CCVS CODES — assign the highest applicable:
   WAH-H6  Swing stage or BMU — no rescue plan
   WAH-H7  Ladder — not secured or wrong angle
   WAH-H8  EWP — no harness or uninspected
-  SCA-H1  Scaffold not inspected
-  SCA-H2  Scaffold incomplete — no tag
-  SCA-H3  Scaffold overloaded
-  SCA-H4  Scaffold not erected by competent person
   ELE-H1  Energised electrical — no isolation
   ELE-H2  No RCD on portable tools
   ELE-H3  Damaged leads or tools
