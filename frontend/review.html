@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  (function() {
+    var t = localStorage.getItem('theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<title>Safe Method — Review SWMS</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4z' fill='%23f59e0b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap"></noscript>
+<style>
+:root{--bg-primary:#ffffff;--bg-card:#f0f0f0;--bg-card-hover:#f8f8f8;--border-color:#dddddd;--border-hover:#999999;--text-primary:#000000;--text-secondary:#444444;--text-muted:#888888;--accent:#f59e0b;--accent-hover:#d97706;--accent-text:#000000;--nav-bg:#000000;--nav-text:#ffffff;--nav-border:#222222;--nav-email:#aaaaaa;--btn-logout-border:#666666;--btn-logout-hover:#222222;--btn-disabled-bg:#cccccc;--btn-disabled-text:#888888;--input-bg:#ffffff;--input-border:#cccccc;--input-focus:#000000;--overlay-bg:rgba(0,0,0,0.5);--modal-bg:#ffffff;--modal-border:#eeeeee;--modal-bottom-bg:#fafafa;--btn-primary-bg:#000000;--btn-primary-text:#ffffff;--btn-primary-hover:#333333;--footer-bg:#000000;--footer-text:#aaaaaa;--tab-border:#eeeeee;--risk-high-bg:#fee2e2;--risk-high-text:#991b1b;--risk-med-bg:#fef3c7;--risk-med-text:#92400e;--risk-low-bg:#d1fae5;--risk-low-text:#065f46;--hrcw-border:#c00000;--hrcw-bg:rgba(192,0,0,0.06);--sidebar-bg:#fafafa}
+[data-theme="dark"]{--bg-primary:#000000;--bg-card:#111111;--bg-card-hover:#1a1a1a;--border-color:#222222;--border-hover:#444444;--text-primary:#ffffff;--text-secondary:#cccccc;--text-muted:#888888;--accent:#f59e0b;--accent-hover:#fbbf24;--accent-text:#000000;--nav-bg:#000000;--nav-text:#ffffff;--nav-border:#222222;--nav-email:#aaaaaa;--btn-logout-border:#666666;--btn-logout-hover:#222222;--btn-disabled-bg:#333333;--btn-disabled-text:#666666;--input-bg:#111111;--input-border:#333333;--input-focus:#f59e0b;--overlay-bg:rgba(0,0,0,0.7);--modal-bg:#111111;--modal-border:#222222;--modal-bottom-bg:#1a1a1a;--btn-primary-bg:#f59e0b;--btn-primary-text:#000000;--btn-primary-hover:#d97706;--footer-bg:#000000;--footer-text:#aaaaaa;--tab-border:#333333;--risk-high-bg:rgba(192,0,0,0.15);--risk-high-text:#ff6b6b;--risk-med-bg:rgba(245,158,11,0.15);--risk-med-text:#f59e0b;--risk-low-bg:rgba(16,185,129,0.15);--risk-low-text:#34d399;--hrcw-border:#ff4444;--hrcw-bg:rgba(192,0,0,0.1);--sidebar-bg:#0a0a0a}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',sans-serif;background:var(--bg-primary);color:var(--text-secondary);-webkit-font-smoothing:antialiased}
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;height:56px;background:var(--nav-bg);border-bottom:1px solid var(--nav-border);display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav-wordmark{font-family:'Fraunces',serif;font-weight:700;font-size:17px;color:var(--nav-text);text-decoration:none}
+.nav-back{font-size:13px;color:var(--nav-email);text-decoration:none;margin-left:20px}
+.nav-back:hover{color:var(--nav-text)}
+.nav-right{display:flex;align-items:center;gap:16px}
+.nav-email{font-size:12px;color:var(--nav-email)}
+.theme-toggle{width:36px;height:36px;border-radius:50%;border:1px solid var(--nav-border);background:transparent;color:var(--nav-text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.theme-toggle:hover{border-color:var(--accent)}
+
+.review-layout{display:flex;gap:32px;max-width:1200px;margin:0 auto;padding:76px 28px 120px}
+.review-main{flex:0 0 65%;min-width:0}
+.review-sidebar{flex:0 0 calc(35% - 32px);position:sticky;top:80px;align-self:flex-start;max-height:calc(100vh - 100px);overflow-y:auto}
+
+.page-heading{margin-bottom:28px}
+.page-heading h1{font-family:'Fraunces',serif;font-weight:900;font-size:26px;color:var(--text-primary);margin-bottom:4px}
+.page-heading p{font-size:14px;color:var(--text-muted)}
+
+/* Task cards */
+.task-card{border:1px solid var(--border-color);border-radius:10px;margin-bottom:20px;overflow:hidden;background:var(--bg-primary)}
+.task-card-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none;background:var(--bg-card)}
+.task-card-header:hover{background:var(--bg-card-hover)}
+.task-num{font-family:'Fraunces',serif;font-weight:700;font-size:18px;color:var(--accent);min-width:28px}
+.task-name-input{flex:1;background:transparent;border:1px solid transparent;border-radius:4px;padding:4px 8px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:600;color:var(--text-primary);outline:none}
+.task-name-input:focus{border-color:var(--input-focus);background:var(--input-bg)}
+.risk-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.risk-high{background:var(--risk-high-bg);color:var(--risk-high-text)}
+.risk-med{background:var(--risk-med-bg);color:var(--risk-med-text)}
+.risk-low{background:var(--risk-low-bg);color:var(--risk-low-text)}
+.collapse-icon{font-size:14px;color:var(--text-muted);transition:transform 0.2s}
+.task-card.collapsed .collapse-icon{transform:rotate(-90deg)}
+.task-card-body{padding:18px;display:block}
+.task-card.collapsed .task-card-body{display:none}
+
+.field-group{margin-bottom:18px;border:1px solid var(--tab-border);border-radius:8px;padding:14px}
+.field-group-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:10px}
+.field-group textarea{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:6px;padding:10px 12px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--text-primary);resize:vertical;outline:none;min-height:60px}
+.field-group textarea:focus{border-color:var(--input-focus)}
+
+.list-item{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.list-item input[type="text"]{flex:1;background:var(--input-bg);border:1px solid var(--input-border);border-radius:4px;padding:8px 10px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--text-primary);outline:none}
+.list-item input[type="text"]:focus{border-color:var(--input-focus)}
+.list-item .remove-btn{background:none;border:none;font-size:16px;color:var(--text-muted);cursor:pointer;padding:0 4px;line-height:1}
+.list-item .remove-btn:hover{color:#c00}
+.add-btn{background:none;border:1px dashed var(--border-color);border-radius:4px;padding:6px 14px;font-family:'Outfit',sans-serif;font-size:12px;color:var(--text-muted);cursor:pointer;width:100%;margin-top:6px}
+.add-btn:hover{border-color:var(--accent);color:var(--text-primary)}
+
+/* Sidebar */
+.sidebar-card{background:var(--sidebar-bg);border:1px solid var(--border-color);border-radius:10px;padding:18px;margin-bottom:16px}
+.sidebar-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:12px}
+.hrcw-box{border:2px solid var(--hrcw-border);background:var(--hrcw-bg);border-radius:8px;padding:12px 14px;font-size:13px;font-weight:600;color:var(--hrcw-border);margin-bottom:4px}
+.hrcw-none{border:1px solid var(--border-color);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text-muted)}
+.sidebar-check{display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:13px;color:var(--text-secondary);cursor:pointer}
+.sidebar-check input{accent-color:var(--accent);margin-top:3px;flex-shrink:0}
+.sidebar-plain{font-size:13px;color:var(--text-secondary);padding:4px 0;line-height:1.6}
+
+/* Confirm bar */
+.confirm-bar{position:fixed;bottom:0;left:0;right:0;z-index:99;background:var(--nav-bg);border-top:1px solid var(--nav-border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.confirm-left{font-size:12px;color:var(--nav-email)}
+.confirm-centre{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--nav-text)}
+.confirm-centre input{accent-color:var(--accent)}
+.confirm-btn{background:var(--accent);color:var(--accent-text);border:none;border-radius:8px;padding:12px 28px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s}
+.confirm-btn:hover{background:var(--accent-hover)}
+.confirm-btn:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-text);cursor:not-allowed}
+.confirm-error{font-size:12px;color:#dc2626;margin-left:12px}
+.spacer-bottom{height:80px}
+
+/* Disclaimer modal (copied from app.html) */
+.disclaimer-overlay{display:none;position:fixed;inset:0;z-index:200;background:var(--overlay-bg);justify-content:center;align-items:center}
+.disclaimer-overlay.visible{display:flex}
+.disclaimer-box{background:var(--modal-bg);border-radius:12px;max-width:560px;width:92%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25)}
+.disclaimer-header{padding:24px 28px 16px;border-bottom:1px solid var(--modal-border)}
+.disclaimer-header h2{font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:var(--text-primary);margin:0}
+.disclaimer-header p{font-size:13px;color:var(--text-muted);margin-top:6px}
+.disclaimer-scroll{flex:1;overflow-y:auto;padding:20px 28px;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+.disclaimer-scroll h3{font-size:14px;font-weight:700;color:var(--text-primary);margin:16px 0 6px}
+.disclaimer-scroll h3:first-child{margin-top:0}
+.disclaimer-scroll p{margin:0 0 10px}
+.disclaimer-bottom{padding:16px 28px 20px;border-top:1px solid var(--modal-border);background:var(--modal-bottom-bg);border-radius:0 0 12px 12px}
+.disclaimer-check{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--text-primary)}
+.disclaimer-check input{accent-color:var(--accent);margin-top:3px;flex-shrink:0}
+.disclaimer-actions{display:flex;gap:12px}
+.disclaimer-actions button{flex:1;padding:12px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer;border:1px solid var(--border-color)}
+.disclaimer-actions .btn-accept{background:var(--btn-primary-bg);color:var(--btn-primary-text);border-color:var(--btn-primary-bg)}
+.disclaimer-actions .btn-accept:hover{background:var(--btn-primary-hover)}
+.disclaimer-actions .btn-accept:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-text);cursor:not-allowed}
+.disclaimer-actions .btn-decline{background:var(--bg-primary);color:var(--text-primary)}
+
+.footer{background:var(--footer-bg);padding:20px 40px;display:flex;justify-content:space-between;align-items:center}
+.footer-left{font-size:10px;color:var(--footer-text)}
+.footer-right{font-size:10px;color:var(--footer-text)}
+
+@media (max-width:768px){
+  .review-layout{flex-direction:column;padding:68px 16px 120px}
+  .review-main,.review-sidebar{flex:1 1 100%}
+  .review-sidebar{position:static;max-height:none}
+  .nav{padding:0 16px;height:50px}
+  .confirm-bar{flex-wrap:wrap;padding:10px 16px;gap:10px}
+  .confirm-left{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div style="display:flex;align-items:center">
+    <a class="nav-wordmark" href="/swms">Safe Method</a>
+    <a class="nav-back" href="/swms">&larr; Back</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-email" id="nav-email"></span>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">
+      <span id="theme-icon"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Main layout -->
+<div class="review-layout">
+
+  <!-- Left column: task cards -->
+  <div class="review-main">
+    <div class="page-heading">
+      <h1 id="page-title">Review SWMS</h1>
+      <p id="page-sub"></p>
+    </div>
+    <div id="task-cards"></div>
+  </div>
+
+  <!-- Right column: inference sidebar -->
+  <div class="review-sidebar">
+    <div class="sidebar-card" id="sidebar-hrcw"></div>
+    <div class="sidebar-card" id="sidebar-ppe">
+      <div class="sidebar-title">PPE Required</div>
+      <div id="ppe-list"></div>
+    </div>
+    <div class="sidebar-card" id="sidebar-certs">
+      <div class="sidebar-title">Certifications</div>
+      <div id="certs-list"></div>
+    </div>
+    <div class="sidebar-card" id="sidebar-permits">
+      <div class="sidebar-title">Permits</div>
+      <div id="permits-list"></div>
+    </div>
+    <div class="sidebar-card" id="sidebar-legislation">
+      <div class="sidebar-title">Legislation</div>
+      <div id="legislation-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="spacer-bottom"></div>
+
+<!-- Confirm bar -->
+<div class="confirm-bar">
+  <div class="confirm-left" id="reviewed-by"></div>
+  <label class="confirm-centre">
+    <input type="checkbox" id="confirm-checkbox" onchange="onConfirmCheck()">
+    I have reviewed this SWMS and confirm it reflects actual site conditions
+  </label>
+  <div style="display:flex;align-items:center">
+    <button class="confirm-btn" id="confirm-btn" disabled onclick="confirmAndDownload()">Confirm &amp; Download</button>
+    <span class="confirm-error" id="confirm-error"></span>
+  </div>
+</div>
+
+<!-- Disclaimer modal -->
+<div class="disclaimer-overlay" id="disclaimer-overlay">
+  <div class="disclaimer-box">
+    <div class="disclaimer-header">
+      <h2>Important Disclaimer</h2>
+      <p>Please read before downloading your SWMS</p>
+    </div>
+    <div class="disclaimer-scroll">
+      <h3>AI-Generated Document</h3>
+      <p>This Safe Work Method Statement was generated using artificial intelligence. While it has been built against Australian WHS Regulations and industry standards, it is a starting point only.</p>
+      <h3>Professional Review Required</h3>
+      <p>A competent person with relevant site knowledge must review, verify, and approve this SWMS before it is used on any worksite. The SWMS must reflect actual site conditions, equipment, and personnel.</p>
+      <h3>No Liability</h3>
+      <p>AuditCo Pty Ltd (trading as Safe Method) accepts no liability for any loss, damage, injury, or death arising from the use of this AI-generated document. The person conducting the business or undertaking (PCBU) retains full responsibility for workplace safety.</p>
+      <h3>Site-Specific Verification</h3>
+      <p>Before use, verify: all hazards are identified for your specific site; controls are adequate and available; PPE items are on hand; permits and licences are current; emergency procedures are established; workers have been inducted using this SWMS.</p>
+    </div>
+    <div class="disclaimer-bottom">
+      <label class="disclaimer-check">
+        <input type="checkbox" id="disclaimer-checkbox" onchange="onDisclaimerCheck()">
+        I understand this is an AI-generated document and I accept responsibility for professional review before site use
+      </label>
+      <div class="disclaimer-actions">
+        <button class="btn-decline" onclick="declineDisclaimer()">Decline</button>
+        <button class="btn-accept" id="disclaimer-accept-btn" disabled onclick="acceptAndDownload()">Accept &amp; Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────
+let tasks = [];
+let inference = {};
+let meta = {};
+let pendingBlob = null;
+let pendingFilename = '';
+
+const API = window.location.origin;
+
+// ── Init ─────────────────────────────────────────
+(function init() {
+  const rawTasks = localStorage.getItem('swms_review_tasks');
+  const rawInference = localStorage.getItem('swms_review_inference');
+  const rawMeta = localStorage.getItem('swms_review_meta');
+
+  if (!rawTasks || !rawInference || !rawMeta) {
+    window.location.href = '/swms';
+    return;
+  }
+
+  try {
+    tasks = JSON.parse(rawTasks);
+    inference = JSON.parse(rawInference);
+    meta = JSON.parse(rawMeta);
+  } catch {
+    window.location.href = '/swms';
+    return;
+  }
+
+  // Page heading
+  const title = meta.project_name || meta.title || 'Review SWMS';
+  const sub = meta.site_address || meta.project_address || '';
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-sub').textContent = sub;
+
+  // Nav email
+  const email = localStorage.getItem('user_email') || meta.manager_name || '';
+  document.getElementById('nav-email').textContent = email;
+
+  // Reviewed by
+  const reviewer = localStorage.getItem('user_name') || meta.supervisor || meta.manager_name || 'Reviewer';
+  document.getElementById('reviewed-by').textContent = 'Reviewed by ' + reviewer;
+
+  renderTaskCards();
+  renderSidebar();
+  initTheme();
+})();
+
+// ── Theme ────────────────────────────────────────
+function initTheme() {
+  const t = document.documentElement.getAttribute('data-theme');
+  document.getElementById('theme-icon').textContent = t === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('theme-icon').textContent = next === 'dark' ? '\u2600\ufe0f' : '\ud83c\udf19';
+}
+
+// ── Auth helper ──────────────────────────────────
+function getToken() {
+  try {
+    const raw = localStorage.getItem('sb-auth-token') || localStorage.getItem('supabase.auth.token');
+    if (!raw) return '';
+    const parsed = JSON.parse(raw);
+    return parsed.access_token || parsed.currentSession?.access_token || '';
+  } catch { return ''; }
+}
+
+// ── Risk badge ───────────────────────────────────
+function riskClass(val) {
+  if (!val) return 'risk-med';
+  const s = String(val).toUpperCase();
+  if (s.startsWith('H') || s.includes('HIGH')) return 'risk-high';
+  if (s.startsWith('L') || s.includes('LOW')) return 'risk-low';
+  return 'risk-med';
+}
+
+// ── Render task cards ────────────────────────────
+function renderTaskCards() {
+  const container = document.getElementById('task-cards');
+  container.innerHTML = '';
+  tasks.forEach((task, idx) => {
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.id = 'task-card-' + idx;
+    card.innerHTML = buildCardHeader(task, idx) + buildCardBody(task, idx);
+    container.appendChild(card);
+  });
+}
+
+function buildCardHeader(task, idx) {
+  return `<div class="task-card-header" onclick="toggleCard(${idx})">
+    <span class="task-num">${idx + 1}</span>
+    <input class="task-name-input" type="text" value="${esc(task.task || '')}"
+      onclick="event.stopPropagation()" oninput="tasks[${idx}].task=this.value">
+    <span class="risk-badge ${riskClass(task.risk_pre)}">${esc(task.risk_pre || 'M')}</span>
+    <span style="color:var(--text-muted)">\u2192</span>
+    <span class="risk-badge ${riskClass(task.risk_post)}">${esc(task.risk_post || 'L')}</span>
+    <span class="collapse-icon">\u25BC</span>
+  </div>`;
+}
+
+function buildCardBody(task, idx) {
+  let html = '<div class="task-card-body">';
+
+  // Scope
+  html += `<div class="field-group">
+    <div class="field-group-label">Scope</div>
+    <textarea oninput="tasks[${idx}].scope=this.value">${esc(task.scope || '')}</textarea>
+  </div>`;
+
+  // List fields
+  html += buildListGroup('Hazards', 'hazards', task.hazards || [], idx, '');
+  html += buildListGroup('Controls', 'controls', task.controls || [], idx, '');
+  html += buildListGroup('PPE', 'ppe', task.ppe || [], idx, '');
+  html += buildListGroup('\u26a0\ufe0f HOLD POINT', 'hold_points', task.hold_points || [], idx, '');
+  html += buildListGroup('\ud83d\uded1 STOP WORK', 'stop_work', task.stop_work || [], idx, '');
+
+  html += '</div>';
+  return html;
+}
+
+function buildListGroup(label, field, items, taskIdx, prefix) {
+  let html = `<div class="field-group">
+    <div class="field-group-label">${label}</div>`;
+  items.forEach((item, itemIdx) => {
+    html += `<div class="list-item">
+      <input type="text" value="${esc(item)}"
+        oninput="tasks[${taskIdx}].${field}[${itemIdx}]=this.value">
+      <button class="remove-btn" onclick="removeItem(${taskIdx},'${field}',${itemIdx})">&times;</button>
+    </div>`;
+  });
+  html += `<button class="add-btn" onclick="addItem(${taskIdx},'${field}')">+ Add ${label.replace(/[^\w\s]/g,'').trim().toLowerCase()}</button>`;
+  html += '</div>';
+  return html;
+}
+
+function toggleCard(idx) {
+  document.getElementById('task-card-' + idx).classList.toggle('collapsed');
+}
+
+function removeItem(taskIdx, field, itemIdx) {
+  tasks[taskIdx][field].splice(itemIdx, 1);
+  renderTaskCards();
+}
+
+function addItem(taskIdx, field) {
+  if (!tasks[taskIdx][field]) tasks[taskIdx][field] = [];
+  tasks[taskIdx][field].push('');
+  renderTaskCards();
+  // Focus the new empty input
+  const card = document.getElementById('task-card-' + taskIdx);
+  const inputs = card.querySelectorAll('.field-group input[type="text"]');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Render sidebar ───────────────────────────────
+function renderSidebar() {
+  // HRCW
+  const hrcwBox = document.getElementById('sidebar-hrcw');
+  if (inference.hrcw) {
+    hrcwBox.innerHTML = `<div class="sidebar-title">HRCW</div>
+      <div class="hrcw-box">${esc(inference.hrcw_category || 'High Risk Construction Work identified')}</div>`;
+  } else {
+    hrcwBox.innerHTML = `<div class="sidebar-title">HRCW</div>
+      <div class="hrcw-none">No HRCW identified</div>`;
+  }
+
+  // PPE
+  renderCheckList('ppe-list', inference.ppe || []);
+
+  // Certifications
+  renderCheckList('certs-list', inference.certifications || []);
+
+  // Permits
+  renderCheckList('permits-list', inference.permits || []);
+
+  // Legislation
+  const legEl = document.getElementById('legislation-list');
+  const notes = inference.regulatory_notes || [];
+  legEl.innerHTML = notes.length
+    ? notes.map(n => `<div class="sidebar-plain">${esc(n)}</div>`).join('')
+    : '<div class="sidebar-plain" style="color:var(--text-muted)">None</div>';
+}
+
+function renderCheckList(containerId, items) {
+  const el = document.getElementById(containerId);
+  if (!items.length) {
+    el.innerHTML = '<div class="sidebar-plain" style="color:var(--text-muted)">None</div>';
+    return;
+  }
+  el.innerHTML = items.map((item, i) =>
+    `<label class="sidebar-check">
+      <input type="checkbox" checked data-list="${containerId}" data-index="${i}">
+      ${esc(item)}
+    </label>`
+  ).join('');
+}
+
+// ── Confirm bar ──────────────────────────────────
+function onConfirmCheck() {
+  document.getElementById('confirm-btn').disabled = !document.getElementById('confirm-checkbox').checked;
+  document.getElementById('confirm-error').textContent = '';
+}
+
+async function confirmAndDownload() {
+  const errorEl = document.getElementById('confirm-error');
+  errorEl.textContent = '';
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating\u2026';
+
+  try {
+    // Collect filtered inference
+    const filteredInference = {...inference};
+    filteredInference.ppe = getCheckedItems('ppe-list', inference.ppe || []);
+    filteredInference.certifications = getCheckedItems('certs-list', inference.certifications || []);
+    filteredInference.permits = getCheckedItems('permits-list', inference.permits || []);
+
+    // Update meta
+    const reviewer = localStorage.getItem('user_name') || meta.supervisor || meta.manager_name || 'Reviewer';
+    meta.reviewed_by = reviewer;
+    meta.reviewed_at = new Date().toISOString();
+
+    const format = localStorage.getItem('swms_format') || 'pdf';
+    const payload = {
+      tasks: tasks,
+      project_meta: meta,
+      inference: filteredInference,
+      jurisdiction: meta.jurisdiction || 'AU',
+    };
+
+    let renderUrl;
+    if (format === 'both') renderUrl = '/render/both';
+    else if (format === 'pdf') renderUrl = '/render/pdf';
+    else renderUrl = '/render/docx';
+
+    const token = getToken();
+    const res = await fetch(API + renderUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || 'Render failed: ' + res.status);
+    }
+
+    if (format === 'both') {
+      const data = await res.json();
+      pendingBlob = null;
+      pendingFilename = data.docx_filename;
+      // Download both files
+      downloadBase64(data.docx, data.docx_filename,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      setTimeout(() => downloadBase64(data.pdf, data.pdf_filename, 'application/pdf'), 600);
+    } else {
+      pendingBlob = await res.blob();
+      const cd = res.headers.get('content-disposition') || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      pendingFilename = match ? match[1] : 'SWMS.' + (format === 'pdf' ? 'pdf' : 'docx');
+    }
+
+    // Clear localStorage
+    localStorage.removeItem('swms_review_tasks');
+    localStorage.removeItem('swms_review_inference');
+    localStorage.removeItem('swms_review_meta');
+
+    // Show disclaimer
+    showDisclaimerModal();
+
+  } catch (err) {
+    errorEl.textContent = err.message;
+    btn.disabled = false;
+    btn.textContent = 'Confirm & Download';
+  }
+}
+
+function getCheckedItems(containerId, original) {
+  const checks = document.querySelectorAll(`#${containerId} input[type="checkbox"]`);
+  const result = [];
+  checks.forEach((cb, i) => {
+    if (cb.checked && original[i]) result.push(original[i]);
+  });
+  return result;
+}
+
+function downloadBase64(b64, filename, mime) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const blob = new Blob([arr], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Disclaimer modal ─────────────────────────────
+function showDisclaimerModal() {
+  document.getElementById('disclaimer-checkbox').checked = false;
+  document.getElementById('disclaimer-accept-btn').disabled = true;
+  document.getElementById('disclaimer-overlay').classList.add('visible');
+}
+
+function onDisclaimerCheck() {
+  document.getElementById('disclaimer-accept-btn').disabled =
+    !document.getElementById('disclaimer-checkbox').checked;
+}
+
+function acceptAndDownload() {
+  document.getElementById('disclaimer-overlay').classList.remove('visible');
+  if (pendingBlob) {
+    const url = URL.createObjectURL(pendingBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = pendingFilename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  // Redirect back after download
+  setTimeout(() => { window.location.href = '/swms'; }, 2000);
+}
+
+function declineDisclaimer() {
+  document.getElementById('disclaimer-overlay').classList.remove('visible');
+}
+</script>
+
+</body>
+</html>

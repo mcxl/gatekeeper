@@ -1069,12 +1069,12 @@ async function generate() {
       setStep('step-pdf', 'done');
     }
 
-    // Step 5: Disclaimer
+    // Step 5: Pass to review page
     setStep('step-download', 'active');
     pendingBlob = renderResult.blob;
     pendingFilename = renderResult.filename;
     pendingBothData = renderResult.bothData;
-    showDisclaimerModal();
+    goToReview();
   } catch (err) {
     console.error(err);
     ['step-analyse','step-infer','step-tasks','step-render','step-pdf','step-download'].forEach(s => setStep(s, 'pending'));
@@ -1172,6 +1172,14 @@ function toggleInference() {
 }
 
 // ── Disclaimer modal ──────────────────────────────
+function goToReview() {
+  localStorage.setItem('swms_review_tasks', JSON.stringify(lastTasks));
+  localStorage.setItem('swms_review_inference', JSON.stringify(lastInference));
+  localStorage.setItem('swms_review_meta', JSON.stringify(lastMeta));
+  localStorage.setItem('swms_format', currentFormat);
+  window.location.href = '/review';
+}
+
 function showDisclaimerModal() {
   document.getElementById('disclaimer-checkbox').checked = false;
   document.getElementById('disclaimer-accept-btn').disabled = true;

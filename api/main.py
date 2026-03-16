@@ -237,6 +237,11 @@ async def serve_swms():
     return _html_response(os.path.join(_FRONTEND_DIR, "app.html"))
 
 
+@app.get("/review", response_class=HTMLResponse)
+async def serve_review(user: dict = Depends(get_current_user)):
+    return _html_response(os.path.join(_FRONTEND_DIR, "review.html"))
+
+
 @app.get("/ra", response_class=HTMLResponse)
 async def serve_ra():
     # RA spec TBD — serve dashboard for now
