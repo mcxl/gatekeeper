@@ -377,44 +377,54 @@ async def generate_swms_stream(
     risks_by_seq = {r["sequence"]: r for r in risk_manifest.get("risks", [])}
     total = len(tasks)
 
-    yield {"type": "task_count", "count": total}
+    # ── Parallel per-task execution ───────────────────────────
+    _SEM = asyncio.Semaphore(5)
 
-    hot_work_ok = _hot_work_legitimate(inference)
-    assembled = []
-    for idx, task in enumerate(tasks):
+    async def _process_single_task(idx: int, task: dict) -> tuple[int, dict]:
         seq = task["sequence"]
         risk = risks_by_seq.get(seq, {})
+        async with _SEM:
+            try:
+                ctrl = await write_controls_single(task, risk, inference)
 
-        try:
-            # Agent 3: controls for this task
-            ctrl = await write_controls_single(task, risk, inference, scope_context=scope_context)
+                single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
+                single_risk = {**risk_manifest, "risks": [risk] if risk else []}
+                single_ctrl = {"controls": [ctrl]}
+                result = await run_assembler(
+                    single_manifest, single_risk, single_ctrl, inference, project_meta
+                )
+                tb = result[0] if result else {}
 
-            # Agent 4: assemble this task
-            single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
-            single_risk = {**risk_manifest, "risks": [risk] if risk else []}
-            single_ctrl = {"controls": [ctrl]}
-            result = await run_assembler(
-                single_manifest, single_risk, single_ctrl, inference, project_meta
-            )
-            tb = result[0] if result else {}
+                val = _validate_task_block(tb)
+                if not val["valid"]:
+                    try:
+                        tb = await run_assembler_single(tb, val["errors"], inference)
+                    except Exception:
+                        pass
 
-            # Validate + retry
-            val = _validate_task_block(tb)
-            if not val["valid"]:
-                try:
-                    tb = await run_assembler_single(tb, val["errors"], inference)
-                except Exception:
-                    pass
+                tb = _enforce_plain_english(tb)
+                _enrich_risk_labels(tb)
+                log.info(f"Task {idx+1} complete")
+                return (idx, tb)
 
-            tb = _normalise_task(tb, inference, jurisdiction, hot_work_ok)
-            assembled.append(tb)
-            yield {"type": "task", "index": idx, "total": total, "task": tb}
-            await asyncio.sleep(0)
+            except Exception as e:
+                log.error(f"Task {idx+1} failed: {e}")
+                return (idx, {})
 
-        except Exception as e:
-            yield {"type": "error", "message": f"Task {idx+1} failed: {e}"}
-            assembled.append({})
+    yield {"type": "task_count", "count": total}
 
+    assembled_map: dict[int, dict] = {}
+    coros = [_process_single_task(idx, task) for idx, task in enumerate(tasks)]
+
+    for coro in asyncio.as_completed(coros):
+        idx, tb = await coro
+        assembled_map[idx] = tb
+        yield {"type": "task", "index": idx, "total": total, "task": tb}
+        await asyncio.sleep(0)
+
+    assembled = [assembled_map[i] for i in range(total)]
+
+    _suppress_false_ccvs(assembled, inference)
     yield {"type": "done", "task_count": len(assembled), "route": selected_route}
 
 
