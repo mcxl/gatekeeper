@@ -133,13 +133,13 @@ def extract_text_from_pdf(file_bytes: bytes, max_pages: int = 5) -> str:
             logger.info(f"PDF: extracted {len(result)} chars from first {max_pages} of {len(reader.pages)} pages")
         return result
 
-    # Scanned PDF — fall back to Claude vision on first 3 pages as images
+    # Scanned PDF — fall back to Claude vision on first 2 pages as images
     logger.info(f"PDF text too short ({len(result)} chars), falling back to Claude vision OCR")
-    return _ocr_pdf_via_vision(file_bytes, max_pages=3)
+    return _ocr_pdf_via_vision(file_bytes, max_pages=2)
 
 
-def _ocr_pdf_via_vision(file_bytes: bytes, max_pages: int = 3) -> str:
-    """Send PDF pages as images to Claude vision for OCR."""
+def _ocr_pdf_via_vision(file_bytes: bytes, max_pages: int = 2) -> str:
+    """Send PDF pages as images to Claude Haiku vision for OCR."""
     try:
         import fitz  # PyMuPDF
     except ImportError:
@@ -159,13 +159,13 @@ def _ocr_pdf_via_vision(file_bytes: bytes, max_pages: int = 3) -> str:
 
     for i in range(page_count):
         page = pdf_doc[i]
-        pix = page.get_pixmap(dpi=200)
+        pix = page.get_pixmap(dpi=150)
         img_bytes = pix.tobytes("png")
         img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
 
         response = client.messages.create(
-            model=MODEL,
-            max_tokens=4000,
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
             messages=[{
                 "role": "user",
                 "content": [
