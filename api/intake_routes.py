@@ -111,13 +111,9 @@ def _validate_file(contents: bytes, filename: str):
 
 
 def _parse_json(raw: str) -> dict:
-    raw = raw.strip()
-    if raw.startswith("```"):
-        lines = raw.splitlines()
-        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
+    """Parse JSON from Claude response — uses defensive parser from swms_analyser."""
+    from core.swms_analyser import _parse_json_response
+    return _parse_json_response(raw)
 
 
 def _flatten_fields(extracted: dict) -> dict:
@@ -141,13 +137,23 @@ def _flatten_fields(extracted: dict) -> dict:
 @limiter.limit("10/minute")
 async def intake_extract(
     request: Request,
-    files: List[UploadFile] = File(...),
+    files: List[UploadFile] = File(default=None),
+    file: UploadFile = File(default=None),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Mode 04: Upload scope doc or existing SWMS.
     Returns structured intake form fields with per-field confidence scores.
+    Accepts 'files' (list) or 'file' (single) form field.
     """
+    # Accept either 'files' or 'file' form field name
+    if not files and file:
+        files = [file]
+    if not files:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "No file uploaded. Please select a PDF, Word, or image file."}
+        )
     if len(files) > MAX_FILES:
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_FILES} files.")
 
@@ -203,12 +209,15 @@ async def intake_extract(
         })
 
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(e) or "Could not extract text from this file. Try a different format."}
+        )
     except Exception:
         logger.error(f"intake-extract error:\n{traceback.format_exc()}")
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="An internal error occurred. Please try again."
+            content={"detail": "An internal error occurred. Please try again."}
         )
 
 

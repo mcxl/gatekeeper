@@ -71,6 +71,21 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+from fastapi.exceptions import RequestValidationError
+@app.exception_handler(RequestValidationError)
+async def _validation_error_handler(request: Request, exc: RequestValidationError):
+    """Return user-friendly JSON instead of FastAPI's raw 422."""
+    errors = exc.errors()
+    # Build a readable message from the first error
+    if errors:
+        e = errors[0]
+        loc = " → ".join(str(l) for l in e.get("loc", []) if l != "body")
+        msg = e.get("msg", "Invalid input")
+        detail = f"{loc}: {msg}" if loc else msg
+    else:
+        detail = "Invalid request. Please check your input and try again."
+    return JSONResponse(status_code=400, content={"detail": detail})
+
 app.include_router(upload_router)
 app.include_router(intake_router)
 
