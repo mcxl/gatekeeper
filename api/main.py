@@ -63,6 +63,7 @@ from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
+from core.api_keys import get_user_or_api_key, log_api_key_usage
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -921,6 +922,114 @@ def check_jurisdiction(q: str, selected: str = "AU"):
     from vocab.standards_registry import detect_jurisdiction_from_query
     result = detect_jurisdiction_from_query(q, selected)
     return JSONResponse(content=result, headers={"Cache-Control": "private, max-age=60"})
+
+
+# ============================================================
+# VERSIONED API — /v1/ (service account + JWT auth)
+# ============================================================
+
+from fastapi import APIRouter
+v1 = APIRouter(prefix="/v1")
+
+
+@v1.post("/generate/stream")
+async def v1_generate_stream(request: dict, auth: dict = Depends(get_user_or_api_key)):
+    """POST /v1/generate/stream — SSE stream with API key or JWT auth."""
+    import json as _json
+    import time as _time
+    from core.orchestrator import generate_swms_stream
+
+    description = request.get("description", "")
+    project_meta = request.get("project_meta", {})
+    force_full = request.get("force_full", False)
+    force_simple = request.get("force_simple", False)
+    jurisdiction = request.get("jurisdiction", "AU")
+    scope_context = request.get("scope_context")
+
+    start_ms = _time.monotonic_ns() // 1_000_000
+
+    async def event_generator():
+        import asyncio
+        success = True
+        try:
+            stream = generate_swms_stream(
+                description=description,
+                project_meta=project_meta,
+                force_full=force_full,
+                force_simple=force_simple,
+                jurisdiction=jurisdiction,
+                scope_context=scope_context,
+            )
+            stream_iter = stream.__aiter__()
+            while True:
+                try:
+                    event = await asyncio.wait_for(stream_iter.__anext__(), timeout=15.0)
+                    yield f"data: {_json.dumps(event)}\n\n"
+                except StopAsyncIteration:
+                    break
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        except Exception as e:
+            success = False
+            logger.error(f"v1 stream generation failed:\n{traceback.format_exc()}")
+            yield f"data: {_json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
+        finally:
+            if auth.get("key_id"):
+                elapsed = (_time.monotonic_ns() // 1_000_000) - start_ms
+                log_api_key_usage(
+                    key_id=auth["key_id"],
+                    endpoint="/v1/generate/stream",
+                    description_length=len(description),
+                    duration_ms=elapsed,
+                    success=success,
+                )
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@v1.post("/render/docx")
+async def v1_render_docx(request: dict, auth: dict = Depends(get_user_or_api_key)):
+    """POST /v1/render/docx — Render DOCX with API key or JWT auth."""
+    try:
+        jurisdiction = request.get("jurisdiction", "AU")
+        docx_bytes, filename = _render_tasks_to_docx(request, jurisdiction=jurisdiction)
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except ValueError as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error(f"v1 render DOCX failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+
+
+@v1.post("/render/pdf")
+async def v1_render_pdf(request: dict, auth: dict = Depends(get_user_or_api_key)):
+    """POST /v1/render/pdf — Render PDF with API key or JWT auth."""
+    from renderers.pdf_renderer import docx_to_pdf
+    try:
+        docx_bytes, docx_filename = _render_tasks_to_docx(request)
+        pdf_bytes = docx_to_pdf(docx_bytes)
+        pdf_filename = docx_filename.rsplit(".", 1)[0] + ".pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{pdf_filename}"'},
+        )
+    except ValueError as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error(f"v1 render PDF failed:\n{traceback.format_exc()}")
+        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+
+
+app.include_router(v1)
 
 
 if __name__ == "__main__":
