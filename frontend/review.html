@@ -478,19 +478,35 @@ async function confirmAndDownload() {
       throw new Error(err.detail || err.error || 'Render failed: ' + res.status);
     }
 
-    if (format === 'both') {
-      const data = await res.json();
-      pendingBlob = null;
-      pendingFilename = data.docx_filename;
-      // Download both files
-      downloadBase64(data.docx, data.docx_filename,
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      setTimeout(() => downloadBase64(data.pdf, data.pdf_filename, 'application/pdf'), 600);
-    } else {
-      pendingBlob = await res.blob();
-      const cd = res.headers.get('content-disposition') || '';
-      const match = cd.match(/filename="?([^"]+)"?/);
-      pendingFilename = match ? match[1] : 'SWMS.' + (format === 'pdf' ? 'pdf' : 'docx');
+    btn.textContent = 'Preparing download\u2026';
+
+    try {
+      if (format === 'both') {
+        const data = await res.json();
+        console.log('Both response received:', Object.keys(data));
+        if (!data.docx || !data.pdf) {
+          throw new Error('Empty response from render endpoint');
+        }
+        pendingBlob = null;
+        pendingFilename = data.docx_filename;
+        downloadBase64(data.docx, data.docx_filename,
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        setTimeout(() => downloadBase64(data.pdf, data.pdf_filename, 'application/pdf'), 600);
+      } else {
+        const blob = await res.blob();
+        console.log('Blob received:', blob.size, blob.type);
+        if (blob.size === 0) {
+          throw new Error('Empty response from render endpoint');
+        }
+        const cd = res.headers.get('content-disposition') || '';
+        const match = cd.match(/filename="?([^"]+)"?/);
+        const filename = match ? match[1] : 'SWMS.' + (format === 'pdf' ? 'pdf' : 'docx');
+        pendingBlob = blob;
+        pendingFilename = filename;
+      }
+    } catch (dlErr) {
+      console.error('Download error:', dlErr);
+      throw new Error('Download failed: ' + dlErr.message);
     }
 
     // Clear localStorage
