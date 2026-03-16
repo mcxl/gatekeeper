@@ -27,7 +27,7 @@ PLAIN ENGLISH WRITING RULES (WorkCover NSW Guidelines):
 - Keep task names and scope text concise and direct
 
 RULES:
-- Maximum 12 tasks. Combine minor steps into logical groups. 8-12 tasks is ideal.
+- Maximum 8 tasks. 6-8 tasks is ideal. Combine minor steps into logical groups.
 - Tasks must be in logical work sequence:
     mobilisation → site establishment → preparatory works →
     principal works → finishing → defects / make good → demobilisation
