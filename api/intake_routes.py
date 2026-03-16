@@ -168,7 +168,15 @@ async def intake_extract(
         _validate_file(contents, file.filename)
         file_tuples.append((contents, file.filename))
 
+    import time
+    from core.swms_analyser import save_extraction
+
+    total_file_size = sum(len(fb) for fb, _ in file_tuples)
+    first_filename = file_tuples[0][1] if file_tuples else "unknown"
+
     try:
+        t0 = time.monotonic()
+
         if len(file_tuples) == 1:
             raw_text = extract_text(file_tuples[0][0], file_tuples[0][1])
         else:
@@ -186,6 +194,8 @@ async def intake_extract(
             }]
         )
 
+        duration_ms = int((time.monotonic() - t0) * 1000)
+
         extracted = _parse_json(response.content[0].text)
         fields, confidence, sources = _flatten_fields(extracted)
 
@@ -194,6 +204,16 @@ async def intake_extract(
                     "work_activity_summary", "title"]
         missing = [f for f in required
                    if not fields.get(f) or confidence.get(f) == CONFIDENCE_ABSENT]
+
+        # Save to scope library (non-blocking)
+        user_id = current_user.get("sub") if current_user else None
+        await save_extraction(
+            filename=first_filename,
+            file_size=total_file_size,
+            extracted_fields=fields,
+            duration_ms=duration_ms,
+            user_id=user_id,
+        )
 
         return JSONResponse({
             "mode": "04",
