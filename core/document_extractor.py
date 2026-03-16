@@ -122,20 +122,81 @@ def extract_from_image(image_bytes: bytes, media_type: str) -> dict:
 # ── Raw text extraction by file type ─────────────────────────────────────────
 
 def extract_text_from_pdf(file_bytes: bytes, max_pages: int = 5) -> str:
-    """Extract text from first N pages of a PDF using pypdf."""
+    """Extract text from PDF. Tries pypdf first, falls back to Claude vision for scanned docs."""
     from pypdf import PdfReader
     reader = PdfReader(io.BytesIO(file_bytes))
     pages = reader.pages[:max_pages]
     text_parts = [page.extract_text() or "" for page in pages]
     result = "\n".join(text_parts).strip()
-    if result:
+    if len(result) >= 100:
         if len(reader.pages) > max_pages:
             logger.info(f"PDF: extracted {len(result)} chars from first {max_pages} of {len(reader.pages)} pages")
         return result
-    raise ValueError(
-        "No text could be extracted from this PDF. "
-        "The file may be scanned — try taking a photo instead."
-    )
+
+    # Scanned PDF — fall back to Claude vision on first 3 pages as images
+    logger.info(f"PDF text too short ({len(result)} chars), falling back to Claude vision OCR")
+    return _ocr_pdf_via_vision(file_bytes, max_pages=3)
+
+
+def _ocr_pdf_via_vision(file_bytes: bytes, max_pages: int = 3) -> str:
+    """Send PDF pages as images to Claude vision for OCR."""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        raise ValueError(
+            "No text could be extracted from this scanned PDF. "
+            "Install PyMuPDF (pip install pymupdf) for OCR support, "
+            "or try taking a photo instead."
+        )
+
+    pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+    page_count = min(len(pdf_doc), max_pages)
+    if page_count == 0:
+        raise ValueError("PDF has no pages.")
+
+    client = _get_client()
+    text_parts = []
+
+    for i in range(page_count):
+        page = pdf_doc[i]
+        pix = page.get_pixmap(dpi=200)
+        img_bytes = pix.tobytes("png")
+        img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
+
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=4000,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": img_b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Extract all text from this document page. Return plain text only.",
+                    },
+                ],
+            }],
+        )
+        page_text = response.content[0].text.strip()
+        if page_text:
+            text_parts.append(page_text)
+        logger.info(f"Vision OCR page {i+1}/{page_count}: {len(page_text)} chars")
+
+    pdf_doc.close()
+    result = "\n\n".join(text_parts).strip()
+    if not result:
+        raise ValueError(
+            "No text could be extracted from this PDF. "
+            "The file may be blank or too blurry to read."
+        )
+    return result
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:

@@ -10,6 +10,7 @@ rapidfuzz==3.14.3
 python-dotenv==1.1.0
 pypdf==6.7.5
 pdfplumber==0.11.0
+pymupdf==1.25.5
 fastapi==0.135.1
 uvicorn==0.41.0
 jinja2==3.1.6
