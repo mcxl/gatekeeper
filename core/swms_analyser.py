@@ -244,3 +244,70 @@ async def extract_scope_from_document(doc_text: str) -> dict:
         partial["partial"] = True
         partial["error"] = str(e)
         return partial
+
+
+async def save_extraction(
+    filename: str,
+    file_size: int,
+    extracted_fields: dict,
+    duration_ms: int,
+    user_id: str | None = None,
+    document_type: str = "scope",
+) -> None:
+    """Save extraction to Supabase scope library. Never blocks or raises."""
+    import os
+    import httpx
+
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not supabase_url or not supabase_key:
+        logger.debug("Supabase not configured — skipping extraction save")
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            # Insert scope_documents row
+            doc_payload = {
+                "filename": filename,
+                "file_size_bytes": file_size,
+                "document_type": document_type,
+            }
+            if user_id:
+                doc_payload["created_by"] = user_id
+
+            doc_res = await http.post(
+                f"{supabase_url}/rest/v1/scope_documents",
+                headers=headers,
+                json=doc_payload,
+            )
+            if doc_res.status_code not in (200, 201):
+                logger.warning(f"scope_documents insert failed: {doc_res.status_code} {doc_res.text}")
+                return
+
+            doc_id = doc_res.json()[0]["id"]
+
+            # Insert scope_extractions row
+            ext_payload = {
+                "document_id": doc_id,
+                "extracted_fields": extracted_fields,
+                "extraction_duration_ms": duration_ms,
+            }
+            ext_res = await http.post(
+                f"{supabase_url}/rest/v1/scope_extractions",
+                headers=headers,
+                json=ext_payload,
+            )
+            if ext_res.status_code not in (200, 201):
+                logger.warning(f"scope_extractions insert failed: {ext_res.status_code} {ext_res.text}")
+                return
+
+            logger.info(f"Saved extraction for '{filename}' → doc_id={doc_id}")
+    except Exception as e:
+        logger.warning(f"save_extraction failed (non-blocking): {e}")
