@@ -563,11 +563,17 @@ function acceptAndDownload() {
     const url = URL.createObjectURL(pendingBlob);
     const a = document.createElement('a');
     a.href = url; a.download = pendingFilename;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    document.body.appendChild(a);
+    setTimeout(() => {
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }, 100);
   }
   // Redirect back after download
-  setTimeout(() => { window.location.href = '/swms'; }, 2000);
+  setTimeout(() => { window.location.href = '/swms'; }, 2500);
 }
 
 function declineDisclaimer() {

@@ -238,7 +238,7 @@ async def serve_swms():
 
 
 @app.get("/review", response_class=HTMLResponse)
-async def serve_review(user: dict = Depends(get_current_user)):
+async def serve_review():
     return _html_response(os.path.join(_FRONTEND_DIR, "review.html"))
 
 
