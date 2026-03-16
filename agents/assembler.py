@@ -9,8 +9,11 @@ Output: list[TaskBlock dict]
 
 from __future__ import annotations
 import json
+import logging
 import anthropic
 from core.utils import strip_fences, enforce_wah_flag
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
 You are a SWMS document assembler for Australian construction.
@@ -247,11 +250,17 @@ def _post_process_task_block(tb: dict) -> None:
     if tb.get("ccvs_code", "N/A") == "N/A":
         tb["monitoring"] = None
 
-    # Strip [Insert placeholders from all string fields
-    import logging as _log
-    for key, val in tb.items():
+    # Strip [Insert placeholders from task block fields
+    for field in ["task", "scope", "controls", "hazards",
+                  "hold_points", "stop_work", "admin", "ppe"]:
+        val = tb.get(field)
         if isinstance(val, str) and "[Insert" in val:
-            _log.getLogger(__name__).warning(f"Stripped [Insert placeholder from field '{key}'")
-            tb[key] = ""
+            tb[field] = ""
+            log.warning(f"Stripped [Insert placeholder from field: {field}")
         elif isinstance(val, list):
-            tb[key] = [item for item in val if not (isinstance(item, str) and "[Insert" in item)]
+            tb[field] = [
+                item for item in val
+                if not (isinstance(item, str) and "[Insert" in item)
+            ]
+            if len(tb[field]) < len(val or []):
+                log.warning(f"Stripped [Insert placeholder from list field: {field}")
