@@ -127,8 +127,7 @@
 <div class="mode-tabs">
   <button class="mode-tab active" onclick="selectTab('manual')" id="tab-manual">Quick Start</button>
   <button class="mode-tab" onclick="selectTab('upgrade')" id="tab-upgrade">Upgrade SWMS</button>
-  <button class="mode-tab" onclick="selectTab('scope')" id="tab-scope">Upload Document</button>
-  <button class="mode-tab" onclick="selectTab('intake')" id="tab-intake">Upload &amp; Review</button>
+  <button class="mode-tab" onclick="selectTab('intake')" id="tab-intake">Upload Document</button>
 </div>
 
 <!-- ── Upload section (Mode 02 + 03) ──────────────── -->
@@ -744,11 +743,7 @@ function selectTab(tab) {
     uploadSection.classList.remove('visible');
   } else {
     uploadSection.classList.add('visible');
-    if (tab === 'upgrade') {
-      uploadLabel.textContent = "Upload your existing SWMS \u2014 we'll identify gaps and upgrade it";
-    } else {
-      uploadLabel.textContent = "Upload your Scope of Works, quote, or similar document \u2014 we\u2019ll extract the details and generate your SWMS";
-    }
+    uploadLabel.textContent = "Upload your existing SWMS \u2014 we'll identify gaps and upgrade it";
   }
 
   selectedFiles = [];
