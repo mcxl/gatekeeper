@@ -466,6 +466,26 @@ def _enforce_plain_english(tb: dict) -> dict:
     return tb
 
 
+def _plain_english_pass(tb: dict) -> dict:
+    """Final plain-English pass over all text fields including task name and scope."""
+    from vocab.swms_vocabulary import enforce_vocabulary
+    # String fields
+    for field in ("task", "scope"):
+        if field in tb and isinstance(tb[field], str) and tb[field]:
+            tb[field] = enforce_vocabulary(tb[field])
+    # List fields (second pass catches anything _enforce_plain_english missed)
+    for field in ("controls", "admin", "stop_work", "hold_points", "ppe", "hazards"):
+        if field in tb and isinstance(tb[field], list):
+            tb[field] = [enforce_vocabulary(item) for item in tb[field]]
+    # Responsibility fields
+    resp = tb.get("responsibility")
+    if isinstance(resp, dict):
+        for role in ("SUP", "WKR"):
+            if role in resp and isinstance(resp[role], str):
+                resp[role] = enforce_vocabulary(resp[role])
+    return tb
+
+
 import re as _re
 
 _CHEMICAL_KEYWORDS = _re.compile(
@@ -568,6 +588,7 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
     from vocab.standards_registry import strip_unverified_citations
     ccvs_codes = inference.get("ccvs_codes", [])
     tb = _enforce_plain_english(tb)
+    tb = _plain_english_pass(tb)
     if "ccvs_code" in tb:
         tb["ccvs_code"] = validate_ccvs_code(tb["ccvs_code"])
     _enrich_risk_labels(tb)
