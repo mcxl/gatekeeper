@@ -246,3 +246,12 @@ def _post_process_task_block(tb: dict) -> None:
     # Monitoring must be None when ccvs_code is N/A
     if tb.get("ccvs_code", "N/A") == "N/A":
         tb["monitoring"] = None
+
+    # Strip [Insert placeholders from all string fields
+    import logging as _log
+    for key, val in tb.items():
+        if isinstance(val, str) and "[Insert" in val:
+            _log.getLogger(__name__).warning(f"Stripped [Insert placeholder from field '{key}'")
+            tb[key] = ""
+        elif isinstance(val, list):
+            tb[key] = [item for item in val if not (isinstance(item, str) and "[Insert" in item)]
