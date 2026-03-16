@@ -1151,11 +1151,24 @@ def _build_ccvs_table(doc, tasks) -> None:
     _set_table_cell_margins(t2)
 
     # Re-format Table 2 header row at 9pt
+    hdr_tr = t2.rows[0]._tr
     for i, h in enumerate(_MON_HEADERS):
         cell = t2.rows[0].cells[i]
         for para in cell.paragraphs:
             para.clear()
         _header_cell(cell, h, size_pt=_SZ)
+
+    # Ensure header row repeats across pages (tblHeader) but does not cantSplit
+    hdr_trPr = hdr_tr.find(qn('w:trPr'))
+    if hdr_trPr is None:
+        hdr_trPr = etree.SubElement(hdr_tr, qn('w:trPr'))
+    # Set tblHeader so Word repeats this row on each page
+    if hdr_trPr.find(qn('w:tblHeader')) is None:
+        etree.SubElement(hdr_trPr, qn('w:tblHeader'))
+    # Remove cantSplit from header — it can push content to next page
+    _cs = hdr_trPr.find(qn('w:cantSplit'))
+    if _cs is not None:
+        hdr_trPr.remove(_cs)
 
     # Remove blank data row (row 1), keep header
     if len(t2.rows) > 1:
@@ -1175,6 +1188,12 @@ def _build_ccvs_table(doc, tasks) -> None:
             row.cells[i].width = Dxa(w)
         for i, val in enumerate(vals):
             _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
+        # Ensure data rows do NOT have tblHeader
+        data_trPr = row._tr.find(qn('w:trPr'))
+        if data_trPr is not None:
+            _th = data_trPr.find(qn('w:tblHeader'))
+            if _th is not None:
+                data_trPr.remove(_th)
 
 
 def _fill_signoff_table(doc) -> None:
@@ -1321,17 +1340,20 @@ def render_swms_document(
         p0.paragraph_format.space_before = Pt(0)
         p0.paragraph_format.keep_with_next = True
 
-    # Body paragraph 2: Brief description — replace placeholder with description text
-    _desc_text = (project_meta.get("description")
-                  or project_meta.get("work_activity_summary")
-                  or project_meta.get("work_activity")
+    # Body paragraph 2: Brief description — replace placeholder with summary text
+    _desc_text = (project_meta.get("work_activity_summary")
                   or project_meta.get("scope_summary")
+                  or project_meta.get("work_activity")
+                  or project_meta.get("description")
                   or project_meta.get("project_name", ""))
-    if _desc_text and len(doc.paragraphs) > 2:
-        p2 = doc.paragraphs[2]
-        if "[Insert" in p2.text or "[insert" in p2.text:
-            p2.clear()
-            _run(p2, f"Brief description: {_desc_text}", size_pt=9)
+    if _desc_text:
+        for pi, para in enumerate(doc.paragraphs):
+            if pi == 0:
+                continue  # skip title paragraph (already handled above)
+            if "[Insert" in para.text or "[insert" in para.text:
+                para.clear()
+                _run(para, f"Brief description: {_desc_text}", size_pt=9)
+                break
 
     # Remove any page breaks between P0 and Table 0
     for para in doc.paragraphs:
