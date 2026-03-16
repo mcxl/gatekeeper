@@ -16,14 +16,29 @@ MODEL = 'claude-sonnet-4-6'
 
 
 def _parse_json_response(text: str) -> dict:
-    """Strip markdown fences and parse JSON."""
+    """Strip markdown fences and parse JSON. Handles truncated responses."""
     text = text.strip()
     if text.startswith('```'):
         parts = text.split('```')
         text = parts[1] if len(parts) > 1 else text
         if text.startswith('json'):
             text = text[4:]
-    return json.loads(text.strip())
+    text = text.strip()
+    # Strip trailing garbage after last top-level closing brace
+    last_brace = text.rfind('}')
+    if last_brace != -1:
+        text = text[:last_brace + 1]
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Truncated JSON — find last complete key-value by trimming to last }
+        for i in range(len(text) - 1, 0, -1):
+            if text[i] == '}':
+                try:
+                    return json.loads(text[:i + 1])
+                except json.JSONDecodeError:
+                    continue
+        raise
 
 
 ANALYSE_PROMPT = """You are a WHS Safety adviser reviewing a Safe Work Method Statement
