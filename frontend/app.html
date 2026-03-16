@@ -301,6 +301,7 @@
                    placeholder="e.g. Residential strata">
             <span class="intake-badge" id="ibadge-building_type"></span>
           </div>
+          <div class="intake-source" id="isource-building_type"></div>
         </div>
         <div class="intake-field" style="flex:1" id="ifield-storeys">
           <label>Storeys</label>
@@ -309,6 +310,7 @@
                    oninput="intakeMarkEdited('storeys')" placeholder="e.g. 4">
             <span class="intake-badge" id="ibadge-storeys"></span>
           </div>
+          <div class="intake-source" id="isource-storeys"></div>
         </div>
         <div class="intake-field" style="flex:1" id="ifield-occupancy">
           <label>Occupancy</label>
@@ -318,6 +320,7 @@
                    placeholder="e.g. Occupied">
             <span class="intake-badge" id="ibadge-occupancy"></span>
           </div>
+          <div class="intake-source" id="isource-occupancy"></div>
         </div>
       </div>
     </div>
@@ -1357,10 +1360,12 @@ function intakePopulateForm(data) {
   const sources    = data.sources    || {};
 
   const BADGE_MAP = {
-    high:   { text: '\u2713 Found',    cls: 'badge-high'   },
-    medium: { text: '~ Inferred', cls: 'badge-medium' },
-    low:    { text: '? Assumed',  cls: 'badge-low'    },
-    absent: { text: '! Required', cls: 'badge-absent' },
+    high:     { text: '\u2713 Found',    cls: 'badge-high'   },
+    medium:   { text: '~ Inferred', cls: 'badge-medium' },
+    low:      { text: '? Assumed',  cls: 'badge-low'    },
+    inferred: { text: '? Assumed',  cls: 'badge-low'    },
+    absent:   { text: '! Required', cls: 'badge-absent' },
+    missing:  { text: '! Required', cls: 'badge-absent' },
   };
 
   const FIELD_KEYS = [

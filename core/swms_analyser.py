@@ -167,26 +167,27 @@ For QUOTE documents specifically:
 - Combine related line items into coherent task descriptions
 - Ignore dollar amounts, GST, preliminaries costs, and exclusions
 
+For each field, provide the value, a confidence level, and source text:
+- "high"     = explicitly stated in the document
+- "medium"   = reasonably inferred from context
+- "inferred" = assumed from building type or industry practice
+- "missing"  = not found — leave value as empty string
+
+For "source": quote the exact phrase (under 10 words) from the document
+that you extracted each value from. Leave empty if missing or inferred.
+
 Return a JSON object with exactly this structure:
 
 {{
-  "pcbu_name": "company name if found, else empty string",
-  "project_address": "site address if found, else empty string",
-  "manager_name": "project manager or supervisor if found, else empty string",
-  "principal_contractor": "principal contractor if found, else empty string",
-  "jurisdiction": "AU",
-  "title": "3-6 word job title only e.g. Exterior remedial works — 18 Danks St Waterloo",
-  "work_activity_summary": "one sentence capturing ALL trade types — e.g. Exterior remedial works including crack stitching, brickwork repointing, concrete spalling repairs, sealant application, and painting to common property facades",
-  "description": "Comprehensive job description capturing ALL of the following found in the document:
-    - Every trade type and work activity mentioned (crack stitching, repointing, spalling, painting, waterproofing etc.)
-    - Specific materials and products named (e.g. Thor Helical bars, Fosroc nitoseal MS250, Dulux Duspec)
-    - Access methods required (scaffold, EWP, rope access, ladder)
-    - Location context (building type, storeys, occupied/vacant, exterior/interior)
-    - Any special conditions (heritage, occupied, traffic management, strata)
-    - HRCW implications (work at height, demolition, structural elements)
-    Write as a detailed brief to generate a complete multi-task SWMS from.
-    Do NOT omit line items — every scope activity must appear in this description.",
-  "hrcw_categories": ["list of HRCW categories that appear to apply based on the scope"]
+  "pcbu_name":            {{"value": "", "confidence": "missing", "source": ""}},
+  "project_address":      {{"value": "", "confidence": "missing", "source": ""}},
+  "manager_name":         {{"value": "", "confidence": "missing", "source": ""}},
+  "principal_contractor": {{"value": "", "confidence": "missing", "source": ""}},
+  "jurisdiction":         {{"value": "AU", "confidence": "high", "source": ""}},
+  "title":                {{"value": "", "confidence": "missing", "source": ""}},
+  "work_activity_summary":{{"value": "", "confidence": "missing", "source": ""}},
+  "description":          {{"value": "", "confidence": "missing", "source": "Comprehensive job description capturing ALL of the following found in the document: every trade type and work activity mentioned, specific materials and products named, access methods required, location context, any special conditions, HRCW implications. Write as a detailed brief to generate a complete multi-task SWMS from. Do NOT omit line items."}},
+  "hrcw_categories":      {{"value": [], "confidence": "missing", "source": ""}}
 }}
 
 Return only valid JSON, no preamble.
@@ -210,6 +211,30 @@ async def analyse_existing_swms(swms_text: str) -> dict:
         raise RuntimeError(f"Could not analyse SWMS: {str(e)}")
 
 
+def _flatten_scope_result(raw: dict) -> dict:
+    """Flatten {value, confidence, source} nested fields into flat dict with companions."""
+    fields = {}
+    confidence = {}
+    sources = {}
+    for key, data in raw.items():
+        if isinstance(data, dict) and "value" in data:
+            fields[key] = data["value"]
+            confidence[key] = data.get("confidence", "missing")
+            sources[key] = data.get("source", "")
+        else:
+            fields[key] = data
+            confidence[key] = "high" if data else "missing"
+            sources[key] = ""
+    # Ensure minimum required keys
+    for key, default in _EMPTY_SCOPE.items():
+        fields.setdefault(key, default)
+        confidence.setdefault(key, "missing")
+        sources.setdefault(key, "")
+    fields["confidence"] = confidence
+    fields["sources"] = sources
+    return fields
+
+
 async def extract_scope_from_document(doc_text: str) -> dict:
     """Mode 03: Extract work scope from Scope of Works / Specification.
     Never raises — always returns a usable dict, even if partial or empty."""
@@ -226,10 +251,8 @@ async def extract_scope_from_document(doc_text: str) -> dict:
             ),
             timeout=45.0,
         )
-        result = _parse_json_response(response.content[0].text)
-        # Ensure we always have the minimum required keys
-        for key, default in _EMPTY_SCOPE.items():
-            result.setdefault(key, default)
+        raw = _parse_json_response(response.content[0].text)
+        result = _flatten_scope_result(raw)
         return result
     except asyncio.TimeoutError:
         logger.warning("Scope extraction timed out at 45s — returning partial result")
