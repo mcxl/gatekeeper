@@ -489,6 +489,10 @@ def _plain_english_pass(tb: dict) -> dict:
     for field in ("controls", "admin", "stop_work", "hold_points", "ppe", "hazards"):
         if field in tb and isinstance(tb[field], list):
             tb[field] = [enforce_vocabulary(item) for item in tb[field]]
+    # Monitoring critical_control
+    mon = tb.get("monitoring")
+    if isinstance(mon, dict) and isinstance(mon.get("critical_control"), str):
+        mon["critical_control"] = enforce_vocabulary(mon["critical_control"])
     # Responsibility fields
     resp = tb.get("responsibility")
     if isinstance(resp, dict):
