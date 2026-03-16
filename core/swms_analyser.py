@@ -16,29 +16,47 @@ MODEL = 'claude-sonnet-4-6'
 
 
 def _parse_json_response(text: str) -> dict:
-    """Strip markdown fences and parse JSON. Handles truncated responses."""
+    """Extract JSON from Claude response. Never raises — returns partial dict on failure."""
+    import re
     text = text.strip()
+    # Strip markdown fences
     if text.startswith('```'):
         parts = text.split('```')
         text = parts[1] if len(parts) > 1 else text
         if text.startswith('json'):
             text = text[4:]
     text = text.strip()
-    # Strip trailing garbage after last top-level closing brace
-    last_brace = text.rfind('}')
-    if last_brace != -1:
-        text = text[:last_brace + 1]
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        # Truncated JSON — find last complete key-value by trimming to last }
-        for i in range(len(text) - 1, 0, -1):
-            if text[i] == '}':
+
+    # Step 1: Extract first { to last }
+    first = text.find('{')
+    last = text.rfind('}')
+    if first != -1 and last > first:
+        candidate = text[first:last + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+        # Step 2: Walk backwards from last } to find valid JSON
+        for i in range(last, first, -1):
+            if candidate[i - first] == '}':
                 try:
-                    return json.loads(text[:i + 1])
+                    return json.loads(text[first:i + 1])
                 except json.JSONDecodeError:
                     continue
-        raise
+
+    # Step 3: Regex field extraction — build dict from whatever is parseable
+    logger.warning("JSON parse failed, falling back to regex field extraction")
+    result = {}
+    # Match "key": "value" (string values)
+    for m in re.finditer(r'"(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"', text):
+        result[m.group(1)] = m.group(2).replace('\\"', '"').replace('\\n', '\n')
+    # Match "key": [...] (array values)
+    for m in re.finditer(r'"(\w+)"\s*:\s*\[([^\]]*)\]', text):
+        key = m.group(1)
+        if key not in result:
+            items = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(2))
+            result[key] = items
+    return result
 
 
 ANALYSE_PROMPT = """You are a WHS Safety adviser reviewing a Safe Work Method Statement
