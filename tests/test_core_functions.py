@@ -122,7 +122,7 @@ class TestTruncateForPrompt:
         assert truncate_for_prompt(text) == text
 
     def test_text_at_limit_unchanged(self):
-        text = "x" * 12000
+        text = "x" * 8000
         assert truncate_for_prompt(text) == text
 
     def test_long_text_truncated(self):
