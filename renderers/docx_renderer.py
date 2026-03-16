@@ -24,7 +24,7 @@ def Dxa(twips: int) -> Emu:
 from lxml import etree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.schema import TaskBlock, MonitoringEntry
+from core.schema import TaskBlock
 
 # —— Constants ————————————————————————————————————————————————————————————————
 

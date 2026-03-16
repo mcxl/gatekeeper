@@ -165,7 +165,7 @@ async def run_control_writer(
     task_manifest: dict,
     risk_manifest: dict,
     inference: dict,
-    scope_context: dict = None,
+    scope_context: dict | None = None,
 ) -> dict:
     """
     Run Agent 3 — Control Writer.
@@ -192,7 +192,7 @@ async def write_controls_single(
     task: dict,
     risk: dict,
     inference: dict,
-    scope_context: dict = None,
+    scope_context: dict | None = None,
 ) -> dict:
     """
     Write controls for a single task.
@@ -235,7 +235,10 @@ async def _write_controls_for_task(
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = strip_fences(message.content[0].text)
+    block = message.content[0]
+    if not hasattr(block, 'text'):
+        raise ValueError(f"Unexpected content block type: {type(block)}")
+    text = strip_fences(block.text)
 
     result = json.loads(text)
     _validate_control_entry(result, task["sequence"])

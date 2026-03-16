@@ -12,9 +12,8 @@ Endpoints:
 
 import logging
 import traceback
-import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
-from fastapi.responses import JSONResponse 
+from fastapi.responses import JSONResponse
 from typing import List
 from pathlib import Path
 

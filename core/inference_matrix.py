@@ -38,6 +38,7 @@ class Requirements:
     epa_license: bool = False
     notes: list[str] = field(default_factory=list)
     plant: list[str] = field(default_factory=list)
+    hrcw_flags: dict = field(default_factory=dict)
 
 # ── Baseline PPE (all construction work) ─────────────────────────────────────
 
@@ -5784,17 +5785,13 @@ SYNONYM_MAP: dict[str, str] = {
     # Electrical
     "ewp":                      "elevated work platform",
     "mewp":                     "elevated work platform",
-    "cherry picker":            "boom lift",
     "scissor lift":             "elevated work platform",
     "switchboard":              "switchboard upgrade",
-    "db board":                 "switchboard upgrade",
-    "distribution board":       "switchboard upgrade",
     # Lifting / cranes
     "franna":                   "mobile crane",
     "pick and carry":           "mobile crane",
     "all terrain crane":        "mobile crane",
     "atc":                      "mobile crane",
-    "dogman":                   "dogging",
     "rigging gear":             "rigging",
     "below the hook":           "rigging",
     # Roofing
@@ -5827,9 +5824,6 @@ SYNONYM_MAP: dict[str, str] = {
     "gut the tenancy":          "strip-out",
     # WAH
     "harness work":             "at height",
-    "rope access":              "at height",
-    "abseiling":                "at height",
-    "rappelling":               "at height",
     # Excavation
     "dig":                      "excavation",
     "trenching":                "excavation",
@@ -5893,11 +5887,7 @@ SYNONYM_MAP: dict[str, str] = {
     "power line exclusion":     "overhead powerline",
     "asp level 2":              "level 2 asp",
     "authorised service":       "level 2 asp",
-    "db board":                 "switchboard",
-    "distribution board":       "switchboard",
-    "buried services":          "underground cable",
     "cable locate":             "underground cable",
-    "dbyd":                     "underground cable",
     # Confined space stream
     "stormwater pit":           "confined space entry",
     "pump station entry":       "confined space entry",
@@ -5924,7 +5914,6 @@ SYNONYM_MAP: dict[str, str] = {
     "articulated boom":         "ewp boom",
     "vertical lift":            "scissor lift",
     # Formwork stream
-    "slab pour":                "formwork",
     "concrete pour":            "formwork",
     "temporary propping":       "falsework",
     "temp works":               "falsework",
@@ -6061,8 +6050,8 @@ CHAIN_MAP: dict[str, list[str]] = {
     "asbestos cement":          ["lead paint"],
     # Scaffolding needs WAH
     "scaffolding":              ["at height"],
-    # Demolition needs hazmat survey
-    "demolition":               ["hazardous materials survey"],
+    # Demolition needs hazmat survey + WAH (Batch 1 merged)
+    "demolition":               ["hazardous materials survey", "working at height"],
     "strip-out":                ["hazardous materials survey"],
     "fitout removal":           ["hazardous materials survey"],
     # Concrete grinding generates silica dust — primary hazard
@@ -6070,8 +6059,6 @@ CHAIN_MAP: dict[str, list[str]] = {
     # Rock breaking generates silica and vibration
     "rock break":               ["silica", "vibration"],
     "rock hammer":              ["silica"],
-    # Excavation triggers underground services
-    "excavation":               ["underground services"],
     "pool excavation":          ["dewatering", "underground services"],
     # PT slab needs engineer
     "post-tension":             ["structural engineer", "post-tension slab"],
@@ -6084,7 +6071,6 @@ CHAIN_MAP: dict[str, list[str]] = {
     "confined space":           ["atmospheric test", "rescue plan"],
     # Crane lifts need dogman
     "mobile crane":             ["dogging", "rigging", "lift study"],
-    "tower crane":              ["dogging", "rigging"],
     # Waterway needs erosion
     "near waterway":            ["erosion", "sediment"],
     "near creek":               ["erosion", "sediment"],
@@ -6111,14 +6097,10 @@ CHAIN_MAP: dict[str, list[str]] = {
     # Precast/tilt-up triggers crane (you need a crane to erect panels)
     "precast":                  ["mobile crane", "working at height"],
     "tilt-up":                  ["mobile crane", "working at height"],
-    # Excavation triggers underground services
-    "excavation":               ["underground services"],
     # Underground services triggers overhead powerline check
     "underground services":     ["overhead powerline"],
     # Mobile plant triggers exclusion zone and VOC
     "mobile plant":             ["exclusion zone", "voc"],
-    # Demolition triggers pre-demolition survey and WAH
-    "demolition":               ["hazardous materials survey", "working at height"],
     # Any crane lift triggers dogging/rigging and exclusion zone
     "crane lift":               ["dogging", "rigging", "exclusion zone"],
     "lift study":               ["mobile crane"],
@@ -6376,7 +6358,6 @@ def infer_requirements(work_description: str) -> Requirements:
 
     # Compute individual HRCW boolean flags for checkbox ticking
     result.hrcw_flags = {}
-    cat = (result.hrcw_category or "").lower()
     # falling_2m — from keywords or category
     result.hrcw_flags["falling_2m"] = any(k in expanded for k in (
         "at height", "above ground", "elevated", "roof", "ewp", "boom lift",

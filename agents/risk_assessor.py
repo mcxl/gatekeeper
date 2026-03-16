@@ -114,7 +114,7 @@ def _build_scope_context_block(scope_context: dict) -> str:
     )
 
 
-async def run_risk_assessor(task_manifest: dict, inference: dict, scope_context: dict = None) -> dict:
+async def run_risk_assessor(task_manifest: dict, inference: dict, scope_context: dict | None = None) -> dict:
     """
     Run Agent 2 — Risk Assessor.
     Returns RiskManifest dict.
@@ -146,7 +146,10 @@ async def run_risk_assessor(task_manifest: dict, inference: dict, scope_context:
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = strip_fences(message.content[0].text)
+    block = message.content[0]
+    if not hasattr(block, 'text'):
+        raise ValueError(f"Unexpected content block type: {type(block)}")
+    text = strip_fences(block.text)
 
     text = re.sub(r",\s*([}\]])", r"", text)
     manifest = json.loads(text)

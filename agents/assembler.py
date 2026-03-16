@@ -166,7 +166,10 @@ async def run_assembler_single(
         messages=[{"role": "user", "content": user_content}],
     )
 
-    text = strip_fences(message.content[0].text)
+    block = message.content[0]
+    if not hasattr(block, 'text'):
+        raise ValueError(f"Unexpected content block type: {type(block)}")
+    text = strip_fences(block.text)
 
     fixed = json.loads(text)
     _post_process_task_block(fixed)

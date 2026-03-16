@@ -80,7 +80,7 @@ async def _run_simple_path(
     description: str,
     project_meta: dict,
     inference: dict,
-    scope_context: dict = None,
+    scope_context: dict | None = None,
 ) -> list[dict]:
     """
     Existing single-agent generation. Falls back gracefully if generate.py
@@ -101,7 +101,7 @@ async def _run_full_pipeline(
     description: str,
     project_meta: dict,
     inference: dict,
-    scope_context: dict = None,
+    scope_context: dict | None = None,
 ) -> tuple[list[dict], dict]:
     """
     Run all four agents in sequence.

@@ -22,11 +22,9 @@ from io import BytesIO
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml import parse_xml, OxmlElement
+from docx.oxml import parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Cm, Mm, Pt, RGBColor, Inches
-from lxml import etree
+from docx.shared import Cm, Mm, Pt, RGBColor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
