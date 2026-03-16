@@ -1,0 +1,10 @@
+{
+  "description": "On-site tilt-up concrete panel construction — site setup, formwork, reinforcement, pour, cure, crane erection Wilson Cranes, post-erection bracing, brace removal",
+  "expected": {
+    "first_task_keywords": ["site", "setup", "establish", "mobilise"],
+    "last_task_keywords": ["brace removal", "demobilise", "clear"],
+    "brace_removal_before_erection": false,
+    "hrcw": true,
+    "hrcw_flags_must_include": ["tiltup_precast"]
+  }
+}

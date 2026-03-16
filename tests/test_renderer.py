@@ -454,3 +454,44 @@ class TestMonitoringContent:
         assert "atmosphere" in mon_text or "gas" in mon_text, (
             "Monitoring table for confined space fixture should reference atmosphere/gas check"
         )
+
+
+class TestDomainRegression:
+    """Domain quality regression tests."""
+
+    def test_tiltup_sequence_fixture(self):
+        """Tilt-up tasks must follow correct construction sequence."""
+        fixture_path = os.path.join(
+            os.path.dirname(__file__), "fixtures", "07_tiltup_sequence.json"
+        )
+        with open(fixture_path) as f:
+            fixture = json.load(f)
+
+        from core.inference_matrix import infer_to_dict
+        inference = infer_to_dict(fixture["description"])
+
+        expected = fixture["expected"]
+
+        # HRCW must be detected
+        assert inference.get("hrcw") == expected["hrcw"], \
+            "Tilt-up must be flagged as HRCW"
+
+        # tiltup_precast flag must be set
+        hrcw_flags = inference.get("hrcw_flags", {})
+        for flag in expected["hrcw_flags_must_include"]:
+            assert hrcw_flags.get(flag), \
+                f"HRCW flag '{flag}' must be True for tilt-up work"
+
+    def test_no_superseded_unit_codes(self):
+        """Superseded unit code RIIOHS204A must not appear in outputs."""
+        import pathlib
+        root = pathlib.Path(__file__).parent.parent
+        files_to_check = [
+            root / "agents" / "control_writer.py",
+            root / "core" / "inference_matrix.py",
+        ]
+        for fpath in files_to_check:
+            if fpath.exists():
+                content = fpath.read_text(encoding="utf-8")
+                assert "RIIOHS204A" not in content, \
+                    f"Superseded unit code RIIOHS204A found in {fpath.name}"

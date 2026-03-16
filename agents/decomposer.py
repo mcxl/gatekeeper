@@ -31,6 +31,21 @@ RULES:
 - Tasks must be in logical work sequence:
     mobilisation → site establishment → preparatory works →
     principal works → finishing → defects / make good → demobilisation
+
+TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
+- Tilt-up or precast concrete: site setup → formwork erection →
+  reinforcement → concrete pour → cure and strip formwork →
+  panel preparation and inspection → crane erection and panel
+  installation → post-erection bracing → defect inspection and
+  fix → brace removal (engineer release only) → demobilisation.
+  NEVER place brace removal before erection. NEVER place site
+  setup after any construction activity.
+- Scaffold: site setup → scaffold erection → principal works →
+  scaffold dismantling → demobilisation.
+- Demolition: site setup → services isolation → hazmat survey
+  and removal → structural demolition (top-down) → debris
+  removal → demobilisation.
+
 - Each task must be a discrete, observable unit of work
 - task field: verb first, plain English, under 10 words
 - scope field: what is specifically included in this task, under 25 words

@@ -251,7 +251,7 @@ MATRIX = [
         "certs": [
             "Scaffolding Licence — Advanced class (SA) for swing stage erection",
             "Dogman Licence — where crane-lifted platform involved",
-            "RIIOHS204A — Work safely at heights",
+            "Working at heights — verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
         ],
         "permits": [
             "Swing stage erection permit — signed by licenced scaffolder",
@@ -288,7 +288,7 @@ MATRIX = [
         ],
         "certs": [
             "Scaffolding Licence — class appropriate to scaffold type and height",
-            "RIIOHS204A — Work safely at heights",
+            "Working at heights — verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
         ],
         "permits": [
             "Scaffold erection permit — signed by licenced scaffolder before use",
@@ -567,7 +567,7 @@ MATRIX = [
             "Helmet with chin strap — AS/NZS 1801",
         ],
         "certs": [
-            "RIIOHS204A — Work safely at heights",
+            "Working at heights — verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
             "EWP operator licence — WP class where boom exceeds 11m",
         ],
         "permits": [
@@ -3638,7 +3638,7 @@ MATRIX = [
             "High-visibility vest",
         ],
         "certs": [
-            "RIIOHS204A — Work safely at heights",
+            "Working at heights — verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
             "Roof anchor installation — engineer-certified anchor points before use",
         ],
         "permits": [
@@ -5360,7 +5360,7 @@ MATRIX = [
         "keywords": ["falsework", "temporary works", "propping",
                      "temporary support structure", "shoring formwork"],
         "hrcw": True,
-        "hrcw_category": "WHS Reg 2017 Sch 3 cl.11 — Temporary load-bearing support for structural alterations",
+        "hrcw_category": "Schedule 3 cl.8 — Structural alterations or repairs requiring temporary support to prevent collapse",
         "hrcw_license_class": None,
         "ppe": [
             "Hard hat — mandatory",
@@ -6413,7 +6413,7 @@ def infer_requirements(work_description: str) -> Requirements:
         "traffic", "roadway", "road work", "public road"))
     # temp_support
     result.hrcw_flags["temp_support"] = any(k in expanded for k in (
-        "temporary support", "formwork", "falsework", "propping"))
+        "temporary support", "falsework", "propping"))
 
     return result
 
