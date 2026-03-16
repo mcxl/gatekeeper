@@ -7,6 +7,7 @@ Mode 03: Extract scope from Scope of Works / Specification.
 
 import json
 import logging
+import re
 from anthropic import AsyncAnthropic
 
 logger = logging.getLogger(__name__)
@@ -14,10 +15,25 @@ client = AsyncAnthropic()
 
 MODEL = 'claude-sonnet-4-6'
 
+# Minimal valid scope dict — returned when all parsing fails
+_EMPTY_SCOPE = {
+    "pcbu_name": "",
+    "project_address": "",
+    "manager_name": "",
+    "principal_contractor": "",
+    "jurisdiction": "AU",
+    "title": "",
+    "work_activity_summary": "",
+    "description": "",
+    "hrcw_categories": [],
+}
+
 
 def _parse_json_response(text: str) -> dict:
     """Extract JSON from Claude response. Never raises — returns partial dict on failure."""
-    import re
+    if not text or not text.strip():
+        return dict(_EMPTY_SCOPE)
+
     text = text.strip()
     # Strip markdown fences
     if text.startswith('```'):
@@ -36,26 +52,50 @@ def _parse_json_response(text: str) -> dict:
             return json.loads(candidate)
         except json.JSONDecodeError:
             pass
-        # Step 2: Walk backwards from last } to find valid JSON
+        # Step 2: Walk backwards to find largest valid JSON
         for i in range(last, first, -1):
-            if candidate[i - first] == '}':
+            if text[i] == '}':
                 try:
                     return json.loads(text[first:i + 1])
                 except json.JSONDecodeError:
                     continue
 
-    # Step 3: Regex field extraction — build dict from whatever is parseable
-    logger.warning("JSON parse failed, falling back to regex field extraction")
+    # Step 3: Regex field extraction from raw text
+    logger.warning("JSON parse failed — extracting fields via regex")
+    result = _regex_extract_fields(text)
+    if result:
+        return result
+
+    # Step 4: Return empty scope dict so user sees review form with Required fields
+    logger.warning("All JSON parsing failed — returning empty scope dict")
+    return dict(_EMPTY_SCOPE)
+
+
+def _regex_extract_fields(text: str) -> dict:
+    """Extract key-value pairs from malformed JSON using regex."""
     result = {}
-    # Match "key": "value" (string values)
+    # "key": "value" (string values — handles escaped quotes)
     for m in re.finditer(r'"(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"', text):
         result[m.group(1)] = m.group(2).replace('\\"', '"').replace('\\n', '\n')
-    # Match "key": [...] (array values)
+    # "key": [...] (array values)
     for m in re.finditer(r'"(\w+)"\s*:\s*\[([^\]]*)\]', text):
         key = m.group(1)
         if key not in result:
             items = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(2))
             result[key] = items
+    # "key": true/false
+    for m in re.finditer(r'"(\w+)"\s*:\s*(true|false)', text):
+        key = m.group(1)
+        if key not in result:
+            result[key] = m.group(2) == 'true'
+    # "key": number
+    for m in re.finditer(r'"(\w+)"\s*:\s*(-?\d+(?:\.\d+)?)', text):
+        key = m.group(1)
+        if key not in result:
+            try:
+                result[key] = json.loads(m.group(2))
+            except (json.JSONDecodeError, ValueError):
+                pass
     return result
 
 
@@ -159,7 +199,8 @@ async def analyse_existing_swms(swms_text: str) -> dict:
 
 
 async def extract_scope_from_document(doc_text: str) -> dict:
-    """Mode 03: Extract work scope from Scope of Works / Specification."""
+    """Mode 03: Extract work scope from Scope of Works / Specification.
+    Never raises — always returns a usable dict, even if partial or empty."""
     import asyncio
     try:
         response = await asyncio.wait_for(
@@ -173,10 +214,21 @@ async def extract_scope_from_document(doc_text: str) -> dict:
             ),
             timeout=45.0,
         )
-        return _parse_json_response(response.content[0].text)
+        result = _parse_json_response(response.content[0].text)
+        # Ensure we always have the minimum required keys
+        for key, default in _EMPTY_SCOPE.items():
+            result.setdefault(key, default)
+        return result
     except asyncio.TimeoutError:
         logger.warning("Scope extraction timed out at 45s — returning partial result")
-        return {"scope_summary": doc_text[:500], "partial": True}
+        partial = dict(_EMPTY_SCOPE)
+        partial["description"] = doc_text[:500]
+        partial["partial"] = True
+        return partial
     except Exception as e:
         logger.error(f"Scope extraction error: {e}")
-        raise RuntimeError(f"Could not extract scope: {str(e)}")
+        partial = dict(_EMPTY_SCOPE)
+        partial["description"] = doc_text[:500] if doc_text else ""
+        partial["partial"] = True
+        partial["error"] = str(e)
+        return partial
