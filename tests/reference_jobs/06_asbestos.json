@@ -1,0 +1,16 @@
+{
+  "id": "06_asbestos",
+  "name": "Class B asbestos removal",
+  "description": "Remove non-friable asbestos cement sheeting from eaves and external walls of pre-1990 residential building — Class B licence required, containment, air monitoring, disposal to licensed facility",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["asbestos"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["p2 respirator", "disposable coveralls", "gloves"],
+    "certs_must_include": ["asbestos removal licence"],
+    "permits_must_include": ["asbestos removal permit", "air monitoring"],
+    "notes_must_include": [],
+    "forbidden_strings_anywhere": ["RIIOHS204A"]
+  }
+}

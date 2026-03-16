@@ -1,0 +1,16 @@
+{
+  "id": "07_demolition",
+  "name": "Structural demolition",
+  "description": "Demolition of two-storey load-bearing masonry structure — pre-demolition hazardous materials survey, service isolation, structural engineer sign-off, top-down demolition sequence, exclusion zone, dust suppression",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["demolition"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["hard hat", "p2 respirator", "safety boots"],
+    "certs_must_include": ["demolition licence"],
+    "permits_must_include": ["pre-demolition survey", "utility isolation"],
+    "notes_must_include": [],
+    "forbidden_strings_anywhere": ["RIIOHS204A"]
+  }
+}

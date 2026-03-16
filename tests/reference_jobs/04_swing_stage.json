@@ -1,0 +1,16 @@
+{
+  "id": "04_swing_stage",
+  "name": "Swing stage facade painting — occupied building",
+  "description": "Swing stage painting of 12-storey occupied residential apartment building facade — rope access and swing stage access, IRATA supervision, rescue plan required, residents in building throughout works",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["falling_2m"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["full body harness", "hard hat"],
+    "certs_must_include": ["irata", "rescue plan"],
+    "permits_must_include": ["working at heights permit"],
+    "notes_must_include": [],
+    "forbidden_strings_anywhere": ["RIIOHS204A"]
+  }
+}

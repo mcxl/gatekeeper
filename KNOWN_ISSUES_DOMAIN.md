@@ -58,3 +58,33 @@ of fall — not only above 2m.
 Both "inspect" and "rectify" are banned words.
 **Fix:** Pending (separate prompt already issued)
 **Fixture:** Pending
+
+---
+
+## REFERENCE JOB LIBRARY
+
+Run after any change to inference_matrix.py, decomposer.py,
+or control_writer.py:
+
+    python tests/run_reference_jobs.py
+
+Run a single job:
+
+    python tests/run_reference_jobs.py --job 01_tiltup
+
+Verbose output (shows all passes too):
+
+    python tests/run_reference_jobs.py --verbose
+
+8 reference jobs covering:
+01 — Tilt-up concrete construction
+02 — Tube and coupler scaffold
+03 — Metal roofing
+04 — Swing stage facade painting
+05 — Confined space entry
+06 — Class B asbestos removal
+07 — Structural demolition
+08 — Excavation near services
+
+When a new domain issue is found and fixed, add a reference
+job if one does not already exist for that work type.

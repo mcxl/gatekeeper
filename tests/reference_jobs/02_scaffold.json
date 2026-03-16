@@ -1,0 +1,16 @@
+{
+  "id": "02_scaffold",
+  "name": "Tube and coupler scaffold erection",
+  "description": "Erect tube and coupler scaffold on north and east elevations of 6-storey commercial building — scaffold to 22 metres height, intermediate licence class, handover certificate required, 30-day inspection cycle, strip permit before dismantling",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["falling_2m"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["hard hat", "hi-vis", "safety boots", "harness"],
+    "certs_must_include": ["scaffolding"],
+    "permits_must_include": ["handover certificate", "scaffold permit to strip"],
+    "notes_must_include": ["AS 4576"],
+    "forbidden_strings_anywhere": ["RIIOHS204A", "SCA-H"]
+  }
+}

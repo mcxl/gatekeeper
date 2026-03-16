@@ -1,0 +1,16 @@
+{
+  "id": "08_excavation",
+  "name": "Excavation 2m deep near services",
+  "description": "Excavate 2.5 metre deep trench for stormwater drainage adjacent to existing building — Dial Before You Dig, underground service locate, shoring or battered sides, zone of influence assessment, dewatering",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["shaft_trench"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["hard hat", "safety boots", "hi-vis"],
+    "certs_must_include": ["dial before you dig"],
+    "permits_must_include": ["excavation permit"],
+    "notes_must_include": [],
+    "forbidden_strings_anywhere": ["RIIOHS204A"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "01_tiltup",
+  "name": "Tilt-up concrete panel construction",
+  "description": "On-site tilt-up concrete panel construction — full scope including site setup, formwork erection, reinforcement placement, concrete pour and cure, panel preparation, crane erection with Wilson Cranes, post-erection bracing, defect inspection, and brace removal after engineer release",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["tiltup_precast", "falling_2m", "mobile_plant"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["hard hat", "hi-vis", "safety boots"],
+    "certs_must_include": ["dogman", "rigger"],
+    "permits_must_include": ["lift study", "working at heights"],
+    "notes_must_include": ["AS 3850"],
+    "forbidden_codes_in_regulatory_notes": ["s.225"],
+    "forbidden_strings_anywhere": ["RIIOHS204A", "C6 licence"]
+  }
+}

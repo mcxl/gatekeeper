@@ -1,0 +1,16 @@
+{
+  "id": "03_roofing",
+  "name": "Metal roofing installation",
+  "description": "Install Colorbond metal roofing and guttering to new industrial shed — roof structure complete, sarking and insulation, roof anchors to be installed and certified, perimeter edge protection, working at heights",
+  "jurisdiction": "AU",
+  "checklist": {
+    "hrcw": true,
+    "hrcw_flags_must_include": ["falling_2m"],
+    "hrcw_flags_must_exclude": [],
+    "ppe_must_include": ["harness", "hard hat", "hi-vis", "non-slip"],
+    "certs_must_include": ["working at heights"],
+    "permits_must_include": ["roof access permit"],
+    "notes_must_include": ["AS/NZS 1891"],
+    "forbidden_strings_anywhere": ["RIIOHS204A"]
+  }
+}
