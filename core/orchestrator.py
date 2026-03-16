@@ -404,7 +404,7 @@ async def generate_swms_stream(
 
                 tb = _enforce_plain_english(tb)
                 _enrich_risk_labels(tb)
-                log.info(f"Task {idx+1} complete")
+                log.warning(f"Task {idx+1} complete")
                 return (idx, tb)
 
             except Exception as e:
@@ -413,6 +413,7 @@ async def generate_swms_stream(
 
     yield {"type": "task_count", "count": total}
 
+    log.warning(f"Starting parallel execution — {total} tasks, semaphore 5")
     assembled_map: dict[int, dict] = {}
     coros = [_process_single_task(idx, task) for idx, task in enumerate(tasks)]
 
@@ -423,6 +424,7 @@ async def generate_swms_stream(
         await asyncio.sleep(0)
 
     assembled = [assembled_map[i] for i in range(total)]
+    log.warning(f"Parallel execution complete — {total} tasks assembled")
 
     _suppress_false_ccvs(assembled, inference)
     yield {"type": "done", "task_count": len(assembled), "route": selected_route}
