@@ -231,14 +231,9 @@ async def serve_dashboard():
     return _html_response(os.path.join(_FRONTEND_DIR, "dashboard.html"))
 
 
-@app.get("/swms", response_class=HTMLResponse)
-async def serve_swms():
-    return _html_response(os.path.join(_FRONTEND_DIR, "app.html"))
-
-
-@app.get("/review", response_class=HTMLResponse)
-async def serve_review():
-    return _html_response(os.path.join(_FRONTEND_DIR, "review.html"))
+@app.get("/pims", response_class=HTMLResponse)
+async def serve_pims():
+    return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard.html"))
 
 
 @app.get("/ra", response_class=HTMLResponse)
