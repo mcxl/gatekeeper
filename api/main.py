@@ -107,11 +107,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.sentry-cdn.com https://browser.sentry-cdn.com; "
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.sentry-cdn.com https://browser.sentry-cdn.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src https://fonts.gstatic.com; "
             "img-src 'self' data:; "
-            "connect-src 'self' https://o4511019411177472.ingest.us.sentry.io"
+            "connect-src 'self' https://o4511019411177472.ingest.us.sentry.io https://*.supabase.co; "
+            "worker-src 'none';"
         )
         return response
 
