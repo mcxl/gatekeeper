@@ -1,0 +1,848 @@
+/*
+ * ============================================================
+ *  SAFE METHOD — DESIGN SYSTEM
+ *  Apple Precision Dark × Samsung Bold Tech
+ *  Version: 2026-03-17
+ * ============================================================
+ *
+ *  INSTALLATION
+ *  ─────────────
+ *  1. Copy this file to /frontend/safe-method-design.css
+ *  2. Add ONE line at the TOP of your <head> in both
+ *     app.html and review.html (before any other stylesheet):
+ *
+ *     <link rel="stylesheet" href="safe-method-design.css">
+ *
+ *  3. Remove or comment out any existing Bootstrap default
+ *     background/font overrides that conflict.
+ *
+ *  FONT IMPORTS (already embedded below via @import)
+ *  ─────────────────────────────────────────────────
+ *  Plus Jakarta Sans  — headings  (Apple SF Pro Display feel)
+ *  Figtree            — body/UI   (Samsung One legibility)
+ * ============================================================
+ */
+
+/* ── FONTS ────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── TOKENS ───────────────────────────────────────────────── */
+:root {
+  /* Backgrounds — Apple midnight layering */
+  --bg-base:         #060B17;
+  --bg-elevated:     #0D1526;
+  --bg-surface:      #111D35;
+  --bg-overlay:      rgba(13, 21, 38, 0.85);
+
+  /* Glass surfaces — Apple frosted vibrancy */
+  --glass-bg:        rgba(255, 255, 255, 0.055);
+  --glass-border:    rgba(255, 255, 255, 0.10);
+  --glass-shadow:    0 8px 32px rgba(0, 0, 0, 0.45),
+                     0 1px 0 rgba(255, 255, 255, 0.05) inset;
+
+  /* Brand — Samsung electric blue anchored to project palette */
+  --brand-primary:   #1065F8;     /* Samsung-scale electric blue   */
+  --brand-hover:     #3D85FF;     /* lighter on hover              */
+  --brand-glow:      rgba(16, 101, 248, 0.35);
+  --brand-navy:      #1F3864;     /* existing project dark navy     */
+  --brand-mid:       #2E75B6;     /* existing project mid blue      */
+  --brand-danger:    #FF3B30;     /* Apple red                      */
+  --brand-warning:   #FF9F0A;     /* Apple orange                   */
+  --brand-success:   #30D158;     /* Apple green                    */
+
+  /* Typography — Apple-scale text colours */
+  --text-primary:    #F5F5F7;     /* Apple near-white               */
+  --text-secondary:  #98989F;     /* Apple secondary label          */
+  --text-tertiary:   #636366;     /* Apple tertiary label           */
+  --text-accent:     #3D85FF;     /* interactive / links            */
+
+  /* Border / Separator */
+  --border-subtle:   rgba(255, 255, 255, 0.07);
+  --border-mid:      rgba(255, 255, 255, 0.13);
+
+  /* Fonts */
+  --font-display:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:       'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Type scale (Samsung bold heading sizes + Apple body rhythm) */
+  --text-xs:         0.75rem;
+  --text-sm:         0.8125rem;
+  --text-base:       0.9375rem;
+  --text-md:         1.0625rem;
+  --text-lg:         1.25rem;
+  --text-xl:         1.5rem;
+  --text-2xl:        2rem;
+  --text-3xl:        2.75rem;
+  --text-hero:       3.5rem;
+
+  /* Spacing — 8px grid */
+  --sp-1:  0.5rem;    /* 8px  */
+  --sp-2:  1rem;      /* 16px */
+  --sp-3:  1.5rem;    /* 24px */
+  --sp-4:  2rem;      /* 32px */
+  --sp-5:  2.5rem;    /* 40px */
+  --sp-6:  3rem;      /* 48px */
+  --sp-8:  4rem;      /* 64px */
+  --sp-10: 5rem;      /* 80px */
+
+  /* Radius */
+  --r-sm:  0.5rem;    /* 8px  */
+  --r-md:  0.875rem;  /* 14px */
+  --r-lg:  1.25rem;   /* 20px */
+  --r-xl:  1.75rem;   /* 28px */
+  --r-2xl: 2.5rem;    /* 40px */
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:    140ms;
+  --dur-mid:     250ms;
+  --dur-slow:    400ms;
+}
+
+/* ── RESET / BASE ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background-color: var(--bg-base);
+
+  /* Subtle mesh gradient background — Apple spatial depth */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%,  rgba(16, 101, 248, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 85% 110%, rgba(31, 56, 100, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 50% 50%,  rgba(6, 11, 23, 1) 0%, transparent 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* ── TYPOGRAPHY ───────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin-top: 0;
+}
+
+h1 { font-size: var(--text-3xl); font-weight: 800; }
+h2 { font-size: var(--text-2xl); font-weight: 700; }
+h3 { font-size: var(--text-xl);  font-weight: 700; }
+h4 { font-size: var(--text-lg);  font-weight: 600; }
+
+p, li { color: var(--text-secondary); }
+strong, b { color: var(--text-primary); font-weight: 600; }
+
+a {
+  color: var(--text-accent);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease;
+}
+a:hover { color: var(--brand-hover); }
+
+/* ── NAVBAR ───────────────────────────────────────────────── */
+.navbar,
+nav.navbar {
+  background: rgba(6, 11, 23, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: var(--sp-2) var(--sp-4) !important;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.navbar-brand,
+.navbar-brand span {
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  font-size: var(--text-lg) !important;
+  letter-spacing: -0.03em !important;
+  color: var(--text-primary) !important;
+}
+
+.nav-link {
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
+  padding: var(--sp-1) var(--sp-2) !important;
+  border-radius: var(--r-sm) !important;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease !important;
+}
+.nav-link:hover,
+.nav-link.active {
+  color: var(--text-primary) !important;
+  background: rgba(255,255,255,0.07) !important;
+}
+
+/* ── GLASS CARD ───────────────────────────────────────────── */
+.card,
+.sm-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: var(--text-primary) !important;
+  transition: transform var(--dur-mid) var(--ease-out),
+              box-shadow var(--dur-mid) var(--ease-out),
+              border-color var(--dur-mid) ease !important;
+}
+
+.card:hover,
+.sm-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(255,255,255,0.17) !important;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255,255,255,0.07) inset,
+    0 0 0 1px rgba(16,101,248,0.08) !important;
+}
+
+.card-header {
+  background: rgba(255,255,255,0.03) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-sm) !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  color: var(--text-secondary) !important;
+  padding: var(--sp-2) var(--sp-3) !important;
+  border-radius: var(--r-lg) var(--r-lg) 0 0 !important;
+}
+
+.card-body { padding: var(--sp-3) !important; }
+
+/* ── BUTTONS ──────────────────────────────────────────────── */
+.btn {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-sm) !important;
+  letter-spacing: 0.01em !important;
+  border-radius: var(--r-xl) !important;
+  padding: 0.6rem 1.4rem !important;
+  transition: all var(--dur-mid) var(--ease-spring) !important;
+  position: relative !important;
+  border: none !important;
+}
+
+/* Primary — Samsung blue */
+.btn-primary {
+  background: var(--brand-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 0 var(--brand-glow), 0 2px 8px rgba(16,101,248,0.3) !important;
+}
+.btn-primary:hover {
+  background: var(--brand-hover) !important;
+  transform: scale(1.03) !important;
+  box-shadow: 0 0 0 6px var(--brand-glow), 0 6px 20px rgba(16,101,248,0.4) !important;
+}
+.btn-primary:active {
+  transform: scale(0.97) !important;
+}
+
+/* Secondary — glass ghost */
+.btn-secondary,
+.btn-outline-secondary {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: blur(8px) !important;
+}
+.btn-secondary:hover,
+.btn-outline-secondary:hover {
+  background: rgba(255,255,255,0.10) !important;
+  border-color: rgba(255,255,255,0.22) !important;
+  transform: scale(1.02) !important;
+}
+
+/* Danger */
+.btn-danger {
+  background: var(--brand-danger) !important;
+  color: #fff !important;
+}
+.btn-danger:hover {
+  filter: brightness(1.12) !important;
+  transform: scale(1.03) !important;
+}
+
+/* Success */
+.btn-success {
+  background: var(--brand-success) !important;
+  color: #fff !important;
+}
+.btn-success:hover {
+  filter: brightness(1.1) !important;
+  transform: scale(1.03) !important;
+}
+
+/* Icon buttons */
+.btn-sm {
+  padding: 0.35rem 0.85rem !important;
+  font-size: var(--text-xs) !important;
+}
+
+/* ── FORM CONTROLS ────────────────────────────────────────── */
+.form-control,
+.form-select,
+textarea.form-control {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border-mid) !important;
+  border-radius: var(--r-md) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--text-sm) !important;
+  padding: 0.625rem 0.875rem !important;
+  transition: border-color var(--dur-fast) ease,
+              box-shadow var(--dur-fast) ease,
+              background var(--dur-fast) ease !important;
+}
+
+.form-control::placeholder,
+textarea.form-control::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea.form-control:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(16, 101, 248, 0.20) !important;
+  outline: none !important;
+  color: var(--text-primary) !important;
+}
+
+.form-label {
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 0.4rem !important;
+}
+
+/* ── TABS ─────────────────────────────────────────────────── */
+.nav-tabs {
+  border-bottom: 1px solid var(--border-subtle) !important;
+  gap: 0.25rem !important;
+}
+
+.nav-tabs .nav-link {
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: var(--text-sm) !important;
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: var(--r-sm) var(--r-sm) 0 0 !important;
+  padding: 0.65rem 1rem !important;
+  transition: all var(--dur-fast) ease !important;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--text-primary) !important;
+  background: rgba(255,255,255,0.04) !important;
+  border-bottom-color: var(--border-mid) !important;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--brand-primary) !important;
+  background: transparent !important;
+  border-bottom: 2px solid var(--brand-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* ── BADGES / PILLS ───────────────────────────────────────── */
+.badge {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  font-size: 0.6875rem !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+  border-radius: 99px !important;
+  padding: 0.25em 0.65em !important;
+}
+
+.badge.bg-primary   { background: rgba(16,101,248,0.20) !important; color: #5599FF !important; border: 1px solid rgba(16,101,248,0.3) !important; }
+.badge.bg-success   { background: rgba(48,209,88,0.15) !important;  color: #34C759 !important; border: 1px solid rgba(48,209,88,0.25) !important; }
+.badge.bg-danger    { background: rgba(255,59,48,0.15) !important;   color: #FF453A !important; border: 1px solid rgba(255,59,48,0.25) !important; }
+.badge.bg-warning   { background: rgba(255,159,10,0.15) !important;  color: #FF9F0A !important; border: 1px solid rgba(255,159,10,0.25) !important; }
+.badge.bg-secondary { background: rgba(255,255,255,0.07) !important; color: var(--text-secondary) !important; border: 1px solid var(--border-subtle) !important; }
+
+/* ── ALERTS ───────────────────────────────────────────────── */
+.alert {
+  border-radius: var(--r-md) !important;
+  border: 1px solid !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--text-sm) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.alert-info {
+  background: rgba(16,101,248,0.10) !important;
+  border-color: rgba(16,101,248,0.25) !important;
+  color: #7EB5FF !important;
+}
+
+.alert-success {
+  background: rgba(48,209,88,0.08) !important;
+  border-color: rgba(48,209,88,0.2) !important;
+  color: #65D980 !important;
+}
+
+.alert-warning {
+  background: rgba(255,159,10,0.08) !important;
+  border-color: rgba(255,159,10,0.22) !important;
+  color: #FFB340 !important;
+}
+
+.alert-danger {
+  background: rgba(255,59,48,0.08) !important;
+  border-color: rgba(255,59,48,0.22) !important;
+  color: #FF6961 !important;
+}
+
+/* ── PROGRESS BARS ────────────────────────────────────────── */
+.progress {
+  background: rgba(255,255,255,0.06) !important;
+  border-radius: 99px !important;
+  height: 6px !important;
+  overflow: hidden !important;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-hover)) !important;
+  border-radius: 99px !important;
+  transition: width 0.6s var(--ease-out) !important;
+}
+
+/* ── MODALS ───────────────────────────────────────────────── */
+.modal-content {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-xl) !important;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: blur(40px) !important;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: var(--sp-3) var(--sp-4) !important;
+}
+
+.modal-title {
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  font-size: var(--text-lg) !important;
+  color: var(--text-primary) !important;
+}
+
+.modal-body {
+  padding: var(--sp-4) !important;
+  color: var(--text-secondary) !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-subtle) !important;
+  padding: var(--sp-3) var(--sp-4) !important;
+}
+
+.modal-backdrop.show {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(0,0,0,0.65) !important;
+}
+
+/* ── DROPZONE / UPLOAD AREA ───────────────────────────────── */
+.dropzone,
+#dropzone,
+[id*="drop"],
+.upload-area {
+  background: var(--glass-bg) !important;
+  border: 2px dashed var(--border-mid) !important;
+  border-radius: var(--r-lg) !important;
+  color: var(--text-secondary) !important;
+  transition: all var(--dur-mid) var(--ease-out) !important;
+}
+
+.dropzone:hover,
+.dropzone.drag-over,
+[id*="drop"]:hover {
+  border-color: var(--brand-primary) !important;
+  background: rgba(16,101,248,0.06) !important;
+  box-shadow: 0 0 0 4px rgba(16,101,248,0.12) !important;
+}
+
+/* ── SSE STEPS / GENERATION PROGRESS ─────────────────────── */
+/* Targets the step-analyse, step-infer, step-tasks etc pattern */
+[id^="step-"] {
+  border-radius: var(--r-md) !important;
+  transition: all var(--dur-mid) var(--ease-out) !important;
+}
+
+/* "active" step — Samsung blue left border glow */
+[id^="step-"].active,
+[id^="step-"].running {
+  border-left: 3px solid var(--brand-primary) !important;
+  background: rgba(16,101,248,0.06) !important;
+  padding-left: 0.75rem !important;
+}
+
+/* "complete" step — Apple green */
+[id^="step-"].complete,
+[id^="step-"].done {
+  border-left: 3px solid var(--brand-success) !important;
+  background: rgba(48,209,88,0.04) !important;
+  padding-left: 0.75rem !important;
+}
+
+/* ── TABLES ───────────────────────────────────────────────── */
+.table {
+  color: var(--text-primary) !important;
+  --bs-table-bg: transparent !important;
+  --bs-table-color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--text-sm) !important;
+}
+
+.table th {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-xs) !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--text-tertiary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: 0.65rem 0.75rem !important;
+  background: transparent !important;
+}
+
+.table td {
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+  padding: 0.75rem !important;
+  vertical-align: middle !important;
+}
+
+.table-hover tbody tr:hover td {
+  background: rgba(255,255,255,0.03) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── SCROLLBAR ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ── DIVIDERS ─────────────────────────────────────────────── */
+hr {
+  border: none !important;
+  border-top: 1px solid var(--border-subtle) !important;
+  margin: var(--sp-4) 0 !important;
+}
+
+/* ── TEXT UTILITIES ───────────────────────────────────────── */
+.text-muted  { color: var(--text-tertiary) !important; }
+.text-accent { color: var(--text-accent) !important; }
+
+/* ── SECTION LABELS — Samsung style (Apple equivalent: eyebrow) */
+.section-label,
+.overline {
+  font-family: var(--font-body) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--brand-primary) !important;
+  display: block !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* ── HERO / PAGE TITLE AREA ───────────────────────────────── */
+.page-hero,
+.hero-section {
+  padding: var(--sp-10) var(--sp-4) var(--sp-6) !important;
+  text-align: center !important;
+}
+
+.page-hero h1,
+.hero-section h1 {
+  font-size: var(--text-hero) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+  background: linear-gradient(135deg, #F5F5F7 0%, #98989F 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Brand name — Safe Method wordmark style */
+.brand-name,
+.app-title {
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+  color: var(--text-primary) !important;
+}
+
+/* Accent word in brand — the "Safe" or first word */
+.brand-name .accent,
+.brand-accent {
+  color: var(--brand-primary) !important;
+}
+
+/* ── TASK CARDS (review page) ─────────────────────────────── */
+.task-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-lg) !important;
+  margin-bottom: var(--sp-3) !important;
+  transition: all var(--dur-mid) var(--ease-out) !important;
+}
+
+.task-card:hover {
+  border-color: rgba(16,101,248,0.3) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(16,101,248,0.12) !important;
+}
+
+.task-card .task-number {
+  font-family: var(--font-display) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: var(--brand-primary) !important;
+}
+
+/* ── INFERENCE SIDEBAR ────────────────────────────────────── */
+.inference-sidebar {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-lg) !important;
+  backdrop-filter: blur(12px) !important;
+  padding: var(--sp-3) !important;
+}
+
+.inference-sidebar h5,
+.inference-sidebar h6 {
+  font-size: var(--text-xs) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--text-tertiary) !important;
+  margin-bottom: var(--sp-2) !important;
+}
+
+/* ── FORMAT SELECTOR ──────────────────────────────────────── */
+#fmt-pdf,
+#fmt-docx,
+#fmt-both,
+[id^="fmt-"] {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-secondary) !important;
+  border-radius: var(--r-md) !important;
+  font-weight: 500 !important;
+  transition: all var(--dur-mid) var(--ease-out) !important;
+}
+
+[id^="fmt-"].active,
+[id^="fmt-"]:focus {
+  background: rgba(16,101,248,0.15) !important;
+  border-color: var(--brand-primary) !important;
+  color: #7EB5FF !important;
+  box-shadow: 0 0 0 2px rgba(16,101,248,0.2) !important;
+}
+
+/* ── CONFIRMATION BAR (review page bottom) ────────────────── */
+#confirmation-bar,
+.confirmation-bar {
+  background: rgba(13, 21, 38, 0.92) !important;
+  backdrop-filter: blur(24px) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+  padding: var(--sp-3) var(--sp-4) !important;
+}
+
+/* ── CHECKBOXES ───────────────────────────────────────────── */
+.form-check-input {
+  background-color: rgba(255,255,255,0.06) !important;
+  border: 1.5px solid var(--border-mid) !important;
+  border-radius: 4px !important;
+  width: 1.1em !important;
+  height: 1.1em !important;
+  transition: all var(--dur-fast) ease !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(16,101,248,0.2) !important;
+}
+
+.form-check-label {
+  color: var(--text-secondary) !important;
+  font-size: var(--text-sm) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* ── SPINNER ──────────────────────────────────────────────── */
+.spinner-border {
+  border-color: rgba(255,255,255,0.15) !important;
+  border-top-color: var(--brand-primary) !important;
+}
+
+/* ── LOADING OVERLAY ──────────────────────────────────────── */
+#loading-overlay,
+.loading-overlay {
+  background: rgba(6, 11, 23, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* ── TOASTS ───────────────────────────────────────────────── */
+.toast {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-md) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* ── CLOSE BUTTONS ────────────────────────────────────────── */
+.btn-close {
+  filter: invert(1) !important;
+  opacity: 0.4 !important;
+}
+.btn-close:hover { opacity: 0.7 !important; }
+
+/* ── PAGE LOAD ANIMATION ──────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Apply to main content sections */
+main > *,
+.container > *:not(nav),
+.main-content > * {
+  animation: fadeUp var(--dur-slow) var(--ease-out) both;
+}
+
+main > *:nth-child(1) { animation-delay: 0ms; }
+main > *:nth-child(2) { animation-delay: 60ms; }
+main > *:nth-child(3) { animation-delay: 120ms; }
+main > *:nth-child(4) { animation-delay: 180ms; }
+main > *:nth-child(5) { animation-delay: 240ms; }
+
+/* ── GENERATING / STREAMING STATE ────────────────────────── */
+/* Skeleton shimmer for loading content */
+.skeleton,
+.is-loading {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 50%,
+    rgba(255,255,255,0.04) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.6s ease-in-out infinite !important;
+  border-radius: var(--r-sm) !important;
+  color: transparent !important;
+}
+
+/* ── HRCW / RISK INDICATORS ───────────────────────────────── */
+.hrcw-badge,
+.risk-high   { color: #FF453A !important; }
+.risk-medium { color: var(--brand-warning) !important; }
+.risk-low    { color: var(--brand-success) !important; }
+
+/* ── RESPONSIVE CONTAINER ─────────────────────────────────── */
+@media (min-width: 1400px) {
+  .container,
+  .container-xl,
+  .container-xxl {
+    max-width: 1320px;
+  }
+}
+
+/* ── MOBILE REFINEMENTS ───────────────────────────────────── */
+@media (max-width: 767px) {
+  body { font-size: var(--text-sm); }
+  h1   { font-size: var(--text-2xl) !important; }
+  h2   { font-size: var(--text-xl) !important; }
+
+  .card-body { padding: var(--sp-2) !important; }
+
+  .navbar { padding: var(--sp-2) !important; }
+}
+
+/* ── UTILITY: GLOW TEXT ───────────────────────────────────── */
+.text-glow {
+  text-shadow: 0 0 20px rgba(16,101,248,0.6), 0 0 40px rgba(16,101,248,0.3);
+}
+
+/* ── UTILITY: BLUE ACCENT LINE (Samsung section divider) ──── */
+.accent-line {
+  width: 2.5rem;
+  height: 3px;
+  background: var(--brand-primary);
+  border-radius: 99px;
+  margin-bottom: var(--sp-3);
+}
+
+/* ── UTILITY: INSET LABEL ─────────────────────────────────── */
+.inset-label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+/* ── DARK GLOW CARD VARIANT ───────────────────────────────── */
+.card-glow {
+  box-shadow:
+    0 0 0 1px rgba(16,101,248,0.2),
+    0 16px 48px rgba(0,0,0,0.5),
+    0 0 40px rgba(16,101,248,0.08) !important;
+}
+
+/* ============================================================
+ * END OF SAFE METHOD DESIGN SYSTEM
+ * ============================================================ */
