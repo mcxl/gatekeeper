@@ -283,6 +283,11 @@ PRINCIPAL_CONTRACTORS = [
 ]
 
 
+@app.get("/swms", response_class=HTMLResponse)
+async def serve_swms():
+    return _html_response(os.path.join(_FRONTEND_DIR, "app.html"))
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return _html_response(os.path.join(_FRONTEND_DIR, "login.html"))
