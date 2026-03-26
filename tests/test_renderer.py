@@ -496,6 +496,13 @@ class TestDomainRegression:
                 assert "RIIOHS204A" not in content, \
                     f"Superseded unit code RIIOHS204A found in {fpath.name}"
 
+    def test_no_s225_in_inference_matrix(self):
+        """D005: s.225 is incorrect — fall prevention is in Part 4.4."""
+        root = Path(os.path.dirname(os.path.dirname(__file__)))
+        content = (root / "core" / "inference_matrix.py").read_text(encoding="utf-8")
+        assert "s.225" not in content, \
+            "Incorrect citation s.225 found — should be Part 4.4"
+
     def test_plain_english_covers_task_name(self):
         """D006: _plain_english_pass must substitute banned words in task name."""
         from core.orchestrator import _plain_english_pass

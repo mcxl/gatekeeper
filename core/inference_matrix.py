@@ -267,7 +267,7 @@ MATRIX = [
         "safework_notification": False,
         "epa_license": False,
         "notes": [
-            "WHS Reg 2017 s.225 — fall prevention for work at height",
+            "WHS Reg 2017 Part 4.4 — fall prevention hierarchy applies to all fall risk",
             "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
             "Rescue plan — documented, communicated to all workers before first use",
             "Anchor points — engineered certification required, not just visual inspection",
@@ -303,7 +303,7 @@ MATRIX = [
         "safework_notification": False,
         "epa_license": False,
         "notes": [
-            "WHS Reg 2017 s.225 — fall prevention mandatory above 2m",
+            "WHS Reg 2017 Part 4.4 — fall prevention hierarchy applies to all fall risk",
             "Scaffold handover certificate — mandatory before any use",
             "Load calculations — mandatory for heavy-duty or non-standard scaffold",
         ],
@@ -585,7 +585,7 @@ MATRIX = [
         "safework_notification": False,
         "epa_license": False,
         "notes": [
-            "WHS Reg 2017 s.225 — fall prevention hierarchy applies above 2m",
+            "WHS Reg 2017 Part 4.4 — fall prevention hierarchy applies to all fall risk",
             "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
             "Harness inspection — pre-use check logged before each shift",
             "WHS Reg 2017 r.305 — rescue procedure required before commencing work at height",
@@ -3658,7 +3658,7 @@ MATRIX = [
         "safework_notification": False,
         "epa_license": False,
         "notes": [
-            "WHS Reg 2017 s.225 — fall prevention hierarchy applies above 2m",
+            "WHS Reg 2017 Part 4.4 — fall prevention hierarchy applies to all fall risk",
             "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
             "Metal roofing — purlin-to-purlin fall risk even with harness if lanyard too long",
             "Roof perimeter — edge protection or safety mesh mandatory before work begins",
@@ -3940,7 +3940,7 @@ MATRIX = [
         "epa_license": False,
         "notes": [
             "AS/NZS 1892.1 — Portable ladders — aluminium",
-            "WHS Reg 2017 s.225 — ladder use is last resort in fall prevention hierarchy",
+            "WHS Reg 2017 Part 4.4 — ladder use is last resort in fall prevention hierarchy",
             "Fixed roof ladders — must comply with AS 1657 fixed platforms and walkways",
         ],
     },
