@@ -25,6 +25,7 @@ patch_*.py
 # Test output documents
 *.docx
 !src/Safe_Method_SWMS_Template_V1.docx
+!src/_SWMS-RPD-TASK-260318-V10_TEMPLATE.docx
 *.pdf
 real_job_*.docx
 real_job_*.pdf

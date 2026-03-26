@@ -42,15 +42,14 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 # Table indices in the rendered document.
 # Update these if the template changes (template guard will catch mismatches first).
-# These match the 9-table template (SWMS-260306-V1.docx).
-# If migrating to 10-table Safe_Method_SWMS_Template_V1.docx, update accordingly.
+# V10 template: _SWMS-RPD-TASK-260318-V10_TEMPLATE.docx
 T_COVER   = 0   # Header — project_meta + HRCW ticks
-T_TASKS   = 1   # Step-by-Step Safe Work Method
-T_MONITOR = 2   # Monitoring / Critical Control (CCVS tasks only)
+T_TASKS   = 2   # Step-by-Step Safe Work Method (V10: index 2)
+T_MONITOR = 3   # Monitoring / Critical Control (V10: index 3)
 
 # Task table row offsets
-TASK_HEADER_ROW  = 1   # Row 0 = banner, Row 1 = column headers
-TASK_FIRST_DATA  = 2   # First task data row
+TASK_HEADER_ROW  = 0   # V10: Row 0 = column headers (no template banner)
+TASK_FIRST_DATA  = 2   # Row 0 = header, Row 1 = phase banner (dynamic), Row 2+ = data
 
 # Task table column indices
 COL_TASK_NAME = 1   # Work Activity / Task

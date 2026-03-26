@@ -38,7 +38,17 @@ MID_BLUE   = RGBColor(0x2E, 0x75, 0xB6)  # Hold Point header — template #2E75B
 CODE_GREY  = RGBColor(0x40, 0x40, 0x40)  # RISK CODE: label — template #404040
 
 # —— Template —————————————————————————————————————————————————————————————
-TEMPLATE_NAME = "Safe_Method_SWMS_Template_V1.docx"
+TEMPLATE_NAME = "_SWMS-RPD-TASK-260318-V10_TEMPLATE.docx"
+
+# —— Table index map (V10 template order) —————————————————————————————————
+# Purpose              Old index  V10 index
+TBL_COVER        = 0   # cover         0 → 0
+TBL_PREREQS      = 1   # prerequisites 9 → 1
+TBL_TASKS        = 2   # task table    1 → 2
+TBL_MONITORING   = 3   # CCVS monitor  2 → 3
+TBL_RISK_MATRIX  = 4   # risk matrix   8 → 4
+TBL_SIGNOFF_FIRST = 5  # first sign-off/amendments table
+TBL_SIGNOFF_LAST  = 9  # last sign-off/amendments table
 
 # 18 HRCW flags in template order — (flag_key, checkbox_text)
 _HRCW_FLAGS_ORDERED = [
@@ -593,7 +603,7 @@ def _render_hrcw_cell(doc, hrcw_flags: dict, wah_applicable: bool) -> None:
     if wah_applicable:
         flags["falling_2m"] = True
 
-    t0 = doc.tables[0]
+    t0 = doc.tables[TBL_COVER]
     hrcw_row = t0.rows[3]
     # Single merged cell
     cell = hrcw_row.cells[0]
@@ -641,7 +651,7 @@ def _render_hrcw_cell(doc, hrcw_flags: dict, wah_applicable: bool) -> None:
 def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> None:
     """Populate Table 0 — cover page fields and HRCW checkboxes."""
     from datetime import date
-    t0 = doc.tables[0]
+    t0 = doc.tables[TBL_COVER]
 
     def _set_cover(row: int, col: int, value: str) -> None:
         cell = t0.cell(row, col)
@@ -814,13 +824,13 @@ def _build_task_table(doc, tasks) -> None:
       Col 6: Responsible                   bulleted 9pt
       Col 7: Hold Point / Stop-Work / CCVS 9pt
     """
-    t1 = doc.tables[1]
+    t1 = doc.tables[TBL_TASKS]
     _set_table_cell_margins(t1)
 
-    # Set header row (row 1) widths — banner row 0 is untouched
-    if len(t1.rows) > 1:
+    # Set header row (row 0) widths — V10 template has no banner row
+    if len(t1.rows) > 0:
         for i, w in enumerate(_COL_W_DXA):
-            t1.rows[1].cells[i].width = Dxa(w)
+            t1.rows[0].cells[i].width = Dxa(w)
 
     # Phase banner — all tasks under Phase 1 (no phase field in schema yet)
     _add_phase_banner(t1, "PHASE 1: SAFE WORK ACTIVITIES")
@@ -861,8 +871,8 @@ def _build_task_table(doc, tasks) -> None:
 
 
 def _format_risk_matrix(doc) -> None:
-    """Apply font to Table 8 — risk matrix (content untouched)."""
-    t3 = doc.tables[8]
+    """Apply font to risk matrix table (content untouched)."""
+    t3 = doc.tables[TBL_RISK_MATRIX]
     for row in t3.rows:
         for cell in row.cells:
             for para in cell.paragraphs:
@@ -899,7 +909,7 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
     Content cells (col1, col3) are cleared then written.
     Max 6 bullet items per cell.
     """
-    t9 = doc.tables[9]
+    t9 = doc.tables[TBL_PREREQS]
     _set_table_cell_margins(t9)
 
     def _clear_and_write(row_idx: int, col_idx: int, items: list[str],
@@ -1088,8 +1098,8 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
 
 
 def _build_ccvs_table(doc, tasks) -> None:
-    """Populate Table 2 — CCVS monitoring rows."""
-    t2 = doc.tables[2]
+    """Populate CCVS monitoring rows."""
+    t2 = doc.tables[TBL_MONITORING]
     _set_table_cell_margins(t2)
 
     # Re-format Table 2 header row at 9pt
@@ -1112,10 +1122,9 @@ def _build_ccvs_table(doc, tasks) -> None:
     if _cs is not None:
         hdr_trPr.remove(_cs)
 
-    # Remove blank data row (row 1), keep header
-    if len(t2.rows) > 1:
-        tr = t2.rows[1]._tr
-        tr.getparent().remove(tr)
+    # Remove all example/blank data rows after header (row 0)
+    for _dr in list(t2.rows)[1:]:
+        _dr._tr.getparent().remove(_dr._tr)
 
     # Add monitoring rows — all tasks with a valid CCVS code
     for task in tasks:
@@ -1141,8 +1150,8 @@ def _build_ccvs_table(doc, tasks) -> None:
 
 
 def _fill_signoff_table(doc) -> None:
-    """Prevent sign-off tables (T3-T7) rows from splitting across pages."""
-    for ti in range(3, 8):
+    """Prevent sign-off tables rows from splitting across pages."""
+    for ti in range(TBL_SIGNOFF_FIRST, TBL_SIGNOFF_LAST + 1):
         if len(doc.tables) <= ti:
             break
         for _row in doc.tables[ti].rows:
@@ -1177,10 +1186,7 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
         footer_date = date.today().strftime("%d%m%Y")
     else:
         footer_date = footer_date.replace("/", "")
-    _pcbu = (project_meta.get("pcbu_name") or "").strip()
-    if not _pcbu or len(_pcbu) < 4:
-        _pcbu = "Safe Method"
-    footer_text = f"SWMS-{_slug}-{footer_date}-V01 | {_pcbu}"
+    footer_text = f"SWMS-{footer_date}-V1.docx"
 
     section = doc.sections[0]
     footer = section.footer
@@ -1327,11 +1333,10 @@ def render_swms_document(
     # —— Populate tables via builder functions ————————————————————————
     _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
 
-    # Clear T1 example rows — template ships with pre-filled swing-stage
-    # content in rows 2-18. Delete all rows after header (row1) before
-    # writing task rows, or example content bleeds into every output.
-    _t1 = doc.tables[1]
-    for _tr in list(_t1.rows)[2:]:
+    # Clear task table example rows — V10 template: row 0 = header,
+    # rows 1+ = example data. Delete all rows after header (row 0).
+    _t1 = doc.tables[TBL_TASKS]
+    for _tr in list(_t1.rows)[1:]:
         _tr._tr.getparent().remove(_tr._tr)
 
     _build_task_table(doc, tasks)
