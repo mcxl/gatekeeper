@@ -49,15 +49,18 @@ work. Correct wording is "appropriate HRWL for crane class used."
 **Issue:** s.225 is not the correct regulation for fall hierarchy.
 The obligation is in Part 4.4, applies wherever there is a risk
 of fall — not only above 2m.
-**Fix:** Pending
-**Fixture:** Pending
+**Fix:** Replaced all 5 occurrences with "WHS Reg 2017 Part 4.4" in inference_matrix.py.
+**Fixture:** test_no_s225_in_inference_matrix() in test_renderer.py
+**Status:** Closed
 
 ### D006 — Plain English pass not applied to task name field
 **Found:** 2026-03-16, internal review
 **Issue:** "Inspect and rectify defects" appeared as a task name.
 Both "inspect" and "rectify" are banned words.
-**Fix:** Pending (separate prompt already issued)
-**Fixture:** Pending
+**Fix:** Added _plain_english_pass(tb) to streaming path in orchestrator.py.
+Vocab map already had inspect→check and rectify→fix.
+**Fixture:** test_plain_english_covers_task_name() in test_renderer.py
+**Status:** Closed
 
 ---
 
