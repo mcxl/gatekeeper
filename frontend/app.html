@@ -851,8 +851,9 @@ async function runAnalysis() {
       body: formData
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Analysis failed');
+      let msg = `Analysis failed: ${res.status}`;
+      try { const err = await res.json(); msg = err.error || err.detail || msg; } catch {}
+      throw new Error(msg);
     }
     const result = await res.json();
     _scopeContext = result.scope_context || null;
@@ -1015,7 +1016,11 @@ async function generate() {
         scope_context: _scopeContext
       })
     });
-    if (!streamRes.ok) throw new Error('Stream failed: ' + streamRes.status);
+    if (!streamRes.ok) {
+      let msg = `Stream failed: ${streamRes.status}`;
+      try { const err = await streamRes.json(); msg = err.error || err.detail || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const reader = streamRes.body.getReader();
     const decoder = new TextDecoder();
@@ -1113,19 +1118,26 @@ async function renderDocument(docxUrl, pdfUrl, bothUrl, payload, meta) {
     body: JSON.stringify(payload), signal: controller.signal
   };
   try {
+    async function _checkRender(res, label) {
+      if (!res.ok) {
+        let msg = `${label}: ${res.status}`;
+        try { const err = await res.json(); msg = err.error || err.detail || msg; } catch {}
+        throw new Error(msg);
+      }
+    }
     if (fmt === 'docx') {
       const res = await apiCall(API + docxUrl, opts);
-      if (!res.ok) throw new Error('Render failed: ' + res.status);
+      await _checkRender(res, 'Render failed');
       return { blob: await res.blob(), filename: buildFilename(meta), bothData: null };
     }
     if (fmt === 'pdf') {
       const res = await apiCall(API + pdfUrl, opts);
-      if (!res.ok) throw new Error('PDF render failed: ' + res.status);
+      await _checkRender(res, 'PDF render failed');
       return { blob: await res.blob(), filename: buildFilename(meta).replace('.docx', '.pdf'), bothData: null };
     }
     // both
     const res = await apiCall(API + bothUrl, opts);
-    if (!res.ok) throw new Error('Render both failed: ' + res.status);
+    await _checkRender(res, 'Render both failed');
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     return { blob: null, filename: data.docx_filename, bothData: data };
@@ -1616,8 +1628,8 @@ async function intakeConfirmGenerate() {
       }),
     });
     if (!streamRes.ok) {
-      let msg = 'Generation failed';
-      try { const err = await streamRes.json(); msg = err.detail || msg; } catch {}
+      let msg = `Generation failed: ${streamRes.status}`;
+      try { const err = await streamRes.json(); msg = err.error || err.detail || msg; } catch {}
       throw new Error(msg);
     }
 
