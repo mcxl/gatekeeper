@@ -1557,6 +1557,10 @@ async function intakeConfirmGenerate() {
     return;
   }
 
+  // Collect compliance/date fields (outside FIELD_KEYS — different id pattern)
+  const compliancePerson = (document.getElementById('iinput-compliance-person') || {}).value || '';
+  const swmsDate = (document.getElementById('iinput-swms-date') || {}).value || '';
+
   // Build project_meta and scope_context for /generate/stream
   const intakeMeta = {
     pcbu_name:             fields.pcbu_name || '',
@@ -1565,9 +1569,10 @@ async function intakeConfirmGenerate() {
     principal_contractor:  fields.principal_contractor || '',
     title:                 fields.title || '',
     work_activity_summary: fields.work_activity_summary || '',
-    supervisor:            fields.manager_name || '',
+    supervisor:            compliancePerson.trim() || fields.manager_name || '',
     work_activity:         fields.work_activity_summary || '',
     description:           fields.description,
+    date:                  swmsDate.trim(),
   };
   let intakeScope = null;
   if (fields.access_method || fields.building_type || fields.storeys || fields.occupancy) {
