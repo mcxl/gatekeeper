@@ -1661,7 +1661,11 @@ async function intakeConfirmGenerate() {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify(renderPayload),
     });
-    if (!renderRes.ok) throw new Error('Render failed: ' + renderRes.status);
+    if (!renderRes.ok) {
+      let msg = `Render failed: ${renderRes.status}`;
+      try { const err = await renderRes.json(); msg = err.error || err.detail || msg; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await renderRes.blob();
     if (blob.size < 100) throw new Error('Document generation failed \u2014 empty response');
