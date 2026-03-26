@@ -378,12 +378,8 @@
       </div>
     </div>
 
-    <!-- Email field -->
-    <div class="intake-field" style="margin-bottom:0">
-      <label>Send to email <small>(optional)</small></label>
-      <input type="email" id="intake-email"
-             placeholder="e.g. pm@company.com.au">
-    </div>
+    <!-- Email field removed: no email backend exists.
+         Will be re-added when email delivery is implemented. -->
 
     <!-- Action bar -->
     <div class="intake-action-bar">
@@ -1479,51 +1475,6 @@ function intakePopulateForm(data) {
   // Force show compliance/jurisdiction/format sections
   const intakeSections = document.querySelectorAll('#intake-review-zone .intake-section');
   intakeSections.forEach(s => s.style.display = 'block');
-}
-
-function intakeHrcwRender() {
-  const div = document.getElementById('intake-hrcw-flags');
-  const flags = _intakeFields.hrcw_categories || [];
-  div.innerHTML = '';
-  flags.forEach((h, i) => {
-    const row = document.createElement('div');
-    row.className = 'hrcw-flag-row';
-    const inp = document.createElement('input');
-    inp.type = 'text';
-    inp.value = h;
-    inp.setAttribute('aria-label', 'HRCW flag');
-    inp.addEventListener('input', () => {
-      _intakeFields.hrcw_categories[i] = inp.value;
-    });
-    const del = document.createElement('button');
-    del.className = 'hrcw-flag-del';
-    del.textContent = '\u00d7';
-    del.title = 'Remove flag';
-    del.addEventListener('click', () => intakeHrcwDelete(i));
-    row.appendChild(inp);
-    row.appendChild(del);
-    div.appendChild(row);
-  });
-  const add = document.createElement('button');
-  add.className = 'hrcw-flag-add';
-  add.textContent = '+ Add HRCW flag';
-  add.addEventListener('click', intakeHrcwAdd);
-  div.appendChild(add);
-}
-
-function intakeHrcwDelete(i) {
-  if (!_intakeFields.hrcw_categories) return;
-  _intakeFields.hrcw_categories.splice(i, 1);
-  intakeHrcwRender();
-}
-
-function intakeHrcwAdd() {
-  if (!_intakeFields.hrcw_categories) _intakeFields.hrcw_categories = [];
-  _intakeFields.hrcw_categories.push('');
-  intakeHrcwRender();
-  // Focus the new input
-  const rows = document.querySelectorAll('#intake-hrcw-flags .hrcw-flag-row');
-  if (rows.length) rows[rows.length - 1].querySelector('input').focus();
 }
 
 function intakeDownloadResult() {
