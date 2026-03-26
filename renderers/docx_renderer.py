@@ -1354,6 +1354,25 @@ def render_swms_document(
     _fill_signoff_table(doc)
     _build_footer(doc, project_meta, jur, jurisdiction, doc_date)
 
+    # —— Remove empty filler paragraphs that cause blank page gaps ————
+    # The V10 template has empty paragraphs between tables as spacing
+    # placeholders. After rendering, these create blank page gaps.
+    # Remove consecutive empty paragraphs (no text, no page break).
+    body = doc.element.body
+    for p_el in list(body.findall(qn('w:p'))):
+        # Skip if paragraph has any text content
+        if any(t.text for t in p_el.findall(f'.//{qn("w:t")}') if t.text and t.text.strip()):
+            continue
+        # Skip if paragraph has a page break run (intentional break)
+        if any(br.get(qn('w:type')) == 'page'
+               for br in p_el.findall(f'.//{qn("w:br")}')):
+            continue
+        # Skip the very first paragraph (description title)
+        if p_el == body.findall(qn('w:p'))[0]:
+            continue
+        # Remove empty filler paragraph
+        body.remove(p_el)
+
     # —— Post-render validation ———————————————————————————————————
     warnings = validate_output(doc)
     if warnings:
