@@ -1191,13 +1191,13 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
     section = doc.sections[0]
     footer = section.footer
     footer.is_linked_to_previous = False
-    if footer.paragraphs:
-        fp = footer.paragraphs[0]
-        fp.clear()
-    else:
-        fp = footer.add_paragraph()
-    fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    _run(fp, footer_text, size_pt=_SZ)
+
+    # Replace filename in footer table row 0, col 0 (template has static filename there)
+    if footer.tables:
+        cell = footer.tables[0].cell(0, 0)
+        for para in cell.paragraphs:
+            para.clear()
+        _run(cell.paragraphs[0], footer_text, size_pt=_SZ)
 
     # Resolve footer tokens in all sections
     _FOOTER_TOKENS = {
