@@ -1171,7 +1171,7 @@ def _fill_signoff_table(doc) -> None:
             _cs.set(qn('w:val'), '1')
 
 
-def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
+def _build_footer(doc, project_meta, jur, jurisdiction, doc_date, description_text: str = "") -> None:
     """Build document footer with SWMS ID slug and jurisdiction reference."""
     import re as _re
     from datetime import date
@@ -1205,6 +1205,13 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date) -> None:
         for para in cell.paragraphs:
             para.clear()
         _run(cell.paragraphs[0], footer_text, size_pt=_SZ)
+        # Replace [Insert Work Activity Here] in row 1 with description text
+        if description_text and len(footer.tables[0].rows) > 1:
+            desc_cell = footer.tables[0].cell(1, 0)
+            if "[Insert" in desc_cell.text or "[insert" in desc_cell.text:
+                for para in desc_cell.paragraphs:
+                    para.clear()
+                _run(desc_cell.paragraphs[0], description_text, size_pt=_SZ)
 
     # Resolve footer tokens in all sections
     _FOOTER_TOKENS = {
@@ -1272,10 +1279,9 @@ def render_swms_document(
             f"Wrong template file — render_swms_document requires {TEMPLATE_NAME}"
         )
 
-    # —— Body paragraph 0: Description (concise one-line title, max 10 words) ————
+    # —— Compute concise one-line description (used in P0, footer, and brief desc) ————
     _p0_text = (project_meta.get("title") or "").strip()
     if not _p0_text:
-        # Fallback: first sentence of description
         _fallback = (project_meta.get("work_activity_summary")
                      or project_meta.get("work_activity")
                      or project_meta.get("description")
@@ -1285,15 +1291,16 @@ def render_swms_document(
         if _p0_address and _p0_address in _fallback:
             _fallback = _fallback.replace(_p0_address, "").strip(" ,at-")
         _p0_text = _fallback.split(". ")[0].split(".\n")[0].rstrip(".") if _fallback else ""
-    # Cap at 10 words for a single-line title
     _p0_words = _p0_text.split()
     if len(_p0_words) > 10:
         _p0_text = " ".join(_p0_words[:10])
+
+    # —— Body paragraph 0: Description (concise one-line title) ————
     if _p0_text and doc.paragraphs:
         p0 = doc.paragraphs[0]
         if "[Insert" in p0.text or "[insert" in p0.text:
             p0.clear()
-            _run(p0, f"\u25a0 Description: {_p0_text}", bold=True, size_pt=16)
+            _run(p0, _p0_text, bold=True, size_pt=16)
         p0.paragraph_format.space_after = Pt(0)
         p0.paragraph_format.space_before = Pt(0)
         p0.paragraph_format.keep_with_next = True
@@ -1352,7 +1359,7 @@ def render_swms_document(
     _fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction)
     _build_ccvs_table(doc, tasks)
     _fill_signoff_table(doc)
-    _build_footer(doc, project_meta, jur, jurisdiction, doc_date)
+    _build_footer(doc, project_meta, jur, jurisdiction, doc_date, _p0_text)
 
     # —— Remove empty filler paragraphs that cause blank page gaps ————
     # The V10 template has empty paragraphs between tables as spacing
