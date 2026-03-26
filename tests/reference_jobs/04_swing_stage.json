@@ -8,7 +8,8 @@
     "hrcw_flags_must_include": ["falling_2m"],
     "hrcw_flags_must_exclude": [],
     "ppe_must_include": ["full body harness", "hard hat"],
-    "certs_must_include": ["irata", "rescue plan"],
+    "certs_must_include": ["irata"],
+    "quals_must_include": ["rescue plan"],
     "permits_must_include": ["working at heights permit"],
     "notes_must_include": [],
     "forbidden_strings_anywhere": ["RIIOHS204A"]

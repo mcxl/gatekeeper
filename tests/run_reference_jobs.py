@@ -76,6 +76,14 @@ def check_job(job: dict, verbose: bool = False) -> dict:
         else:
             warnings.append(f"ppe missing '{item}'")
 
+    # Qualifications that must appear
+    quals_text = " ".join(inference.get("qualifications", [])).lower()
+    for item in checklist.get("quals_must_include", []):
+        if item.lower() in quals_text:
+            passes.append(f"qual includes '{item}'")
+        else:
+            warnings.append(f"qual missing '{item}'")
+
     # Certifications that must appear
     certs_text = " ".join(inference.get("certifications", [])).lower()
     for item in checklist.get("certs_must_include", []):

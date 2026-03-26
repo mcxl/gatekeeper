@@ -9,7 +9,8 @@
     "hrcw_flags_must_exclude": [],
     "ppe_must_include": ["hard hat", "safety boots"],
     "certs_must_include": ["confined space"],
-    "permits_must_include": ["confined space entry permit", "atmospheric test"],
+    "certs_must_include": ["confined space", "atmospheric testing"],
+    "permits_must_include": ["confined space entry permit"],
     "notes_must_include": [],
     "forbidden_strings_anywhere": ["RIIOHS204A"]
   }

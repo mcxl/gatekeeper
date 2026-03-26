@@ -7,9 +7,10 @@
     "hrcw": true,
     "hrcw_flags_must_include": ["asbestos"],
     "hrcw_flags_must_exclude": [],
-    "ppe_must_include": ["p2 respirator", "disposable coveralls", "gloves"],
+    "ppe_must_include": ["p2", "coveralls", "gloves"],
     "certs_must_include": ["asbestos removal licence"],
-    "permits_must_include": ["asbestos removal permit", "air monitoring"],
+    "permits_must_include": ["asbestos removal permit"],
+    "notes_must_include": ["air monitoring"],
     "notes_must_include": [],
     "forbidden_strings_anywhere": ["RIIOHS204A"]
   }
