@@ -48,8 +48,8 @@ T_TASKS   = 2   # Step-by-Step Safe Work Method (V10: index 2)
 T_MONITOR = 3   # Monitoring / Critical Control (V10: index 3)
 
 # Task table row offsets
-TASK_HEADER_ROW  = 0   # V10: Row 0 = column headers (no template banner)
-TASK_FIRST_DATA  = 2   # Row 0 = header, Row 1 = phase banner (dynamic), Row 2+ = data
+TASK_HEADER_ROW  = 0   # V10: Row 0 = column headers
+TASK_FIRST_DATA  = 1   # Row 0 = header, Row 1+ = task data (no phase banner)
 
 # Task table column indices
 COL_TASK_NAME = 1   # Work Activity / Task

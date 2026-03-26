@@ -298,9 +298,10 @@ def _risk_cell(cell, text: str, size_pt: int = 10) -> None:
     # Handle formats like "H", "High", "High(6)", "M" etc.
     key = s.split("(")[0].strip()
     label = _RISK_LABELS.get(key, s)
-    # Preserve score suffix if present e.g. "High(6)"
+    # Preserve score suffix if present e.g. "High (6)"
     if "(" in s:
-        label = label + s[s.index("("):]
+        suffix = s[s.index("("):]
+        label = label + " " + suffix if not label.endswith(" ") else label + suffix
 
     if label.startswith("High"):     bg = _RISK_HIGH_BG
     elif label.startswith("Medium"): bg = _RISK_MED_BG
@@ -831,9 +832,13 @@ def _build_task_table(doc, tasks) -> None:
     if len(t1.rows) > 0:
         for i, w in enumerate(_COL_W_DXA):
             t1.rows[0].cells[i].width = Dxa(w)
-
-    # Phase banner — all tasks under Phase 1 (no phase field in schema yet)
-    _add_phase_banner(t1, "PHASE 1: SAFE WORK ACTIVITIES")
+        # Mark header row to repeat on each page
+        hdr_tr = t1.rows[0]._tr
+        hdr_trPr = hdr_tr.find(qn('w:trPr'))
+        if hdr_trPr is None:
+            hdr_trPr = etree.SubElement(hdr_tr, qn('w:trPr'))
+        if hdr_trPr.find(qn('w:tblHeader')) is None:
+            etree.SubElement(hdr_trPr, qn('w:tblHeader'))
 
     # Add one row per task
     for idx, task in enumerate(tasks):
@@ -1302,7 +1307,7 @@ def render_swms_document(
                 continue  # skip title paragraph (already handled above)
             if "[Insert" in para.text or "[insert" in para.text:
                 para.clear()
-                _run(para, f"Brief description: {_desc_text}", size_pt=9)
+                _run(para, f"Brief description: {_desc_text}", size_pt=12)
                 break
 
     # Remove any page breaks between P0 and Table 0
