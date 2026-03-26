@@ -1353,8 +1353,11 @@ def render_swms_document(
 
 # —— Output validation ————————————————————————————————————————————————————————
 
+# Tokens that indicate a render defect (unresolved engine placeholders).
+# '[Insert ...' tokens are intentional human-fill placeholders from the
+# template and FIELD_PLACEHOLDERS — they are NOT render defects.
 _KNOWN_PLACEHOLDER_TOKENS = [
-    'UNKNOWN', '[Insert', 'your-company',
+    'UNKNOWN', 'your-company',
     'PCBU_NAME', 'INSERT_', '{{', '}}',
 ]
 
