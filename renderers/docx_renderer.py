@@ -1380,6 +1380,16 @@ def render_swms_document(
         # Remove empty filler paragraph
         body.remove(p_el)
 
+    # —— Add spacing before major section headings ——————————————————
+    _SECTION_HEADINGS = {
+        "PRE-REQUISITES TABLE", "STEP-BY-STEP SAFE WORK METHOD TABLE",
+        "CCVS TABLE", "RISK RATING MATRIX",
+    }
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if any(text.startswith(h) for h in _SECTION_HEADINGS):
+            para.paragraph_format.space_before = Pt(12)
+
     # —— Post-render validation ———————————————————————————————————
     warnings = validate_output(doc)
     if warnings:
