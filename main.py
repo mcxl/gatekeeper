@@ -15,15 +15,13 @@ OUT_DIR = os.path.join(_ROOT, "src", "outputs")
 
 def cmd_generate(args):
     from core.library import query_task
-    from renderers.docx_renderer import render_docx
     from renderers.md_renderer import render_md
     task = query_task(args.task_name)
     os.makedirs(OUT_DIR, exist_ok=True)
     slug = args.task_name.replace(" ", "_").replace("/", "-")[:40]
     if args.output in ("docx", "both"):
-        p = os.path.join(OUT_DIR, f"{slug}.docx")
-        open(p, "wb").write(render_docx(task))
-        print(f"DOCX: {p}")
+        print("DOCX: Legacy CLI DOCX generation is retired.")
+        print("      Use /generate/stream or /v1/generate/stream for Safe Method DOCX.")
     if args.output in ("md", "both"):
         p = os.path.join(OUT_DIR, f"{slug}.md")
         open(p, "w", encoding="utf-8").write(render_md(task))
