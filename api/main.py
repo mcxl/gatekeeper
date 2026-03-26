@@ -288,6 +288,11 @@ async def serve_swms():
     return _html_response(os.path.join(_FRONTEND_DIR, "app.html"))
 
 
+@app.get("/review", response_class=HTMLResponse)
+async def serve_review():
+    return _html_response(os.path.join(_FRONTEND_DIR, "review.html"))
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return _html_response(os.path.join(_FRONTEND_DIR, "login.html"))
