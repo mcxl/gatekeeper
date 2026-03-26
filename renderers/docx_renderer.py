@@ -979,13 +979,17 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
     _clear_and_write(1, 1, final_ppe)
 
     # —— (1,3) Additional PPE — Working at Heights ————————————————————
-    _wah_items = [
-        "Fall prevention hierarchy applied: eliminate > isolate > minimise",
-        "Guardrails preferred. Fall restraint before fall arrest",
-        "Rescue plan documented for all harness work",
-        "Working at Heights licence/training verified before elevated work",
-    ]
-    _clear_and_write(1, 3, _wah_items)
+    _wah = any(getattr(t, 'wah_applicable', False) for t in tasks)
+    if _wah:
+        _wah_items = [
+            "Fall prevention hierarchy applied: eliminate > isolate > minimise",
+            "Guardrails preferred. Fall restraint before fall arrest",
+            "Rescue plan documented for all harness work",
+            "Working at Heights licence/training verified before elevated work",
+        ]
+        _clear_and_write(1, 3, _wah_items)
+    else:
+        _clear_and_write(1, 3, ["Not applicable for this scope"])
 
     # —— (2,1) Licences / Qualifications ——————————————————————————————
     qual_items = list(inference.get("qualifications", []))
@@ -1110,19 +1114,21 @@ def _build_ccvs_table(doc, tasks) -> None:
         tr = t2.rows[1]._tr
         tr.getparent().remove(tr)
 
-    # Add monitoring rows — only tasks with a real CCVS code and monitoring data
+    # Add monitoring rows — all tasks with a valid CCVS code
     for task in tasks:
-        if task.monitoring is None:
-            continue
         if validate_ccvs_code(task.ccvs_code or "N/A") == "N/A":
             continue
-        m = task.monitoring
         row = t2.add_row()
-        vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
+        if task.monitoring is not None:
+            m = task.monitoring
+            vals = [task.task, m.critical_control, m.who, m.frequency, m.evidence]
+        else:
+            # Valid CCVS but no monitoring data — render with dash placeholders
+            vals = [task.task, "\u2014", "\u2014", "\u2014", "\u2014"]
         for i, w in enumerate(_MON_W_DXA):
             row.cells[i].width = Dxa(w)
         for i, val in enumerate(vals):
-            _run(row.cells[i].paragraphs[0], val or "", size_pt=_SZ)
+            _run(row.cells[i].paragraphs[0], val or "\u2014", size_pt=_SZ)
         # Ensure data rows do NOT have tblHeader
         data_trPr = row._tr.find(qn('w:trPr'))
         if data_trPr is not None:
