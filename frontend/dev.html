@@ -224,7 +224,7 @@ body { font-family: 'Figtree', sans-serif; background: #fff; color: #444; -webki
   <div class="mode-card" onclick="selectMode(2)">
     <span class="num">02</span>
     <h3>Upload Documents</h3>
-    <p id="mode2-desc">Upload scope of works, plans, photos, or an existing SWMS. We'll extract the details automatically.</p>
+    <p id="mode2-desc">Upload scope of works, plans, photos, or an existing SWMS. We'll extract visible text and document details automatically; plans and drawings are treated as supporting context.</p>
   </div>
   <div class="mode-card" onclick="selectMode(3)">
     <span class="num">03</span>
@@ -290,7 +290,7 @@ body { font-family: 'Figtree', sans-serif; background: #fff; color: #444; -webki
   <div class="upload-zone" id="zone-plans">
     <span class="icon">&#9633;</span>
     <h4>Site Plans or Drawings</h4>
-    <div class="hint">Floor plans, site layout, elevation drawings</div>
+    <div class="hint">Floor plans, site layout, elevation drawings (text and annotations extracted; spatial content may need manual review)</div>
     <div class="accepts">PDF, PNG, JPG</div>
     <div class="file-name" id="zone-plans-name"></div>
     <input type="file" accept=".pdf,.png,.jpg,.jpeg" onchange="fileSelected(this,'zone-plans')">
@@ -613,8 +613,8 @@ function updateLabels() {
       : "Type a plain description of the work and we'll build the risk assessment from scratch.";
   document.getElementById('mode2-desc').textContent =
     dt === 'swms'
-      ? "Upload scope of works, plans, photos, or an existing SWMS. We'll extract the details automatically."
-      : "Upload scope of works, plans, photos, or an existing risk assessment. We'll extract the details automatically.";
+      ? "Upload scope of works, plans, photos, or an existing SWMS. We'll extract visible text and document details automatically; plans and drawings are treated as supporting context."
+      : "Upload scope of works, plans, photos, or an existing risk assessment. We'll extract visible text and document details automatically; plans and drawings are treated as supporting context.";
   document.getElementById('mode3-desc').textContent =
     dt === 'swms'
       ? "Step through six guided questions about the job and we'll assemble the SWMS for you."
