@@ -587,7 +587,12 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
     from fastapi.responses import StreamingResponse
     from core.orchestrator import generate_swms_stream
 
-    description = request.get("description", "")
+    description = (request.get("description") or "").strip()
+    if not description or len(description.split()) < 3:
+        return JSONResponse(
+            content={"detail": "Description is required (at least 3 words)."},
+            status_code=422,
+        )
     project_meta = request.get("project_meta", {})
     force_full = request.get("force_full", False)
     force_simple = request.get("force_simple", False)
@@ -941,7 +946,12 @@ async def v1_generate_stream(request: dict, auth: dict = Depends(get_user_or_api
     import time as _time
     from core.orchestrator import generate_swms_stream
 
-    description = request.get("description", "")
+    description = (request.get("description") or "").strip()
+    if not description or len(description.split()) < 3:
+        return JSONResponse(
+            content={"detail": "Description is required (at least 3 words)."},
+            status_code=422,
+        )
     project_meta = request.get("project_meta", {})
     force_full = request.get("force_full", False)
     force_simple = request.get("force_simple", False)
