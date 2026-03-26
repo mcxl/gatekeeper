@@ -692,15 +692,17 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
         fallback = project_meta.get("description", "")
         if fallback:
             work_activity = fallback.split(". ")[0].rstrip(".")
-    # Cap work activity at 8 lines OR 500 chars
-    if work_activity and (work_activity.count("\n") >= 8 or len(work_activity) > 500):
-        # Truncate at sentence boundary within 500 chars
-        truncated = work_activity[:500]
-        last_stop = max(truncated.rfind('. '), truncated.rfind('.\n'))
-        if last_stop > 100:
-            work_activity = truncated[:last_stop + 1]
-        else:
-            work_activity = truncated.rstrip() + '\u2026'
+    # Cap work activity at 30 words, trim at sentence boundary if possible
+    if work_activity:
+        _wa_words = work_activity.replace("\n", " ").split()
+        if len(_wa_words) > 30:
+            _wa_30 = " ".join(_wa_words[:30])
+            # Try to trim at last sentence end within those 30 words
+            _last_stop = max(_wa_30.rfind(". "), _wa_30.rfind(".\n"))
+            if _last_stop > 20:
+                work_activity = _wa_30[:_last_stop + 1]
+            else:
+                work_activity = _wa_30
 
     # Row 0: PCBU + Site address
     _set_cover(0, 1, pcbu)
@@ -1270,10 +1272,10 @@ def render_swms_document(
             f"Wrong template file — render_swms_document requires {TEMPLATE_NAME}"
         )
 
-    # —— Body paragraph 0: Description (title-only, max 100 chars) ————
+    # —— Body paragraph 0: Description (concise one-line title, max 10 words) ————
     _p0_text = (project_meta.get("title") or "").strip()
     if not _p0_text:
-        # Fallback: first sentence of description, capped
+        # Fallback: first sentence of description
         _fallback = (project_meta.get("work_activity_summary")
                      or project_meta.get("work_activity")
                      or project_meta.get("description")
@@ -1283,9 +1285,10 @@ def render_swms_document(
         if _p0_address and _p0_address in _fallback:
             _fallback = _fallback.replace(_p0_address, "").strip(" ,at-")
         _p0_text = _fallback.split(". ")[0].split(".\n")[0].rstrip(".") if _fallback else ""
-    # Hard cap 100 chars, truncate at last word boundary
-    if len(_p0_text) > 100:
-        _p0_text = _p0_text[:100].rsplit(" ", 1)[0]
+    # Cap at 10 words for a single-line title
+    _p0_words = _p0_text.split()
+    if len(_p0_words) > 10:
+        _p0_text = " ".join(_p0_words[:10])
     if _p0_text and doc.paragraphs:
         p0 = doc.paragraphs[0]
         if "[Insert" in p0.text or "[insert" in p0.text:
