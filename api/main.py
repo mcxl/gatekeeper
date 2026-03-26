@@ -324,7 +324,6 @@ async def generate(
     """
     try:
         from core.library import query_task
-        from renderers.docx_renderer import render_docx
         from renderers.md_renderer import render_md
 
         task = query_task(task_name)
@@ -338,10 +337,12 @@ async def generate(
         }
 
         if output_format in ("docx", "both"):
-            docx_bytes = render_docx(task)
-            import base64
-            result["docx_b64"] = base64.b64encode(docx_bytes).decode()
-            result["docx_filename"] = f"{task.task.replace(' ', '_')[:40]}.docx"
+            # Legacy DOCX via old templates is retired.
+            # Use /generate/stream or /v1/generate/stream for Safe Method DOCX.
+            result["docx_error"] = (
+                "Legacy DOCX generation is retired. "
+                "Use /generate/stream for Safe Method template output."
+            )
 
         if output_format in ("md", "both"):
             md_text = render_md(task)

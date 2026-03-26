@@ -559,79 +559,13 @@ def _monitoring_table(doc, task: TaskBlock) -> None:
 # —— Main render ——————————————————————————————————————————————————————————————
 
 def render_docx(task: TaskBlock) -> bytes:
-    """DEPRECATED: Legacy single-task renderer (7-col layout, old templates).
-    Used by POST /generate and main.py. New code should use render_swms_document()."""
-    root = Path(__file__).parent.parent / "src"
-    template = root / "RPD-MSW-002_Remedial_Works_Master_SWMS.docx"
-    fallback = root / "SWMS-260306-V1.docx"
-    if template.exists():
-        doc = Document(str(template))
-    elif fallback.exists():
-        doc = Document(str(fallback))
-    else:
-        doc = Document()
-
-    # Clear all existing content
-    for para in doc.paragraphs[:]:
-        para._element.getparent().remove(para._element)
-    for tbl in doc.tables[:]:
-        tbl._element.getparent().remove(tbl._element)
-
-    # Page: A4 landscape, 1cm margins
-    section = doc.sections[0]
-    section.orientation  = WD_ORIENT.LANDSCAPE
-    section.page_width   = Mm(297)
-    section.page_height  = Mm(210)
-    section.left_margin  = section.right_margin = Cm(1)
-    section.top_margin   = section.bottom_margin = Cm(1)
-
-    # Main SWMS table (legacy 7-col layout)
-    _legacy_headers = ["Task", "Hazard", "Risk\n(Pre)", "Controls", "Risk\n(Post)", "Responsibility", "CCVS\nCode"]
-    _legacy_w = [622, 1459, 2379, 875, 4475, 780, 2743]
-    table = doc.add_table(rows=2, cols=7)
-    _format_table(table)
-    for row in table.rows:
-        for i, w in enumerate(_legacy_w):
-            row.cells[i].width = Dxa(w)
-
-    # Header row
-    for i, h in enumerate(_legacy_headers):
-        _header_cell(table.rows[0].cells[i], h)
-
-    # Data row — white, risk cells coloured
-    c = table.rows[1].cells
-
-    # Col 0 — Task + scope
-    _run(c[0].paragraphs[0], task.task, bold=True)
-    if task.scope:
-        _run(c[0].add_paragraph(), "[%s]" % task.scope, color=GREY)
-
-    # Col 1 — Hazards (bulleted)
-    _hazard_cell(c[1], task)
-
-    # Col 2 — Risk Pre
-    _risk_cell(c[2], task.risk_pre or "")
-
-    # Col 3 — Controls
-    _controls_cell(c[3], task)
-
-    # Col 4 — Risk Post
-    _risk_cell(c[4], task.risk_post or "")
-
-    # Col 5 — Responsibility
-    _responsibility_cell(c[5], task)
-
-    # Col 6 — CCVS code
-    p6 = c[6].paragraphs[0]
-    p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p6, validate_ccvs_code(task.ccvs_code or "N/A"), bold=True, size_pt=10)
-
-    # Monitoring table
-    _monitoring_table(doc, task)
-
-    buf = BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
+    """REMOVED: Legacy single-task renderer using old templates.
+    Old templates (RPD-MSW-002, SWMS-260306) are retired.
+    Use render_swms_document() for all DOCX output."""
+    raise RuntimeError(
+        "render_docx() is retired. Use render_swms_document() with the "
+        "Safe Method template. See /generate/stream or /v1/generate/stream."
+    )
 
 
 _SZ = 9  # Font size for task table, monitoring table, requirements table
