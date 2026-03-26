@@ -625,6 +625,13 @@ def _render_hrcw_cell(doc, hrcw_flags: dict, wah_applicable: bool) -> None:
         rFonts.set(qn('w:hAnsiTheme'), 'minorHAnsi')
         rFonts.set(qn('w:cs'), 'Aptos')
         rPr.append(rFonts)
+        # Force 9pt for HRCW checkbox text
+        sz = OxmlElement('w:sz')
+        sz.set(qn('w:val'), '18')  # 9pt = 18 half-points
+        rPr.append(sz)
+        szCs = OxmlElement('w:szCs')
+        szCs.set(qn('w:val'), '18')
+        rPr.append(szCs)
         if bold:
             rPr.append(OxmlElement('w:b'))
             rPr.append(OxmlElement('w:bCs'))
@@ -661,7 +668,7 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
             cell._tc.remove(sdt)
         for para in cell.paragraphs:
             para.clear()
-        _run(cell.paragraphs[0], value)
+        _run(cell.paragraphs[0], value, size_pt=11)
 
     _raw_pcbu = (project_meta.get("pcbu_name")
                  or project_meta.get("pcbu")
@@ -692,17 +699,11 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
         fallback = project_meta.get("description", "")
         if fallback:
             work_activity = fallback.split(". ")[0].rstrip(".")
-    # Cap work activity at 30 words, trim at sentence boundary if possible
+    # Cap work activity at 12 words, trim at word boundary
     if work_activity:
         _wa_words = work_activity.replace("\n", " ").split()
-        if len(_wa_words) > 30:
-            _wa_30 = " ".join(_wa_words[:30])
-            # Try to trim at last sentence end within those 30 words
-            _last_stop = max(_wa_30.rfind(". "), _wa_30.rfind(".\n"))
-            if _last_stop > 20:
-                work_activity = _wa_30[:_last_stop + 1]
-            else:
-                work_activity = _wa_30
+        if len(_wa_words) > 12:
+            work_activity = " ".join(_wa_words[:12])
 
     # Row 0: PCBU + Site address
     _set_cover(0, 1, pcbu)
