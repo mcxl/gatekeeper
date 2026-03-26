@@ -651,29 +651,15 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
 
 
 def _build_filename(project_meta: dict, ext: str) -> str:
-    """Build SWMS-<address-slug>-<date>-V01.<ext> filename."""
-    import re
+    """Build SWMS-{ddmmyyyy}-V1.{ext} filename — matches footer text format."""
     from datetime import date
-    # Prefer project_address (intake flow), fall back to project_name
-    raw = (project_meta.get("project_address")
-           or project_meta.get("project_name")
-           or "Output")
-    # Strip unit/level prefixes, postcodes, state codes, country
-    raw = re.sub(r'(?i)\b(unit|level|suite|lot|shop)\s*\d+[,/]?\s*', '', raw)
-    raw = re.sub(r'\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b', '', raw, flags=re.IGNORECASE)
-    raw = re.sub(r'\b\d{4}\b', '', raw)  # strip postcodes
-    raw = re.sub(r'(?i)\b(australia)\b', '', raw)
-    # Keep only alphanumeric, spaces, hyphens
-    safe = "".join(c if c.isalnum() or c in " -" else " " for c in raw).strip()
-    # Collapse whitespace, convert to hyphen-separated
-    safe = re.sub(r'\s+', '-', safe).strip('-')
-    # Cap at suburb: keep up to 5 hyphen-separated tokens (e.g. 218-Vincent-Rd-Cranebrook)
-    parts = safe.split('-')
-    safe = '-'.join(parts[:5]) if len(parts) > 5 else safe
-    safe = safe[:40]
-    d = date.today().strftime("%y%m%d")
-    version = project_meta.get("version", "1.0").replace(".", "")
-    return f"SWMS-{safe}-{d}-V{version.zfill(2)}.{ext}"
+    d = project_meta.get("date", "")
+    if d:
+        # Normalise: strip slashes/hyphens to get digits only
+        d = d.replace("/", "").replace("-", "")
+    if not d or not d.isdigit():
+        d = date.today().strftime("%d%m%Y")
+    return f"SWMS-{d}-V1.{ext}"
 
 
 def _render_tasks_to_docx(request: dict, jurisdiction: str = "AU") -> tuple[bytes, str]:
