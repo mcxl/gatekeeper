@@ -1049,7 +1049,6 @@ if __name__ == "__main__":
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
 
 
-
 === FILE: api/upload_routes.py ===
 #!/usr/bin/env python3
 """
@@ -1237,7 +1236,6 @@ async def extract_scope(
     except Exception:
         logger.error(f"extract-scope error:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
-
 
 === FILE: api/intake_routes.py ===
 #!/usr/bin/env python3
@@ -1608,7 +1606,6 @@ async def intake_generate(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
 
 === FILE: core/orchestrator.py ===
 #!/usr/bin/env python3
@@ -2329,7 +2326,6 @@ if __name__ == "__main__":
         print(f"  CCVS: {tb.get('ccvs_code')}")
         print(f"  Controls: {len(tb.get('controls', []))}")
         print()
-
 
 === FILE: core/inference_matrix.py ===
 #!/usr/bin/env python3
@@ -9034,7 +9030,6 @@ if __name__ == "__main__":
     result = infer_to_dict(desc)
     print(json.dumps(result, indent=2))
 
-
 === FILE: core/validate.py ===
 #!/usr/bin/env python3
 """
@@ -9446,7 +9441,6 @@ def set_cell_fill(cell, colour: str = "FFFFFF") -> None:
     shd.set(qn('w:color'), 'auto')
     shd.set(qn('w:fill'), colour)
 
-
 === FILE: core/schema.py ===
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -9521,7 +9515,6 @@ class AuditEvent(BaseModel):
     inputs: str = ""
     output_hash: str = ""
     ai_unapproved: bool = False
-
 
 === FILE: core/auth.py ===
 #!/usr/bin/env python3
@@ -9696,7 +9689,6 @@ async def get_optional_user(
     except HTTPException:
         return None
 
-
 === FILE: core/api_keys.py ===
 #!/usr/bin/env python3
 """
@@ -9837,7 +9829,6 @@ async def get_user_or_api_key(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required — provide Authorization Bearer token or X-API-Key header",
     )
-
 
 === FILE: agents/decomposer.py ===
 #!/usr/bin/env python3
@@ -10011,7 +10002,6 @@ def _validate_task_manifest(manifest: dict) -> None:
         for field in ["sequence", "task", "scope", "trade_type", "hrcw", "complexity"]:
             if field not in task:
                 raise ValueError(f"Task {i+1} missing field: '{field}'")
-
 
 === FILE: agents/risk_assessor.py ===
 #!/usr/bin/env python3
@@ -10197,7 +10187,6 @@ def _validate_risk_manifest(manifest: dict, expected_count: int) -> None:
             )
         if not isinstance(risk["hazards"], list) or len(risk["hazards"]) < 2:
             raise ValueError(f"Risk {i+1} must have at least 2 hazards")
-
 
 === FILE: agents/control_writer.py ===
 #!/usr/bin/env python3
@@ -10487,7 +10476,6 @@ def _validate_control_entry(entry: dict, seq: int) -> None:
     if not ccvs.startswith("WAH") and wah:
         entry["wah_applicable"] = False  # auto-correct
 
-
 === FILE: agents/assembler.py ===
 #!/usr/bin/env python3
 """
@@ -10758,7 +10746,6 @@ def _post_process_task_block(tb: dict) -> None:
             ]
             if len(tb[field]) < len(val or []):
                 log.warning(f"Stripped [Insert placeholder from list field: {field}")
-
 
 === FILE: renderers/docx_renderer.py ===
 #!/usr/bin/env python3
@@ -12153,7 +12140,6 @@ def validate_output(doc) -> list[str]:
 
     return errors
 
-
 === FILE: renderers/pdf_renderer.py ===
 #!/usr/bin/env python3
 """
@@ -12312,7 +12298,6 @@ def _convert_docx2pdf(docx_bytes: bytes) -> bytes:
 
         with open(pdf_path, "rb") as f:
             return f.read()
-
 
 === FILE: frontend/app.html ===
 <!DOCTYPE html>
@@ -14084,7 +14069,6 @@ function intakeReset() {
 </html>
 
 
-
 === FILE: frontend/dashboard.html ===
 <!DOCTYPE html>
 <html lang="en">
@@ -14462,7 +14446,6 @@ function showComingSoon() {
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/static/sw.js');});}</script>
 </body>
 </html>
-
 
 
 
@@ -15077,6 +15060,5 @@ function declineDisclaimer() {
 
 </body>
 </html>
-
 
 
