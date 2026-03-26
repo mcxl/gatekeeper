@@ -495,3 +495,15 @@ class TestDomainRegression:
                 content = fpath.read_text(encoding="utf-8")
                 assert "RIIOHS204A" not in content, \
                     f"Superseded unit code RIIOHS204A found in {fpath.name}"
+
+    def test_plain_english_covers_task_name(self):
+        """D006: _plain_english_pass must substitute banned words in task name."""
+        from core.orchestrator import _plain_english_pass
+        tb = {"task": "Inspect and rectify defects", "scope": "Utilise prior tools"}
+        result = _plain_english_pass(tb)
+        assert "inspect" not in result["task"].lower(), \
+            "Banned word 'inspect' not substituted in task name"
+        assert "rectify" not in result["task"].lower(), \
+            "Banned word 'rectify' not substituted in task name"
+        assert "utilise" not in result["scope"].lower(), \
+            "Banned word 'utilise' not substituted in scope"

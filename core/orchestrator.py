@@ -403,6 +403,7 @@ async def generate_swms_stream(
                         pass
 
                 tb = _enforce_plain_english(tb)
+                tb = _plain_english_pass(tb)
                 _enrich_risk_labels(tb)
                 log.warning(f"Task {idx+1} complete")
                 return (idx, tb)
