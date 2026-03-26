@@ -1559,6 +1559,7 @@ async function intakeConfirmGenerate() {
 
   // Collect compliance/date fields (outside FIELD_KEYS — different id pattern)
   const compliancePerson = (document.getElementById('iinput-compliance-person') || {}).value || '';
+  const reviewPerson = (document.getElementById('iinput-review-person') || {}).value || '';
   const swmsDate = (document.getElementById('iinput-swms-date') || {}).value || '';
 
   // Build project_meta and scope_context for /generate/stream
@@ -1570,6 +1571,7 @@ async function intakeConfirmGenerate() {
     title:                 fields.title || '',
     work_activity_summary: fields.work_activity_summary || '',
     supervisor:            compliancePerson.trim() || fields.manager_name || '',
+    reviewer:              reviewPerson.trim() || fields.manager_name || '',
     work_activity:         fields.work_activity_summary || '',
     description:           fields.description,
     date:                  swmsDate.trim(),

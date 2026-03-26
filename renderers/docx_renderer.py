@@ -666,6 +666,9 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
     pc = project_meta.get("principal_contractor", pcbu)
     supervisor = (project_meta.get("supervisor_name")
                  or project_meta.get("supervisor", ""))
+    reviewer = (project_meta.get("reviewer_name")
+                or project_meta.get("reviewer", "")
+                or manager)
     work_activity = project_meta.get("work_activity_summary", "")
     if not work_activity:
         work_activity = (project_meta.get("work_activity")
@@ -701,10 +704,10 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
     _set_cover(4, 1, supervisor)
     _set_cover(4, 3, doc_date)
     # Row 6: Reviewer name + Date received by reviewer
-    _set_cover(6, 1, manager)
+    _set_cover(6, 1, reviewer)
     _set_cover(6, 3, doc_date)
     # Row 8: Reviewer signature + Review date
-    _set_cover(8, 1, manager)
+    _set_cover(8, 1, reviewer)
     _set_cover(8, 3, doc_date)
 
     # Determine wah_applicable from tasks
