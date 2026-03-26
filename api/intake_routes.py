@@ -324,7 +324,8 @@ async def intake_generate(
             task_blocks.append(
                 TaskBlock(**{k:v for k,v in t.items() if k in TaskBlock.model_fields})
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Task deserialization failed, skipping: {e}")
             continue
 
     try:

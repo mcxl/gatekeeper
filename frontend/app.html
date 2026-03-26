@@ -327,11 +327,10 @@
       </div>
     </div>
 
-    <!-- HRCW flags -->
-    <div class="intake-section" id="intake-hrcw-section" style="display:none">
-      <div class="intake-section-title">&#9888;&#65039; High Risk Construction Work Flags</div>
-      <div id="intake-hrcw-flags"></div>
-    </div>
+    <!-- HRCW flags — removed: editable UI was misleading (user edits
+         had no effect on output). HRCW flags are determined by the
+         inference engine from the job description. -->
+    <div id="intake-hrcw-section" style="display:none"></div>
 
     <!-- Missing fields warning -->
     <div id="intake-missing-warning" class="intake-missing" style="display:none"></div>
@@ -1417,15 +1416,13 @@ function intakePopulateForm(data) {
     ? `<span class="bar-warn">\u26a0\ufe0f ${absent} field${absent>1?'s':''} not found \u2014 review highlighted fields before generating</span>`
     : `<span class="bar-ok">\u2713 All fields extracted \u2014 review and confirm</span>`;
 
-  // HRCW flags — editable
+  // HRCW flags — store as metadata but do not show editable UI
+  // (HRCW is determined by inference engine, not user input)
   let hrcw = fields.hrcw_categories;
   if (!hrcw) hrcw = [];
   else if (typeof hrcw === 'string') hrcw = hrcw.split(',').map(s => s.trim()).filter(Boolean);
   else if (!Array.isArray(hrcw)) hrcw = [];
   _intakeFields.hrcw_categories = hrcw.slice();
-  const hrcwSec = document.getElementById('intake-hrcw-section');
-  hrcwSec.style.display = 'block';
-  intakeHrcwRender();
 
   // Missing warning
   if (missing > 0) {
@@ -1648,6 +1645,11 @@ async function intakeConfirmGenerate() {
           throw new Error(event.message);
         }
       }
+    }
+
+    // Validate tasks before render
+    if (!intakeTasks.length) {
+      throw new Error('No tasks were generated. Check your job description and try again.');
     }
 
     // Render step — replace panel to clear any active spinners

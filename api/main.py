@@ -616,7 +616,7 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
                     yield ": keepalive\n\n"
         except Exception as e:
             logger.error(f"Stream generation failed:\n{traceback.format_exc()}")
-            yield f"data: {json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Generation failed: {type(e).__name__}: {e}'})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -647,7 +647,7 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render DOCX failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+        return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
 
 
 def _build_filename(project_meta: dict, ext: str) -> str:
@@ -709,7 +709,8 @@ def _render_tasks_to_docx(request: dict, jurisdiction: str = "AU") -> tuple[byte
             t["monitoring"] = _sanitise_monitoring(t["monitoring"])
         try:
             task_blocks.append(TaskBlock(**{k: v for k, v in t.items() if k in TaskBlock.model_fields}))
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Task deserialization failed, skipping: {e}")
             continue
 
     from core.validate import guard_tasks
@@ -740,7 +741,7 @@ async def render_pdf_endpoint(request: dict, user: dict = Depends(get_current_us
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render PDF failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+        return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
 
 
 @app.post("/render/both")
@@ -767,7 +768,7 @@ async def render_both_endpoint(request: dict, user: dict = Depends(get_current_u
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render both failed:\n{traceback.format_exc()}")
-        return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+        return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
 
 
 # ============================================================
@@ -917,7 +918,11 @@ def check_jurisdiction(q: str, selected: str = "AU"):
     Detect if job description contains signals for a different jurisdiction.
     """
     from vocab.standards_registry import detect_jurisdiction_from_query
-    result = detect_jurisdiction_from_query(q, selected)
+    try:
+        result = detect_jurisdiction_from_query(q, selected)
+    except Exception:
+        logger.error(f"Jurisdiction detection failed:\n{traceback.format_exc()}")
+        result = {"mismatch": False, "detected": selected}
     return JSONResponse(content=result, headers={"Cache-Control": "private, max-age=60"})
 
 
