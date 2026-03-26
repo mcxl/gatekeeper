@@ -100,6 +100,8 @@
 .intake-action-bar { display:flex; justify-content:space-between; align-items:center; padding-top:20px; border-top:1px solid var(--tab-border,#333); margin-top:24px; }
 .progress-bar-wrap { height:4px; background:var(--tab-border,#333); border-radius:2px; margin-top:6px; }
 .progress-bar { height:4px; background:var(--accent,#1065F8); border-radius:2px; transition:width 0.3s; }
+.intake-spinner { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent,#1065F8); margin-right:8px; animation:intake-pulse 1s ease-in-out infinite; }
+@keyframes intake-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 </style>
 </head>
 <body>
@@ -1593,7 +1595,7 @@ async function intakeConfirmGenerate() {
   document.getElementById('istep-generate').classList.add('active');
 
   const statusPanel = document.getElementById('intake-status-panel');
-  statusPanel.innerHTML = '<div class="status-step">\u23f3 Analysing job description\u2026</div>';
+  statusPanel.innerHTML = '<div class="status-step"><span class="intake-spinner"></span> Analysing job description \u2014 engine running\u2026</div>';
 
   let intakeTasks = [];
   let intakeInference = {};
@@ -1648,7 +1650,7 @@ async function intakeConfirmGenerate() {
     }
 
     // Render step
-    statusPanel.innerHTML += '<div class="status-step">\u23f3 Rendering document\u2026</div>';
+    statusPanel.innerHTML += '<div class="status-step"><span class="intake-spinner"></span> Rendering document \u2014 engine running\u2026</div>';
     const renderPayload = {
       tasks: intakeTasks,
       project_meta: intakeMeta,
@@ -1707,7 +1709,8 @@ async function intakeConfirmGenerate() {
 
 function intakeHandleStreamEvent(event, panel) {
   if (event.type === 'route') {
-    panel.innerHTML = '<div class="status-step">\u2713 Analysed \u2014 running inference\u2026</div>';
+    panel.innerHTML = '<div class="status-step">\u2713 Analysed</div>' +
+      '<div class="status-step"><span class="intake-spinner"></span> Running inference \u2014 engine running\u2026</div>';
   } else if (event.type === 'task_count') {
     panel.innerHTML +=
       `<div class="status-step">\u2713 Inference done \u2014 ${event.count} tasks identified</div>`;
@@ -1717,20 +1720,21 @@ function intakeHandleStreamEvent(event, panel) {
     if (!bar) {
       panel.innerHTML +=
         `<div class="status-step">
-           <div>Writing controls\u2026 ${event.index+1} of ${event.total}</div>
+           <span class="intake-spinner"></span>
+           <div style="flex:1"><div>Generating tasks \u2014 engine running\u2026 ${event.index+1} of ${event.total}</div>
            <div class="progress-bar-wrap">
              <div class="progress-bar" id="intake-progress-bar"
                   style="width:${pct}%"></div>
-           </div>
+           </div></div>
          </div>`;
     } else {
       bar.style.width = pct + '%';
       bar.parentElement.previousElementSibling.textContent =
-        `Writing controls\u2026 ${event.index+1} of ${event.total}`;
+        `Generating tasks \u2014 engine running\u2026 ${event.index+1} of ${event.total}`;
     }
   } else if (event.type === 'done') {
     panel.innerHTML +=
-      '<div class="status-step">\u2713 All tasks complete \u2014 rendering document\u2026</div>';
+      '<div class="status-step">\u2713 All tasks complete</div>';
   } else if (event.type === 'error') {
     panel.innerHTML +=
       `<div class="status-step" style="color:#c00">Error: ${event.message}</div>`;
