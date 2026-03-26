@@ -6,42 +6,42 @@
 <title>Simple SWMS — Development</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Outfit:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus Jakarta Sans:wght@700&family=Outfit:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus Jakarta Sans:wght@700&family=Outfit:wght@400;500;600&display=swap"></noscript>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit-font-smoothing: antialiased; }
+body { font-family: 'Figtree', sans-serif; background: #fff; color: #444; -webkit-font-smoothing: antialiased; }
 
 /* Nav */
 .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 56px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
-.nav-wordmark { font-family: 'Fraunces', serif; font-weight: 700; font-size: 17px; color: #fff; text-decoration: none; }
+.nav-wordmark { font-family: 'Plus Jakarta Sans', serif; font-weight: 700; font-size: 17px; color: #fff; text-decoration: none; }
 .nav-mode { font-size: 11px; color: #666; font-weight: 400; letter-spacing: 1px; }
 
 /* Page header */
 .page-header { text-align: center; padding: 80px 24px 0; }
-.page-title { font-family: 'Fraunces', serif; font-weight: 900; font-size: 32px; color: #000; margin-bottom: 8px; }
+.page-title { font-family: 'Plus Jakarta Sans', serif; font-weight: 900; font-size: 32px; color: #000; margin-bottom: 8px; }
 .page-sub { font-weight: 300; font-size: 16px; color: #444; margin-bottom: 32px; }
 
 /* Document type selector */
-.doctype-label { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #444; text-align: center; margin-bottom: 12px; }
+.doctype-label { font-family: 'Figtree', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #444; text-align: center; margin-bottom: 12px; }
 .doctype-selector { max-width: 700px; margin: 0 auto 28px; padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .doctype-card { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 28px 24px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .doctype-card:hover { background: #fafafa; }
 .doctype-card.active { border: 2px solid #000; background: #f8f8f8; }
-.doctype-card .dt-label { font-family: 'Fraunces', serif; font-weight: 900; font-size: 28px; color: #000; display: block; }
-.doctype-card .dt-sub { font-family: 'Outfit', sans-serif; font-weight: 400; font-size: 13px; color: #444; margin-top: 6px; display: block; }
-.doctype-card .dt-desc { font-family: 'Outfit', sans-serif; font-weight: 300; font-size: 12px; color: #888; margin-top: 8px; line-height: 1.6; }
+.doctype-card .dt-label { font-family: 'Plus Jakarta Sans', serif; font-weight: 900; font-size: 28px; color: #000; display: block; }
+.doctype-card .dt-sub { font-family: 'Figtree', sans-serif; font-weight: 400; font-size: 13px; color: #444; margin-top: 6px; display: block; }
+.doctype-card .dt-desc { font-family: 'Figtree', sans-serif; font-weight: 300; font-size: 12px; color: #888; margin-top: 8px; line-height: 1.6; }
 
 /* Jurisdiction buttons */
 .jur-row { max-width: 860px; margin: 0 auto 24px; padding: 0 24px; display: flex; gap: 10px; justify-content: center; }
-.jur-btn { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 8px 16px; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.jur-btn { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 8px 16px; font-family: 'Figtree', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .jur-btn:hover { background: #fafafa; }
 .jur-btn.active { border: 2px solid #000; background: #f8f8f8; font-weight: 700; }
 
 /* Format selector */
-.fmt-label { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #444; text-align: center; margin-bottom: 12px; }
+.fmt-label { font-family: 'Figtree', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #444; text-align: center; margin-bottom: 12px; }
 .fmt-row { max-width: 860px; margin: 0 auto 24px; padding: 0 24px; display: flex; gap: 10px; justify-content: center; }
-.fmt-btn { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 12px 20px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.fmt-btn { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 12px 20px; font-family: 'Figtree', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .fmt-btn:hover { background: #fafafa; }
 .fmt-btn.active { border: 2px solid #000; background: #f8f8f8; }
 
@@ -50,7 +50,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 .mode-card { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 24px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .mode-card:hover { background: #fafafa; }
 .mode-card.active { border: 2px solid #000; }
-.mode-card .num { font-family: 'Fraunces', serif; font-weight: 900; font-size: 32px; color: #000; display: block; margin-bottom: 10px; }
+.mode-card .num { font-family: 'Plus Jakarta Sans', serif; font-weight: 900; font-size: 32px; color: #000; display: block; margin-bottom: 10px; }
 .mode-card h3 { font-weight: 700; font-size: 14px; color: #000; margin-bottom: 6px; }
 .mode-card p { font-size: 12px; color: #444; line-height: 1.6; }
 
@@ -64,17 +64,17 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 .field label .opt { font-weight: 400; color: #888; text-transform: none; letter-spacing: 0; }
 .field input, .field textarea, .field select {
   width: 100%; background: #fff; border: 1px solid #ccc; border-radius: 6px;
-  padding: 11px 14px; font-family: 'Outfit', sans-serif; font-size: 14px;
+  padding: 11px 14px; font-family: 'Figtree', sans-serif; font-size: 14px;
   color: #000; outline: none; transition: border-color 0.2s;
 }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: #000; }
 .field textarea { resize: vertical; }
 
 /* Buttons */
-.btn-primary { display: block; width: 100%; max-width: 480px; margin: 24px auto 0; background: #000; color: #fff; border: 1px solid #000; border-radius: 8px; padding: 14px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.btn-primary { display: block; width: 100%; max-width: 480px; margin: 24px auto 0; background: #000; color: #fff; border: 1px solid #000; border-radius: 8px; padding: 14px; font-family: 'Figtree', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
 .btn-primary:hover { background: #333; }
 .btn-primary:disabled { background: #999; cursor: not-allowed; }
-.btn-secondary { display: block; width: 100%; max-width: 480px; margin: 12px auto 0; background: #fff; color: #000; border: 1px solid #000; border-radius: 8px; padding: 14px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.btn-secondary { display: block; width: 100%; max-width: 480px; margin: 12px auto 0; background: #fff; color: #000; border: 1px solid #000; border-radius: 8px; padding: 14px; font-family: 'Figtree', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
 .btn-secondary:hover { background: #f5f5f5; }
 
 /* Upload zones */
@@ -116,7 +116,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 
 /* Inference preview */
 .inference-panel { max-width: 480px; margin: 20px auto; border: 1px solid #000; border-radius: 8px; overflow: hidden; }
-.inference-toggle { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; font-weight: 700; font-size: 13px; color: #000; background: #fff; border: none; width: 100%; text-align: left; font-family: 'Outfit', sans-serif; }
+.inference-toggle { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; font-weight: 700; font-size: 13px; color: #000; background: #fff; border: none; width: 100%; text-align: left; font-family: 'Figtree', sans-serif; }
 .inference-toggle .toggle-icon { font-size: 16px; }
 .inference-body { display: none; padding: 0 18px 18px; font-size: 13px; line-height: 1.7; color: #444; }
 .inference-body.open { display: block; }
@@ -131,7 +131,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 /* Jurisdiction warning */
 .jur-warning { max-width: 560px; margin: 8px auto 0; padding: 12px 16px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; font-size: 12px; color: #92400e; display: none; }
 .jur-warning .jur-warn-text { margin-bottom: 8px; }
-.jur-warning .jur-switch-btn { background: #fff; border: 1px solid #000; border-radius: 4px; padding: 4px 12px; font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; }
+.jur-warning .jur-switch-btn { background: #fff; border: 1px solid #000; border-radius: 4px; padding: 4px 12px; font-family: 'Figtree', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; }
 .jur-warning .jur-switch-btn:hover { background: #f5f5f5; }
 
 /* Disclaimer modal */
@@ -139,7 +139,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
 .disclaimer-overlay.visible { display: flex; }
 .disclaimer-box { background: #fff; border-radius: 12px; max-width: 560px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
 .disclaimer-header { padding: 24px 28px 16px; border-bottom: 1px solid #eee; }
-.disclaimer-header h2 { font-family: 'Fraunces', serif; font-weight: 900; font-size: 22px; color: #000; margin: 0; }
+.disclaimer-header h2 { font-family: 'Plus Jakarta Sans', serif; font-weight: 900; font-size: 22px; color: #000; margin: 0; }
 .disclaimer-header p { font-size: 13px; color: #666; margin-top: 6px; }
 .disclaimer-scroll { flex: 1; overflow-y: auto; padding: 20px 28px; font-size: 13px; line-height: 1.7; color: #444; }
 .disclaimer-scroll h3 { font-size: 14px; font-weight: 700; color: #000; margin: 16px 0 6px; }
@@ -173,7 +173,7 @@ body { font-family: 'Outfit', sans-serif; background: #fff; color: #444; -webkit
   <a href="#" class="nav-wordmark">Simple SWMS</a>
   <div style="display:flex;align-items:center;gap:16px;">
     <span class="nav-mode" id="user-email" style="color:#aaa;font-size:12px;"></span>
-    <button onclick="logout()" style="background:transparent;border:1px solid #666;color:#fff;font-family:'Outfit',sans-serif;font-size:12px;padding:6px 14px;border-radius:4px;cursor:pointer;">Log Out</button>
+    <button onclick="logout()" style="background:transparent;border:1px solid #666;color:#fff;font-family:'Figtree',sans-serif;font-size:12px;padding:6px 14px;border-radius:4px;cursor:pointer;">Log Out</button>
   </div>
 </nav>
 

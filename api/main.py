@@ -109,7 +109,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.sentry-cdn.com https://browser.sentry-cdn.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src https://fonts.gstatic.com; "
+            "font-src https://fonts.gstatic.com https://fonts.googleapis.com; "
             "img-src 'self' data:; "
             "connect-src 'self' https://o4511019411177472.ingest.us.sentry.io https://*.supabase.co; "
             "worker-src 'none';"
