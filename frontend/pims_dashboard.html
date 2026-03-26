@@ -25,7 +25,7 @@
   --green:       #00C48C;
   --green-bg:    #E6FAF4;
   --green-text:  #006B4F;
-  --amber:       #F59E0B;
+  --amber:       #1065F8;
   --amber-bg:    #FEF3C7;
   --amber-text:  #92400E;
   --red:         #EF4444;
@@ -1101,7 +1101,7 @@ function renderCharts() {
       labels: cats,
       datasets: [
         { label:'Compliant',   data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Compliant').length),   backgroundColor:'#E6FAF4', borderColor:'#00C48C', borderWidth:1.5, borderRadius:4 },
-        { label:'Conditional', data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Conditional').length), backgroundColor:'#FEF3C7', borderColor:'#F59E0B', borderWidth:1.5, borderRadius:4 },
+        { label:'Conditional', data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Conditional').length), backgroundColor:'#FEF3C7', borderColor:'#1065F8', borderWidth:1.5, borderRadius:4 },
         { label:'NCR',         data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='NCR').length),         backgroundColor:'#FEE2E2', borderColor:'#EF4444', borderWidth:1.5, borderRadius:4 },
       ]
     },
@@ -1124,7 +1124,7 @@ function renderCharts() {
     type:'doughnut',
     data:{
       labels:['Compliant','Conditional','NCR','Info'],
-      datasets:[{ data:[c,co,n,i], backgroundColor:['#E6FAF4','#FEF3C7','#FEE2E2','#EFF6FF'], borderColor:['#00C48C','#F59E0B','#EF4444','#3B82F6'], borderWidth:2, hoverOffset:6 }]
+      datasets:[{ data:[c,co,n,i], backgroundColor:['#E6FAF4','#FEF3C7','#FEE2E2','#EFF6FF'], borderColor:['#00C48C','#1065F8','#EF4444','#3B82F6'], borderWidth:2, hoverOffset:6 }]
     },
     options:{
       responsive:true, cutout:'68%',
@@ -1150,7 +1150,7 @@ function renderCcvsTable() {
     const cond  = rows.filter(o=>o.conformance_status==='Conditional').length;
     const open  = rows.filter(o=>o.action_required&&o.closeout_status!=='Closed').length;
     const pct   = total>0 ? Math.round((total-ncr-cond)/total*100) : 100;
-    const col   = pct>=80?'#00C48C':pct>=60?'#F59E0B':'#EF4444';
+    const col   = pct>=80?'#00C48C':pct>=60?'#1065F8':'#EF4444';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding-left:20px">${ccvs(code)}</td>
@@ -1342,3 +1342,4 @@ loadData();
 </script>
 </body>
 </html>
+
