@@ -1650,8 +1650,10 @@ async function intakeConfirmGenerate() {
       }
     }
 
-    // Render step
-    statusPanel.innerHTML += '<div class="status-step"><span class="intake-spinner"></span> Rendering document \u2014 engine running\u2026</div>';
+    // Render step — replace panel to clear any active spinners
+    statusPanel.innerHTML =
+      '<div class="status-step">\u2713 All tasks complete</div>' +
+      '<div class="status-step"><span class="intake-spinner"></span> Rendering document \u2014 engine running\u2026</div>';
     const renderPayload = {
       tasks: intakeTasks,
       project_meta: intakeMeta,
@@ -1692,7 +1694,10 @@ async function intakeConfirmGenerate() {
     _intakeLastUrl = url;
     _intakeLastFilename = fname;
 
-    statusPanel.innerHTML +=
+    // Success — replace panel to clear rendering spinner
+    statusPanel.innerHTML =
+      '<div class="status-step">\u2713 All tasks complete</div>' +
+      '<div class="status-step">\u2713 Document rendered</div>' +
       '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>' +
       '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">' +
         '<button class="btn-generate" style="flex:1;min-width:160px" onclick="intakeDownloadResult()">' +
