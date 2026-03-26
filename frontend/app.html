@@ -1335,6 +1335,28 @@ function intakeDrop(e) {
 
 async function intakeRunExtract(file) {
   const status = document.getElementById('intake-upload-status');
+
+  // Preflight: file type
+  const validExts = ['.pdf','.docx','.doc','.txt','.jpg','.jpeg','.png'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!validExts.includes(ext)) {
+    status.textContent = `Unsupported file type: ${ext}. Use PDF, DOCX, TXT, JPG, or PNG.`;
+    status.style.color = '#c00';
+    return;
+  }
+  // Preflight: file size (10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    status.textContent = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 10MB.`;
+    status.style.color = '#c00';
+    return;
+  }
+  // Preflight: empty file
+  if (file.size === 0) {
+    status.textContent = 'File is empty. Please select a valid document.';
+    status.style.color = '#c00';
+    return;
+  }
+
   status.textContent = 'Extracting\u2026';
   status.style.color = 'var(--text-muted)';
   document.getElementById('intake-drop').style.opacity = '0.5';
@@ -1514,8 +1536,8 @@ async function intakeConfirmGenerate() {
   // Include edited HRCW flags (filter out blank entries)
   fields.hrcw_categories = (_intakeFields.hrcw_categories || []).filter(h => h.trim());
 
-  if (!fields.description) {
-    alert('Scope Description is required before generating.');
+  if (!fields.description || fields.description.split(/\s+/).length < 5) {
+    alert('Scope Description is required (at least 5 words) before generating.');
     document.getElementById('iinput-description').focus();
     return;
   }
