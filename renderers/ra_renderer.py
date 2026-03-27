@@ -218,6 +218,37 @@ def _render_ra_supplementary_sections(
     if any("fire" in h.get("hazard", "").lower() for h in hazards):
         hold_points.append("Fire system impairment notice issued and managed before isolating existing fire services")
 
+    # Civil infrastructure hold points
+    _job = classification.get("job_type", "")
+    if _job == "civil_infrastructure" or "road_corridor" in modifiers or "live_lanes" in modifiers:
+        hold_points.append(
+            "Current traffic management arrangement accepted by principal contractor "
+            "before any works commence in the road corridor"
+        )
+    if any("excavat" in h.get("hazard", "").lower() or "trench" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append(
+            "Service proving (potholing / NDD) completed and results reviewed "
+            "before machine excavation in identified service zones"
+        )
+        hold_points.append(
+            "Trench or excavation inspected by competent person before worker entry "
+            "or approach — reinspect after rain, vibration, or overnight"
+        )
+    if "utility_relocation" in modifiers or any("sydney water" in h.get("hazard", "").lower() or "water main" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append(
+            "Sydney Water hold points and witness points satisfied before "
+            "connection to or disconnection from live main"
+        )
+    if any("pavement" in h.get("hazard", "").lower() or "compaction" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append(
+            "Pavement layer compaction testing accepted before next layer placed"
+        )
+    if "traffic_signals" in modifiers or any("traffic signal" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append(
+            "Traffic signal commissioning inspected and accepted by Transport for NSW "
+            "or relevant authority before energisation"
+        )
+
     # Always include
     hold_points.append("Site induction completed for all workers before first entry")
     hold_points.append("SWMS reviewed and signed by all workers before commencing relevant high-risk tasks")
