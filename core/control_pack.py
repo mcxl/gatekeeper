@@ -203,7 +203,6 @@ def build_swms_matrix(
     for pkg_keyword in trade_packages:
         defaults = _TRADE_PACKAGE_DEFAULTS.get(pkg_keyword.lower())
         if not defaults:
-            # Unknown trade package — add with minimal info
             matrix.append({
                 "trade_package": pkg_keyword.replace("_", " ").title(),
                 "hrcw_refs": [],
@@ -211,6 +210,7 @@ def build_swms_matrix(
                 "submitted_by": "[Insert subcontractor]",
                 "reviewed_by": "Site Manager",
                 "required_before": "Before commencement of relevant works",
+                "status": "provisional",
             })
             continue
 
@@ -222,6 +222,12 @@ def build_swms_matrix(
         # Filter HRCW refs to only those that are active
         relevant_refs = [r for r in defaults["hrcw_refs"] if r in active_hrcw]
 
+        # Determine if this package is from a conditional HRCW
+        all_conditional = all(
+            any(h["ref"] == r and h["status"] == "CONDITIONAL" for h in hrcw_register)
+            for r in relevant_refs
+        ) if relevant_refs else False
+
         matrix.append({
             "trade_package": pkg_keyword.replace("_", " ").title(),
             "hrcw_refs": relevant_refs,
@@ -229,6 +235,7 @@ def build_swms_matrix(
             "submitted_by": "[Insert subcontractor]",
             "reviewed_by": "Site Manager",
             "required_before": defaults["required_before"],
+            "status": "provisional" if all_conditional else "confirmed",
         })
 
     return matrix
@@ -412,31 +419,69 @@ def _build_control_pack_hold_points(
 
 # ── Risk Register ────────────────────────────────────────────────────────────
 
+# Map hazard keywords to trade package groups for risk register
+_HAZARD_TO_PACKAGE = [
+    ("Traffic Management", ["traffic", "live lane", "live road", "pedestrian", "road corridor"]),
+    ("Service Location and NDD", ["service location", "ndd", "potholing", "dial before"]),
+    ("Sydney Water Asset Relocation", ["sydney water", "water main", "water asset"]),
+    ("Stormwater Drainage", ["stormwater", "drainage", "culvert", "headwall"]),
+    ("Earthworks and Pavement", ["pavement", "earthworks", "compaction", "subbase", "road base", "asphalt", "chip seal"]),
+    ("T-Intersection and Traffic Signals", ["intersection", "traffic signal", "traffic light"]),
+    ("Kerb, Gutter and Footpath", ["kerb", "footpath", "pedestrian ramp"]),
+    ("Electrical Works", ["electrical", "energised", "switchboard", "cable"]),
+    ("Gas Main Works", ["gas main", "gas pipe", "pressurised gas"]),
+    ("Scaffold and Access", ["scaffold", "ewp", "access platform"]),
+    ("Facade Works", ["facade", "external wall", "coating", "waterproof", "spalling"]),
+]
+
+
+def _assign_package_group(hazard_name: str) -> str:
+    """Assign a hazard to the most relevant trade package group."""
+    nl = hazard_name.lower()
+    for group, keywords in _HAZARD_TO_PACKAGE:
+        if any(kw in nl for kw in keywords):
+            return group
+    return "General Construction"
+
+
 def _build_risk_register(hazards: list[dict], phase_groups: list[dict]) -> list[dict]:
-    """Reformat hazard list into risk register entries grouped by phase/trade."""
+    """Reformat hazard list into risk register entries grouped by trade package."""
+    # First assign each hazard to a package group
+    entries = []
+    for h in hazards:
+        ctrls = h.get("controls", {})
+        eng = ctrls.get("engineering", [])
+        adm = ctrls.get("admin", [])
+        control_summary = ". ".join(eng[:1] + adm[:1]) if (eng or adm) else "Refer to site-specific controls"
+
+        group = _assign_package_group(h.get("hazard", ""))
+        confidence = h.get("confidence", "if_applicable")
+
+        entries.append({
+            "group": group,
+            "activity": h.get("hazard", ""),
+            "hrcw_category": h.get("phase", ""),
+            "initial_risk": h.get("risk_level", "Medium"),
+            "controls": control_summary,
+            "residual_risk": h.get("residual_level", "Low"),
+            "responsible": h.get("responsible", "Supervisor"),
+            "status": "confirmed" if confidence == "confirmed" else "provisional",
+        })
+
+    # Sort by group, then assign refs
+    # Preserve a sensible group order
+    _GROUP_ORDER = [g for g, _ in _HAZARD_TO_PACKAGE] + ["General Construction"]
+    entries.sort(key=lambda e: (
+        _GROUP_ORDER.index(e["group"]) if e["group"] in _GROUP_ORDER else 99,
+        e["activity"]
+    ))
+
     register = []
     ref_num = 1
-
-    for pg in phase_groups:
-        group_name = pg["phase"]
-        for h in pg["hazards"]:
-            # Build one-line summary control
-            ctrls = h.get("controls", {})
-            eng = ctrls.get("engineering", [])
-            adm = ctrls.get("admin", [])
-            control_summary = ". ".join(eng[:1] + adm[:1]) if (eng or adm) else "Refer to site-specific controls"
-
-            register.append({
-                "group": group_name,
-                "ref": f"RR-{ref_num:02d}",
-                "activity": h.get("hazard", ""),
-                "hrcw_category": h.get("phase", ""),
-                "initial_risk": h.get("risk_level", "Medium"),
-                "controls": control_summary,
-                "residual_risk": h.get("residual_level", "Low"),
-                "responsible": h.get("responsible", "Supervisor"),
-            })
-            ref_num += 1
+    for e in entries:
+        e["ref"] = f"RR-{ref_num:02d}"
+        register.append(e)
+        ref_num += 1
 
     return register
 

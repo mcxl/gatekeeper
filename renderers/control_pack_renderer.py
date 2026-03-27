@@ -207,19 +207,22 @@ def render_control_pack(pack: dict) -> bytes:
 
     swms = pack.get("swms_matrix", [])
     if swms:
-        sw_table = doc.add_table(rows=1 + len(swms), cols=5)
+        sw_table = doc.add_table(rows=1 + len(swms), cols=6)
         _set_cell_borders(sw_table)
 
-        for ci, header in enumerate(["Trade Package", "HRCW Ref", "SWMS Title", "Reviewed By", "Required Before"]):
+        for ci, header in enumerate(["Trade Package", "Status", "HRCW Ref", "SWMS Title", "Reviewed By", "Required Before"]):
             _header_cell(sw_table.cell(0, ci), header)
 
         for ri, entry in enumerate(swms):
             row = ri + 1
             _run(sw_table.cell(row, 0).paragraphs[0], entry.get("trade_package", ""), bold=True, size_pt=_SZ)
-            _run(sw_table.cell(row, 1).paragraphs[0], ", ".join(entry.get("hrcw_refs", [])), size_pt=_SZ)
-            _run(sw_table.cell(row, 2).paragraphs[0], entry.get("swms_title", ""), size_pt=_SZ)
-            _run(sw_table.cell(row, 3).paragraphs[0], entry.get("reviewed_by", ""), size_pt=8, color=GREY)
-            _run(sw_table.cell(row, 4).paragraphs[0], entry.get("required_before", ""), size_pt=8)
+            status = entry.get("status", "confirmed")
+            _shade(sw_table.cell(row, 1), "D4EDDA" if status == "confirmed" else "FFF3CD")
+            _run(sw_table.cell(row, 1).paragraphs[0], status.upper(), bold=True, size_pt=7)
+            _run(sw_table.cell(row, 2).paragraphs[0], ", ".join(entry.get("hrcw_refs", [])), size_pt=_SZ)
+            _run(sw_table.cell(row, 3).paragraphs[0], entry.get("swms_title", ""), size_pt=_SZ)
+            _run(sw_table.cell(row, 4).paragraphs[0], entry.get("reviewed_by", ""), size_pt=8, color=GREY)
+            _run(sw_table.cell(row, 5).paragraphs[0], entry.get("required_before", ""), size_pt=8)
     else:
         _run(doc.add_paragraph(), "No trade packages identified.", size_pt=_SZ, italic=True)
 
@@ -287,13 +290,23 @@ def render_control_pack(pack: dict) -> bytes:
                 _run(merged.paragraphs[0], group, bold=True, size_pt=9)
 
             row = rr_table.add_row()
-            _run(row.cells[0].paragraphs[0], entry.get("ref", ""), bold=True, size_pt=8)
+            ref_text = entry.get("ref", "")
+            if entry.get("status") == "provisional":
+                ref_text += " *"
+            _run(row.cells[0].paragraphs[0], ref_text, bold=True, size_pt=8)
             _run(row.cells[1].paragraphs[0], entry.get("activity", ""), size_pt=8)
             _run(row.cells[2].paragraphs[0], entry.get("hrcw_category", ""), size_pt=7, color=GREY)
             _run(row.cells[3].paragraphs[0], entry.get("initial_risk", ""), size_pt=8)
             _run(row.cells[4].paragraphs[0], entry.get("controls", ""), size_pt=8)
             _run(row.cells[5].paragraphs[0], entry.get("residual_risk", ""), size_pt=8)
             _run(row.cells[6].paragraphs[0], entry.get("responsible", ""), size_pt=8)
+        # Footnote for provisional marker
+        has_provisional = any(e.get("status") == "provisional" for e in rr)
+        if has_provisional:
+            fn = doc.add_paragraph()
+            fn.paragraph_format.space_before = Pt(4)
+            _run(fn, "* Provisional \u2014 confirm whether this hazard applies to the actual project scope.",
+                 size_pt=8, italic=True, color=GREY)
     else:
         _run(doc.add_paragraph(), "No risk register entries.", size_pt=_SZ, italic=True)
 
