@@ -6935,11 +6935,21 @@ def classify_swms_scope(description: str) -> dict:
                                "body corporate", "occupants"],
         "high_rise":         ["storey", "story", "floor", "level", "high-rise", "high rise",
                               "multi-storey", "multi-story"],
+        "ewp_transfer":      ["ewp transfer", "transfer to roof", "transfer from ewp",
+                              "guardrail opening", "platform to roof", "roof transfer",
+                              "transfer through guardrail", "transfer via guardrail"],
     }
     scope_modifiers = []
     for mod, keywords in _MODIFIER_RULES.items():
         if any(kw in text for kw in keywords):
             scope_modifiers.append(mod)
+
+    # Compound detection: EWP + transfer context = ewp_transfer
+    if "ewp_transfer" not in scope_modifiers:
+        has_ewp = any(kw in text for kw in ["ewp", "scissor lift", "boom lift", "elevated work platform"])
+        has_transfer = any(kw in text for kw in ["transfer", "roof access", "access to roof"])
+        if has_ewp and has_transfer:
+            scope_modifiers.append("ewp_transfer")
 
     return {
         "job_type": job_type,

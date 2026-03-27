@@ -646,6 +646,7 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
             ]
     _propagate_scaffold_wah(tb, inference)
     _inject_occupied_controls(tb, inference)
+    _inject_ewp_transfer_controls(tb, inference)
     tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
 
@@ -771,6 +772,67 @@ def _inject_occupied_controls(tb: dict, inference: dict) -> None:
                 if sw not in stop_work:
                     stop_work.append(sw)
                     existing_text += " " + sw.lower()
+
+
+# —— EWP transfer-point control injection ─────────────────────────────────────
+
+_TRANSFER_TASK_KEYWORDS = [
+    "transfer", "guardrail opening", "platform to roof", "roof to platform",
+    "ewp to roof", "roof to ewp", "return to lift", "return to platform",
+    "cross guardrail", "step onto roof", "step off roof",
+]
+
+_EWP_TRANSFER_CONTROLS = [
+    "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+    "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+    "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+    "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+]
+
+_EWP_TRANSFER_HOLD_POINTS = [
+    "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+]
+
+_EWP_TRANSFER_STOP_WORK = [
+    "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+    "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+    "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind",
+]
+
+
+def _inject_ewp_transfer_controls(tb: dict, inference: dict) -> None:
+    """
+    Inject specialist EWP-to-roof transfer controls when the scope
+    involves EWP transfer and the task is a transfer step.
+    """
+    classification = inference.get("swms_classification", {})
+    modifiers = classification.get("scope_modifiers", [])
+    if "ewp_transfer" not in modifiers and "ewp_access" not in modifiers:
+        return
+
+    task_name = tb.get("task", "").lower()
+    if not any(kw in task_name for kw in _TRANSFER_TASK_KEYWORDS):
+        return
+
+    controls = tb.setdefault("controls", [])
+    hold_points = tb.setdefault("hold_points", [])
+    stop_work = tb.setdefault("stop_work", [])
+    existing_text = " ".join(controls + hold_points + stop_work).lower()
+
+    # Inject hold point first (mandatory gate — always add for transfer tasks)
+    for hp in _EWP_TRANSFER_HOLD_POINTS:
+        if hp not in hold_points:
+            hold_points.insert(0, hp)
+
+    # Inject critical controls at top
+    for ctrl in reversed(_EWP_TRANSFER_CONTROLS):
+        if ctrl not in controls:
+            controls.insert(0, ctrl)
+
+    # Inject stop-work triggers
+    for sw in _EWP_TRANSFER_STOP_WORK:
+        if sw not in stop_work:
+            stop_work.append(sw)
 
 
 def _enforce_sil_scoring(tb: dict) -> None:
