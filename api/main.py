@@ -239,8 +239,7 @@ async def serve_pims():
 
 @app.get("/ra", response_class=HTMLResponse)
 async def serve_ra():
-    # RA spec TBD — serve dashboard for now
-    return _html_response(os.path.join(_FRONTEND_DIR, "dashboard.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "dev.html"))
 
 
 @app.get("/contact", response_class=HTMLResponse)
