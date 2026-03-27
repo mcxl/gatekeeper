@@ -682,26 +682,7 @@ def _render_tasks_to_docx(request: dict, jurisdiction: str = "AU") -> tuple[byte
     if not tasks_raw:
         raise ValueError("No tasks provided")
 
-    # Sanitise monitoring frequency
-    _VALID_FREQ = {"before each use", "each shift start", "continuous", "daily", "weekly"}
-    _FREQ_MAP = {
-        "before use": "before each use", "prior to each use": "before each use",
-        "pre-use": "before each use", "start of shift": "each shift start",
-        "shift start": "each shift start", "per shift": "each shift start",
-        "every shift": "each shift start", "before each shift start": "each shift start",
-        "ongoing": "continuous", "continuously": "continuous",
-        "constant": "continuous", "real-time": "continuous",
-        "each day": "daily", "every day": "daily", "once daily": "daily",
-        "each week": "weekly", "once weekly": "weekly", "every week": "weekly",
-    }
-
-    def _sanitise_monitoring(mon):
-        if not isinstance(mon, dict):
-            return None
-        freq = mon.get("frequency", "")
-        if freq not in _VALID_FREQ:
-            mon["frequency"] = _FREQ_MAP.get(freq.lower().strip(), "daily")
-        return mon
+    from core.validate import normalise_monitoring_freq
 
     task_blocks = []
     for t in tasks_raw:
@@ -711,7 +692,7 @@ def _render_tasks_to_docx(request: dict, jurisdiction: str = "AU") -> tuple[byte
         t.setdefault("risk_post", "L")
         t.setdefault("source", "ai-generated")
         if t.get("monitoring"):
-            t["monitoring"] = _sanitise_monitoring(t["monitoring"])
+            t["monitoring"] = normalise_monitoring_freq(t["monitoring"])
         try:
             task_blocks.append(TaskBlock(**{k: v for k, v in t.items() if k in TaskBlock.model_fields}))
         except Exception as e:

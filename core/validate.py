@@ -357,6 +357,36 @@ validate_task = score_task
 
 
 # ============================================================
+# MONITORING FREQUENCY NORMALIZATION
+# ============================================================
+
+VALID_MONITORING_FREQ = {
+    "before each use", "each shift start", "continuous", "daily", "weekly",
+}
+
+MONITORING_FREQ_MAP = {
+    "before use": "before each use", "prior to each use": "before each use",
+    "pre-use": "before each use",
+    "start of shift": "each shift start", "shift start": "each shift start",
+    "per shift": "each shift start", "every shift": "each shift start",
+    "before each shift start": "each shift start",
+    "ongoing": "continuous", "continuously": "continuous",
+    "constant": "continuous", "real-time": "continuous",
+    "each day": "daily", "every day": "daily", "once daily": "daily",
+    "each week": "weekly", "once weekly": "weekly", "every week": "weekly",
+}
+
+
+def normalise_monitoring_freq(mon: dict | None) -> dict | None:
+    """Normalise monitoring.frequency to an approved value. Returns None if not a dict."""
+    if not isinstance(mon, dict):
+        return None
+    freq = mon.get("frequency", "")
+    if freq not in VALID_MONITORING_FREQ:
+        mon["frequency"] = MONITORING_FREQ_MAP.get(freq.lower().strip(), "daily")
+    return mon
+
+
 # PRE-RENDER GUARDS (FIX_G)
 # ============================================================
 

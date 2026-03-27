@@ -300,14 +300,7 @@ async def intake_generate(
     tasks_raw = result.get("tasks", [])
     inference = result.get("inference", {})
 
-    _VALID_FREQ = {"before each use","each shift start","continuous","daily","weekly"}
-    _FREQ_MAP = {
-        "before use":"before each use","prior to each use":"before each use",
-        "start of shift":"each shift start","shift start":"each shift start",
-        "ongoing":"continuous","continuously":"continuous",
-        "each day":"daily","every day":"daily",
-        "each week":"weekly","every week":"weekly",
-    }
+    from core.validate import normalise_monitoring_freq
 
     task_blocks = []
     for t in tasks_raw:
@@ -316,10 +309,8 @@ async def intake_generate(
         t.setdefault("risk_pre", "M")
         t.setdefault("risk_post", "L")
         t.setdefault("source", "ai-generated")
-        if t.get("monitoring") and isinstance(t["monitoring"], dict):
-            freq = t["monitoring"].get("frequency","")
-            if freq not in _VALID_FREQ:
-                t["monitoring"]["frequency"] = _FREQ_MAP.get(freq.lower().strip(),"daily")
+        if t.get("monitoring"):
+            t["monitoring"] = normalise_monitoring_freq(t["monitoring"])
         try:
             task_blocks.append(
                 TaskBlock(**{k:v for k,v in t.items() if k in TaskBlock.model_fields})
