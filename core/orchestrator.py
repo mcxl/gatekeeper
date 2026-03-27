@@ -625,8 +625,56 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
                 strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
                 for ctrl in tb[field]
             ]
+    _propagate_scaffold_wah(tb, inference)
     tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
+
+
+# Ground-level task keywords — tasks that should NOT inherit WAH even with scaffold access
+_GROUND_LEVEL_KEYWORDS = frozenset([
+    "set up site", "site setup", "establish site", "mobilise", "mobilize",
+    "demobilise", "demobilize", "handover", "clean up", "clean site",
+    "restore common", "final inspection", "site office", "induction",
+    "traffic management", "hoarding", "signage",
+])
+
+
+def _propagate_scaffold_wah(tb: dict, inference: dict) -> None:
+    """
+    Propagate WAH to tasks performed from scaffold access.
+
+    If the job involves scaffold (from inference HRCW flags or description
+    keywords), elevated tasks should have WAH CCVS codes. Ground-level
+    tasks (site setup, cleanup, handover) are excluded.
+    """
+    # Only propagate if scaffold access is indicated
+    hrcw_flags = inference.get("hrcw_flags", {})
+    has_scaffold = hrcw_flags.get("falling_2m", False)
+    if not has_scaffold:
+        return
+
+    ccvs = tb.get("ccvs_code", "N/A")
+    if ccvs.startswith("WAH"):
+        return  # already WAH-coded
+
+    task_name = tb.get("task", "").lower()
+
+    # Skip ground-level tasks
+    if any(kw in task_name for kw in _GROUND_LEVEL_KEYWORDS):
+        return
+
+    # Check if task content references elevated work or scaffold
+    all_text = (task_name + " " + " ".join(tb.get("controls", []))
+                + " " + " ".join(tb.get("hazards", []))).lower()
+    _ELEVATED_SIGNALS = [
+        "scaffold", "height", "elevated", "fall from", "at height",
+        "facade", "balcony", "external wall", "above ground",
+        "harness", "lanyard", "anchor point",
+    ]
+    if any(sig in all_text for sig in _ELEVATED_SIGNALS):
+        # Task is elevated — propagate WAH
+        if ccvs == "N/A" or not ccvs.startswith("WAH"):
+            tb["ccvs_code"] = "WAH-H6"
 
 
 def _enforce_sil_scoring(tb: dict) -> None:
