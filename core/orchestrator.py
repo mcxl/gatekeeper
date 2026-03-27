@@ -630,27 +630,35 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
     return tb
 
 
-# Ground-level task keywords — tasks that should NOT inherit WAH even with scaffold access
-_GROUND_LEVEL_KEYWORDS = frozenset([
-    "set up site", "site setup", "establish site", "mobilise", "mobilize",
-    "demobilise", "demobilize", "handover", "clean up", "clean site",
-    "restore common", "final inspection", "site office", "induction",
-    "traffic management", "hoarding", "signage",
-])
+# Task name keywords that indicate elevated execution — WAH should be propagated
+_ELEVATED_TASK_KEYWORDS = [
+    # Scaffold work (match even with words between erect/dismantle and scaffold)
+    "erect scaffold", "dismantle scaffold", "scaffold erect", "scaffold dismantle",
+    "install scaffold", "remove scaffold", "strip scaffold",
+    "erect modular scaffold", "erect tube", "scaffold system",
+    # Facade / external work performed at height
+    "facade", "external wall", "balcony", "balustrade",
+    "spalling", "render", "coating", "waterproof", "sealant",
+    "cladding", "curtain wall", "window",
+    # Explicit height references
+    "at height", "elevated", "above ground",
+    # Repair/inspection on the building face
+    "repair concrete", "concrete repair", "patch", "grind",
+    "apply protective", "apply coating", "prime",
+    "check completed", "check remedial", "check all", "fix defect",
+    "inspect facade", "inspect scaffold", "touchup",
+]
 
 
 def _propagate_scaffold_wah(tb: dict, inference: dict) -> None:
     """
-    Propagate WAH to tasks performed from scaffold access.
+    Propagate WAH to tasks clearly executed at height on a scaffold job.
 
-    If the job involves scaffold (from inference HRCW flags or description
-    keywords), elevated tasks should have WAH CCVS codes. Ground-level
-    tasks (site setup, cleanup, handover) are excluded.
+    Only the task name is checked — not controls or hazards, which may
+    mention scaffold context without the task itself being elevated.
     """
-    # Only propagate if scaffold access is indicated
     hrcw_flags = inference.get("hrcw_flags", {})
-    has_scaffold = hrcw_flags.get("falling_2m", False)
-    if not has_scaffold:
+    if not hrcw_flags.get("falling_2m", False):
         return
 
     ccvs = tb.get("ccvs_code", "N/A")
@@ -659,22 +667,15 @@ def _propagate_scaffold_wah(tb: dict, inference: dict) -> None:
 
     task_name = tb.get("task", "").lower()
 
-    # Skip ground-level tasks
-    if any(kw in task_name for kw in _GROUND_LEVEL_KEYWORDS):
+    if any(kw in task_name for kw in _ELEVATED_TASK_KEYWORDS):
+        tb["ccvs_code"] = "WAH-H6"
         return
 
-    # Check if task content references elevated work or scaffold
-    all_text = (task_name + " " + " ".join(tb.get("controls", []))
-                + " " + " ".join(tb.get("hazards", []))).lower()
-    _ELEVATED_SIGNALS = [
-        "scaffold", "height", "elevated", "fall from", "at height",
-        "facade", "balcony", "external wall", "above ground",
-        "harness", "lanyard", "anchor point",
-    ]
-    if any(sig in all_text for sig in _ELEVATED_SIGNALS):
-        # Task is elevated — propagate WAH
-        if ccvs == "N/A" or not ccvs.startswith("WAH"):
-            tb["ccvs_code"] = "WAH-H6"
+    # Catch scaffold erection/dismantling even with words between verb and 'scaffold'
+    if "scaffold" in task_name and any(
+        v in task_name for v in ("erect", "dismantle", "install", "remove", "strip")
+    ):
+        tb["ccvs_code"] = "WAH-H6"
 
 
 def _enforce_sil_scoring(tb: dict) -> None:
