@@ -188,6 +188,17 @@ def render_control_pack(pack: dict) -> bytes:
             reason = reason or "Confirm on site before work"
         _run(hrcw_table.cell(row, 3).paragraphs[0], reason, size_pt=8, color=GREY)
 
+    # ── SWMS Review Benchmark Note ──────────────────────────────────────
+    bench_p = doc.add_paragraph()
+    bench_p.paragraph_format.space_before = Pt(12)
+    _run(bench_p, "SWMS Review Benchmark: ", bold=True, size_pt=9)
+    _run(bench_p, (
+        "When reviewing a subcontractor SWMS against this register, confirm that the SWMS "
+        "addresses all project hazards relevant to the submitted scope and method. "
+        "Alternative controls may be acceptable where they are equivalent or stronger and "
+        "suitable for the specific scope. The SWMS should be project-specific, not a generic template."
+    ), size_pt=9, color=GREY)
+
     # ── Section 4: SWMS Matrix ────────────────────────────────────────────
     _heading(doc, "4. SWMS Matrix")
     note2_p = doc.add_paragraph()
@@ -215,24 +226,30 @@ def render_control_pack(pack: dict) -> bytes:
     # ── Section 5: Hold Point Schedule ────────────────────────────────────
     _heading(doc, "5. Hold Point Schedule")
     note3_p = doc.add_paragraph()
-    _run(note3_p, "Mandatory stops in the construction programme.",
+    _run(note3_p, "Mandatory stops in the construction programme. ",
+         size_pt=9, italic=True, color=GREY)
+    _run(note3_p, "WHS = WHS-critical no-go point. QA = quality/authority release point.",
          size_pt=9, italic=True, color=GREY)
 
     hps = pack.get("hold_points", [])
     if hps:
-        hp_table = doc.add_table(rows=1 + len(hps), cols=5)
+        hp_table = doc.add_table(rows=1 + len(hps), cols=6)
         _set_cell_borders(hp_table)
 
-        for ci, header in enumerate(["Ref", "Hold Point", "Condition", "Authorised By", "Evidence Required"]):
+        for ci, header in enumerate(["Ref", "Type", "Hold Point", "Condition", "Authorised By", "Evidence Required"]):
             _header_cell(hp_table.cell(0, ci), header)
 
         for ri, entry in enumerate(hps):
             row = ri + 1
             _run(hp_table.cell(row, 0).paragraphs[0], entry.get("ref", ""), bold=True, size_pt=_SZ)
-            _run(hp_table.cell(row, 1).paragraphs[0], entry.get("name", ""), size_pt=_SZ)
-            _run(hp_table.cell(row, 2).paragraphs[0], entry.get("condition", ""), size_pt=8)
-            _run(hp_table.cell(row, 3).paragraphs[0], entry.get("authorised_by", ""), size_pt=8)
-            _run(hp_table.cell(row, 4).paragraphs[0], entry.get("evidence_required", ""), size_pt=8)
+            hp_type = entry.get("type", "whs_critical")
+            type_label = "WHS" if hp_type == "whs_critical" else "QA"
+            _shade(hp_table.cell(row, 1), "D4EDDA" if hp_type == "whs_critical" else "E8EDF3")
+            _run(hp_table.cell(row, 1).paragraphs[0], type_label, bold=True, size_pt=8)
+            _run(hp_table.cell(row, 2).paragraphs[0], entry.get("name", ""), size_pt=_SZ)
+            _run(hp_table.cell(row, 3).paragraphs[0], entry.get("condition", ""), size_pt=8)
+            _run(hp_table.cell(row, 4).paragraphs[0], entry.get("authorised_by", ""), size_pt=8)
+            _run(hp_table.cell(row, 5).paragraphs[0], entry.get("evidence_required", ""), size_pt=8)
     else:
         _run(doc.add_paragraph(), "No hold points identified.", size_pt=_SZ, italic=True)
 

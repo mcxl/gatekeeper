@@ -75,13 +75,13 @@ _TRADE_PACKAGE_DEFAULTS = {
     },
     "intersection": {
         "hrcw_refs": ["H11", "H14", "H15"],
-        "swms_title": "Intersection Reconstruction and Traffic Signal Installation SWMS",
-        "required_before": "Before commencement of intersection works",
+        "swms_title": "T-Intersection Reconstruction SWMS — Geometry, Kerb, Drainage and Pavement",
+        "required_before": "Before commencement of intersection reconstruction works",
     },
     "traffic signal": {
         "hrcw_refs": ["H11", "H14"],
-        "swms_title": "Traffic Signal Installation SWMS",
-        "required_before": "Before commencement of traffic signal installation",
+        "swms_title": "Traffic Signal Installation and Commissioning SWMS",
+        "required_before": "Before commencement of traffic signal pole installation or electrical connection",
     },
     "kerb": {
         "hrcw_refs": ["H14", "H15"],
@@ -328,11 +328,12 @@ def _build_control_pack_hold_points(
     hold_points = []
     hp_num = 1
 
-    def _add(name, packages, condition, authorised, evidence):
+    def _add(name, packages, condition, authorised, evidence, hp_type="whs_critical"):
         nonlocal hp_num
         hold_points.append({
             "ref": f"HP-{hp_num:02d}",
             "name": name,
+            "type": hp_type,  # "whs_critical" or "qa_authority"
             "trade_packages": packages if isinstance(packages, list) else [packages],
             "condition": condition,
             "authorised_by": authorised,
@@ -340,7 +341,7 @@ def _build_control_pack_hold_points(
         })
         hp_num += 1
 
-    # Traffic management
+    # WHS-critical hold points
     if job_type == "civil_infrastructure" or "road_corridor" in modifiers or "live_lanes" in modifiers:
         _add(
             "Current Traffic Management Arrangement Accepted Before Works In Road Corridor",
@@ -348,9 +349,10 @@ def _build_control_pack_hold_points(
             "A current, accepted traffic management arrangement is in place for the specific works about to commence",
             "Site Manager + Traffic Management Subcontractor",
             "CTMP accepted for the current stage. Traffic management inspection completed.",
+            "whs_critical",
         )
 
-    # Trench / excavation
+    # Trench / excavation — WHS critical
     if any("excavat" in h.get("hazard", "").lower() or "trench" in h.get("hazard", "").lower() for h in hazards):
         _add(
             "Trench Or Excavation Inspection Before Worker Entry",
@@ -358,19 +360,10 @@ def _build_control_pack_hold_points(
             "Competent person has inspected the relevant trench or excavation and confirmed it is safe for worker entry or approach",
             "Competent person appointed by the relevant subcontractor",
             "Trench/excavation inspection record signed and dated before entry",
+            "whs_critical",
         )
 
-    # Sydney Water
-    if "utility_relocation" in modifiers or any("sydney water" in h.get("hazard", "").lower() for h in hazards):
-        _add(
-            "Sydney Water Hold Points And Witness Points Satisfied",
-            "Sydney Water Asset Relocation",
-            "All Sydney Water mandatory hold points and witness points satisfied before connection to or disconnection from live main",
-            "Sydney Water Asset Protection representative",
-            "Sydney Water hold point sign-off records on site",
-        )
-
-    # Service proving
+    # Service proving — WHS critical
     if any("excavat" in h.get("hazard", "").lower() for h in hazards):
         _add(
             "Service Proving Completed Before Machine Excavation",
@@ -378,9 +371,21 @@ def _build_control_pack_hold_points(
             "All utilities in the proposed excavation zone have been positively identified by non-destructive digging",
             "Site Manager",
             "NDD/potholing records with service locations, depths and offsets",
+            "whs_critical",
         )
 
-    # Compaction
+    # Sydney Water — Authority gate
+    if "utility_relocation" in modifiers or any("sydney water" in h.get("hazard", "").lower() for h in hazards):
+        _add(
+            "Sydney Water Hold Points And Witness Points Satisfied",
+            "Sydney Water Asset Relocation",
+            "All Sydney Water mandatory hold points and witness points satisfied before connection to or disconnection from live main",
+            "Sydney Water Asset Protection representative",
+            "Sydney Water hold point sign-off records on site",
+            "qa_authority",
+        )
+
+    # Compaction — QA gate
     if any("pavement" in h.get("hazard", "").lower() for h in hazards):
         _add(
             "Pavement Layer Compaction Testing Accepted",
@@ -388,9 +393,10 @@ def _build_control_pack_hold_points(
             "Compaction testing for the current layer meets the specified requirements before next layer is placed",
             "Site Manager",
             "Compaction test results signed and accepted",
+            "qa_authority",
         )
 
-    # Traffic signal commissioning
+    # Traffic signal commissioning — Authority gate
     if "traffic_signals" in modifiers:
         _add(
             "Traffic Signal Commissioning Accepted Before Energisation",
@@ -398,6 +404,7 @@ def _build_control_pack_hold_points(
             "Traffic signal installation is complete and has been inspected and accepted by the relevant authority",
             "Transport for NSW or relevant authority",
             "Signal commissioning acceptance record",
+            "qa_authority",
         )
 
     return hold_points
@@ -479,20 +486,27 @@ def _build_review_metadata(
     open_items = []
 
     # Missing project fields
+    _FIELD_LABELS = {
+        "project_name": "Project name",
+        "site_address": "Site address",
+        "pcbu_name": "PCBU / Principal Contractor",
+        "client": "Client / Principal",
+    }
     for field in ("project_name", "site_address", "pcbu_name", "client"):
         val = project_meta.get(field, "")
         if not val or val == "[To be confirmed]":
             open_items.append({
-                "item": f"Project field '{field}' not yet confirmed",
+                "item": f"{_FIELD_LABELS.get(field, field)} \u2014 confirm before issue",
                 "source": "extraction",
                 "resolved": False,
             })
 
-    # Conditional HRCW
+    # Conditional HRCW — use specific reason from register
     for h in hrcw_register:
         if h["status"] == "CONDITIONAL":
+            reason = h.get("reason", "confirm on site")
             open_items.append({
-                "item": f"HRCW {h['ref']} ({h['name']}) is conditional — confirm on site",
+                "item": f"{h['ref']}: {h['name']} \u2014 {reason}",
                 "source": "hrcw_register",
                 "resolved": False,
             })
