@@ -6580,6 +6580,116 @@ def _risk_level(score: int) -> str:
         return "Low"
 
 
+# ── RA Job-Type Classifier ────────────────────────────────────────────────────
+
+def classify_ra_scope(description: str) -> dict:
+    """
+    Deterministic job-type classifier for RA input.
+    Returns {job_type, building_context, scope_modifiers}.
+    """
+    text = description.lower()
+
+    # — Job type detection (first match wins, ordered by specificity) —
+    _JOB_TYPE_RULES = [
+        ("demolition",   ["demolition", "demolish", "strip out", "strip-out", "pull down"]),
+        ("fit_out",      ["fit-out", "fit out", "fitout", "installing into", "install into",
+                          "data centre", "data center", "server room", "comms room",
+                          "tenant fit", "shop fit", "office fit"]),
+        ("retrofit",     ["retrofit", "retro-fit", "remedial", "refurbish", "renovation",
+                          "upgrade existing", "modify existing", "alter existing"]),
+        ("maintenance",  ["maintenance", "repair", "service existing", "replace existing",
+                          "routine inspection"]),
+        ("upgrade",      ["upgrade", "extension", "addition to existing"]),
+        ("new_build",    ["new build", "new construction", "greenfield", "ground-up",
+                          "erect", "erection", "pour slab", "formwork"]),
+    ]
+    job_type = "new_build"  # default if no rule matches
+    for jt, keywords in _JOB_TYPE_RULES:
+        if any(kw in text for kw in keywords):
+            job_type = jt
+            break
+
+    # — Building context —
+    _EXISTING_SIGNALS = ["existing", "into an existing", "within existing",
+                         "inside existing", "current building", "occupied",
+                         "operational", "live building"]
+    _NEW_SIGNALS = ["new build", "greenfield", "ground-up", "vacant lot"]
+    has_existing = any(s in text for s in _EXISTING_SIGNALS)
+    has_new = any(s in text for s in _NEW_SIGNALS)
+    if has_existing and has_new:
+        building_context = "mixed"
+    elif has_existing:
+        building_context = "existing"
+    else:
+        building_context = "new"
+
+    # — Scope modifiers —
+    _MODIFIER_RULES = {
+        "occupied_site":       ["occupied", "tenanted", "residents", "operational facility"],
+        "tilt_up_context":     ["tilt-up", "tilt up", "tiltup", "precast"],
+        "live_services":       ["live services", "live electrical", "energised", "energized",
+                                "existing services", "service connections"],
+        "commissioning":       ["commissioning", "testing and commissioning", "energise",
+                                "energize", "power on", "handover"],
+        "warehouse":           ["warehouse", "distribution centre", "distribution center",
+                                "logistics", "storage facility"],
+        "industrial":          ["industrial", "factory", "manufacturing", "plant room"],
+        "electrical_install":  ["electrical install", "power distribution", "switchboard",
+                                "cable tray", "data centre", "data center", "ups ",
+                                "generator install", "electrical fit"],
+        "mechanical_install":  ["mechanical install", "hvac", "air conditioning",
+                                "ductwork", "chiller", "cooling system", "mechanical fit"],
+        "fire_services":       ["fire services", "sprinkler", "fire detection",
+                                "fire suppression", "smoke detect"],
+        "structural_mod":      ["structural modification", "structural alteration",
+                                "penetration", "core drill", "slab penetration"],
+    }
+    scope_modifiers = []
+    for mod, keywords in _MODIFIER_RULES.items():
+        if any(kw in text for kw in keywords):
+            scope_modifiers.append(mod)
+
+    return {
+        "job_type": job_type,
+        "building_context": building_context,
+        "scope_modifiers": scope_modifiers,
+    }
+
+
+# Categories to suppress when job is NOT new-build but mentions
+# construction materials as existing-building context.
+# Key = frozenset of primary keywords from MATRIX entries to suppress.
+_RA_NEWBUILD_ONLY_KEYWORDS = frozenset([
+    "precast", "tilt-up", "tilt up", "tilt panel", "precast panel",
+    "precast concrete", "precast beam", "precast column", "precast wall",
+    "concrete panel", "formwork", "pour concrete", "concrete pour",
+    "steel erection", "structural steel erection",
+    "crane lift", "tower crane", "mobile crane",
+])
+
+
+def _should_suppress_for_ra(entry: dict, classification: dict) -> bool:
+    """Return True if this MATRIX entry should be suppressed given the RA classification."""
+    job_type = classification["job_type"]
+    building_context = classification["building_context"]
+
+    # Only suppress when building is existing and job is not new-build
+    if building_context == "new" or job_type == "new_build":
+        return False
+
+    # Suppress new-build-only categories when working in/on existing building
+    entry_keywords = set(entry.get("keywords", []))
+    if entry_keywords & _RA_NEWBUILD_ONLY_KEYWORDS:
+        # Check if the entry is genuinely a construction/erection category
+        # by looking at its hrcw_category or notes
+        hrcw_cat = (entry.get("hrcw_category") or "").lower()
+        if any(term in hrcw_cat for term in
+               ["tilt-up", "precast", "formwork", "erection", "crane"]):
+            return True
+
+    return False
+
+
 def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     """
     Build a structured hazard list for Risk Assessment documents.
@@ -6588,6 +6698,9 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     """
     text = work_description.lower()
     hazards: list[dict] = []
+
+    # Classify scope to suppress irrelevant new-build categories
+    classification = classify_ra_scope(work_description)
 
     # Map MATRIX entries to RA hazard rows
     expanded = _expand_description(text)
@@ -6598,6 +6711,8 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
             continue
         primary_kw = entry["keywords"][0]
         if _is_negated(primary_kw, text):
+            continue
+        if _should_suppress_for_ra(entry, classification):
             continue
 
         # Derive hazard description from entry keywords and category
@@ -6686,6 +6801,7 @@ def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
                      ca_province: str = "") -> dict:
     """Return inference result with hazard_list for Risk Assessment documents."""
     result = infer_to_dict(work_description, jurisdiction=jurisdiction)
+    result["ra_classification"] = classify_ra_scope(work_description)
     result["hazard_list"] = _build_hazard_list(work_description, result)
     result["document_type"] = "ra"
     return result
