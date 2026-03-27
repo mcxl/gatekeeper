@@ -5286,16 +5286,23 @@ MATRIX = [
         "ppe": [
             "Hard hat — mandatory",
             "High-visibility vest or shirt",
+            "Full body harness + double lanyard — mandatory for EWP-to-roof transfer",
         ],
         "certs": [
-            "EWP operator licence — WP class where platform exceeds 11m",
+            "EWP competency — EWPA Yellow Card or equivalent documented competency for scissor lift class",
+            "Working at heights competency — current (RIIOHS204E or equivalent)",
+            "EWP operator licence — WP class where boom platform exceeds 11m (not required for scissor lifts under 11m)",
         ],
         "permits": [
             "Working at heights permit — signed before elevated work",
+            "Engineer confirmation — roof structure adequate at transfer point where EWP-to-roof transfer is planned",
         ],
         "qualifications": [
-            "Competent person — pre-start inspection of scissor lift",
-            "Rescue plan — documented before work commences; includes how to retrieve worker from harness/EWP/suspended scaffold if incapacitated",
+            "EWP pre-start inspection — completed and signed by operator before each shift per AS 2550",
+            "OEM operator manual — on site and available to operator at all times",
+            "EWP specifications confirmed: [INSERT MAKE/MODEL/SERIAL], platform rated capacity [INSERT kg], max working height [INSERT m], max wind speed [INSERT km/h per OEM]",
+            "Current inspection certificate — AS 2550 major inspection within date",
+            "Rescue plan — documented before work commences; includes how to retrieve worker from harness/EWP if incapacitated",
             "Rescue equipment — on site and ready for immediate deployment before any elevated work starts",
         ],
         "notifications": [],
