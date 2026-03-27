@@ -152,14 +152,41 @@ def _identify_trade_packages(description: str, hrcw_register: list[dict]) -> lis
     matched = []
     seen_titles = set()
 
-    for keyword, defaults in _TRADE_PACKAGE_DEFAULTS.items():
-        if keyword in text:
-            title = defaults["swms_title"]
-            if title not in seen_titles:
-                matched.append(keyword)
-                seen_titles.add(title)
+    def _add(keyword):
+        defaults = _TRADE_PACKAGE_DEFAULTS.get(keyword, {})
+        title = defaults.get("swms_title", keyword)
+        if title not in seen_titles:
+            matched.append(keyword)
+            seen_titles.add(title)
 
-    # Also add packages implied by CONDITIONAL/YES HRCW categories
+    # Direct keyword matches
+    for keyword in _TRADE_PACKAGE_DEFAULTS:
+        if keyword in text:
+            _add(keyword)
+
+    # Civil infrastructure implied packages — standard packages for road upgrade jobs
+    _CIVIL_IMPLIED = {
+        # If scope mentions road works/live lane, these are almost always needed:
+        "road works": ["service location", "earthworks", "line marking"],
+        "live lane": ["service location", "earthworks", "line marking"],
+        # If scope mentions intersection, traffic signal is separate
+        "intersection": ["traffic signal"],
+        # If scope mentions stormwater, drainage is included
+        "stormwater": [],
+        # If scope mentions pedestrian/walkway, kerb/footpath likely needed
+        "pedestrian": ["kerb"],
+        "walkway": ["kerb"],
+        "footpath": ["kerb"],
+        # If scope mentions 4 lanes / widening, earthworks + pavement implied
+        "4 lanes": ["earthworks", "pavement"],
+        "lane": ["earthworks"],
+    }
+    for trigger, implied in _CIVIL_IMPLIED.items():
+        if trigger in text:
+            for pkg in implied:
+                _add(pkg)
+
+    # Packages implied by CONDITIONAL/YES HRCW categories
     _HRCW_TO_TRADE = {
         "H04": "asbestos",
         "H06": "confined space",
@@ -168,11 +195,8 @@ def _identify_trade_packages(description: str, hrcw_register: list[dict]) -> lis
     for entry in hrcw_register:
         if entry["status"] in ("YES", "CONDITIONAL"):
             trade = _HRCW_TO_TRADE.get(entry["ref"])
-            if trade and trade not in matched:
-                title = _TRADE_PACKAGE_DEFAULTS.get(trade, {}).get("swms_title", "")
-                if title and title not in seen_titles:
-                    matched.append(trade)
-                    seen_titles.add(title)
+            if trade:
+                _add(trade)
 
     return matched
 
@@ -282,6 +306,9 @@ def build_control_pack(
 
     # Step 4: Hold points — derive from classification and hazards
     hold_points = _build_control_pack_hold_points(classification, hazard_list, trade_packages)
+
+    # Step 4b: Crosswalk — link hold points to SWMS packages
+    _crosswalk_hold_points_to_packages(swms_matrix, hold_points)
 
     # Step 5: Risk register — reformat hazard list for control pack
     risk_register = _build_risk_register(hazard_list, phase_groups)
@@ -417,21 +444,46 @@ def _build_control_pack_hold_points(
     return hold_points
 
 
+# ── Crosswalk ────────────────────────────────────────────────────────────────
+
+def _crosswalk_hold_points_to_packages(swms_matrix: list[dict], hold_points: list[dict]) -> None:
+    """Add linked_hold_points to each SWMS matrix entry based on trade_packages overlap."""
+    for entry in swms_matrix:
+        pkg_name = entry.get("trade_package", "").lower()
+        linked = []
+        for hp in hold_points:
+            hp_packages = " ".join(hp.get("trade_packages", [])).lower()
+            if pkg_name in hp_packages or "all" in hp_packages:
+                linked.append(hp["ref"])
+        entry["linked_hold_points"] = linked
+
+
 # ── Risk Register ────────────────────────────────────────────────────────────
 
 # Map hazard keywords to trade package groups for risk register
 _HAZARD_TO_PACKAGE = [
-    ("Traffic Management", ["traffic", "live lane", "live road", "pedestrian", "road corridor"]),
-    ("Service Location and NDD", ["service location", "ndd", "potholing", "dial before"]),
+    # Civil infrastructure packages (ordered by construction sequence)
+    ("Traffic Management", ["traffic", "live lane", "live road", "road corridor"]),
+    ("Service Location and NDD", ["service location", "ndd", "potholing", "dial before",
+                                   "existing services", "service strike"]),
     ("Sydney Water Asset Relocation", ["sydney water", "water main", "water asset"]),
     ("Stormwater Drainage", ["stormwater", "drainage", "culvert", "headwall"]),
-    ("Earthworks and Pavement", ["pavement", "earthworks", "compaction", "subbase", "road base", "asphalt", "chip seal"]),
-    ("T-Intersection and Traffic Signals", ["intersection", "traffic signal", "traffic light"]),
-    ("Kerb, Gutter and Footpath", ["kerb", "footpath", "pedestrian ramp"]),
-    ("Electrical Works", ["electrical", "energised", "switchboard", "cable"]),
+    ("Bulk Earthworks and Pavement", ["pavement", "earthworks", "compaction", "subbase",
+                                       "road base", "asphalt", "chip seal", "road surface"]),
+    ("T-Intersection Reconstruction", ["intersection"]),
+    ("Traffic Signal Installation", ["traffic signal", "traffic light", "signal installation"]),
+    ("Kerb, Gutter and Footpath", ["kerb", "footpath", "pedestrian ramp", "pedestrian"]),
+    ("Line Marking and Reinstatement", ["line marking", "road sign", "signage"]),
+    # Utility packages
     ("Gas Main Works", ["gas main", "gas pipe", "pressurised gas"]),
+    ("Electrical Works", ["electrical", "energised", "switchboard", "cable"]),
+    # Building / access packages
     ("Scaffold and Access", ["scaffold", "ewp", "access platform"]),
     ("Facade Works", ["facade", "external wall", "coating", "waterproof", "spalling"]),
+    # Standing hazards (cross-cutting)
+    ("All Packages — Standing Hazards", ["mobile plant", "excavat", "trench",
+                                          "manual handling", "silica", "heat",
+                                          "near public", "near waterway", "road opening"]),
 ]
 
 
