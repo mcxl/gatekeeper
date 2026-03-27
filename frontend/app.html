@@ -1673,14 +1673,19 @@ async function intakeConfirmGenerate() {
     const blob = await renderRes.blob();
     if (blob.size < 100) throw new Error('Document generation failed \u2014 empty response');
 
-    // Build filename and trigger download
-    const addr = (fields.project_address || 'SWMS').replace(/,/g, '').trim();
-    const safe = addr.replace(/[^a-zA-Z0-9 -]/g, '').trim().replace(/\s+/g, '-').substring(0, 40);
-    const now = new Date();
-    const dd = String(now.getDate()).padStart(2, '0');
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const ext = _intakeFmt === 'pdf' ? 'pdf' : 'docx';
-    const fname = `SWMS-${safe}-${dd}${mm}${now.getFullYear()}-V01.${ext}`;
+    // Use server-provided filename from Content-Disposition, or match _build_filename()
+    let fname = '';
+    const cd = renderRes.headers.get('content-disposition') || '';
+    const fnMatch = cd.match(/filename="?([^";\s]+)"?/);
+    if (fnMatch) {
+      fname = fnMatch[1];
+    } else {
+      const ext = _intakeFmt === 'pdf' ? 'pdf' : 'docx';
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      fname = `SWMS-${dd}${mm}${now.getFullYear()}-V1.${ext}`;
+    }
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
