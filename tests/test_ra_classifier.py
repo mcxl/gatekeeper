@@ -222,3 +222,47 @@ class TestRaPhaseGrouping:
         result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
         grouped_count = sum(len(pg["hazards"]) for pg in result["phase_groups"])
         assert grouped_count == len(result["hazard_list"])
+
+
+class TestRaControlLanguage:
+    """RA controls should read as practical site actions, not compliance fragments."""
+
+    BENCHMARK_DESC = (
+        "Installing a data centre into an existing industrial warehouse "
+        "(concrete tilt-up construction) in NSW"
+    )
+
+    def test_electrical_controls_are_practical(self):
+        """Electrical hazard controls should include LOTO and test-before-touch."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        elec = [h for h in result["hazard_list"]
+                if "electrical" in h["hazard"].lower()]
+        assert elec, "Should have electrical hazards"
+        all_controls = " ".join(
+            " ".join(h["controls"].get("engineering", []) + h["controls"].get("admin", []))
+            for h in elec
+        ).lower()
+        assert "loto" in all_controls or "isolation" in all_controls, \
+            f"Electrical controls should mention LOTO/isolation: {all_controls[:200]}"
+        assert "test" in all_controls or "verify" in all_controls, \
+            f"Electrical controls should mention test/verify: {all_controls[:200]}"
+
+    def test_no_raw_regulation_as_control(self):
+        """RA controls should not start with 'WHS Reg' or 'AS/NZS' — those are references, not controls."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        for h in result["hazard_list"]:
+            for ctrl_type in ("engineering", "admin"):
+                for ctrl in h["controls"].get(ctrl_type, []):
+                    assert not ctrl.startswith("WHS Reg"), \
+                        f"Control should not be a regulation reference: '{ctrl}' in {h['hazard']}"
+                    assert not ctrl.startswith("AS/NZS"), \
+                        f"Control should not be a standard reference: '{ctrl}' in {h['hazard']}"
+
+    def test_controls_have_engineering_and_admin(self):
+        """Every hazard should have at least one engineering and one admin control."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        for h in result["hazard_list"]:
+            assert h["controls"].get("engineering"), \
+                f"Missing engineering controls: {h['hazard']}"
+            assert h["controls"].get("admin"), \
+                f"Missing admin controls: {h['hazard']}"

@@ -7111,6 +7111,131 @@ def _expand_description_ra(text: str, classification: dict) -> str:
     return expanded
 
 
+# ── RA Control Language Overrides ─────────────────────────────────────────────
+# Maps primary keyword prefixes to RA-appropriate control wording.
+# Entries here override the default notes/qualifications scraping.
+# Controls should read as practical site actions, not compliance fragments.
+
+_RA_CONTROL_OVERRIDES: dict[str, dict] = {
+    "at height": {
+        "engineering": [
+            "Fall prevention hierarchy: eliminate work at height where possible, then passive fall prevention (guardrails), then fall arrest (harness) as last resort",
+            "Verify anchor points are engineer-certified before use",
+        ],
+        "admin": [
+            "Working at heights permit signed before each elevated task",
+            "Rescue plan documented and practiced before work at height begins",
+        ],
+    },
+    "scaffold": {
+        "engineering": [
+            "Scaffold erected by licensed scaffolder to AS/NZS 4576",
+            "Handover certificate and scaffold tag inspected before each use",
+        ],
+        "admin": [
+            "Scaffold inspection by competent person before first use and after any incident",
+            "Exclusion zone maintained during erection and dismantling",
+        ],
+    },
+    "electrical": {
+        "engineering": [
+            "All electrical work by or under direct supervision of licensed electrician",
+            "Test-before-touch on all circuits — verify de-energised before work",
+        ],
+        "admin": [
+            "Electrical isolation permit (LOTO) before work on existing switchboard or circuits",
+            "Energisation sequence documented and approved before first power-on",
+        ],
+    },
+    "asbestos": {
+        "engineering": [
+            "Hazardous materials survey by licensed assessor before any disturbance of suspect material",
+            "Containment / enclosure established before removal — negative pressure where required",
+        ],
+        "admin": [
+            "Asbestos removal licence (Class A or B as applicable) held before removal work starts",
+            "Air monitoring during and after removal — clearance certificate before re-occupation",
+        ],
+    },
+    "confined space": {
+        "engineering": [
+            "Atmospheric testing (O2, CO, H2S, LEL) before every entry and continuous monitoring during",
+            "Mechanical ventilation to maintain safe atmosphere throughout entry",
+        ],
+        "admin": [
+            "Confined space entry permit signed before every entry",
+            "Rescue plan documented, practiced, and standby person stationed at entry point",
+        ],
+    },
+    "demolition": {
+        "engineering": [
+            "Pre-demolition hazardous materials survey completed and reviewed before any work",
+            "Structural engineer demolition sequence approved — no deviation without sign-off",
+        ],
+        "admin": [
+            "Utility isolation certificates (electrical, gas, water, telecom) confirmed before demolition",
+            "Exclusion zone established for full height of demolition face plus 5m",
+        ],
+    },
+    "excavat": {
+        "engineering": [
+            "Dial Before You Dig (DBYD) enquiry completed and services located before excavation",
+            "Shoring / benching / battering as per geotechnical assessment for depths >1.5m",
+        ],
+        "admin": [
+            "Excavation permit issued before breaking ground",
+            "Spotter required when excavating near known or suspected services",
+        ],
+    },
+    "crane": {
+        "engineering": [
+            "Lift study completed by competent person for each critical lift",
+            "Crane on firm, level ground — outrigger pads sized to ground bearing capacity",
+        ],
+        "admin": [
+            "Crane operator holds appropriate HRWL for crane class used",
+            "Dogman/rigger licensed and on site for all lifts",
+        ],
+    },
+    "rigging": {
+        "engineering": [
+            "Lifting gear inspected and within test date before each use",
+            "SWL/WLL not exceeded — load weight confirmed before lift",
+        ],
+        "admin": [
+            "Licensed rigger (minimum RB class) for all rigging operations",
+            "Tag lines used on all suspended loads",
+        ],
+    },
+}
+
+
+def _build_ra_controls(entry: dict, primary_kw: str, classification: dict) -> dict:
+    """
+    Build RA-appropriate controls for a hazard.
+
+    Uses _RA_CONTROL_OVERRIDES where a match is found on the primary keyword.
+    Falls back to the entry's notes/qualifications/ppe fields for entries
+    that already have RA-quality controls (e.g. the retrofit fit-out entries).
+    """
+    # Check for override match (prefix matching)
+    for override_kw, override_controls in _RA_CONTROL_OVERRIDES.items():
+        if override_kw in primary_kw.lower():
+            return {
+                "engineering": override_controls.get("engineering", []),
+                "admin": override_controls.get("admin", []),
+                "ppe": entry.get("ppe", [])[:3],  # PPE still from entry
+            }
+
+    # No override — use entry fields directly
+    # New retrofit entries already have RA-quality notes/qualifications
+    return {
+        "engineering": entry.get("notes", [])[:2] if entry.get("notes") else ["Refer to site-specific controls"],
+        "admin": entry.get("qualifications", [])[:2] if entry.get("qualifications") else [],
+        "ppe": entry.get("ppe", [])[:3],
+    }
+
+
 def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     """
     Build a structured hazard list for Risk Assessment documents.
@@ -7169,12 +7294,9 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
 
         risk_rating = likelihood * consequence
 
-        # Build controls hierarchy
-        controls = {
-            "engineering": entry.get("notes", [])[:2] if entry.get("notes") else ["Refer to site-specific controls"],
-            "admin": entry.get("qualifications", [])[:2] if entry.get("qualifications") else [],
-            "ppe": entry.get("ppe", [])[:3],
-        }
+        # Build controls hierarchy — use RA-specific overrides where available,
+        # otherwise fall back to SWMS-style notes/qualifications
+        controls = _build_ra_controls(entry, primary_kw, classification)
 
         # Residual risk after controls
         res_likelihood = max(1, likelihood - 2)
