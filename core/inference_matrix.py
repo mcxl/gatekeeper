@@ -7895,6 +7895,93 @@ def group_ra_hazards_by_phase(hazards: list[dict]) -> list[dict]:
     ]
 
 
+# ── RA HRCW Register ─────────────────────────────────────────────────────────
+
+# All 17 WHS Reg 2017 Schedule 1 HRCW categories
+_HRCW_CATEGORIES = [
+    {"ref": "H01", "name": "Work involving a risk of a person falling more than 2 metres",
+     "flag": "falling_2m",
+     "conditional_triggers": ["excavation", "trench", "open cut", "pit",
+                              "stormwater", "drainage", "road works"]},
+    {"ref": "H02", "name": "Work on a telecommunication tower", "flag": "telecom_tower"},
+    {"ref": "H03", "name": "Demolition of a load-bearing structure", "flag": "demolition"},
+    {"ref": "H04", "name": "Work involving disturbance of asbestos", "flag": "asbestos",
+     "conditional_triggers": ["existing road", "chip seal", "existing infrastructure",
+                              "existing pavement", "pre-1990", "pre-2000", "renovation",
+                              "demolition", "refurbish"]},
+    {"ref": "H05", "name": "Structural alterations requiring temporary support",
+     "flag": "temp_support",
+     "conditional_triggers": ["utility relocation", "sydney water", "water main",
+                              "pipe relocation", "asset relocation"]},
+    {"ref": "H06", "name": "Work in or near a confined space", "flag": "confined_space",
+     "conditional_triggers": ["stormwater pit", "drainage pit", "chamber", "manhole",
+                              "valve vault", "stormwater", "sewer"]},
+    {"ref": "H07", "name": "Work in or near a shaft or trench deeper than 1.5m",
+     "flag": "shaft_trench"},
+    {"ref": "H08", "name": "Use of explosives", "flag": "explosives"},
+    {"ref": "H09", "name": "Work on or near pressurised gas mains or piping",
+     "flag": "pressurised_gas",
+     "conditional_triggers": ["road corridor", "road works", "live lane",
+                              "utility", "service relocation"]},
+    {"ref": "H10", "name": "Work on or near chemical, fuel or refrigerant lines",
+     "flag": "chemical_fuel"},
+    {"ref": "H11", "name": "Work on or near energised electrical installations",
+     "flag": "electrical",
+     "conditional_triggers": ["traffic signal", "traffic light", "street lighting",
+                              "road works", "intersection", "signal installation"]},
+    {"ref": "H12", "name": "Work in an area with contaminated or flammable atmosphere",
+     "flag": "contaminated_atmo",
+     "conditional_triggers": ["sewer", "stormwater", "drainage", "confined space",
+                              "pit", "chamber"]},
+    {"ref": "H13", "name": "Work involving tilt-up or precast concrete", "flag": "tiltup_precast"},
+    {"ref": "H14", "name": "Work on, in or adjacent to a road or traffic corridor",
+     "flag": "traffic_corridor"},
+    {"ref": "H15", "name": "Work in an area with movement of powered mobile plant",
+     "flag": "mobile_plant"},
+    {"ref": "H16", "name": "Work in areas with artificial extremes of temperature",
+     "flag": "extreme_temp"},
+    {"ref": "H17", "name": "Work involving diving", "flag": "diving"},
+]
+
+
+def _build_ra_hrcw_register(
+    hrcw_flags: dict, classification: dict, text: str,
+) -> list[dict]:
+    """
+    Build a structured HRCW register for RA output.
+
+    Each entry has: ref, name, status (YES/CONDITIONAL/NO), reason.
+    """
+    text_lower = text.lower()
+    modifiers = set(classification.get("scope_modifiers", []))
+    register = []
+
+    for cat in _HRCW_CATEGORIES:
+        ref = cat["ref"]
+        name = cat["name"]
+        flag = cat["flag"]
+        flag_active = hrcw_flags.get(flag, False)
+        conditional_triggers = cat.get("conditional_triggers", [])
+
+        if flag_active:
+            register.append({
+                "ref": ref, "name": name, "status": "YES",
+                "reason": "Triggered by scope description",
+            })
+        elif conditional_triggers and any(t in text_lower for t in conditional_triggers):
+            register.append({
+                "ref": ref, "name": name, "status": "CONDITIONAL",
+                "reason": "May apply depending on site conditions \u2014 confirm before work",
+            })
+        else:
+            register.append({
+                "ref": ref, "name": name, "status": "NO",
+                "reason": "",
+            })
+
+    return register
+
+
 def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
                      ca_province: str = "") -> dict:
     """Return inference result with hazard_list and phase_groups for RA documents."""
@@ -7902,6 +7989,11 @@ def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
     result["ra_classification"] = classify_ra_scope(work_description)
     result["hazard_list"] = _build_hazard_list(work_description, result)
     result["phase_groups"] = group_ra_hazards_by_phase(result["hazard_list"])
+    result["ra_hrcw_register"] = _build_ra_hrcw_register(
+        result.get("hrcw_flags", {}),
+        result["ra_classification"],
+        work_description,
+    )
     result["document_type"] = "ra"
     return result
 

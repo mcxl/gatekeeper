@@ -197,6 +197,16 @@ def _render_ra_supplementary_sections(
     if "mechanical_install" in modifiers:
         assumptions.append("Existing roof / structure can support proposed mechanical plant \u2014 to be confirmed")
 
+    # Add conditional HRCW categories as assumptions
+    ra_hrcw = inference.get("ra_hrcw_register", [])
+    conditional_hrcw = [h for h in ra_hrcw if h.get("status") == "CONDITIONAL"]
+    if conditional_hrcw:
+        for h in conditional_hrcw:
+            assumptions.append(
+                f"HRCW {h['ref']} ({h['name']}) \u2014 conditional: "
+                f"may apply depending on site conditions, confirm before work"
+            )
+
     assumptions.append("All required permits, approvals, and notifications will be obtained before work commences")
     assumptions.append("This RA will be reviewed and updated if site conditions differ from those assumed")
 
