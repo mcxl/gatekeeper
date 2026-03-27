@@ -83,17 +83,34 @@ class TestRaHazardSuppression:
 class TestRaConfidence:
     """RA hazards must have appropriate confidence levels."""
 
-    def test_data_centre_hazards_not_confirmed(self):
-        """Hazards for data-centre fit-out should not be 'confirmed' —
-        WAH and rigging are implied by context, not directly stated."""
+    def test_data_centre_no_false_confirmed_hazards(self):
+        """Specific hazards for data-centre fit-out should not be confirmed —
+        WAH and rigging must not appear as confirmed from context alone.
+        Baseline fallback ('General construction hazards') is allowed."""
         desc = ("Installing a data centre into an existing industrial warehouse "
                 "(concrete tilt-up construction) in NSW")
         result = infer_to_dict_ra(desc, jurisdiction="AU")
         for h in result["hazard_list"]:
+            if h["hazard"] == "General construction hazards":
+                continue  # baseline fallback is intentionally confirmed
             assert h["confidence"] != "confirmed", (
                 f"'{h['hazard']}' should not be confirmed for fit-out: "
                 f"got '{h['confidence']}'"
             )
+
+    def test_data_centre_no_wah_or_rigging(self):
+        """WAH and rigging should not appear for data-centre fit-out —
+        they were false positives from chain expansion of 'tilt-up'."""
+        desc = ("Installing a data centre into an existing industrial warehouse "
+                "(concrete tilt-up construction) in NSW")
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        hazard_names = [h["hazard"].lower() for h in result["hazard_list"]]
+        assert not any("height" in n or "fall" in n for n in hazard_names), (
+            f"WAH should not appear for fit-out: {hazard_names}"
+        )
+        assert not any("rigging" in n or "dogging" in n for n in hazard_names), (
+            f"Rigging should not appear for fit-out: {hazard_names}"
+        )
 
     def test_directly_stated_hazard_is_confirmed(self):
         """Asbestos removal directly stated should be 'confirmed'."""

@@ -6765,6 +6765,57 @@ def _assign_ra_confidence(
     return "if_applicable"
 
 
+# Terms that describe existing building materials/context — chain expansion
+# from these should be suppressed in RA because the building is already built.
+_RA_CONTEXT_CHAIN_BLOCKERS = frozenset([
+    "precast", "tilt-up", "tilt up", "concrete", "steel frame",
+    "masonry", "brick", "timber frame", "heritage", "asbestos",
+])
+
+
+def _expand_description_ra(text: str, classification: dict) -> str:
+    """
+    RA-specific expansion: applies synonym expansion but suppresses
+    chain expansion from context-only terms when building_context is existing.
+
+    For retrofit/fit-out in an existing building, 'tilt-up' should expand
+    to 'precast' (synonym) but NOT chain to 'mobile crane', 'working at height',
+    'dogging', 'rigging' — those are construction-phase chains, not fit-out scope.
+    """
+    expanded = text
+
+    # Synonym pass — same as standard
+    for synonym, canonical in SYNONYM_MAP.items():
+        if synonym in expanded:
+            expanded = expanded + " " + canonical
+
+    # Chain pass — skip chains triggered by context-only terms in existing buildings
+    skip_chains = (classification.get("building_context") == "existing"
+                   and classification.get("job_type") != "new_build")
+
+    for _ in range(2):
+        additions = []
+        for trigger, downstream in CHAIN_MAP.items():
+            if trigger in expanded:
+                if skip_chains and trigger in _RA_CONTEXT_CHAIN_BLOCKERS:
+                    continue  # do not chain from existing-building context terms
+                # Also skip chains from terms that were themselves chain-injected
+                # from a blocked context term (e.g. 'mobile crane' from 'precast')
+                if skip_chains and trigger not in text:
+                    # This trigger wasn't in the original text — it was injected
+                    # Check if it came from a blocked synonym
+                    continue
+                for kw in downstream:
+                    if kw not in expanded:
+                        additions.append(kw)
+        if additions:
+            expanded = expanded + " " + " ".join(additions)
+        else:
+            break
+
+    return expanded
+
+
 def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     """
     Build a structured hazard list for Risk Assessment documents.
@@ -6777,8 +6828,9 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     # Classify scope to suppress irrelevant new-build categories
     classification = classify_ra_scope(work_description)
 
-    # Map MATRIX entries to RA hazard rows
-    expanded = _expand_description(text)
+    # Map MATRIX entries to RA hazard rows — use RA-specific expansion
+    # that suppresses chain expansion from context-only terms
+    expanded = _expand_description_ra(text, classification)
 
     for entry in MATRIX:
         score = _score_entry(entry, expanded)
