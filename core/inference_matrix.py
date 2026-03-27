@@ -5770,6 +5770,294 @@ MATRIX = [
         ],
     },
 
+    # ── CIVIL INFRASTRUCTURE HAZARD FAMILIES ────────────────────────────────
+    # Categories for road works, utility relocation, stormwater, and civil construction.
+
+    # 1. Live road corridor / traffic management
+    {
+        "keywords": ["live lane", "live road", "live traffic", "traffic management",
+                     "traffic corridor", "road works", "lane closure", "road closure",
+                     "detour", "traffic control"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.14 — Work on, in or adjacent to a road or traffic corridor",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hi-vis Class D day/night vest or shirt",
+            "Hard hat",
+            "Steel-capped safety boots",
+        ],
+        "certs": [
+            "Traffic controller accreditation — current TCS (Traffic Controller) and TCP (Traffic Control Plan) certification",
+        ],
+        "permits": [
+            "Construction Traffic Management Plan (CTMP) — prepared by qualified traffic management designer",
+            "Road opening permit — Transport for NSW or local council before any road cut",
+            "Lane closure approval — Transport for NSW where state road affected",
+        ],
+        "qualifications": [
+            "Traffic management arrangement accepted by principal contractor before any works in road corridor",
+            "Temporary speed zone signs installed and confirmed before workers enter live lane area",
+        ],
+        "notifications": [
+            "SafeWork NSW notification — where road works are notifiable HRCW",
+        ],
+        "safework_notification": True,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.14 — work on or adjacent to a traffic corridor is HRCW",
+            "AS 1742.3 — Traffic control devices for works on roads",
+            "Workers must not enter live lane area until traffic management is in place and accepted",
+        ],
+    },
+
+    # 2. Excavation / trenching >1.5m
+    {
+        "keywords": ["excavation", "excavate", "trench", "trenching", "dig",
+                     "open cut", "service trench", "pipe trench", "drain trench"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.7 — Work in or near a shaft or trench deeper than 1.5m",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Hi-vis vest",
+            "Steel-capped safety boots",
+        ],
+        "certs": [
+            "Excavator operator — VOC/Statement of Attainment for plant class",
+        ],
+        "permits": [
+            "Excavation permit — before breaking ground",
+            "Dial Before You Dig (DBYD) — completed before any excavation",
+            "Service location scan — non-destructive digging (NDD) to prove services before machine excavation",
+        ],
+        "qualifications": [
+            "Competent person — trench inspection before worker entry or approach",
+            "Shoring / battering / benching — per geotechnical assessment for depths >1.5m",
+            "Spotter — required when excavating near confirmed or suspected services",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.7 — trench or excavation deeper than 1.5m is HRCW",
+            "Service proving (potholing) completed before machine excavation in identified service zones",
+            "No worker entry to trench >1.5m without shoring, battering, or benching in place",
+        ],
+    },
+
+    # 3. Utility relocation — water mains (Sydney Water)
+    {
+        "keywords": ["water main", "sydney water", "water asset", "water relocation",
+                     "water pipe", "water service", "water connection"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Hi-vis vest",
+            "Steel-capped safety boots",
+            "Waterproof gloves — where handling live water connections",
+        ],
+        "certs": [],
+        "permits": [
+            "Sydney Water asset protection application — submitted and approved before work commences",
+            "Sydney Water representative on site during excavation within 2m of Sydney Water asset",
+        ],
+        "qualifications": [
+            "Sydney Water hold points and witness points satisfied before connection to live main",
+            "Minimum clearances — horizontal 1m, vertical 0.5m from any Sydney Water asset",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Sydney Water Act 1994 — damage to assets is an offence, full cost recovery applies",
+            "Asset search — sydneywater.com.au asset map before any ground penetration near Sydney Water infrastructure",
+            "Uncontrolled water release during connection/disconnection — exclusion zone and dewatering plan required",
+        ],
+    },
+
+    # 4. Utility relocation — gas mains
+    {
+        "keywords": ["gas main", "gas pipe", "gas asset", "pressurised gas",
+                     "gas service", "gas relocation"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.9 — Work on or near pressurised gas mains or piping",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Hi-vis vest",
+            "Steel-capped safety boots",
+            "Non-sparking tools — where gas exposure possible",
+        ],
+        "certs": [],
+        "permits": [
+            "Gas asset protection — utility owner approval before excavation near gas mains",
+            "Dial Before You Dig — gas assets identified before any ground disturbance",
+        ],
+        "qualifications": [
+            "No mechanical excavation within 500mm of confirmed gas main — hand dig only",
+            "Gas detection equipment on site and calibrated — continuous monitoring during exposure",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.9 — work on or near pressurised gas mains is HRCW",
+            "Gas leak emergency — evacuate, do not use ignition sources, call 000 and gas utility emergency line",
+        ],
+    },
+
+    # 5. Energised electrical / traffic signals
+    {
+        "keywords": ["traffic signal", "traffic light", "signal installation",
+                     "street lighting", "electrical service", "power cable",
+                     "energised cable", "electrical asset"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.11 — Work on or near energised electrical installations",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Insulated gloves — rated for voltage class",
+            "Safety glasses — arc flash rated where applicable",
+        ],
+        "certs": [
+            "Licensed electrician — all electrical work by or under supervision of licensed electrical worker",
+        ],
+        "permits": [
+            "Electrical isolation permit — before work on or near energised installations",
+            "Traffic signal commissioning acceptance — Transport for NSW or relevant authority before energisation",
+        ],
+        "qualifications": [
+            "Test before touch — all circuits verified de-energised before work",
+            "Commissioning sequence documented and accepted by authority before energisation",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.11 — work on or near energised electrical installations is HRCW",
+            "Traffic signal energisation requires Transport for NSW or council acceptance before power-on",
+        ],
+    },
+
+    # 6. Powered mobile plant in road corridor
+    {
+        "keywords": ["mobile plant", "excavator", "roller", "grader", "loader",
+                     "backhoe", "bobcat", "skid steer", "dump truck", "tipper",
+                     "road plant", "paving machine", "asphalt paver"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.15 — Work in an area with movement of powered mobile plant",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hi-vis Class D day/night vest or shirt",
+            "Hard hat",
+            "Steel-capped safety boots",
+        ],
+        "certs": [
+            "Plant operator — VOC/Statement of Attainment or HRWL for relevant plant class",
+        ],
+        "permits": [],
+        "qualifications": [
+            "Plant-pedestrian separation — physical barriers or exclusion zones between mobile plant and workers on foot",
+            "Spotter — required when plant operates near workers, structures, or services",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.15 — work in an area with movement of powered mobile plant is HRCW",
+            "Plant-pedestrian interaction is the highest-frequency serious incident category on civil sites",
+        ],
+    },
+
+    # 7. Stormwater / drainage works
+    {
+        "keywords": ["stormwater", "storm water", "drainage", "stormwater pit",
+                     "drainage pit", "culvert", "headwall", "stormwater pipe",
+                     "drainage pipe", "stormwater channel"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Hi-vis vest",
+            "Steel-capped safety boots",
+            "Waterproof gloves",
+        ],
+        "certs": [],
+        "permits": [
+            "EPA stormwater controls — erosion and sediment control plan before ground disturbance",
+        ],
+        "qualifications": [
+            "Confined space entry permit — where pit or chamber entry is required",
+            "Atmospheric testing — O2 and contaminant levels checked before entry to pits or chambers",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Stormwater pit and chamber entry may trigger confined space HRCW — assess per WHS Reg 2017 Sch 3 cl.6",
+            "Erosion and sediment control must be maintained throughout works and until site is stabilised",
+        ],
+    },
+
+    # 8. Pedestrian interface near live works
+    {
+        "keywords": ["pedestrian", "footpath", "walkway", "pedestrian crossing",
+                     "pedestrian management", "shared path", "pedestrian ramp"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hi-vis vest",
+        ],
+        "certs": [],
+        "permits": [
+            "Pedestrian management plan — maintained throughout works where public pedestrian access is affected",
+        ],
+        "qualifications": [
+            "Temporary pedestrian pathways maintained throughout — minimum 1.2m clear width, DDA compliant",
+            "Pedestrian exclusion from active work zones — physical barriers, not just signage",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Pedestrian safety in live road corridor requires continuous management, not just initial setup",
+            "Temporary pedestrian detours must be DDA compliant and signed",
+        ],
+    },
+
+    # 9. Pavement / earthworks / silica standing hazard
+    {
+        "keywords": ["pavement", "asphalt", "bitumen", "chip seal", "road base",
+                     "subbase", "subgrade", "earthworks", "compaction",
+                     "road surface", "wearing course", "base course"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "P2 respirator — silica dust during pavement cutting, grinding, or sawing",
+            "Hard hat",
+            "Hi-vis vest",
+            "Steel-capped safety boots",
+            "Hearing protection — during compaction and paving operations",
+        ],
+        "certs": [],
+        "permits": [],
+        "qualifications": [
+            "Compaction testing accepted before next pavement layer placed",
+            "Silica dust controls — wet cutting, dust extraction, or RPE where RCS exposure possible",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Respirable crystalline silica (RCS) — SafeWork NSW workplace exposure standard applies to all concrete and pavement cutting",
+            "Compaction testing must meet specification requirements before next layer is placed",
+        ],
+    },
+
     # ── RETROFIT / FIT-OUT HAZARD FAMILIES ────────────────────────────────────
     # These categories target retrofit, fit-out, and services-installation work
     # in existing buildings. They are NOT new-build construction categories.
@@ -6306,6 +6594,17 @@ SYNONYM_MAP: dict[str, str] = {
     "data center":                  "electrical install",
     "server room":                  "electrical install",
     "comms room":                   "electrical install",
+
+    # Civil infrastructure synonyms
+    "road upgrade":                 "road works",
+    "road widening":                "road works",
+    "lane widening":                "road works",
+    "4 lanes":                      "road works",
+    "four lanes":                   "road works",
+    "chip seal":                    "pavement",
+    "t-intersection":               "intersection",
+    "t intersection":               "intersection",
+    "stormwater works":             "stormwater",
 }
 
 
@@ -6411,6 +6710,13 @@ CHAIN_MAP: dict[str, list[str]] = {
     "server room":              ["electrical install", "ups ", "hvac", "fire services",
                                  "existing services"],
     "electrical install":       ["existing services"],
+
+    # Civil infrastructure chains
+    "road works":               ["live lane", "mobile plant", "pavement", "pedestrian"],
+    "live lane":                ["traffic management", "mobile plant", "pedestrian"],
+    "intersection":             ["traffic signal", "pedestrian", "traffic management"],
+    "sydney water":             ["water main", "excavation"],
+    "asset relocation":         ["excavation", "live lane"],
 }
 
 
@@ -6893,6 +7199,9 @@ def classify_swms_scope(description: str) -> dict:
                           "upgrade existing", "modify existing"]),
         ("maintenance",  ["maintenance", "repair", "service existing", "replace existing",
                           "routine inspection"]),
+        ("civil_infrastructure", ["road works", "road work", "road upgrade", "road widening",
+                          "lane widening", "live lane", "road construction", "civil works",
+                          "intersection", "stormwater works", "pavement"]),
         ("upgrade",      ["upgrade", "extension", "addition"]),
         ("new_build",    ["new build", "new construction", "greenfield", "ground-up",
                           "erect", "erection", "pour slab", "formwork"]),
@@ -6945,6 +7254,21 @@ def classify_swms_scope(description: str) -> dict:
         "ewp_transfer":      ["ewp transfer", "transfer to roof", "transfer from ewp",
                               "guardrail opening", "platform to roof", "roof transfer",
                               "transfer through guardrail", "transfer via guardrail"],
+        "civil_infrastructure": ["road works", "road work", "road upgrade", "road widening",
+                                  "lane widening", "intersection", "roundabout", "road construction",
+                                  "road corridor", "road pavement", "civil works", "civil construction"],
+        "road_corridor":     ["road", "lane", "live lane", "traffic corridor", "carriageway",
+                              "roadway", "road reserve"],
+        "live_lanes":        ["live lane", "live traffic", "live road", "live works"],
+        "utility_relocation": ["asset relocation", "service relocation", "utility relocation",
+                               "water main", "sydney water", "gas main", "sewer",
+                               "service diversion", "pipe relocation"],
+        "stormwater":        ["stormwater", "storm water", "drainage", "stormwater pit",
+                              "drainage pit", "culvert", "headwall"],
+        "traffic_signals":   ["traffic light", "traffic signal", "signal installation",
+                              "signalised intersection", "signalized intersection"],
+        "pedestrian_interface": ["pedestrian", "footpath", "walkway", "pedestrian crossing",
+                                  "pedestrian management", "shared path"],
     }
     scope_modifiers = []
     for mod, keywords in _MODIFIER_RULES.items():
@@ -6985,6 +7309,9 @@ def classify_ra_scope(description: str) -> dict:
                           "upgrade existing", "modify existing", "alter existing"]),
         ("maintenance",  ["maintenance", "repair", "service existing", "replace existing",
                           "routine inspection"]),
+        ("civil_infrastructure", ["road works", "road work", "road upgrade", "road widening",
+                          "lane widening", "live lane", "road construction", "civil works",
+                          "intersection", "stormwater works", "pavement"]),
         ("upgrade",      ["upgrade", "extension", "addition to existing"]),
         ("new_build",    ["new build", "new construction", "greenfield", "ground-up",
                           "erect", "erection", "pour slab", "formwork"]),
@@ -7029,6 +7356,18 @@ def classify_ra_scope(description: str) -> dict:
                                 "fire suppression", "smoke detect"],
         "structural_mod":      ["structural modification", "structural alteration",
                                 "penetration", "core drill", "slab penetration"],
+        "civil_infrastructure": ["road works", "road work", "road upgrade", "road widening",
+                                  "lane widening", "intersection", "road construction",
+                                  "road corridor", "civil works"],
+        "road_corridor":     ["road", "lane", "live lane", "traffic corridor", "carriageway"],
+        "live_lanes":        ["live lane", "live traffic", "live road", "live works"],
+        "utility_relocation": ["asset relocation", "service relocation", "utility relocation",
+                               "water main", "sydney water", "gas main", "sewer",
+                               "pipe relocation"],
+        "stormwater":        ["stormwater", "storm water", "drainage", "stormwater pit",
+                              "drainage pit", "culvert"],
+        "traffic_signals":   ["traffic light", "traffic signal", "signal installation"],
+        "pedestrian_interface": ["pedestrian", "footpath", "walkway", "pedestrian crossing"],
     }
     scope_modifiers = []
     for mod, keywords in _MODIFIER_RULES.items():
