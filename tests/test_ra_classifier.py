@@ -196,12 +196,13 @@ class TestRaPhaseGrouping:
         assert any("slab" in n for n in names), f"Slab loading not in existing phase: {names}"
 
     def test_electrical_hrcw_in_live_phase(self):
-        """HRCW energised electrical should be in live services phase."""
+        """HRCW electrical / switchboard should be in live services phase."""
         result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
         live = [pg for pg in result["phase_groups"]
                 if pg["phase"] == "Live services / commissioning"][0]
         names = [h["hazard"].lower() for h in live["hazards"]]
-        assert any("energised" in n for n in names), f"Energised not in live phase: {names}"
+        assert any("electrical" in n or "switchboard" in n for n in names), \
+            f"Electrical/switchboard not in live phase: {names}"
 
     def test_hvac_in_install_phase(self):
         """HVAC should be in installation phase."""

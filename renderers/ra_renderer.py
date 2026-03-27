@@ -393,6 +393,35 @@ def render_ra_document(
     leg_parts = jur["base_legislation_string"].split(" \u2014 ")
     jur_notes = inference.get("jurisdiction_notes", [])
     reg_notes = inference.get("regulatory_notes", [])
+
+    # Filter out regulatory notes from suppressed categories (e.g. tilt-up,
+    # crane, rigging, precast references in a fit-out RA)
+    classification = inference.get("ra_classification", {})
+    _building = classification.get("building_context", "new")
+    _jtype = classification.get("job_type", "new_build")
+    if _building == "existing" and _jtype not in ("new_build", "demolition"):
+        _SUPPRESSED_TERMS = [
+            # New-build / construction-phase references
+            "tilt-up", "precast", "crane", "rigging", "dogging",
+            "panel erection", "birth certificate", "bracing",
+            "formwork", "steel erection", "as 3850", "as 2550",
+            "as 3569", "as 1353", "as 4497", "swl", "tagline",
+            "tag line", "dogman", "sling", "shackle", "lift study",
+            "critical lift", "wind limit", "load chart",
+            "shop drawing", "concrete strength", "wind speed",
+            "erection suspended", "adjacent panel",
+            # SWMS-level implementation details (too granular for RA legislation)
+            "suspension trauma", "harness inspection", "control line",
+            "exclusion zone required below", "emergency access must be",
+            "edge protection first", "r.291-303", "r.305", "r.211-240",
+            "emergency contacts", "guardrails preferred",
+        ]
+        def _is_suppressed(note: str) -> bool:
+            nl = note.lower()
+            return any(t in nl for t in _SUPPRESSED_TERMS)
+        reg_notes = [n for n in reg_notes if not _is_suppressed(n)]
+        jur_notes = [n for n in jur_notes if not _is_suppressed(n)]
+
     all_leg = leg_parts + [n for n in jur_notes + reg_notes
                            if n.strip() not in leg_parts]
     for item in all_leg:

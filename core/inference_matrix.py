@@ -7111,6 +7111,29 @@ def _expand_description_ra(text: str, classification: dict) -> str:
     return expanded
 
 
+# ── RA Display Names ─────────────────────────────────────────────────────────
+# Maps primary keywords to professional hazard names for RA output.
+
+_RA_DISPLAY_NAMES: dict[str, str] = {
+    "slab loading":              "Existing Structure / Slab Loading",
+    "heavy equipment delivery":  "Heavy Equipment Delivery and Movement",
+    "existing services":         "Existing Services / Service Strike",
+    "electrical install":        "Electrical Installation / Switchboard Work",
+    "ups ":                      "UPS / Battery Installation",
+    "hvac":                      "HVAC / Cooling Systems",
+    "fire services":             "Fire Services / Suppression Systems",
+    "occupied site":             "Interface with Existing Operations",
+    "at height":                 "Work at Height",
+    "scaffold":                  "Scaffold Work",
+    "rigging":                   "Rigging / Lifting Operations",
+    "crane":                     "Crane Operations",
+    "asbestos":                  "Asbestos Management",
+    "confined space":            "Confined Space Entry",
+    "demolition":                "Demolition Work",
+    "excavat":                   "Excavation / Trenching",
+}
+
+
 # ── RA Control Language Overrides ─────────────────────────────────────────────
 # Maps primary keyword prefixes to RA-appropriate control wording.
 # Entries here override the default notes/qualifications scraping.
@@ -7263,16 +7286,17 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
             continue
 
         # Derive hazard description from entry keywords and category
-        hazard_name = primary_kw.replace("_", " ").title()
-        if entry.get("hrcw_category"):
-            # Use the descriptive part after the regulation reference
-            cat = entry["hrcw_category"]
-            if "\u2014" in cat:
-                hazard_name = cat.split("\u2014", 1)[1].strip()
-            elif "—" in cat:
-                hazard_name = cat.split("—", 1)[1].strip()
-            else:
-                hazard_name = cat
+        hazard_name = _RA_DISPLAY_NAMES.get(primary_kw)
+        if not hazard_name:
+            hazard_name = primary_kw.replace("_", " ").title()
+            if entry.get("hrcw_category"):
+                cat = entry["hrcw_category"]
+                if "\u2014" in cat:
+                    hazard_name = cat.split("\u2014", 1)[1].strip()
+                elif "\u2014" in cat:
+                    hazard_name = cat.split("\u2014", 1)[1].strip()
+                else:
+                    hazard_name = cat
 
         # —— Confidence assignment ——————————————————————————————————————
         # Determine how certain we are that this hazard applies to the
