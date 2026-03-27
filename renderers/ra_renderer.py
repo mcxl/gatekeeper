@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-renderers/ra_renderer.py — Risk Assessment document renderer.
+renderers/ra_renderer.py â€" Risk Assessment document renderer.
 
 Generates a standalone .docx Risk Assessment with:
   - Cover / header page
@@ -22,13 +22,13 @@ from io import BytesIO
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import parse_xml
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt, RGBColor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# â"€â"€ Constants â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 FONT = "Aptos"
 BLACK = RGBColor(0x00, 0x00, 0x00)
@@ -36,11 +36,11 @@ WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 GREY = RGBColor(0x44, 0x44, 0x44)
 
 # Risk level colours
-LOW_BG = "00FF00"
-MED_BG = "FFFF00"
-HIGH_BG = "FF6600"
-EXTREME_BG = "FF0000"
-BLUE_BG = "DBE5F1"
+LOW_BG = "F2F2F2"
+MED_BG = "D9D9D9"
+HIGH_BG = "A6A6A6"
+EXTREME_BG = "595959"
+BLUE_BG = "404040"
 
 _NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -55,7 +55,7 @@ _BORDER_TBL = (
     '</w:tblBorders>'
 ).format(ns=_NS)
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 def _shade(cell, hex_color: str) -> None:
     tcPr = cell._tc.get_or_add_tcPr()
@@ -133,7 +133,172 @@ def _add_heading(doc, text: str, size_pt: int = 14, space_before: int = 12) -> N
     _run(p, text, bold=True, size_pt=size_pt)
 
 
-# ── Main render ──────────────────────────────────────────────────────────────
+def _append_field_run(para, field_name: str) -> None:
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = field_name
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+
+    r1 = para.add_run()
+    r1.font.name = FONT
+    r1.font.size = Pt(9)
+    r1._r.append(begin)
+
+    r2 = para.add_run()
+    r2.font.name = FONT
+    r2.font.size = Pt(9)
+    r2._r.append(instr)
+
+    r3 = para.add_run()
+    r3.font.name = FONT
+    r3.font.size = Pt(9)
+    r3._r.append(end)
+
+
+# —— Supplementary RA sections ————————————————————————————————————————————————
+
+def _bullet(doc, text: str, size_pt: int = 9) -> None:
+    """Add a bullet paragraph."""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(1)
+    p.paragraph_format.space_after = Pt(1)
+    _run(p, "\u2022  " + text, size_pt=size_pt)
+
+
+def _render_ra_supplementary_sections(
+    doc, hazards: list[dict], inference: dict, jurisdiction: str,
+) -> None:
+    """Render sections 6-9: Assumptions, Hold Points, SWMS Triggers, Info Required."""
+
+    classification = inference.get("ra_classification", {})
+    job_type = classification.get("job_type", "new_build")
+    building_context = classification.get("building_context", "new")
+    modifiers = set(classification.get("scope_modifiers", []))
+    hrcw_flags = inference.get("hrcw_flags", {})
+    phase_groups = inference.get("phase_groups", [])
+
+    # —— Section 6: Assumptions ————————————————————————————————————————————
+    _add_heading(doc, "6. Assumptions")
+    assumptions = []
+
+    if building_context == "existing":
+        assumptions.append("Existing building is structurally sound and suitable for the proposed use unless noted otherwise")
+    if "tilt_up_context" in modifiers:
+        assumptions.append("Tilt-up / precast structure is existing and does not require erection or structural modification unless stated")
+    if job_type in ("fit_out", "retrofit"):
+        assumptions.append("Work is internal fit-out / retrofit within an existing building envelope")
+    if "warehouse" in modifiers or "industrial" in modifiers:
+        assumptions.append("Existing floor slab capacity is adequate for proposed equipment loads \u2014 to be confirmed by structural engineer")
+    if "electrical_install" in modifiers:
+        assumptions.append("Existing electrical supply and switchboard capacity are adequate for the proposed installation \u2014 to be confirmed")
+    if "mechanical_install" in modifiers:
+        assumptions.append("Existing roof / structure can support proposed mechanical plant \u2014 to be confirmed")
+
+    assumptions.append("All required permits, approvals, and notifications will be obtained before work commences")
+    assumptions.append("This RA will be reviewed and updated if site conditions differ from those assumed")
+
+    for a in assumptions:
+        _bullet(doc, a)
+
+    # —— Section 7: Pre-Start Hold Points ——————————————————————————————————
+    _add_heading(doc, "7. Pre-Start Hold Points")
+    hold_points = []
+
+    if building_context == "existing":
+        hold_points.append("Existing services location scan completed and verified before any penetration or excavation")
+    if "electrical_install" in modifiers or any(
+        "electrical" in h.get("hazard", "").lower() for h in hazards
+    ):
+        hold_points.append("Electrical isolation plan reviewed and approved before work on existing switchboard or circuits")
+    if any("slab" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append("Structural engineer confirmation of slab / floor loading capacity before heavy equipment placement")
+    if any("fire" in h.get("hazard", "").lower() for h in hazards):
+        hold_points.append("Fire system impairment notice issued and managed before isolating existing fire services")
+
+    # Always include
+    hold_points.append("Site induction completed for all workers before first entry")
+    hold_points.append("SWMS reviewed and signed by all workers before commencing relevant high-risk tasks")
+
+    for hp in hold_points:
+        _bullet(doc, hp)
+
+    # —— Section 8: Likely SWMS Triggers ———————————————————————————————————
+    _add_heading(doc, "8. Likely SWMS Triggers")
+
+    intro_p = doc.add_paragraph()
+    _run(intro_p, "Based on the identified hazards, the following work activities are likely to require a separate SWMS:", size_pt=9)
+
+    swms_triggers = []
+    active_hrcw = [k for k, v in hrcw_flags.items() if v]
+    # Suppress HRCW triggers that were suppressed from the RA hazard list
+    # (e.g. tilt-up erection triggers in a fit-out context)
+    _SUPPRESS_IN_EXISTING = {"tiltup_precast", "mobile_plant"}
+    if building_context == "existing" and job_type not in ("new_build", "demolition"):
+        active_hrcw = [k for k in active_hrcw if k not in _SUPPRESS_IN_EXISTING]
+    _HRCW_LABELS = {
+        "falling_2m": "Work at height with risk of fall >2m",
+        "asbestos": "Asbestos disturbance or removal",
+        "electrical": "Work on or near energised electrical installations",
+        "confined_space": "Confined space entry",
+        "demolition": "Demolition of load-bearing structure",
+        "shaft_trench": "Work in or near shaft or trench >1.5m",
+        "mobile_plant": "Work near powered mobile plant",
+        "chemical_fuel": "Work on or near chemical, fuel, or refrigerant lines",
+        "tiltup_precast": "Tilt-up or precast concrete element handling",
+        "traffic_corridor": "Work on or adjacent to a traffic corridor",
+    }
+    for flag in active_hrcw:
+        label = _HRCW_LABELS.get(flag, flag.replace("_", " ").title())
+        swms_triggers.append(label)
+
+    # Add non-HRCW triggers from hazard confidence
+    for h in hazards:
+        conf = h.get("confidence", "")
+        name = h.get("hazard", "")
+        if conf in ("confirmed", "likely") and name.lower() not in " ".join(swms_triggers).lower():
+            swms_triggers.append(f"{name} \u2014 if applicable, confirm scope before preparing SWMS")
+
+    if not swms_triggers:
+        _bullet(doc, "No HRCW triggers identified \u2014 SWMS requirement to be confirmed based on principal contractor requirements")
+    else:
+        for t in swms_triggers:
+            _bullet(doc, t)
+
+    # —— Section 9: Information Still Required Before Issue ————————————————
+    _add_heading(doc, "9. Information Still Required Before Issue")
+
+    info_items = []
+
+    # Derive from hazards with low confidence
+    for h in hazards:
+        conf = h.get("confidence", "")
+        name = h.get("hazard", "")
+        if conf == "requires_verification":
+            info_items.append(f"{name} \u2014 confirm whether this hazard is present on site")
+        elif conf == "if_applicable":
+            info_items.append(f"{name} \u2014 confirm scope details and site conditions")
+
+    # Common missing information for retrofit
+    if building_context == "existing":
+        info_items.append("As-built drawings for existing services (electrical, hydraulic, fire, structural)")
+    if any("slab" in h.get("hazard", "").lower() for h in hazards):
+        info_items.append("Structural engineer report on floor / slab loading capacity")
+    if "electrical_install" in modifiers:
+        info_items.append("Existing switchboard schedule and available capacity")
+    if any("fire" in h.get("hazard", "").lower() for h in hazards):
+        info_items.append("Existing fire services layout and impairment management plan")
+
+    if not info_items:
+        _bullet(doc, "No outstanding information gaps identified")
+    else:
+        for item in info_items:
+            _bullet(doc, item)
+
+
+# —— Main render ——————————————————————————————————————————————————————————————
 
 def render_ra_document(
     hazards: list[dict],
@@ -153,7 +318,7 @@ def render_ra_document(
         ca_province:   optional CA province code (ON, BC, AB, QC)
 
     Returns:
-        bytes — the rendered .docx file content.
+        bytes â€" the rendered .docx file content.
     """
     from core.jurisdictions import get_jurisdiction
 
@@ -170,7 +335,7 @@ def render_ra_document(
     section.top_margin = Cm(1.5)
     section.bottom_margin = Cm(1.5)
 
-    # ── Cover / Header ───────────────────────────────────────────────────
+    # â"€â"€ Cover / Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     proj_name = project_meta.get("project_name", "Untitled Project")
     site_address = project_meta.get("site_address", "")
     pc = project_meta.get("principal_contractor", "")
@@ -204,13 +369,13 @@ def render_ra_document(
         cover_table.cell(i, 0).width = Cm(5)
         cover_table.cell(i, 1).width = Cm(12)
 
-    # ── Section 1: Project Description ───────────────────────────────────
+    # â"€â"€ Section 1: Project Description â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "1. Project Description")
     description = project_meta.get("description", project_meta.get("work_activity", proj_name))
     desc_p = doc.add_paragraph()
     _run(desc_p, description, size_pt=10)
 
-    # ── Section 2: Assessment Team ───────────────────────────────────────
+    # â"€â"€ Section 2: Assessment Team â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "2. Assessment Team")
     team_table = doc.add_table(rows=4, cols=4)
     _format_table(team_table)
@@ -223,7 +388,7 @@ def render_ra_document(
         _run(team_table.cell(1, 0).paragraphs[0], manager, size_pt=9)
         _run(team_table.cell(1, 1).paragraphs[0], "Assessor", size_pt=9)
 
-    # ── Section 3: Legislation and Standards ─────────────────────────────
+    # â"€â"€ Section 3: Legislation and Standards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "3. Applicable Legislation and Standards")
     leg_parts = jur["base_legislation_string"].split(" \u2014 ")
     jur_notes = inference.get("jurisdiction_notes", [])
@@ -239,7 +404,7 @@ def render_ra_document(
         bp.paragraph_format.space_after = Pt(1)
         _run(bp, "\u2022  " + item, size_pt=9)
 
-    # ── Section 4: Risk Rating Matrix ────────────────────────────────────
+    # â"€â"€ Section 4: Risk Rating Matrix â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "4. Risk Rating Matrix")
 
     LIKELIHOOD = ["Rare", "Unlikely", "Possible", "Likely", "Almost Certain"]
@@ -263,7 +428,7 @@ def render_ra_document(
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _run(p, f"{c}\n({ci + 1})", bold=True, size_pt=7)
 
-    # Sub-header row for "Consequence →"
+    # Sub-header row for "Consequence â†'"
     _shade(matrix.cell(1, 0), BLUE_BG)
     p = matrix.cell(1, 0).paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -291,7 +456,7 @@ def render_ra_document(
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             _run(p, str(score), bold=True, color=_risk_text_color(level), size_pt=9)
 
-    # ── Section 5: Hazard Register ───────────────────────────────────────
+    # â"€â"€ Section 5: Hazard Register â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "5. Hazard Register")
 
     # Switch to landscape for the wide table
@@ -384,7 +549,10 @@ def render_ra_document(
         # Responsible
         _run(row.cells[9].paragraphs[0], haz.get("responsible", "Supervisor"), size_pt=8)
 
-    # ── Section 6: Review and Sign Off ───────────────────────────────────
+    # —— Sections 6-9: Assumptions, Hold Points, SWMS Triggers, Info Required ——
+    _render_ra_supplementary_sections(doc, hazards, inference, jurisdiction)
+
+    # —— Section 10: Review and Sign Off ——————————————————————————————————————
     # Switch back to portrait
     final_section = doc.add_section(2)
     final_section.orientation = WD_ORIENT.PORTRAIT
@@ -395,7 +563,7 @@ def render_ra_document(
     final_section.top_margin = Cm(1.5)
     final_section.bottom_margin = Cm(1.5)
 
-    _add_heading(doc, "6. Review and Sign Off")
+    _add_heading(doc, "10. Review and Sign Off")
 
     review_p = doc.add_paragraph()
     _run(review_p, "This Risk Assessment must be reviewed:", bold=True, size_pt=10)
@@ -417,7 +585,7 @@ def render_ra_document(
     doc.add_paragraph()  # spacer
     signoff = doc.add_table(rows=4, cols=3)
     _format_table(signoff)
-    signoff_headers = ["Prepared By", "Reviewed By", "Approved By"]
+    signoff_headers = ["Prepared By", "Reviewed By", "Accepted For Commencement By"]
     for i, h in enumerate(signoff_headers):
         _header_cell(signoff.rows[0].cells[i], h)
 
@@ -426,7 +594,7 @@ def render_ra_document(
         for ci in range(3):
             _run(signoff.cell(ri + 1, ci).paragraphs[0], label, size_pt=9, italic=True, color=GREY)
 
-    # ── Footer ───────────────────────────────────────────────────────────
+    # â"€â"€ Footer â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     import re as _re
     safe_name = _re.sub(r'[\\/:*?"<>|]', "-", proj_name)[:40]
     footer_date = doc_date.replace("/", "").replace("-", "")
@@ -435,7 +603,7 @@ def render_ra_document(
         "US": "OSHA 29 CFR 1926", "CA": "Canada Labour Code Part II",
     }
     jur_ref = _JUR_FOOTER.get(jurisdiction, "")
-    footer_text = f"RA-{safe_name}-{footer_date}-V01"
+    footer_text = f"RA-{safe_name}-{footer_date}-V01.docx"
     if jur_ref:
         footer_text += f" | {jur_ref}"
 
@@ -448,9 +616,11 @@ def render_ra_document(
         else:
             fp = footer.add_paragraph()
         fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        _run(fp, footer_text, size_pt=9)
+        _run(fp, footer_text + " | Page ", size_pt=9)
+        _append_field_run(fp, "PAGE")
 
-    # ── Save and return ──────────────────────────────────────────────────
+    # â"€â"€ Save and return â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
+

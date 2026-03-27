@@ -266,3 +266,60 @@ class TestRaControlLanguage:
                 f"Missing engineering controls: {h['hazard']}"
             assert h["controls"].get("admin"), \
                 f"Missing admin controls: {h['hazard']}"
+
+
+class TestRaSupplementarySections:
+    """RA renderer should produce assumptions, hold points, SWMS triggers, info required."""
+
+    BENCHMARK_DESC = (
+        "Installing a data centre into an existing industrial warehouse "
+        "(concrete tilt-up construction) in NSW"
+    )
+
+    def _render_benchmark(self):
+        from renderers.ra_renderer import render_ra_document
+        from docx import Document
+        from io import BytesIO
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        meta = {"project_name": "Data Centre Fit-Out", "site_address": "123 Industrial Ave"}
+        docx_bytes = render_ra_document(result["hazard_list"], meta, result, jurisdiction="AU")
+        return Document(BytesIO(docx_bytes))
+
+    def _section_text(self, doc, heading_prefix):
+        """Extract all text under a heading number prefix."""
+        capture = False
+        lines = []
+        for p in doc.paragraphs:
+            text = p.text.strip()
+            if text.startswith(heading_prefix):
+                capture = True
+                continue
+            elif capture and text and any(text.startswith(f"{n}.") for n in range(1, 20)):
+                break  # next heading
+            elif capture and text:
+                lines.append(text)
+        return " ".join(lines)
+
+    def test_assumptions_section_exists(self):
+        doc = self._render_benchmark()
+        text = self._section_text(doc, "6. Assumptions")
+        assert "existing building" in text.lower(), f"Assumptions should mention existing building: {text[:100]}"
+        assert "fit-out" in text.lower() or "retrofit" in text.lower(), f"Should mention fit-out: {text[:100]}"
+
+    def test_hold_points_section_exists(self):
+        doc = self._render_benchmark()
+        text = self._section_text(doc, "7. Pre-Start Hold Points")
+        assert "service" in text.lower() or "isolation" in text.lower(), f"Hold points should mention services: {text[:100]}"
+
+    def test_swms_triggers_section_exists(self):
+        doc = self._render_benchmark()
+        text = self._section_text(doc, "8. Likely SWMS Triggers")
+        assert "swms" in text.lower() or "work" in text.lower(), f"SWMS triggers should have content: {text[:100]}"
+        # Should NOT include tilt-up erection for a fit-out
+        assert "tilt-up" not in text.lower(), f"Should not include tilt-up SWMS trigger for fit-out: {text[:100]}"
+
+    def test_info_required_section_exists(self):
+        doc = self._render_benchmark()
+        text = self._section_text(doc, "9. Information Still Required")
+        assert "confirm" in text.lower(), f"Info required should mention items to confirm: {text[:100]}"
+        assert "as-built" in text.lower() or "drawings" in text.lower(), f"Should mention as-builts: {text[:100]}"
