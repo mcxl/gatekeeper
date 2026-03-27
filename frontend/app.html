@@ -1087,6 +1087,17 @@ async function generate() {
       errDiv.style.cssText = 'color:#dc2626;text-align:center;padding:16px;font-weight:600;';
       errDiv.textContent = 'Error: ' + err.message;
       statusPanel.appendChild(errDiv);
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'btn-secondary';
+      retryBtn.style.cssText = 'max-width:300px;margin:16px auto 0;';
+      retryBtn.textContent = '\u2190 Edit and try again';
+      retryBtn.onclick = function() {
+        statusPanel.style.display = 'none';
+        document.getElementById('form-container').style.display = '';
+        document.getElementById('btn-generate').parentElement.style.display = '';
+        document.querySelector('.mode-tabs').style.display = '';
+      };
+      statusPanel.appendChild(retryBtn);
     }
   } finally {
     document.getElementById('gen-warning').style.display = 'none';
