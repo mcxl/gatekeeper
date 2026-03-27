@@ -129,13 +129,31 @@ _DUPLICATE_TOKENS = [
 import re as _re_audit
 _AUDIT_PATTERN = _re_audit.compile(r'AUDIT:\s*[\w\-|,\s]+$', _re_audit.MULTILINE)
 
+import re as _re_sanitise
+
+# Pattern: "steel-capped footwear— steel-capped" → "steel-capped footwear"
+# Catches: "<prefix> <word>— <prefix>" or "<prefix> <word>—<prefix>"
+_PPE_DOUBLE_PREFIX = _re_sanitise.compile(
+    r'\b(steel-capped|cut-resistant|chemical-resistant|high-visibility)'
+    r'(\s+\w[\w\s,]*?)'
+    r'[—\-]+\s*\1',
+    _re_sanitise.IGNORECASE,
+)
+
+
 def sanitise_text(text: str) -> str:
     """Remove duplicate tokens, double spaces, and legacy AUDIT metadata from generated text."""
     # Strip legacy AUDIT: metadata lines
     text = _AUDIT_PATTERN.sub('', text).strip()
     for bad, good in _DUPLICATE_TOKENS:
-        while bad in text:
-            text = text.replace(bad, good)
+        # Case-insensitive duplicate token removal
+        text_lower = text.lower()
+        while bad in text_lower:
+            idx = text_lower.find(bad)
+            text = text[:idx] + good + text[idx + len(bad):]
+            text_lower = text.lower()
+    # Fix PPE double-prefix artefacts: "steel-capped footwear— steel-capped" → "steel-capped footwear"
+    text = _PPE_DOUBLE_PREFIX.sub(r'\1\2', text)
     return text
 
 # —— CCVS code validator ——————————————————————————————————————————————————————

@@ -645,6 +645,7 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
                 for ctrl in tb[field]
             ]
     _propagate_scaffold_wah(tb, inference)
+    _inject_occupied_controls(tb, inference)
     tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
 
@@ -698,6 +699,78 @@ def _propagate_scaffold_wah(tb: dict, inference: dict) -> None:
         v in task_name for v in ("erect", "dismantle", "install", "remove", "strip")
     ):
         tb["ccvs_code"] = "WAH-H6"
+
+
+# —— Occupied-building control injection ——————————————————————————————————————
+
+_OCCUPIED_SETUP_CONTROLS = [
+    "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts",
+    "Restrict work to approved hours agreed with building management — typically 7am-5pm weekdays unless otherwise approved",
+]
+
+_OCCUPIED_SETUP_HOLD_POINTS = [
+    "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager",
+]
+
+_OCCUPIED_ELEVATED_ADMIN = [
+    "Close and barricade balconies directly below active work zone before elevated work starts each day",
+    "Notify affected residents before any noise/dust generating work on their level or adjacent levels",
+]
+
+_OCCUPIED_ELEVATED_STOP_WORK = [
+    "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded",
+]
+
+
+def _inject_occupied_controls(tb: dict, inference: dict) -> None:
+    """
+    Inject occupant-protection controls for occupied-building jobs.
+
+    Adds notification and access-restriction controls to site-setup tasks,
+    and balcony/occupant protection to elevated tasks.
+    """
+    classification = inference.get("swms_classification", {})
+    if classification.get("occupancy_context") != "occupied":
+        return
+
+    task_name = tb.get("task", "").lower()
+    controls = tb.setdefault("controls", [])
+    admin = tb.setdefault("admin", [])
+    hold_points = tb.setdefault("hold_points", [])
+    stop_work = tb.setdefault("stop_work", [])
+
+    # Detect if this is a setup/mobilisation task
+    _SETUP_KEYWORDS = ["set up", "setup", "establish", "mobilise", "mobilize", "plan"]
+    is_setup = any(kw in task_name for kw in _SETUP_KEYWORDS)
+
+    # Detect if this is an elevated task
+    is_elevated = tb.get("wah_applicable", False) or tb.get("ccvs_code", "N/A").startswith("WAH")
+
+    existing_text = " ".join(controls + admin + hold_points + stop_work).lower()
+
+    if is_setup:
+        for ctrl in _OCCUPIED_SETUP_CONTROLS:
+            if "notify" not in existing_text or "body corporate" not in existing_text:
+                if ctrl not in controls:
+                    controls.append(ctrl)
+                    existing_text += " " + ctrl.lower()
+        for hp in _OCCUPIED_SETUP_HOLD_POINTS:
+            if "notification" not in existing_text or "body corporate" not in existing_text:
+                if hp not in hold_points:
+                    hold_points.append(hp)
+                    existing_text += " " + hp.lower()
+
+    if is_elevated:
+        for item in _OCCUPIED_ELEVATED_ADMIN:
+            if "balcony" not in existing_text or "barricade" not in existing_text:
+                if item not in admin:
+                    admin.append(item)
+                    existing_text += " " + item.lower()
+        for sw in _OCCUPIED_ELEVATED_STOP_WORK:
+            if "balcony" not in existing_text or "barricaded" not in existing_text:
+                if sw not in stop_work:
+                    stop_work.append(sw)
+                    existing_text += " " + sw.lower()
 
 
 def _enforce_sil_scoring(tb: dict) -> None:
