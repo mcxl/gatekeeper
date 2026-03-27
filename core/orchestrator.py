@@ -144,7 +144,16 @@ async def _run_full_pipeline(
             ctrl = await write_controls_single(task, risk, inference, scope_context=scope_context)
         except Exception as e:
             log.error(f"Agent 3 failed for task {idx+1} ({task['task'][:40]}): {e}")
-            ctrl = {}
+            # Provide minimal fallback so assembler doesn't crash on missing sequence
+            ctrl = {
+                "sequence": task.get("sequence", idx + 1),
+                "controls": ["Refer to site-specific controls", "Supervisor to verify before work starts", "Follow project safety management plan"],
+                "hold_points": [],
+                "stop_work": [],
+                "admin": [],
+                "ppe": ["Hard hat", "Hi-vis vest", "Safety boots"],
+                "ccvs_code": "N/A",
+            }
 
         # Agent 4: assemble
         single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}

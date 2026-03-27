@@ -60,7 +60,7 @@ CRITICAL WORD BANS (hard rules — violation fails the task):
 CONTROL RULES:
 - Imperative mood, approved verb first, specific and observable
 - Under 25 words per control
-- Minimum 3 controls, maximum 8 controls per task
+- Minimum 3 controls, maximum 12 controls per task
 - Controls must address the dominant hazard first
 - Follow hierarchy: Eliminate → Substitute → Isolate → Engineering →
   Administrative → PPE
@@ -275,8 +275,8 @@ def _validate_control_entry(entry: dict, seq: int) -> None:
             raise ValueError(f"Control entry {seq} missing field: '{field}'")
     if not isinstance(entry["controls"], list) or len(entry["controls"]) < 3:
         raise ValueError(f"Control entry {seq} must have at least 3 controls")
-    if len(entry["controls"]) > 8:
-        raise ValueError(f"Control entry {seq} has {len(entry['controls'])} controls — max 8")
+    if len(entry["controls"]) > 12:
+        raise ValueError(f"Control entry {seq} has {len(entry['controls'])} controls — max 12")
     # Verify wah_applicable consistency
     ccvs = entry.get("ccvs_code", "N/A")
     wah = entry.get("wah_applicable", False)
