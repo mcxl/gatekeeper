@@ -3,7 +3,7 @@
 api/main.py — Gatekeeper web interface.
 
 Endpoints:
-  GET  /          → task generation form (index.html)
+  GET  /          → login page (login.html)
   POST /generate  → query_task() → return DOCX + MD downloads
   GET  /tasks     → list approved tasks as JSON
   GET  /health    → simple health check
@@ -47,7 +47,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
@@ -119,9 +118,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 _STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-templates = Jinja2Templates(directory=_TEMPLATE_DIR)
 class CachedStaticFiles(StaticFiles):
     async def get_response(self, path, scope):
         response = await super().get_response(path, scope)
