@@ -1,0 +1,533 @@
+"""
+core/control_pack.py — Combined WHS Control Pack data layer.
+
+Assembles the structured data for a project-level WHS control pack
+from classification, inference, and user-confirmed trade packages.
+
+Does NOT render documents — produces a plain dict contract that
+a renderer or API endpoint can consume.
+"""
+
+from datetime import date as _date
+
+
+# ── SWMS Matrix Builder ──────────────────────────────────────────────────────
+
+# Deterministic mapping: trade package keyword → HRCW references + default SWMS title
+# Used when trade packages are extracted from scope text.
+# User confirmation overrides these defaults.
+
+_TRADE_PACKAGE_DEFAULTS = {
+    "traffic management": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Traffic Management SWMS — Live Lane Works",
+        "required_before": "Before any works commence in the road corridor",
+    },
+    "live lane": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Traffic Management SWMS — Live Lane Works",
+        "required_before": "Before any works commence in the road corridor",
+    },
+    "road works": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Traffic Management SWMS — Live Lane Works",
+        "required_before": "Before any works commence in the road corridor",
+    },
+    "service location": {
+        "hrcw_refs": ["H07", "H11"],
+        "swms_title": "Service Location and NDD SWMS",
+        "required_before": "Before any machine excavation commences in the road corridor",
+    },
+    "ndd": {
+        "hrcw_refs": ["H07", "H11"],
+        "swms_title": "Service Location and NDD SWMS",
+        "required_before": "Before any machine excavation commences",
+    },
+    "sydney water": {
+        "hrcw_refs": ["H07"],
+        "swms_title": "Sydney Water Main Relocation SWMS",
+        "required_before": "Before commencement of Sydney Water main relocation works",
+    },
+    "water main": {
+        "hrcw_refs": ["H07"],
+        "swms_title": "Water Main Relocation SWMS",
+        "required_before": "Before commencement of water main relocation works",
+    },
+    "stormwater": {
+        "hrcw_refs": ["H07"],
+        "swms_title": "Stormwater Drainage Installation SWMS",
+        "required_before": "Before commencement of stormwater pit and pipe excavation",
+    },
+    "drainage": {
+        "hrcw_refs": ["H07"],
+        "swms_title": "Stormwater Drainage Installation SWMS",
+        "required_before": "Before commencement of drainage works",
+    },
+    "earthworks": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Bulk Earthworks and Pavement Construction SWMS",
+        "required_before": "Before commencement of earthworks or pavement construction",
+    },
+    "pavement": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Pavement Construction SWMS",
+        "required_before": "Before commencement of pavement works",
+    },
+    "intersection": {
+        "hrcw_refs": ["H11", "H14", "H15"],
+        "swms_title": "Intersection Reconstruction and Traffic Signal Installation SWMS",
+        "required_before": "Before commencement of intersection works",
+    },
+    "traffic signal": {
+        "hrcw_refs": ["H11", "H14"],
+        "swms_title": "Traffic Signal Installation SWMS",
+        "required_before": "Before commencement of traffic signal installation",
+    },
+    "kerb": {
+        "hrcw_refs": ["H14", "H15"],
+        "swms_title": "Kerb, Gutter and Footpath Construction SWMS",
+        "required_before": "Before commencement of kerb and footpath works",
+    },
+    "footpath": {
+        "hrcw_refs": ["H14"],
+        "swms_title": "Footpath and Pedestrian Infrastructure SWMS",
+        "required_before": "Before commencement of pedestrian infrastructure works",
+    },
+    "line marking": {
+        "hrcw_refs": ["H14"],
+        "swms_title": "Line Marking and Signage SWMS",
+        "required_before": "Before commencement of line marking in live road environment",
+    },
+    "signage": {
+        "hrcw_refs": ["H14"],
+        "swms_title": "Line Marking and Signage SWMS",
+        "required_before": "Before commencement of signage installation",
+    },
+    "scaffold": {
+        "hrcw_refs": ["H01"],
+        "swms_title": "Scaffold Erection and Dismantling SWMS",
+        "required_before": "Before commencement of scaffold erection",
+    },
+    "facade": {
+        "hrcw_refs": ["H01"],
+        "swms_title": "Facade Remedial Works SWMS",
+        "required_before": "Before commencement of facade access or remedial works",
+    },
+    "electrical": {
+        "hrcw_refs": ["H11"],
+        "swms_title": "Electrical Installation SWMS",
+        "required_before": "Before commencement of electrical work",
+    },
+    "gas": {
+        "hrcw_refs": ["H09"],
+        "swms_title": "Gas Main Works SWMS",
+        "required_before": "Before commencement of work on or near gas assets",
+    },
+    "demolition": {
+        "hrcw_refs": ["H03"],
+        "swms_title": "Demolition SWMS",
+        "required_before": "Before commencement of demolition works",
+    },
+    "confined space": {
+        "hrcw_refs": ["H06"],
+        "swms_title": "Confined Space Entry SWMS",
+        "required_before": "Before any confined space entry",
+    },
+    "asbestos": {
+        "hrcw_refs": ["H04"],
+        "swms_title": "Asbestos Management SWMS",
+        "required_before": "Before any disturbance of identified or suspected ACM",
+    },
+}
+
+
+def _identify_trade_packages(description: str, hrcw_register: list[dict]) -> list[str]:
+    """
+    Extract candidate trade packages from the description text.
+    Returns a list of trade package keywords that match.
+
+    This is the extraction step — user confirmation happens downstream.
+    """
+    text = description.lower()
+    matched = []
+    seen_titles = set()
+
+    for keyword, defaults in _TRADE_PACKAGE_DEFAULTS.items():
+        if keyword in text:
+            title = defaults["swms_title"]
+            if title not in seen_titles:
+                matched.append(keyword)
+                seen_titles.add(title)
+
+    # Also add packages implied by CONDITIONAL/YES HRCW categories
+    _HRCW_TO_TRADE = {
+        "H04": "asbestos",
+        "H06": "confined space",
+        "H09": "gas",
+    }
+    for entry in hrcw_register:
+        if entry["status"] in ("YES", "CONDITIONAL"):
+            trade = _HRCW_TO_TRADE.get(entry["ref"])
+            if trade and trade not in matched:
+                title = _TRADE_PACKAGE_DEFAULTS.get(trade, {}).get("swms_title", "")
+                if title and title not in seen_titles:
+                    matched.append(trade)
+                    seen_titles.add(title)
+
+    return matched
+
+
+def build_swms_matrix(
+    trade_packages: list[str],
+    hrcw_register: list[dict],
+) -> list[dict]:
+    """
+    Build the SWMS matrix from confirmed trade packages.
+
+    Args:
+        trade_packages: list of trade package keywords (user-confirmed)
+        hrcw_register: HRCW register from _build_ra_hrcw_register()
+
+    Returns:
+        list of SWMS matrix entries per the contract schema.
+    """
+    # Build lookup for HRCW references that are YES or CONDITIONAL
+    active_hrcw = {
+        h["ref"] for h in hrcw_register
+        if h["status"] in ("YES", "CONDITIONAL")
+    }
+
+    matrix = []
+    seen_titles = set()
+
+    for pkg_keyword in trade_packages:
+        defaults = _TRADE_PACKAGE_DEFAULTS.get(pkg_keyword.lower())
+        if not defaults:
+            # Unknown trade package — add with minimal info
+            matrix.append({
+                "trade_package": pkg_keyword.replace("_", " ").title(),
+                "hrcw_refs": [],
+                "swms_title": f"{pkg_keyword.replace('_', ' ').title()} SWMS",
+                "submitted_by": "[Insert subcontractor]",
+                "reviewed_by": "Site Manager",
+                "required_before": "Before commencement of relevant works",
+            })
+            continue
+
+        title = defaults["swms_title"]
+        if title in seen_titles:
+            continue
+        seen_titles.add(title)
+
+        # Filter HRCW refs to only those that are active
+        relevant_refs = [r for r in defaults["hrcw_refs"] if r in active_hrcw]
+
+        matrix.append({
+            "trade_package": pkg_keyword.replace("_", " ").title(),
+            "hrcw_refs": relevant_refs,
+            "swms_title": title,
+            "submitted_by": "[Insert subcontractor]",
+            "reviewed_by": "Site Manager",
+            "required_before": defaults["required_before"],
+        })
+
+    return matrix
+
+
+# ── Control Pack Builder ─────────────────────────────────────────────────────
+
+def build_control_pack(
+    description: str,
+    project_meta: dict,
+    trade_packages: list[str] | None = None,
+    jurisdiction: str = "AU",
+) -> dict:
+    """
+    Assemble the complete control pack data structure.
+
+    Args:
+        description: project scope description
+        project_meta: project metadata (name, address, pcbu, client, etc.)
+        trade_packages: user-confirmed trade packages (if None, auto-extracted)
+        jurisdiction: jurisdiction code
+
+    Returns:
+        dict matching the control pack output contract.
+    """
+    from core.inference_matrix import (
+        infer_to_dict_ra,
+        classify_ra_scope,
+    )
+
+    # Step 1: Classification and inference
+    result = infer_to_dict_ra(description, jurisdiction=jurisdiction)
+    classification = result.get("ra_classification", classify_ra_scope(description))
+    hrcw_register = result.get("ra_hrcw_register", [])
+    hazard_list = result.get("hazard_list", [])
+    phase_groups = result.get("phase_groups", [])
+
+    # Step 2: Trade packages — extract if not provided
+    if trade_packages is None:
+        trade_packages = _identify_trade_packages(description, hrcw_register)
+
+    # Step 3: SWMS matrix
+    swms_matrix = build_swms_matrix(trade_packages, hrcw_register)
+
+    # Step 4: Hold points — derive from classification and hazards
+    hold_points = _build_control_pack_hold_points(classification, hazard_list, trade_packages)
+
+    # Step 5: Risk register — reformat hazard list for control pack
+    risk_register = _build_risk_register(hazard_list, phase_groups)
+
+    # Step 6: Scope summary
+    scope_summary = _build_scope_summary(description, classification)
+
+    # Step 7: Review metadata
+    review_meta = _build_review_metadata(
+        hrcw_register, hazard_list, project_meta, trade_packages
+    )
+
+    # Step 8: Assemble
+    doc_date = project_meta.get("date", _date.today().strftime("%d/%m/%Y"))
+
+    return {
+        "document_type": "combined_whs_control_pack",
+        "version": project_meta.get("version", "1.0"),
+        "generated_at": _date.today().isoformat(),
+
+        "project_meta": {
+            "project_name": project_meta.get("project_name", "[To be confirmed]"),
+            "site_address": project_meta.get("site_address", "[To be confirmed]"),
+            "pcbu": project_meta.get("pcbu_name", project_meta.get("pcbu", "[To be confirmed]")),
+            "client": project_meta.get("client", "[To be confirmed]"),
+            "jurisdiction": jurisdiction,
+            "version": project_meta.get("version", "1.0"),
+            "date": doc_date,
+            "prepared_by": project_meta.get("manager_name", project_meta.get("prepared_by", "[To be confirmed]")),
+        },
+
+        "scope_summary": scope_summary,
+        "ra_classification": classification,
+        "hrcw_register": hrcw_register,
+        "swms_matrix": swms_matrix,
+        "hold_points": hold_points,
+        "risk_register": risk_register,
+        "review_meta": review_meta,
+        "inference": result,
+    }
+
+
+# ── Hold Points ──────────────────────────────────────────────────────────────
+
+def _build_control_pack_hold_points(
+    classification: dict, hazards: list[dict], trade_packages: list[str],
+) -> list[dict]:
+    """Build structured hold points for the control pack."""
+    modifiers = set(classification.get("scope_modifiers", []))
+    job_type = classification.get("job_type", "")
+    hold_points = []
+    hp_num = 1
+
+    def _add(name, packages, condition, authorised, evidence):
+        nonlocal hp_num
+        hold_points.append({
+            "ref": f"HP-{hp_num:02d}",
+            "name": name,
+            "trade_packages": packages if isinstance(packages, list) else [packages],
+            "condition": condition,
+            "authorised_by": authorised,
+            "evidence_required": evidence,
+        })
+        hp_num += 1
+
+    # Traffic management
+    if job_type == "civil_infrastructure" or "road_corridor" in modifiers or "live_lanes" in modifiers:
+        _add(
+            "Current Traffic Management Arrangement Accepted Before Works In Road Corridor",
+            "All trade packages",
+            "A current, accepted traffic management arrangement is in place for the specific works about to commence",
+            "Site Manager + Traffic Management Subcontractor",
+            "CTMP accepted for the current stage. Traffic management inspection completed.",
+        )
+
+    # Trench / excavation
+    if any("excavat" in h.get("hazard", "").lower() or "trench" in h.get("hazard", "").lower() for h in hazards):
+        _add(
+            "Trench Or Excavation Inspection Before Worker Entry",
+            "All packages involving excavation",
+            "Competent person has inspected the relevant trench or excavation and confirmed it is safe for worker entry or approach",
+            "Competent person appointed by the relevant subcontractor",
+            "Trench/excavation inspection record signed and dated before entry",
+        )
+
+    # Sydney Water
+    if "utility_relocation" in modifiers or any("sydney water" in h.get("hazard", "").lower() for h in hazards):
+        _add(
+            "Sydney Water Hold Points And Witness Points Satisfied",
+            "Sydney Water Asset Relocation",
+            "All Sydney Water mandatory hold points and witness points satisfied before connection to or disconnection from live main",
+            "Sydney Water Asset Protection representative",
+            "Sydney Water hold point sign-off records on site",
+        )
+
+    # Service proving
+    if any("excavat" in h.get("hazard", "").lower() for h in hazards):
+        _add(
+            "Service Proving Completed Before Machine Excavation",
+            "All packages involving machine excavation",
+            "All utilities in the proposed excavation zone have been positively identified by non-destructive digging",
+            "Site Manager",
+            "NDD/potholing records with service locations, depths and offsets",
+        )
+
+    # Compaction
+    if any("pavement" in h.get("hazard", "").lower() for h in hazards):
+        _add(
+            "Pavement Layer Compaction Testing Accepted",
+            "Earthworks and Pavement",
+            "Compaction testing for the current layer meets the specified requirements before next layer is placed",
+            "Site Manager",
+            "Compaction test results signed and accepted",
+        )
+
+    # Traffic signal commissioning
+    if "traffic_signals" in modifiers:
+        _add(
+            "Traffic Signal Commissioning Accepted Before Energisation",
+            "Traffic Signal Installation",
+            "Traffic signal installation is complete and has been inspected and accepted by the relevant authority",
+            "Transport for NSW or relevant authority",
+            "Signal commissioning acceptance record",
+        )
+
+    return hold_points
+
+
+# ── Risk Register ────────────────────────────────────────────────────────────
+
+def _build_risk_register(hazards: list[dict], phase_groups: list[dict]) -> list[dict]:
+    """Reformat hazard list into risk register entries grouped by phase/trade."""
+    register = []
+    ref_num = 1
+
+    for pg in phase_groups:
+        group_name = pg["phase"]
+        for h in pg["hazards"]:
+            # Build one-line summary control
+            ctrls = h.get("controls", {})
+            eng = ctrls.get("engineering", [])
+            adm = ctrls.get("admin", [])
+            control_summary = ". ".join(eng[:1] + adm[:1]) if (eng or adm) else "Refer to site-specific controls"
+
+            register.append({
+                "group": group_name,
+                "ref": f"RR-{ref_num:02d}",
+                "activity": h.get("hazard", ""),
+                "hrcw_category": h.get("phase", ""),
+                "initial_risk": h.get("risk_level", "Medium"),
+                "controls": control_summary,
+                "residual_risk": h.get("residual_level", "Low"),
+                "responsible": h.get("responsible", "Supervisor"),
+            })
+            ref_num += 1
+
+    return register
+
+
+# ── Scope Summary ────────────────────────────────────────────────────────────
+
+def _build_scope_summary(description: str, classification: dict) -> str:
+    """Build a concise scope summary from description and classification."""
+    job_type = classification.get("job_type", "construction")
+    modifiers = classification.get("scope_modifiers", [])
+
+    _JT_LABELS = {
+        "civil_infrastructure": "Civil infrastructure construction",
+        "remedial": "Remedial and repair works",
+        "fit_out": "Fit-out and services installation",
+        "retrofit": "Retrofit and upgrade works",
+        "maintenance": "Maintenance and repair",
+        "demolition": "Demolition works",
+        "upgrade": "Upgrade and extension works",
+        "new_build": "New construction",
+    }
+
+    summary = _JT_LABELS.get(job_type, job_type.replace("_", " ").title())
+    summary += ". " + description.strip()
+
+    if len(summary) > 500:
+        # Truncate at sentence boundary
+        truncated = summary[:500]
+        last_stop = truncated.rfind(". ")
+        if last_stop > 200:
+            summary = truncated[:last_stop + 1]
+        else:
+            summary = truncated.rstrip() + "..."
+
+    return summary
+
+
+# ── Review Metadata ──────────────────────────────────────────────────────────
+
+def _build_review_metadata(
+    hrcw_register: list[dict],
+    hazards: list[dict],
+    project_meta: dict,
+    trade_packages: list[str],
+) -> dict:
+    """Build review metadata with open items from missing/conditional data."""
+    open_items = []
+
+    # Missing project fields
+    for field in ("project_name", "site_address", "pcbu_name", "client"):
+        val = project_meta.get(field, "")
+        if not val or val == "[To be confirmed]":
+            open_items.append({
+                "item": f"Project field '{field}' not yet confirmed",
+                "source": "extraction",
+                "resolved": False,
+            })
+
+    # Conditional HRCW
+    for h in hrcw_register:
+        if h["status"] == "CONDITIONAL":
+            open_items.append({
+                "item": f"HRCW {h['ref']} ({h['name']}) is conditional — confirm on site",
+                "source": "hrcw_register",
+                "resolved": False,
+            })
+
+    # Hazards requiring verification
+    for h in hazards:
+        conf = h.get("confidence", "")
+        if conf == "requires_verification":
+            open_items.append({
+                "item": f"{h['hazard']} — confirm whether this hazard is present",
+                "source": "risk_register",
+                "resolved": False,
+            })
+
+    # Trade packages not user-confirmed (all auto-extracted)
+    if trade_packages:
+        open_items.append({
+            "item": "Trade packages have been auto-extracted — confirm before issue",
+            "source": "extraction",
+            "resolved": False,
+        })
+
+    fields_confirmed = sum(1 for f in ("project_name", "site_address", "pcbu_name", "client")
+                           if project_meta.get(f) and project_meta.get(f) != "[To be confirmed]")
+    fields_missing = 4 - fields_confirmed
+
+    return {
+        "source_documents": [],
+        "reviewed_by": None,
+        "reviewed_at": None,
+        "review_status": "draft",
+        "open_items": open_items,
+        "confidence_summary": {
+            "fields_confirmed": fields_confirmed,
+            "fields_inferred": 0,
+            "fields_missing": fields_missing,
+        },
+    }
