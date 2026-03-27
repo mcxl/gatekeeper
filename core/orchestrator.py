@@ -663,7 +663,10 @@ _ELEVATED_TASK_KEYWORDS = [
     "at height", "elevated", "above ground",
     # Repair/inspection on the building face
     "repair concrete", "concrete repair", "patch", "grind",
+    "remove concrete", "remove damaged", "damaged concrete",
+    "prepare surface", "surface preparation", "surface prep",
     "apply protective", "apply coating", "prime",
+    "apply repair", "install repair", "repair material",
     "check completed", "check remedial", "check all", "fix defect",
     "inspect facade", "inspect scaffold", "touchup",
 ]

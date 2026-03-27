@@ -109,7 +109,7 @@ def _build_scope_context_block(scope_context: dict) -> str:
     if not lines:
         return ""
     return (
-        "\n\nSCOPE CONTEXT (from uploaded document):\n"
+        "\n\nSCOPE CONTEXT:\n"
         + "\n".join(lines)
     )
 
