@@ -89,9 +89,8 @@ class TestRaConfidence:
         desc = ("Installing a data centre into an existing industrial warehouse "
                 "(concrete tilt-up construction) in NSW")
         result = infer_to_dict_ra(desc, jurisdiction="AU")
-        # These are legitimate confirmed hazards for data-centre scope
-        _ALLOWED_CONFIRMED = {"General construction hazards",
-                              "Work on or near energised electrical installations"}
+        # Only baseline fallback is allowed as confirmed for chain-derived scope
+        _ALLOWED_CONFIRMED = {"General construction hazards"}
         for h in result["hazard_list"]:
             if h["hazard"] in _ALLOWED_CONFIRMED:
                 continue

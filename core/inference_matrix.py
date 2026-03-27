@@ -7018,11 +7018,14 @@ def _assign_ra_confidence(
     has_phrase_match = match_score >= 2.0
 
     # 2. Check if match came from a scope-action keyword or context-only keyword
+    #    and whether the match is in the raw text or only in expanded text
     matched_as_scope = False
     matched_as_context = False
+    any_kw_in_raw = False
     for kw in entry_keywords:
         if kw in expanded_text:
-            kw_root = kw.split()[0] if " " in kw else kw
+            if kw in raw_text:
+                any_kw_in_raw = True
             if kw in _SCOPE_ACTION_KEYWORDS or any(a in kw for a in _SCOPE_ACTION_KEYWORDS):
                 matched_as_scope = True
             if kw in _CONTEXT_ONLY_KEYWORDS or any(c in kw for c in _CONTEXT_ONLY_KEYWORDS):
@@ -7033,9 +7036,13 @@ def _assign_ra_confidence(
         # Directly stated in the description as a clear phrase
         return "confirmed"
 
-    if has_phrase_match and matched_as_scope:
-        # Strong phrase match on a scope-action keyword
+    if has_phrase_match and matched_as_scope and any_kw_in_raw:
+        # Strong phrase match on a scope-action keyword that appears in raw text
         return "confirmed"
+
+    if has_phrase_match and matched_as_scope:
+        # Phrase match on scope keyword, but only via chain expansion — likely, not confirmed
+        return "likely"
 
     if matched_as_scope and not matched_as_context:
         # Scope action keyword matched (single word), not just context
