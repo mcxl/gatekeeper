@@ -85,8 +85,10 @@ async def _validation_error_handler(request: Request, exc: RequestValidationErro
         detail = "Invalid request. Please check your input and try again."
     return JSONResponse(status_code=400, content={"detail": detail})
 
+from api.control_pack_routes import router as control_pack_router
 app.include_router(upload_router)
 app.include_router(intake_router)
+app.include_router(control_pack_router)
 
 app.add_middleware(
     CORSMiddleware,
