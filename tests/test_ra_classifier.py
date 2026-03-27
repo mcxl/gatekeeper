@@ -84,19 +84,39 @@ class TestRaConfidence:
     """RA hazards must have appropriate confidence levels."""
 
     def test_data_centre_no_false_confirmed_hazards(self):
-        """Specific hazards for data-centre fit-out should not be confirmed —
-        WAH and rigging must not appear as confirmed from context alone.
-        Baseline fallback ('General construction hazards') is allowed."""
+        """Context-only hazards for data-centre fit-out should not be confirmed.
+        Legitimately scope-derived hazards (electrical installation) may be confirmed."""
         desc = ("Installing a data centre into an existing industrial warehouse "
                 "(concrete tilt-up construction) in NSW")
         result = infer_to_dict_ra(desc, jurisdiction="AU")
+        # These are legitimate confirmed hazards for data-centre scope
+        _ALLOWED_CONFIRMED = {"General construction hazards",
+                              "Work on or near energised electrical installations"}
         for h in result["hazard_list"]:
-            if h["hazard"] == "General construction hazards":
-                continue  # baseline fallback is intentionally confirmed
+            if h["hazard"] in _ALLOWED_CONFIRMED:
+                continue
             assert h["confidence"] != "confirmed", (
                 f"'{h['hazard']}' should not be confirmed for fit-out: "
                 f"got '{h['confidence']}'"
             )
+
+    def test_data_centre_has_fit_out_hazards(self):
+        """Data-centre fit-out should produce relevant services-installation hazards."""
+        desc = ("Installing a data centre into an existing industrial warehouse "
+                "(concrete tilt-up construction) in NSW")
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        hazard_names = {h["hazard"].lower() for h in result["hazard_list"]}
+        # Should have electrical, UPS, HVAC, fire services, existing services
+        assert any("electrical" in n for n in hazard_names), \
+            f"Should have electrical hazard: {hazard_names}"
+        assert any("ups" in n for n in hazard_names), \
+            f"Should have UPS hazard: {hazard_names}"
+        assert any("hvac" in n for n in hazard_names), \
+            f"Should have HVAC hazard: {hazard_names}"
+        assert any("fire" in n for n in hazard_names), \
+            f"Should have fire services hazard: {hazard_names}"
+        assert any("existing services" in n or "service" in n for n in hazard_names), \
+            f"Should have existing services hazard: {hazard_names}"
 
     def test_data_centre_no_wah_or_rigging(self):
         """WAH and rigging should not appear for data-centre fit-out —

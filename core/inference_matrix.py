@@ -5763,6 +5763,276 @@ MATRIX = [
         ],
     },
 
+    # ── RETROFIT / FIT-OUT HAZARD FAMILIES ────────────────────────────────────
+    # These categories target retrofit, fit-out, and services-installation work
+    # in existing buildings. They are NOT new-build construction categories.
+
+    # 1. Structural suitability / slab loading / penetrations
+    {
+        "keywords": ["slab loading", "structural suitability", "floor loading",
+                     "penetration", "core drill", "slab penetration",
+                     "fixing into existing", "anchor into concrete",
+                     "structural assessment", "load bearing"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Safety glasses — during drilling/cutting",
+            "Hearing protection — during core drilling",
+            "P2 respirator — silica dust during concrete cutting",
+        ],
+        "certs": [],
+        "permits": [
+            "Structural engineer assessment — confirm slab/floor capacity before heavy equipment placed",
+            "Penetration permit — before any coring, drilling, or cutting into existing structure",
+        ],
+        "qualifications": [
+            "Existing services scan (GPR or similar) — before any penetration into slab or wall",
+            "Structural engineer sign-off — required before loading exceeds design capacity",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Confirm existing slab design load before placing heavy equipment (UPS, generators, cooling plant)",
+            "Core drilling into post-tensioned slabs requires specialist assessment — risk of tendon strike",
+        ],
+    },
+
+    # 2. Heavy plant delivery and movement
+    {
+        "keywords": ["heavy equipment delivery", "plant delivery", "equipment placement",
+                     "forklift", "pallet jack", "loading dock", "heavy lift",
+                     "equipment move", "machinery installation", "plant room"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat",
+            "Hi-vis vest",
+            "Safety boots — steel capped",
+        ],
+        "certs": [
+            "Forklift licence — LF class where forklift used for equipment movement",
+        ],
+        "permits": [
+            "Traffic management plan — delivery vehicle routes through existing site",
+        ],
+        "qualifications": [
+            "Lift plan — for equipment over 500kg or requiring crane/hoist",
+            "Spotter — required when moving heavy equipment through occupied areas",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Confirm floor loading capacity along delivery route — not just final position",
+            "Coordinate delivery timing with existing site operations to minimise interface risk",
+        ],
+    },
+
+    # 3. Existing services / service strike / isolation
+    {
+        "keywords": ["existing services", "service strike", "service location",
+                     "underground services", "dial before you dig",
+                     "live services", "service isolation",
+                     "unknown services", "concealed services",
+                     "hydraulic services", "existing electrical"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Safety glasses",
+            "Insulated gloves — if electrical services suspected",
+        ],
+        "certs": [],
+        "permits": [
+            "Service location scan — before any penetration, excavation, or drilling",
+            "Isolation permit — lock-out tag-out before work on or near existing services",
+        ],
+        "qualifications": [
+            "Service location by competent person — GPR, cable locator, or as-built drawings verified on site",
+            "Confirm isolation before breaking into any existing service run",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Existing services may not match as-built drawings — physical verification required",
+            "Assume services are live until confirmed isolated and tested dead",
+        ],
+    },
+
+    # 4. Electrical installation / switchboards / energisation
+    {
+        "keywords": ["electrical install", "switchboard", "power distribution",
+                     "cable tray", "cable pull", "electrical fit",
+                     "electrical tie-in", "energisation", "energise",
+                     "energize", "power on", "mains connection",
+                     "distribution board", "sub-board"],
+        "hrcw": True,
+        "hrcw_category": "WHS Reg 2017 Sch 3 cl.1 — Work on or near energised electrical installations",
+        "hrcw_license_class": None,
+        "ppe": [
+            "Insulated gloves — rated for voltage class",
+            "Safety glasses — arc flash rated where applicable",
+            "Arc flash PPE — where risk assessment requires",
+        ],
+        "certs": [
+            "Licensed electrician — all electrical work by or under supervision of licensed electrical worker",
+        ],
+        "permits": [
+            "Electrical isolation permit — lock-out tag-out before work on existing switchboard",
+            "Energisation permit — signed by project manager and electrician before first energisation",
+        ],
+        "qualifications": [
+            "Test before touch — all circuits verified de-energised before work",
+            "Energisation sequence — documented and approved before power-on",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "WHS Reg 2017 Sch 3 cl.1 — work on or near energised electrical installations is HRCW",
+            "Treat all existing circuits as live until proven otherwise",
+            "Arc flash risk assessment required for work on switchboards rated >415V",
+        ],
+    },
+
+    # 5. UPS / battery installation
+    {
+        "keywords": ["ups ", "ups install", "battery install", "battery room",
+                     "uninterruptible power", "battery rack", "lithium battery",
+                     "lead acid battery", "battery storage"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Insulated gloves — battery handling",
+            "Safety glasses — acid splash or arc flash",
+            "Chemical-resistant gloves — where lead-acid batteries handled",
+        ],
+        "certs": [
+            "Licensed electrician — UPS connection and commissioning",
+        ],
+        "permits": [
+            "Structural engineer confirmation — floor loading for battery weight",
+        ],
+        "qualifications": [
+            "Battery handling training — risk of chemical burn (lead-acid) or thermal runaway (lithium)",
+            "Ventilation assessment — hydrogen gas accumulation risk for lead-acid battery rooms",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "UPS battery weight may exceed floor design load — confirm before placement",
+            "Lead-acid batteries produce hydrogen gas — ventilation per AS/NZS 2676 required",
+            "Lithium battery installations require thermal runaway management plan",
+        ],
+    },
+
+    # 6. HVAC / mechanical plant / cooling systems
+    {
+        "keywords": ["hvac", "air conditioning", "cooling system", "chiller",
+                     "mechanical install", "mechanical fit", "ductwork",
+                     "refrigerant", "cooling plant", "air handler",
+                     "crac unit", "precision cooling", "mechanical services"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hard hat — overhead work",
+            "Safety glasses",
+            "Hearing protection — mechanical plant rooms",
+        ],
+        "certs": [
+            "Refrigerant handling licence — ARC licence for refrigerant work",
+        ],
+        "permits": [
+            "Hot work permit — where brazing or welding refrigerant lines",
+            "Crane/hoist permit — where lifting plant to roof or mezzanine",
+        ],
+        "qualifications": [
+            "Refrigerant leak detection — before and after commissioning",
+            "Crane lift plan — if rooftop plant placement required",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Refrigerant handling restricted to ARC-licensed technicians",
+            "Rooftop plant placement may require crane — separate lift plan and SWMS",
+            "Coordinate HVAC commissioning with electrical energisation sequence",
+        ],
+    },
+
+    # 7. Fire services / suppression / testing
+    {
+        "keywords": ["fire services", "fire suppression", "sprinkler",
+                     "fire detection", "smoke detection", "fire alarm",
+                     "gaseous suppression", "fm200", "novec", "inert gas",
+                     "fire panel", "vesda", "fire install"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Safety glasses",
+            "Hearing protection — during alarm testing",
+        ],
+        "certs": [
+            "Licensed fire protection contractor — fire system design and installation",
+        ],
+        "permits": [
+            "Fire system impairment notice — before isolating existing fire services for tie-in",
+            "Hot work permit — where brazing or welding sprinkler lines",
+        ],
+        "qualifications": [
+            "Fire system isolation procedure — building fire panel must be managed during installation",
+            "Gaseous suppression commissioning — room integrity test required before system active",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Existing fire services must remain operational during fit-out unless formally impaired",
+            "Gaseous suppression systems — ensure room is sealed and warning signage in place before commissioning",
+            "Coordinate fire alarm testing with building management and occupants",
+        ],
+    },
+
+    # 8. Interface with existing operations / occupied site
+    {
+        "keywords": ["occupied site", "occupied building", "tenanted",
+                     "existing operations", "operational facility",
+                     "live building", "interface with existing",
+                     "shared access", "public access", "tenant"],
+        "hrcw": False,
+        "hrcw_category": None,
+        "hrcw_license_class": None,
+        "ppe": [
+            "Hi-vis vest — all workers in shared-access areas",
+        ],
+        "certs": [],
+        "permits": [
+            "Access management plan — define work zones vs occupied zones",
+            "Noise management plan — if work affects existing occupants",
+        ],
+        "qualifications": [
+            "Hoarding / physical separation — between construction zone and occupied area",
+            "Communication plan — notify building occupants of work schedule, access restrictions, and emergency procedures",
+        ],
+        "notifications": [],
+        "safework_notification": False,
+        "epa_license": False,
+        "notes": [
+            "Construction zone must be physically separated from occupied areas at all times",
+            "Maintain existing emergency egress routes — no blocking of fire stairs or exits",
+            "Dust, noise, and fume controls required where work may affect occupants",
+        ],
+    },
+
 ]
 
 # ── Improvement 1: Synonym expansion map ─────────────────────────────────────
@@ -6023,6 +6293,12 @@ SYNONYM_MAP: dict[str, str] = {
     "sarking":                      "roofing",
     "roof insulation installation": "roofing",
     "roof anchors":                 "roofing",
+
+    # Retrofit / fit-out synonyms
+    "data centre":                  "electrical install",
+    "data center":                  "electrical install",
+    "server room":                  "electrical install",
+    "comms room":                   "electrical install",
 }
 
 
@@ -6119,6 +6395,15 @@ CHAIN_MAP: dict[str, list[str]] = {
     "post tensioning":          ["concrete pour", "formwork"],
     # Roofing chains — always WAH, may involve overhead services (skylights/electrical)
     "roofing":                  ["working at height", "fall prevention", "roof edge protection"],
+
+    # Retrofit / fit-out chains — data centre triggers related services
+    "data centre":              ["electrical install", "ups ", "hvac", "fire services",
+                                 "existing services", "slab loading", "heavy equipment delivery"],
+    "data center":              ["electrical install", "ups ", "hvac", "fire services",
+                                 "existing services", "slab loading", "heavy equipment delivery"],
+    "server room":              ["electrical install", "ups ", "hvac", "fire services",
+                                 "existing services"],
+    "electrical install":       ["existing services"],
 }
 
 
@@ -6793,17 +7078,20 @@ def _expand_description_ra(text: str, classification: dict) -> str:
     skip_chains = (classification.get("building_context") == "existing"
                    and classification.get("job_type") != "new_build")
 
+    # Track terms injected from blocked context sources (should not chain further)
+    _blocked_injections: set[str] = set()
+
     for _ in range(2):
         additions = []
         for trigger, downstream in CHAIN_MAP.items():
             if trigger in expanded:
                 if skip_chains and trigger in _RA_CONTEXT_CHAIN_BLOCKERS:
-                    continue  # do not chain from existing-building context terms
-                # Also skip chains from terms that were themselves chain-injected
-                # from a blocked context term (e.g. 'mobile crane' from 'precast')
-                if skip_chains and trigger not in text:
-                    # This trigger wasn't in the original text — it was injected
-                    # Check if it came from a blocked synonym
+                    # Block chain from context-only term; mark its downstream as blocked
+                    for kw in downstream:
+                        _blocked_injections.add(kw)
+                    continue
+                if skip_chains and trigger in _blocked_injections:
+                    # This trigger was injected from a blocked context chain — block it too
                     continue
                 for kw in downstream:
                     if kw not in expanded:
