@@ -250,16 +250,45 @@ def _render_ra_supplementary_sections(
         "tiltup_precast": "Tilt-up or precast concrete element handling",
         "traffic_corridor": "Work on or adjacent to a traffic corridor",
     }
+    # Track which hazard families are already covered by HRCW triggers
+    _hrcw_covered = set()
     for flag in active_hrcw:
         label = _HRCW_LABELS.get(flag, flag.replace("_", " ").title())
+        # Add "if applicable" qualifier when WAH is not directly stated in scope
+        if flag == "falling_2m":
+            # Check if any WAH hazard is confirmed (directly stated)
+            wah_confirmed = any(
+                "height" in h.get("hazard", "").lower() and h.get("confidence") == "confirmed"
+                for h in hazards
+            )
+            if not wah_confirmed:
+                label += " \u2014 if applicable, confirm whether elevated work is required"
         swms_triggers.append(label)
+        _hrcw_covered.add(flag)
 
-    # Add non-HRCW triggers from hazard confidence
+    # Map hazard keywords to HRCW flags to detect duplicates
+    _KEYWORD_TO_HRCW = {
+        "electrical": "electrical", "switchboard": "electrical",
+        "height": "falling_2m", "fall": "falling_2m",
+        "asbestos": "asbestos", "confined": "confined_space",
+        "demolition": "demolition", "crane": "crane",
+    }
+
+    # Add non-HRCW triggers from hazard confidence — skip if already covered by HRCW
     for h in hazards:
         conf = h.get("confidence", "")
         name = h.get("hazard", "")
-        if conf in ("confirmed", "likely") and name.lower() not in " ".join(swms_triggers).lower():
-            swms_triggers.append(f"{name} \u2014 if applicable, confirm scope before preparing SWMS")
+        if conf not in ("confirmed", "likely"):
+            continue
+        # Check if this hazard family is already covered by an HRCW trigger
+        nl = name.lower()
+        already_covered = any(
+            kw in nl and hrcw_flag in _hrcw_covered
+            for kw, hrcw_flag in _KEYWORD_TO_HRCW.items()
+        )
+        if already_covered:
+            continue
+        swms_triggers.append(f"{name} \u2014 if applicable, confirm scope before preparing SWMS")
 
     if not swms_triggers:
         _bullet(doc, "No HRCW triggers identified \u2014 SWMS requirement to be confirmed based on principal contractor requirements")
