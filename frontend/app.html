@@ -1513,6 +1513,18 @@ function intakePopulateForm(data) {
   intakeSections.forEach(s => s.style.display = 'block');
 }
 
+let _intakeReviewTasks = [];
+let _intakeReviewInference = {};
+let _intakeReviewMeta = {};
+
+function intakeGoToReview() {
+  localStorage.setItem('swms_review_tasks', JSON.stringify(_intakeReviewTasks));
+  localStorage.setItem('swms_review_inference', JSON.stringify(_intakeReviewInference));
+  localStorage.setItem('swms_review_meta', JSON.stringify(_intakeReviewMeta));
+  localStorage.setItem('swms_format', _intakeFmt);
+  window.location.href = '/review';
+}
+
 function intakeDownloadResult() {
   if (!_intakeLastUrl) {
     alert('No document available. Please generate a SWMS first.');
@@ -1701,15 +1713,23 @@ async function intakeConfirmGenerate() {
     _intakeLastFilename = fname;
 
     // Success — replace panel to clear rendering spinner
+    // Store data for review page
+    _intakeReviewTasks = intakeTasks;
+    _intakeReviewInference = intakeInference;
+    _intakeReviewMeta = intakeMeta;
+
     statusPanel.innerHTML =
       '<div class="status-step">\u2713 All tasks complete</div>' +
       '<div class="status-step">\u2713 Document rendered</div>' +
       '<div class="status-step" style="color:#2e7d32">\u2713 SWMS generated \u2014 downloading\u2026</div>' +
-      '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">' +
-        '<button class="btn-generate" style="flex:1;min-width:160px" onclick="intakeDownloadResult()">' +
+      '<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;max-width:360px;margin-left:auto;margin-right:auto;">' +
+        '<button class="btn-generate" onclick="intakeGoToReview()">' +
+          '\ud83d\udd0d Review before downloading' +
+        '</button>' +
+        '<button class="btn-generate" style="background:var(--accent-hover)" onclick="intakeDownloadResult()">' +
           '\u2B07\uFE0F Download again' +
         '</button>' +
-        '<button class="btn-secondary" style="flex:1;min-width:140px" onclick="intakeReset()">' +
+        '<button class="btn-secondary" onclick="intakeReset()">' +
           '\u2190 Generate another' +
         '</button>' +
       '</div>';
