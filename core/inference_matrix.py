@@ -6865,6 +6865,90 @@ def _risk_level(score: int) -> str:
         return "Low"
 
 
+# ── SWMS Scope Classifier ─────────────────────────────────────────────────────
+
+def classify_swms_scope(description: str) -> dict:
+    """
+    Deterministic scope classifier for SWMS input.
+    Returns {job_type, building_context, occupancy_context, scope_modifiers}.
+    """
+    text = description.lower()
+
+    # — Job type (first match wins, ordered by specificity) —
+    _JOB_TYPE_RULES = [
+        ("demolition",   ["demolition", "demolish", "strip out", "strip-out", "pull down"]),
+        ("remedial",     ["remedial", "spalling", "concrete repair", "facade repair",
+                          "crack repair", "patch repair", "protective coating"]),
+        ("fit_out",      ["fit-out", "fit out", "fitout", "installing into", "install into",
+                          "data centre", "data center", "server room", "tenant fit",
+                          "shop fit", "office fit"]),
+        ("retrofit",     ["retrofit", "retro-fit", "refurbish", "renovation",
+                          "upgrade existing", "modify existing"]),
+        ("maintenance",  ["maintenance", "repair", "service existing", "replace existing",
+                          "routine inspection"]),
+        ("upgrade",      ["upgrade", "extension", "addition"]),
+        ("new_build",    ["new build", "new construction", "greenfield", "ground-up",
+                          "erect", "erection", "pour slab", "formwork"]),
+    ]
+    job_type = "new_build"
+    for jt, keywords in _JOB_TYPE_RULES:
+        if any(kw in text for kw in keywords):
+            job_type = jt
+            break
+
+    # — Building context —
+    _EXISTING = ["existing", "into an existing", "occupied", "operational",
+                 "current building", "live building"]
+    _NEW = ["new build", "greenfield", "ground-up", "vacant lot"]
+    has_existing = any(s in text for s in _EXISTING)
+    has_new = any(s in text for s in _NEW)
+    building_context = "mixed" if (has_existing and has_new) else ("existing" if has_existing else "new")
+
+    # — Occupancy context —
+    _OCCUPIED = ["occupied", "tenanted", "residents", "occupants", "live building",
+                 "operational", "strata"]
+    _UNOCCUPIED = ["unoccupied", "vacant", "empty building"]
+    has_occ = any(s in text for s in _OCCUPIED)
+    has_unocc = any(s in text for s in _UNOCCUPIED)
+    occupancy_context = "mixed" if (has_occ and has_unocc) else ("occupied" if has_occ else "unoccupied")
+
+    # — Scope modifiers —
+    _MODIFIER_RULES = {
+        "facade_work":       ["facade", "external wall", "external envelope", "curtain wall",
+                              "cladding", "render", "external render"],
+        "scaffold_access":   ["scaffold", "scaffolding"],
+        "rope_access":       ["rope access", "abseil", "irata"],
+        "ewp_access":        ["ewp", "elevated work platform", "boom lift", "scissor lift",
+                              "cherry picker"],
+        "work_at_height":    ["work at height", "working at height", "above 2m",
+                              "above 2 metres", "fall risk"],
+        "residential":       ["residential", "apartment", "unit", "dwelling", "house"],
+        "commercial":        ["commercial", "office", "retail", "shop"],
+        "strata":            ["strata", "body corporate", "owners corporation"],
+        "external_envelope": ["facade", "external wall", "roof", "balcony", "balustrade"],
+        "concrete_repair":   ["spalling", "concrete repair", "crack repair", "patch",
+                              "concrete cancer", "carbonation"],
+        "waterproofing":     ["waterproof", "membrane", "sealant", "balcony waterproof"],
+        "protective_coating": ["protective coating", "anti-carbonation", "paint system",
+                               "coating system"],
+        "occupied_interface": ["occupied", "residents", "tenants", "strata",
+                               "body corporate", "occupants"],
+        "high_rise":         ["storey", "story", "floor", "level", "high-rise", "high rise",
+                              "multi-storey", "multi-story"],
+    }
+    scope_modifiers = []
+    for mod, keywords in _MODIFIER_RULES.items():
+        if any(kw in text for kw in keywords):
+            scope_modifiers.append(mod)
+
+    return {
+        "job_type": job_type,
+        "building_context": building_context,
+        "occupancy_context": occupancy_context,
+        "scope_modifiers": scope_modifiers,
+    }
+
+
 # ── RA Job-Type Classifier ────────────────────────────────────────────────────
 
 def classify_ra_scope(description: str) -> dict:

@@ -220,13 +220,22 @@ async def generate_swms(
             "task_count": int,
         }
     """
-    from core.inference_matrix import infer_to_dict
+    from core.inference_matrix import infer_to_dict, classify_swms_scope
 
     project_meta = project_meta or {}
 
-    # Step 1: inference pre-fill
+    # Step 1: inference pre-fill + scope classification
     log.info("Running inference matrix pre-fill")
     inference = infer_to_dict(description, jurisdiction=jurisdiction)
+    swms_classification = classify_swms_scope(description)
+    inference["swms_classification"] = swms_classification
+
+    scope_context = scope_context or {}
+    scope_context.setdefault("job_type", swms_classification["job_type"])
+    scope_context.setdefault("building_context", swms_classification["building_context"])
+    scope_context.setdefault("occupancy_context", swms_classification["occupancy_context"])
+    if swms_classification["scope_modifiers"]:
+        scope_context.setdefault("scope_modifiers", ", ".join(swms_classification["scope_modifiers"]))
 
     # Build jurisdiction context for agent prompts
     if jurisdiction != "AU":
@@ -329,12 +338,22 @@ async def generate_swms_stream(
         {"type": "done",       "task_count": int}
         {"type": "error",      "message": str}
     """
-    from core.inference_matrix import infer_to_dict
+    from core.inference_matrix import infer_to_dict, classify_swms_scope
 
     project_meta = project_meta or {}
 
-    # Step 1: inference
+    # Step 1: inference + scope classification
     inference = infer_to_dict(description, jurisdiction=jurisdiction)
+    swms_classification = classify_swms_scope(description)
+    inference["swms_classification"] = swms_classification
+
+    # Merge classification into scope_context for agent prompts
+    scope_context = scope_context or {}
+    scope_context.setdefault("job_type", swms_classification["job_type"])
+    scope_context.setdefault("building_context", swms_classification["building_context"])
+    scope_context.setdefault("occupancy_context", swms_classification["occupancy_context"])
+    if swms_classification["scope_modifiers"]:
+        scope_context.setdefault("scope_modifiers", ", ".join(swms_classification["scope_modifiers"]))
 
     # Build jurisdiction context for agent prompts
     if jurisdiction != "AU":
