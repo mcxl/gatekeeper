@@ -34,7 +34,7 @@ _TRADE_PACKAGE_DEFAULTS = {
         "required_before": "Before any works commence in the road corridor",
     },
     "service location": {
-        "hrcw_refs": ["H07", "H11"],
+        "hrcw_refs": ["H07", "H09", "H11"],
         "swms_title": "Service Location and NDD SWMS",
         "required_before": "Before any machine excavation commences in the road corridor",
     },
@@ -44,7 +44,7 @@ _TRADE_PACKAGE_DEFAULTS = {
         "required_before": "Before any machine excavation commences",
     },
     "sydney water": {
-        "hrcw_refs": ["H07"],
+        "hrcw_refs": ["H01", "H07"],
         "swms_title": "Sydney Water Main Relocation SWMS",
         "required_before": "Before commencement of Sydney Water main relocation works",
     },
@@ -54,7 +54,7 @@ _TRADE_PACKAGE_DEFAULTS = {
         "required_before": "Before commencement of water main relocation works",
     },
     "stormwater": {
-        "hrcw_refs": ["H07"],
+        "hrcw_refs": ["H01", "H06", "H07"],
         "swms_title": "Stormwater Drainage Installation SWMS",
         "required_before": "Before commencement of stormwater pit and pipe excavation",
     },
@@ -310,8 +310,8 @@ def build_control_pack(
     # Step 4b: Crosswalk — link hold points to SWMS packages
     _crosswalk_hold_points_to_packages(swms_matrix, hold_points)
 
-    # Step 5: Risk register — reformat hazard list for control pack
-    risk_register = _build_risk_register(hazard_list, phase_groups)
+    # Step 5: Risk register — reformat hazard list + seed benchmark risks
+    risk_register = _build_risk_register(hazard_list, phase_groups, swms_matrix)
 
     # Step 6: Scope summary
     scope_summary = _build_scope_summary(description, classification)
@@ -487,6 +487,67 @@ _HAZARD_TO_PACKAGE = [
 ]
 
 
+# Benchmark risk entries per package — seeded when a package is in the SWMS matrix
+# but the inference engine didn't produce a matching hazard.
+# These are minimum-standard risks that a consultant would expect.
+_PACKAGE_BENCHMARK_RISKS = {
+    "Traffic Management": [
+        {"activity": "Establishment of live lane closures and temporary traffic arrangements",
+         "controls": "CTMP prepared by qualified traffic management designer. Workers must not enter live lane area until traffic management is in place and accepted.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+        {"activity": "Pedestrian management at intersection and along works corridor",
+         "controls": "Temporary pedestrian pathways maintained throughout. Pedestrian exclusion from active work zones with physical barriers.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Service Location and NDD": [
+        {"activity": "DBYD enquiry, NDD/potholing and marking of all utilities in excavation zone",
+         "controls": "DBYD completed before any excavation. NDD to positively identify all services. No machine excavation within 500mm of confirmed service — hand dig only.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Sydney Water Asset Relocation": [
+        {"activity": "Excavation of relocation trench for Sydney Water main",
+         "controls": "Shoring/battering per geotechnical assessment. Sydney Water representative on site during excavation within 2m of asset.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+        {"activity": "Connection to and disconnection from live Sydney Water main",
+         "controls": "Sydney Water hold points satisfied before connection. Exclusion zone and dewatering plan for uncontrolled water release.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Stormwater Drainage": [
+        {"activity": "Excavation of stormwater pit and pipe trenches in road corridor",
+         "controls": "Shoring/battering for depths >1.5m. Traffic management in place before excavation in road reserve.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Bulk Earthworks and Pavement": [
+        {"activity": "Removal of existing chip seal pavement and earthworks to design level",
+         "controls": "Silica dust controls — wet cutting, RPE where RCS exposure possible. Plant-pedestrian separation maintained.",
+         "initial_risk": "Medium", "residual_risk": "Low"},
+        {"activity": "Road pavement construction — subbase, base course, wearing course",
+         "controls": "Compaction testing accepted before next layer placed. Traffic management maintained during all pavement works.",
+         "initial_risk": "Medium", "residual_risk": "Low"},
+    ],
+    "T-Intersection Reconstruction": [
+        {"activity": "Intersection reconstruction — kerb, drainage, pavement and geometry changes",
+         "controls": "Staged construction with traffic management for each phase. Plant exclusion zones around workers on foot.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Traffic Signal Installation": [
+        {"activity": "Traffic signal pole installation — EWP or crane operations at intersection",
+         "controls": "Licensed electrician for all electrical connections. Commissioning acceptance by Transport for NSW before energisation.",
+         "initial_risk": "High", "residual_risk": "Medium"},
+    ],
+    "Kerb, Gutter and Footpath": [
+        {"activity": "Kerb, gutter, footpath and pedestrian ramp construction",
+         "controls": "Pedestrian pathways maintained during construction. DDA-compliant temporary access where existing paths are disrupted.",
+         "initial_risk": "Medium", "residual_risk": "Low"},
+    ],
+    "Line Marking and Reinstatement": [
+        {"activity": "Line marking and road sign installation in live road environment",
+         "controls": "Traffic management in place for all line marking operations. Workers in hi-vis with traffic controller escort.",
+         "initial_risk": "Medium", "residual_risk": "Low"},
+    ],
+}
+
+
 def _assign_package_group(hazard_name: str) -> str:
     """Assign a hazard to the most relevant trade package group."""
     nl = hazard_name.lower()
@@ -496,10 +557,13 @@ def _assign_package_group(hazard_name: str) -> str:
     return "General Construction"
 
 
-def _build_risk_register(hazards: list[dict], phase_groups: list[dict]) -> list[dict]:
-    """Reformat hazard list into risk register entries grouped by trade package."""
-    # First assign each hazard to a package group
+def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
+                         swms_matrix: list[dict] | None = None) -> list[dict]:
+    """Build risk register grouped by trade package, seeded with benchmark risks."""
+    # First assign inference-derived hazards to package groups
     entries = []
+    covered_groups = set()
+
     for h in hazards:
         ctrls = h.get("controls", {})
         eng = ctrls.get("engineering", [])
@@ -508,6 +572,7 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict]) -> list[
 
         group = _assign_package_group(h.get("hazard", ""))
         confidence = h.get("confidence", "if_applicable")
+        covered_groups.add(group)
 
         entries.append({
             "group": group,
@@ -516,12 +581,52 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict]) -> list[
             "initial_risk": h.get("risk_level", "Medium"),
             "controls": control_summary,
             "residual_risk": h.get("residual_level", "Low"),
-            "responsible": h.get("responsible", "Supervisor"),
+            "responsible": "All relevant packages",
             "status": "confirmed" if confidence == "confirmed" else "provisional",
         })
 
-    # Sort by group, then assign refs
-    # Preserve a sensible group order
+    # Seed benchmark risks for packages in the SWMS matrix that have no entries
+    if swms_matrix:
+        # Map SWMS package display names to benchmark group names
+        _PKG_TO_GROUP = {
+            "live lane": "Traffic Management",
+            "traffic management": "Traffic Management",
+            "road works": "Traffic Management",
+            "service location": "Service Location and NDD",
+            "ndd": "Service Location and NDD",
+            "sydney water": "Sydney Water Asset Relocation",
+            "water main": "Sydney Water Asset Relocation",
+            "stormwater": "Stormwater Drainage",
+            "drainage": "Stormwater Drainage",
+            "earthworks": "Bulk Earthworks and Pavement",
+            "pavement": "Bulk Earthworks and Pavement",
+            "intersection": "T-Intersection Reconstruction",
+            "traffic signal": "Traffic Signal Installation",
+            "kerb": "Kerb, Gutter and Footpath",
+            "footpath": "Kerb, Gutter and Footpath",
+            "line marking": "Line Marking and Reinstatement",
+            "signage": "Line Marking and Reinstatement",
+        }
+
+        for entry in swms_matrix:
+            pkg = entry.get("trade_package", "").lower()
+            group = _PKG_TO_GROUP.get(pkg)
+            if group and group not in covered_groups:
+                benchmarks = _PACKAGE_BENCHMARK_RISKS.get(group, [])
+                for br in benchmarks:
+                    entries.append({
+                        "group": group,
+                        "activity": br["activity"],
+                        "hrcw_category": "",
+                        "initial_risk": br.get("initial_risk", "Medium"),
+                        "controls": br["controls"],
+                        "residual_risk": br.get("residual_risk", "Low"),
+                        "responsible": "Relevant subcontractor",
+                        "status": "benchmark",
+                    })
+                covered_groups.add(group)
+
+    # Sort by construction sequence
     _GROUP_ORDER = [g for g, _ in _HAZARD_TO_PACKAGE] + ["General Construction"]
     entries.sort(key=lambda e: (
         _GROUP_ORDER.index(e["group"]) if e["group"] in _GROUP_ORDER else 99,

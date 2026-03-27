@@ -291,8 +291,11 @@ def render_control_pack(pack: dict) -> bytes:
 
             row = rr_table.add_row()
             ref_text = entry.get("ref", "")
-            if entry.get("status") == "provisional":
+            entry_status = entry.get("status", "")
+            if entry_status == "provisional":
                 ref_text += " *"
+            elif entry_status == "benchmark":
+                ref_text += " \u2020"
             _run(row.cells[0].paragraphs[0], ref_text, bold=True, size_pt=8)
             _run(row.cells[1].paragraphs[0], entry.get("activity", ""), size_pt=8)
             _run(row.cells[2].paragraphs[0], entry.get("hrcw_category", ""), size_pt=7, color=GREY)
@@ -302,11 +305,16 @@ def render_control_pack(pack: dict) -> bytes:
             _run(row.cells[6].paragraphs[0], entry.get("responsible", ""), size_pt=8)
         # Footnote for provisional marker
         has_provisional = any(e.get("status") == "provisional" for e in rr)
-        if has_provisional:
+        has_benchmark = any(e.get("status") == "benchmark" for e in rr)
+        if has_provisional or has_benchmark:
             fn = doc.add_paragraph()
             fn.paragraph_format.space_before = Pt(4)
-            _run(fn, "* Provisional \u2014 confirm whether this hazard applies to the actual project scope.",
-                 size_pt=8, italic=True, color=GREY)
+            if has_provisional:
+                _run(fn, "* Provisional \u2014 confirm whether this hazard applies to the actual project scope. ",
+                     size_pt=8, italic=True, color=GREY)
+            if has_benchmark:
+                _run(fn, "\u2020 Benchmark risk \u2014 seeded from standard package expectations, not from scope description.",
+                     size_pt=8, italic=True, color=GREY)
     else:
         _run(doc.add_paragraph(), "No risk register entries.", size_pt=_SZ, italic=True)
 
