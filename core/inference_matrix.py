@@ -6690,6 +6690,81 @@ def _should_suppress_for_ra(entry: dict, classification: dict) -> bool:
     return False
 
 
+# Keywords that describe scope actions (the work itself), not building context
+_SCOPE_ACTION_KEYWORDS = frozenset([
+    "install", "installing", "erect", "erection", "demolish", "demolition",
+    "excavat", "excavation", "pour", "strip", "remove", "removal",
+    "paint", "weld", "cut", "grind", "drill", "lift", "crane",
+    "scaffold", "rope access", "work at height", "confined space entry",
+    "asbestos removal", "electrical work", "trenching", "roofing",
+])
+
+# Keywords that describe building/site context, not the scope of work
+_CONTEXT_ONLY_KEYWORDS = frozenset([
+    "warehouse", "industrial", "tilt-up", "tilt up", "concrete",
+    "commercial", "residential", "multi-storey", "multi storey",
+    "heritage", "hospital", "school", "existing",
+])
+
+
+def _assign_ra_confidence(
+    entry: dict,
+    match_score: float,
+    raw_text: str,
+    expanded_text: str,
+    classification: dict,
+) -> str:
+    """
+    Assign confidence level to an RA hazard match.
+
+    Returns one of:
+      confirmed             — hazard is directly and clearly stated in the scope
+      likely                — hazard is strongly implied by the stated work type
+      if_applicable         — hazard may apply depending on site conditions
+      requires_verification — hazard triggered only by building context, not scope
+    """
+    entry_keywords = entry.get("keywords", [])
+    primary_kw = entry_keywords[0] if entry_keywords else ""
+    job_type = classification.get("job_type", "new_build")
+
+    # 1. Check if primary keyword is directly stated as a scope action
+    #    e.g. "asbestos removal", "electrical work", "scaffold erection"
+    primary_in_raw = primary_kw in raw_text
+    has_phrase_match = match_score >= 2.0
+
+    # 2. Check if match came from a scope-action keyword or context-only keyword
+    matched_as_scope = False
+    matched_as_context = False
+    for kw in entry_keywords:
+        if kw in expanded_text:
+            kw_root = kw.split()[0] if " " in kw else kw
+            if kw in _SCOPE_ACTION_KEYWORDS or any(a in kw for a in _SCOPE_ACTION_KEYWORDS):
+                matched_as_scope = True
+            if kw in _CONTEXT_ONLY_KEYWORDS or any(c in kw for c in _CONTEXT_ONLY_KEYWORDS):
+                matched_as_context = True
+
+    # 3. Assign confidence
+    if primary_in_raw and has_phrase_match:
+        # Directly stated in the description as a clear phrase
+        return "confirmed"
+
+    if has_phrase_match and matched_as_scope:
+        # Strong phrase match on a scope-action keyword
+        return "confirmed"
+
+    if matched_as_scope and not matched_as_context:
+        # Scope action keyword matched (single word), not just context
+        return "likely"
+
+    if matched_as_context and not matched_as_scope:
+        # Only matched because of building context, not stated scope
+        return "requires_verification"
+
+    # Default: matched but not clearly from scope or context
+    # — could apply depending on site conditions
+    return "if_applicable"
+
+
 def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     """
     Build a structured hazard list for Risk Assessment documents.
@@ -6727,6 +6802,13 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
             else:
                 hazard_name = cat
 
+        # —— Confidence assignment ——————————————————————————————————————
+        # Determine how certain we are that this hazard applies to the
+        # stated scope, not just the building/site context.
+        confidence = _assign_ra_confidence(
+            entry, score, text, expanded, classification
+        )
+
         # Score based on HRCW status and hazard severity
         _SEVERE_KEYWORDS = ("silica", "asbestos", "lead paint", "confined space",
                             "electrical", "excavat", "demolition", "crane")
@@ -6760,6 +6842,7 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
 
         hazards.append({
             "hazard": hazard_name,
+            "confidence": confidence,
             "who_at_risk": ", ".join(who_at_risk_parts),
             "likelihood": likelihood,
             "consequence": consequence,
@@ -6777,6 +6860,7 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     if not hazards:
         hazards.append({
             "hazard": "General construction hazards",
+            "confidence": "confirmed",
             "who_at_risk": "All workers on site",
             "likelihood": 2,
             "consequence": 3,

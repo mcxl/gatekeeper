@@ -78,3 +78,50 @@ class TestRaHazardSuppression:
         result = infer_to_dict_ra(desc, jurisdiction="AU")
         assert "ra_classification" in result
         assert result["ra_classification"]["job_type"] == "fit_out"
+
+
+class TestRaConfidence:
+    """RA hazards must have appropriate confidence levels."""
+
+    def test_data_centre_hazards_not_confirmed(self):
+        """Hazards for data-centre fit-out should not be 'confirmed' —
+        WAH and rigging are implied by context, not directly stated."""
+        desc = ("Installing a data centre into an existing industrial warehouse "
+                "(concrete tilt-up construction) in NSW")
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        for h in result["hazard_list"]:
+            assert h["confidence"] != "confirmed", (
+                f"'{h['hazard']}' should not be confirmed for fit-out: "
+                f"got '{h['confidence']}'"
+            )
+
+    def test_directly_stated_hazard_is_confirmed(self):
+        """Asbestos removal directly stated should be 'confirmed'."""
+        desc = "Asbestos removal from ceiling panels in existing building"
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        asb = [h for h in result["hazard_list"] if "asbestos" in h["hazard"].lower()]
+        assert asb, "Asbestos hazard should be present"
+        assert asb[0]["confidence"] == "confirmed", (
+            f"Directly stated asbestos should be confirmed, got '{asb[0]['confidence']}'"
+        )
+
+    def test_all_hazards_have_confidence_field(self):
+        """Every hazard dict must include a confidence field."""
+        desc = "Scaffold erection and facade painting at 8-storey building"
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        valid = {"confirmed", "likely", "if_applicable", "requires_verification"}
+        for h in result["hazard_list"]:
+            assert "confidence" in h, f"Missing confidence field: {h['hazard']}"
+            assert h["confidence"] in valid, (
+                f"Invalid confidence '{h['confidence']}' for {h['hazard']}"
+            )
+
+    def test_baseline_fallback_is_confirmed(self):
+        """Baseline fallback hazard (when nothing matches) should be confirmed."""
+        desc = "General office cleaning"
+        result = infer_to_dict_ra(desc, jurisdiction="AU")
+        # Should get the baseline fallback
+        if result["hazard_list"]:
+            baseline = result["hazard_list"][0]
+            if baseline["hazard"] == "General construction hazards":
+                assert baseline["confidence"] == "confirmed"
