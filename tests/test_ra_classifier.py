@@ -161,3 +161,64 @@ class TestRaConfidence:
             baseline = result["hazard_list"][0]
             if baseline["hazard"] == "General construction hazards":
                 assert baseline["confidence"] == "confirmed"
+
+
+class TestRaPhaseGrouping:
+    """RA hazards should be grouped into named phases."""
+
+    BENCHMARK_DESC = (
+        "Installing a data centre into an existing industrial warehouse "
+        "(concrete tilt-up construction) in NSW"
+    )
+
+    def test_phase_groups_present(self):
+        """infer_to_dict_ra must include phase_groups in result."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        assert "phase_groups" in result
+        assert isinstance(result["phase_groups"], list)
+        assert len(result["phase_groups"]) > 0
+
+    def test_benchmark_has_three_phases(self):
+        """Data-centre retrofit should produce 3 phases (no interface phase
+        because 'occupied' is not in the description)."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        phase_names = [pg["phase"] for pg in result["phase_groups"]]
+        assert "Existing building / structural suitability" in phase_names
+        assert "Installation and fit-out" in phase_names
+        assert "Live services / commissioning" in phase_names
+
+    def test_slab_loading_in_existing_phase(self):
+        """Slab loading should be in the existing building phase."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        existing = [pg for pg in result["phase_groups"]
+                    if pg["phase"] == "Existing building / structural suitability"][0]
+        names = [h["hazard"].lower() for h in existing["hazards"]]
+        assert any("slab" in n for n in names), f"Slab loading not in existing phase: {names}"
+
+    def test_electrical_hrcw_in_live_phase(self):
+        """HRCW energised electrical should be in live services phase."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        live = [pg for pg in result["phase_groups"]
+                if pg["phase"] == "Live services / commissioning"][0]
+        names = [h["hazard"].lower() for h in live["hazards"]]
+        assert any("energised" in n for n in names), f"Energised not in live phase: {names}"
+
+    def test_hvac_in_install_phase(self):
+        """HVAC should be in installation phase."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        install = [pg for pg in result["phase_groups"]
+                   if pg["phase"] == "Installation and fit-out"][0]
+        names = [h["hazard"].lower() for h in install["hazards"]]
+        assert any("hvac" in n for n in names), f"HVAC not in install phase: {names}"
+
+    def test_hazards_tagged_with_phase(self):
+        """Each hazard in the flat list should have a 'phase' field."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        for h in result["hazard_list"]:
+            assert "phase" in h, f"Missing phase field: {h['hazard']}"
+
+    def test_all_hazards_accounted_for(self):
+        """Total hazards in phase groups must equal total in flat list."""
+        result = infer_to_dict_ra(self.BENCHMARK_DESC, jurisdiction="AU")
+        grouped_count = sum(len(pg["hazards"]) for pg in result["phase_groups"])
+        assert grouped_count == len(result["hazard_list"])

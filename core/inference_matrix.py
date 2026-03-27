@@ -7228,12 +7228,93 @@ def _build_hazard_list(work_description: str, inference: dict) -> list[dict]:
     return hazards
 
 
+# ── RA Phase Grouping ─────────────────────────────────────────────────────────
+
+_RA_PHASE_EXISTING = "Existing building / structural suitability"
+_RA_PHASE_INSTALL  = "Installation and fit-out"
+_RA_PHASE_LIVE     = "Live services / commissioning"
+_RA_PHASE_INTERFACE = "Interface with existing operations"
+
+# Map primary keywords (or substrings) to phases
+_RA_PHASE_RULES: list[tuple[str, list[str]]] = [
+    # Existing building phase
+    (_RA_PHASE_EXISTING, [
+        "slab loading", "structural suitability", "floor loading",
+        "penetration", "core drill", "load bearing",
+        "existing services", "service strike", "service location",
+        "unknown services", "concealed services",
+        "asbestos",  # existing-building hazmat survey
+    ]),
+    # Live services / commissioning phase
+    (_RA_PHASE_LIVE, [
+        "energised", "energise", "energize", "energisation",
+        "commissioning", "power on", "mains connection",
+        "live services", "live electrical",
+        "switchboard",  # tie-in to live board
+    ]),
+    # Interface with existing operations
+    (_RA_PHASE_INTERFACE, [
+        "occupied", "tenanted", "tenant", "operational facility",
+        "live building", "interface with existing",
+        "shared access", "public access",
+        "existing operations",
+    ]),
+    # Installation and fit-out (broadest — checked last)
+    (_RA_PHASE_INSTALL, [
+        "install", "delivery", "equipment", "forklift", "plant room",
+        "electrical", "ups", "battery", "hvac", "cooling", "chiller",
+        "ductwork", "mechanical", "fire", "sprinkler", "suppression",
+        "scaffold", "rigging", "cable", "generator",
+        "at height", "fall",
+    ]),
+]
+
+
+def _assign_ra_phase(hazard: dict) -> str:
+    """Assign a phase to an RA hazard based on its name and entry keywords."""
+    name = hazard.get("hazard", "").lower()
+    for phase, keywords in _RA_PHASE_RULES:
+        if any(kw in name for kw in keywords):
+            return phase
+    return _RA_PHASE_INSTALL  # default
+
+
+def group_ra_hazards_by_phase(hazards: list[dict]) -> list[dict]:
+    """
+    Group a flat hazard list into phase buckets.
+
+    Returns list of:
+      {"phase": str, "hazards": [hazard_dict, ...]}
+
+    Phases appear in the canonical order. Empty phases are omitted.
+    """
+    _PHASE_ORDER = [
+        _RA_PHASE_EXISTING,
+        _RA_PHASE_INSTALL,
+        _RA_PHASE_LIVE,
+        _RA_PHASE_INTERFACE,
+    ]
+    buckets: dict[str, list[dict]] = {p: [] for p in _PHASE_ORDER}
+
+    for h in hazards:
+        phase = _assign_ra_phase(h)
+        h["phase"] = phase  # tag each hazard with its phase
+        buckets.setdefault(phase, []).append(h)
+
+    return [
+        {"phase": p, "hazards": buckets[p]}
+        for p in _PHASE_ORDER
+        if buckets.get(p)
+    ]
+
+
 def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
                      ca_province: str = "") -> dict:
-    """Return inference result with hazard_list for Risk Assessment documents."""
+    """Return inference result with hazard_list and phase_groups for RA documents."""
     result = infer_to_dict(work_description, jurisdiction=jurisdiction)
     result["ra_classification"] = classify_ra_scope(work_description)
     result["hazard_list"] = _build_hazard_list(work_description, result)
+    result["phase_groups"] = group_ra_hazards_by_phase(result["hazard_list"])
     result["document_type"] = "ra"
     return result
 
