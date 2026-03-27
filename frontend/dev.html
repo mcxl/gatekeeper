@@ -469,7 +469,7 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 let currentJurisdiction = 'AU';
-let currentDocType = 'swms';
+let currentDocType = (window.location.pathname === '/ra') ? 'ra' : 'swms';
 let currentFormat = 'pdf';
 
 // ── Auth ───────────────────────────────────────────
