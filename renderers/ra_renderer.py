@@ -272,14 +272,39 @@ def _render_ra_supplementary_sections(
 
     info_items = []
 
-    # Derive from hazards with low confidence
+    # Hazard-specific info-required templates
+    _INFO_TEMPLATES: dict[str, str] = {
+        "work at height": "Confirm whether elevated cable tray, plant, or roof-level installation requires work at height",
+        "electrical installation": "Confirm whether live tie-ins, staged energisation, or shutdown constraints apply",
+        "switchboard": "Confirm existing switchboard capacity, isolation requirements, and energisation sequence",
+        "slab": "Confirm floor / slab design load capacity for proposed equipment placement",
+        "heavy equipment": "Confirm delivery route, floor loading along route, and equipment weights",
+        "existing services": "Confirm existing services layout and verify against as-built drawings on site",
+        "ups": "Confirm final UPS / battery type, room layout, ventilation, clearances, and installation sequence",
+        "hvac": "Confirm cooling plant type, rooftop vs ground-level placement, and refrigerant handling requirements",
+        "fire": "Confirm fire services scope, impairment management plan, and gaseous suppression room integrity",
+        "occupied": "Confirm interface requirements with existing building operations and occupants",
+        "asbestos": "Confirm hazardous materials survey status and whether asbestos disturbance is expected",
+        "confined": "Confirm confined space entry requirements and atmospheric conditions",
+    }
+
+    # Derive from hazards with low confidence — use specific templates
     for h in hazards:
         conf = h.get("confidence", "")
         name = h.get("hazard", "")
-        if conf == "requires_verification":
-            info_items.append(f"{name} \u2014 confirm whether this hazard is present on site")
-        elif conf == "if_applicable":
-            info_items.append(f"{name} \u2014 confirm scope details and site conditions")
+        if conf in ("requires_verification", "if_applicable"):
+            nl = name.lower()
+            template = None
+            for key, tmpl in _INFO_TEMPLATES.items():
+                if key in nl:
+                    template = tmpl
+                    break
+            if template:
+                info_items.append(template)
+            elif conf == "requires_verification":
+                info_items.append(f"{name} \u2014 confirm whether this hazard is present on site")
+            else:
+                info_items.append(f"{name} \u2014 confirm scope details and site conditions")
 
     # Common missing information for retrofit
     if building_context == "existing":
@@ -371,7 +396,37 @@ def render_ra_document(
 
     # â"€â"€ Section 1: Project Description â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _add_heading(doc, "1. Project Description")
-    description = project_meta.get("description", project_meta.get("work_activity", proj_name))
+    description = project_meta.get("description", project_meta.get("work_activity", ""))
+    if not description or description == proj_name:
+        # Build contextual description from classification
+        classification = inference.get("ra_classification", {})
+        _jt = classification.get("job_type", "")
+        _bc = classification.get("building_context", "")
+        _mods = classification.get("scope_modifiers", [])
+        _JT_LABELS = {
+            "fit_out": "Fit-out and services installation",
+            "retrofit": "Retrofit and upgrade works",
+            "maintenance": "Maintenance and repair works",
+            "demolition": "Demolition works",
+            "upgrade": "Upgrade and extension works",
+            "new_build": "New construction",
+        }
+        _parts = [_JT_LABELS.get(_jt, _jt.replace("_", " ").title())]
+        if _bc == "existing":
+            _bldg = ""
+            if "warehouse" in _mods:
+                _bldg = "existing industrial warehouse"
+            elif "industrial" in _mods:
+                _bldg = "existing industrial building"
+            else:
+                _bldg = "existing building"
+            if "tilt_up_context" in _mods:
+                _bldg += " (concrete tilt-up construction)"
+            _parts.append(f"within {_bldg}")
+        _addr = project_meta.get("site_address", "")
+        if _addr:
+            _parts.append(f"at {_addr}")
+        description = " ".join(_parts) + "."
     desc_p = doc.add_paragraph()
     _run(desc_p, description, size_pt=10)
 

@@ -7118,6 +7118,7 @@ _RA_DISPLAY_NAMES: dict[str, str] = {
     "slab loading":              "Existing Structure / Slab Loading",
     "heavy equipment delivery":  "Heavy Equipment Delivery and Movement",
     "existing services":         "Existing Services / Service Strike",
+    "electrical":                "Electrical Installation / Distribution Works",
     "electrical install":        "Electrical Installation / Switchboard Work",
     "ups ":                      "UPS / Battery Installation",
     "hvac":                      "HVAC / Cooling Systems",
