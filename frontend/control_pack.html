@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function() {
+    var t = localStorage.getItem('theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Method — WHS Control Pack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700&family=Outfit:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<style>
+:root {
+  --bg-primary: #ffffff; --bg-card: #f0f0f0; --border-color: #dddddd;
+  --text-primary: #000000; --text-secondary: #444444; --text-muted: #888888;
+  --accent: #1065F8; --accent-hover: #3D85FF; --accent-text: #ffffff;
+  --nav-bg: #000000; --nav-text: #ffffff; --nav-border: #222222;
+  --input-bg: #ffffff; --input-border: #cccccc; --input-focus: #000000;
+}
+[data-theme="dark"] {
+  --bg-primary: #000000; --bg-card: #111111; --border-color: #222222;
+  --text-primary: #ffffff; --text-secondary: #cccccc; --text-muted: #888888;
+  --accent: #1065F8; --accent-hover: #3D85FF; --accent-text: #ffffff;
+  --nav-bg: #000000; --nav-text: #ffffff; --nav-border: #222222;
+  --input-bg: #111111; --input-border: #333333; --input-focus: #1065F8;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Figtree',sans-serif; background:var(--bg-primary); color:var(--text-secondary); -webkit-font-smoothing:antialiased; }
+.nav { position:fixed; top:0; left:0; right:0; z-index:100; height:56px; background:var(--nav-bg); border-bottom:1px solid var(--nav-border); display:flex; align-items:center; justify-content:space-between; padding:0 28px; }
+.nav-wordmark { font-family:'Plus Jakarta Sans',serif; font-weight:700; font-size:17px; color:var(--nav-text); text-decoration:none; }
+.nav-back { font-size:13px; color:#aaa; text-decoration:none; margin-left:20px; }
+.nav-back:hover { color:var(--nav-text); }
+.container { max-width:680px; margin:0 auto; padding:80px 24px 60px; }
+h1 { font-family:'Plus Jakarta Sans',serif; font-weight:900; font-size:24px; color:var(--text-primary); margin-bottom:8px; }
+.sub { font-size:14px; color:var(--text-muted); margin-bottom:32px; }
+.section-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:var(--text-muted); margin-bottom:12px; }
+.field { margin-bottom:16px; }
+.field label { display:block; font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+.field input, .field textarea { width:100%; background:var(--input-bg); border:1px solid var(--input-border); border-radius:6px; padding:11px 14px; font-family:'Figtree',sans-serif; font-size:14px; color:var(--text-primary); outline:none; }
+.field input:focus, .field textarea:focus { border-color:var(--input-focus); }
+.field textarea { resize:vertical; min-height:120px; }
+.chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.chip { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:20px; font-size:13px; color:var(--text-secondary); }
+.chip .remove { cursor:pointer; font-size:16px; color:var(--text-muted); line-height:1; }
+.chip .remove:hover { color:var(--text-primary); }
+.btn-primary { display:block; width:100%; background:var(--accent); color:var(--accent-text); font-family:'Figtree',sans-serif; font-size:15px; font-weight:700; padding:14px; border:none; border-radius:8px; cursor:pointer; margin-top:24px; }
+.btn-primary:hover { background:var(--accent-hover); }
+.btn-primary:disabled { background:#666; cursor:not-allowed; }
+.btn-secondary { display:block; width:100%; background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-color); font-family:'Figtree',sans-serif; font-size:14px; font-weight:600; padding:12px; border-radius:8px; cursor:pointer; margin-top:10px; }
+.status-panel { max-width:480px; margin:32px auto; }
+.status-step { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:14px; color:var(--text-muted); }
+.spinner { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); animation:pulse 1s ease-in-out infinite; margin-right:8px; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+.error { color:#c00; font-weight:600; }
+.add-pkg { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; background:none; border:1px dashed var(--border-color); border-radius:20px; font-size:13px; color:var(--text-muted); cursor:pointer; }
+.add-pkg:hover { border-color:var(--text-secondary); color:var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div>
+    <a href="/dashboard" class="nav-wordmark">Safe Method</a>
+    <a href="/dashboard" class="nav-back">&larr; Dashboard</a>
+  </div>
+</nav>
+
+<div class="container" id="main-container">
+
+  <!-- Step 1: Input -->
+  <div id="step-input">
+    <h1>WHS Control Pack</h1>
+    <p class="sub">Generate a project-level HRCW register, SWMS matrix, hold point schedule, and risk register from your scope description.</p>
+
+    <div class="section-label">Project Details</div>
+    <div class="field">
+      <label>Project Name</label>
+      <input type="text" id="cp-project-name" placeholder="e.g. Withers Road Partial Upgrade">
+    </div>
+    <div class="field">
+      <label>Site Address</label>
+      <input type="text" id="cp-site-address" placeholder="e.g. Withers Road, North Kellyville NSW 2155">
+    </div>
+    <div class="field">
+      <label>PCBU / Principal Contractor</label>
+      <input type="text" id="cp-pcbu" placeholder="e.g. SD Group">
+    </div>
+    <div class="field">
+      <label>Client</label>
+      <input type="text" id="cp-client" placeholder="e.g. The Hills Shire Council">
+    </div>
+
+    <div class="section-label" style="margin-top:24px;">Project Scope</div>
+    <div class="field">
+      <label>Scope Description <span style="color:#c00;">*</span></label>
+      <textarea id="cp-description" placeholder="Describe the full project scope — trades, activities, site conditions, interfaces. The more detail, the better the output."></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="identifyPackages()">Identify Trade Packages</button>
+  </div>
+
+  <!-- Step 2: Confirm Trade Packages -->
+  <div id="step-packages" style="display:none;">
+    <h1>Confirm Trade Packages</h1>
+    <p class="sub">Review the identified trade packages. Add or remove as needed before generating.</p>
+
+    <div class="section-label">Trade Packages</div>
+    <div class="chip-row" id="pkg-chips"></div>
+    <button class="add-pkg" onclick="addPackage()">+ Add package</button>
+
+    <button class="btn-primary" onclick="generatePack()">Generate Control Pack</button>
+    <button class="btn-secondary" onclick="backToInput()">Back to Edit</button>
+  </div>
+
+  <!-- Step 3: Generating -->
+  <div id="step-generating" style="display:none;">
+    <h1>Generating Control Pack</h1>
+    <div class="status-panel" id="cp-status">
+      <div class="status-step"><span class="spinner"></span> Building HRCW register, SWMS matrix, hold points, and risk register...</div>
+    </div>
+  </div>
+
+  <!-- Step 4: Done -->
+  <div id="step-done" style="display:none;">
+    <h1>Control Pack Ready</h1>
+    <p class="sub" id="cp-summary"></p>
+    <button class="btn-primary" onclick="downloadResult()">Download .docx</button>
+    <button class="btn-secondary" onclick="viewJSON()">View Data (JSON)</button>
+    <button class="btn-secondary" onclick="resetFlow()">Generate Another</button>
+  </div>
+
+</div>
+
+<script>
+const API = window.location.origin;
+let _packages = [];
+let _lastBlob = null;
+let _lastFilename = null;
+let _lastJSON = null;
+
+// Auth
+function getToken() { return localStorage.getItem('access_token'); }
+function getAuthHeaders() { return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }; }
+
+// Step 1 -> Step 2: Identify trade packages from description
+async function identifyPackages() {
+  const desc = document.getElementById('cp-description').value.trim();
+  if (!desc || desc.split(/\s+/).length < 5) {
+    alert('Please enter a scope description (at least 5 words).');
+    return;
+  }
+
+  // Quick client-side package extraction (mirrors backend _identify_trade_packages)
+  const text = desc.toLowerCase();
+  const keywords = [
+    'traffic management', 'live lane', 'road works',
+    'service location', 'ndd',
+    'sydney water', 'water main',
+    'stormwater', 'drainage',
+    'earthworks', 'pavement',
+    'intersection', 'traffic signal',
+    'kerb', 'footpath',
+    'line marking', 'signage',
+    'scaffold', 'facade',
+    'electrical', 'gas',
+    'demolition', 'confined space', 'asbestos',
+  ];
+  const seen = new Set();
+  _packages = [];
+  for (const kw of keywords) {
+    if (text.includes(kw) && !seen.has(kw)) {
+      _packages.push(kw);
+      seen.add(kw);
+    }
+  }
+  if (_packages.length === 0) {
+    _packages.push('General Construction');
+  }
+
+  renderPackages();
+  document.getElementById('step-input').style.display = 'none';
+  document.getElementById('step-packages').style.display = 'block';
+}
+
+function renderPackages() {
+  const container = document.getElementById('pkg-chips');
+  container.innerHTML = '';
+  _packages.forEach((pkg, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = pkg.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) +
+      ' <span class="remove" onclick="removePackage(' + i + ')">&times;</span>';
+    container.appendChild(chip);
+  });
+}
+
+function removePackage(i) {
+  _packages.splice(i, 1);
+  renderPackages();
+}
+
+function addPackage() {
+  const name = prompt('Enter trade package name:');
+  if (name && name.trim()) {
+    _packages.push(name.trim().toLowerCase());
+    renderPackages();
+  }
+}
+
+function backToInput() {
+  document.getElementById('step-packages').style.display = 'none';
+  document.getElementById('step-input').style.display = 'block';
+}
+
+// Step 2 -> Step 3 -> Step 4: Generate
+async function generatePack() {
+  document.getElementById('step-packages').style.display = 'none';
+  document.getElementById('step-generating').style.display = 'block';
+
+  const body = {
+    description: document.getElementById('cp-description').value.trim(),
+    project_meta: {
+      project_name: document.getElementById('cp-project-name').value.trim(),
+      site_address: document.getElementById('cp-site-address').value.trim(),
+      pcbu_name: document.getElementById('cp-pcbu').value.trim(),
+      client: document.getElementById('cp-client').value.trim(),
+    },
+    trade_packages: _packages,
+    format: 'docx',
+  };
+
+  try {
+    // Get DOCX
+    const res = await fetch(API + '/control-pack/generate', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let msg = 'Generation failed: ' + res.status;
+      try { const err = await res.json(); msg = err.error || err.detail || msg; } catch {}
+      throw new Error(msg);
+    }
+
+    _lastBlob = await res.blob();
+    const cd = res.headers.get('content-disposition') || '';
+    const fnMatch = cd.match(/filename="?([^";\s]+)"?/);
+    _lastFilename = fnMatch ? fnMatch[1] : 'WHS-Control-Pack.docx';
+
+    // Get JSON summary
+    body.format = 'json';
+    const jsonRes = await fetch(API + '/control-pack/generate', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (jsonRes.ok) {
+      _lastJSON = await jsonRes.json();
+    }
+
+    // Show summary
+    const summary = _lastJSON
+      ? `${_lastJSON.trade_package_count} trade packages \u2022 ${_lastJSON.hrcw_yes_count} HRCW triggered \u2022 ${_lastJSON.hrcw_conditional_count} conditional \u2022 ${_lastJSON.hold_point_count} hold points \u2022 ${_lastJSON.risk_register_count} risk entries \u2022 ${_lastJSON.open_item_count} open items`
+      : 'Control pack generated successfully.';
+
+    document.getElementById('cp-summary').textContent = summary;
+    document.getElementById('step-generating').style.display = 'none';
+    document.getElementById('step-done').style.display = 'block';
+
+  } catch (err) {
+    document.getElementById('cp-status').innerHTML =
+      '<div class="status-step error">Error: ' + err.message + '</div>' +
+      '<button class="btn-secondary" onclick="backToPackages()">Back</button>';
+  }
+}
+
+function backToPackages() {
+  document.getElementById('step-generating').style.display = 'none';
+  document.getElementById('step-packages').style.display = 'block';
+}
+
+function downloadResult() {
+  if (!_lastBlob) return;
+  const url = URL.createObjectURL(_lastBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = _lastFilename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function viewJSON() {
+  if (!_lastJSON) { alert('No JSON data available.'); return; }
+  const w = window.open('', '_blank');
+  w.document.write('<pre style="font-size:12px;padding:16px;">' +
+    JSON.stringify(_lastJSON, null, 2).replace(/</g, '&lt;') + '</pre>');
+}
+
+function resetFlow() {
+  _packages = [];
+  _lastBlob = null;
+  _lastFilename = null;
+  _lastJSON = null;
+  document.getElementById('step-done').style.display = 'none';
+  document.getElementById('step-input').style.display = 'block';
+}
+
+// Auth check
+(async function() {
+  const token = getToken();
+  if (!token) { window.location.href = '/'; return; }
+  try {
+    const res = await fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) { window.location.href = '/'; }
+  } catch { window.location.href = '/'; }
+})();
+</script>
+</body>
+</html>

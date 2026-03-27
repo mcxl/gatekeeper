@@ -241,6 +241,11 @@ async def serve_ra():
     return _html_response(os.path.join(_FRONTEND_DIR, "dev.html"))
 
 
+@app.get("/control-pack", response_class=HTMLResponse)
+async def serve_control_pack():
+    return _html_response(os.path.join(_FRONTEND_DIR, "control_pack.html"))
+
+
 @app.get("/contact", response_class=HTMLResponse)
 async def serve_contact():
     return _html_response(os.path.join(_FRONTEND_DIR, "contact.html"))
