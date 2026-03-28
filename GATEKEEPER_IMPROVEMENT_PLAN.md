@@ -1,50 +1,70 @@
 ﻿# GATEKEEPER IMPROVEMENT PLAN
 # Safe Method SWMS + Risk Assessment Platform
-# Version: 2026-03-27 | Supersedes prior plan versions
+# Version: 2026-03-28 | Supersedes prior plan versions
 
 ---
 
 ## CURRENT TRUTH
 
-Gatekeeper / Safe Method is no longer just a SWMS generator.
-It now has two live document paths in the codebase:
-- SWMS generation
-- Standalone Risk Assessment generation
+Gatekeeper / Safe Method is no longer in early capability-discovery mode.
+It now has:
+- a benchmark-proven SWMS path
+- a benchmark-proven standalone RA path
+- a defined combined WHS control pack mode with a materially closed Withers Road benchmark stream
+- a defined SWMS Review Engine mode with benchmark setup and comparison contract written
+- a stabilised post-Phase-2 product baseline
+- an explicit quality-system and multi-agent operating layer
 
 The current product reality is:
-- SWMS remains the primary, most mature workflow
-- Mode 04 upload/extract/generate is a major active path and must be treated as release-critical
-- Risk Assessment (RA) is now a real product path and must be planned, tested, and polished as such
-- A future combined Unitas-style project WHS control pack is a separate product mode, not a toggle on the current SWMS flow
+- standalone SWMS is a live product path
+- standalone RA is a live product path
+- review-before-download is now part of the trust workflow
+- the combined WHS control pack is a separate product mode, not an extension of the current RA renderer
+- the SWMS Review Engine is a separate review/comparison mode and is not yet active until first benchmark assets are selected
+- SDK / integration packaging is a future phase that depends on stable contracts, product boundaries, regression discipline, and quality automation
 
-Guiding principle:
+Guiding principles:
 - reliability and document trust come before expansion
+- benchmark-led improvement comes before broad rewrites
 - one strict template/render contract per document type
-- benchmark-based output, not freeform AI invention
+- contract clarity comes before external packaging
+- architectural gaps should trigger product decisions, not endless incremental slices
 
 ---
 
-## WHAT IS STABLE NOW
+## WHAT IS NOW PROVEN
 
-### SWMS runtime
-- Active SWMS DOCX generation flows through the current `render_swms_document()` path
-- Legacy old-template DOCX runtime paths have been neutralised from the main user flows
-- Mode 04 reliability work has improved error surfacing, preflight validation, status sequencing, and misleading UI cleanup
-- Live dashboard now exposes the RA path instead of treating it as coming soon
+### Benchmark methodology
+The layered benchmark method is now proven across multiple output types:
+- RA benchmark - data centre retrofit
+- SWMS benchmark - facade remedial works
+- SWMS benchmark - EWP roof transfer specialist case
+- RA benchmark - civil infrastructure / sparse input / Withers Road
+- Project WHS benchmark / control pack - Withers Road
 
-### Domain quality
-- D001 tilt-up sequence: CLOSED
-- D002 superseded unit reference: CLOSED
-- D003 wrong HRCW flag tilt-up: CLOSED
-- D005 fall hierarchy reference: CLOSED
-- D006 plain English task-name coverage: CLOSED
-- Reference job warning set: CLOSED to 0 warnings in the latest known baseline
+What this proves:
+- scope classification materially improves output relevance
+- confidence / conditional handling is correct for sparse input
+- deterministic post-processing injection is a valid pattern for specialist control gaps
+- benchmarks can reveal product-boundary problems, not just logic problems
 
-### Risk Assessment path
-- `/generate/ra` exists
-- `/render/ra`, `/render/ra/pdf`, and `/render/ra/both` exist
-- standalone RA renderer exists
-- dashboard entry path to `/ra` now exists in the current repo state
+### Stable foundations
+The following are now stable enough to treat as the baseline:
+- SWMS renderer contract (V10 template and table mapping)
+- RA renderer structure
+- inference matrix base categories plus retrofit and civil expansions
+- reference job baseline and SWMS reference set
+- post-Phase-2 code hygiene and review integration changes
+- quality-system governance docs
+- multi-agent operating docs and runbook
+
+### Phase 2 close-out complete
+Phase 2 work is complete:
+- code hygiene completed
+- Mode 04 -> review integration completed
+- landing stabilisation completed
+- combined WHS control pack specification written
+- benchmark governance and decision-log structure written
 
 ---
 
@@ -63,232 +83,98 @@ A release is not clean unless these flows pass.
 | 5. SWMS sequencing | Generate tilt-up or equivalent complex job | Task ordering and major controls remain correct |
 | 6. Standalone RA | Dashboard -> `/ra` -> generate -> render -> download | RA flow loads, hazards render, file downloads correctly |
 | 7. Failure transparency | Trigger one known failure in extract/render/generate | User sees a meaningful message, not a mystery failure |
+| 8. Review workflow | Generate through Mode 04 -> review -> download | User can review before downloading and flow remains coherent |
 
-### Coverage gaps to close next
+### Regression discipline
 
-| Gap | Risk | Fix |
-|-----|------|-----|
-| Mode 04 end-to-end automated coverage | High-value live path regresses silently | Add scripted/manual regression checklist and later browser automation |
-| RA route and RA document flow | Newly exposed path may drift without tests | Add targeted RA smoke coverage |
-| Renderer/template validation | Template swaps and table remaps can silently regress output | Add self-validating renderer/template checks with golden samples |
-| API key auth automation | Service path still under-tested | Add auth path test coverage |
-| Multi-user generation overlap | Concurrency issues could surface under load | Add lightweight concurrent request verification |
+Benchmark/reference coverage is now part of the product discipline.
 
----
-
-## CURRENT PRIORITIES
-
-Priority order reflects fastest user-impact and trust gain.
-
-### Priority 1 — Reliability and trust hardening
-
-1. Real error surfacing everywhere users can fail
-2. Remove dead or misleading UI immediately
-3. Keep status states mutually exclusive
-4. Add preflight validation before expensive actions
-5. Tighten server-side validation for direct API paths
-6. Standardise filenames, footer text, and download naming across flows
-7. Add a clear consultant-review-required note where documents are generated/downloaded
-
-### Priority 2 — SWMS stability and quality
-
-1. Preserve one strict SWMS template/render contract
-2. Continue deterministic domain-quality cleanup only where still open
-3. Add automated renderer/template validation against known-good outputs
-4. Expand targeted integration coverage around review/download and upload/extract/generate
-5. Keep output lean, benchmark-based, and project-specific
-
-### Priority 3 — Risk Assessment stabilisation
-
-1. Make `/ra` a first-class, tested path
-2. Align RA UI labels, filename conventions, and disclaimers
-3. Bring RA renderer closer to the approved benchmark style and structure
-4. Add RA-specific release checks before calling the feature stable
-5. Separate “standalone RA” from any future “combined WHS control pack” work
-
-### Priority 4 — Commercial and platform readiness
-
-1. Mobile/responsive improvements for real site use
-2. Billing/subscription gating only after core reliability is strong
-3. Team / organisation accounts
-4. SDK / integration packaging only after product behavior is stable enough to expose externally
+Required expectations:
+- preserve RA reference jobs
+- preserve SWMS reference jobs
+- use benchmark cases as release gates where practical
+- do not remove benchmark coverage without replacing it
+- after architecture or cleanup changes, rerun affected smoke/reference jobs
 
 ---
 
-## SWMS IMPROVEMENT TRACK
+## CURRENT PRODUCT BOUNDARIES
 
-### A. Reliability and validation
-- Add server-side validation to all generation entry points
-- Consolidate duplicated normalization logic used across paths
-- Retire or remove dead duplicate endpoints once the live path is confirmed stable
-- Continue replacing generic frontend errors with exact backend messages where safe
+### 1. Standalone SWMS
+Purpose:
+- trade/task-level work method output
 
-### B. Renderer / template discipline
-- Maintain a single approved SWMS template contract for the live SWMS path
-- Any template change must be verified structurally before renderer edits
-- No redesign-on-the-fly during rendering fixes
-- Golden-output validation should become a required quality gate for renderer changes
+### 2. Standalone Risk Assessment
+Purpose:
+- project-level risk assessment output
 
-### C. Output quality
-- Continue using deterministic inference and benchmark-based control logic as the floor
-- Avoid generic AI padding
-- Prefer specific, observable controls and hold points
-- Keep consultant review as the final quality gate before issue
+### 3. Combined WHS Control Pack
+Purpose:
+- multi-section project-level control document combining linked control artefacts
+
+Rule:
+- this is a separate product mode, not a renderer extension hidden inside standalone RA
 
 ---
 
-## RISK ASSESSMENT TRACK
+## PHASE 3 GOAL
 
-### Phase 1 — Expose and stabilise the existing RA path
-- Dashboard route to RA
-- RA mode selection on page load
-- RA generation/render smoke test
-- RA filename, footer, and disclaimer consistency
-- RA release checklist entry added
+Phase 3 moves Safe Method from stabilised benchmark-proven products into:
+- deterministic quality automation
+- product-boundary decisions
+- contract definition
+- integration readiness
+- architecture shaping for future product modes
 
-### Phase 2 — RA output alignment
-- Align standalone RA output to the approved benchmark examples
-- Review cover fields, hazard register structure, review/sign-off wording, footer format, and black-and-white styling
-- Add targeted RA regression checks
-
-### Phase 3 — Decide product boundary
-Choose clearly between:
-- Standalone RA as a separate product mode, or
-- A broader project-level control pack mode
-
-Do not blur these in implementation.
+Phase 3 should be a deliberate transition from working behavior to explicit contracts, stable release discipline, and supportable packaging surfaces.
 
 ---
 
-## FUTURE MODE — COMBINED PROJECT WHS CONTROL PACK
+## PHASE 3 PRIORITIES
 
-This is a separate initiative from the current SWMS and standalone RA flows.
+### Priority 1 - Deterministic quality automation
+Build the first internal automation layer around:
+- issue-gate checks
+- benchmark regression checks
 
-Target output:
-- HRCW Register
-- Hold Point Schedule
-- Project Risk Assessment / Risk Register
-- Short SWMS Review Benchmark Note
-- single combined `.docx`
+Expected outcome:
+- obvious trust failures caught before consultant-style review
+- closed benchmark streams protected from regression
+- active benchmark streams evaluated more consistently
 
-This mode should only begin after:
-1. SWMS flow is stable
-2. standalone RA flow is stable
-3. benchmark rules and output structure are locked
-4. release validation for current modes is strong
+### Priority 2 - Stable contracts
+Define and preserve explicitly:
+- input schema
+- output schema
+- review schema
+- benchmark/result schema
 
-Do not treat this as a small extension of the current SWMS renderer.
-It is a distinct document product.
+### Priority 3 - Regression and release discipline hardening
+Expand practical release confidence by:
+- preserving RA and SWMS reference jobs
+- adding any remaining critical smoke coverage
+- tightening benchmark-based release rules
 
----
+### Priority 4 - Product decision on the control pack mode
+Treat the combined WHS control pack as a separate product mode with a proven benchmark draft stream.
 
-## BENCHMARK / CONTROL LIBRARY
+### Priority 5 - SWMS Review Engine benchmark activation
+Before implementation, activate the first benchmark pair for the SWMS Review Engine:
+- one principal-contractor project risk register
+- one subcontractor SWMS
+- one benchmark expectation note
 
-The original “Gold Standard Control Library” idea is still aligned, but it should now be framed as a shared benchmark library rather than only a control-writer enhancement.
+Expected outcome:
+- stream moves from HOLD to ACTIVE
+- first comparison benchmark can run
 
-Goal:
-- approved benchmark controls, hold points, and sequencing guidance that both SWMS and RA generation can lean on
+### Priority 6 - Architecture readiness
+Focus areas:
+- classifier growth boundaries
+- inference matrix scaling discipline
+- post-processing injection structure
+- renderer branching by product mode
 
-Near-term use:
-- improve specificity without inviting freeform AI drift
-- reduce recurring inference/content quality gaps
-- support lean, repeatable output
-
-This track should follow reliability hardening, not displace it.
-
----
-
-## COMMERCIAL / PLATFORM TRACKS
-
-These remain valid, but not ahead of trust and runtime stability.
-
-### Mobile responsive UI
-- Review/download flows on phone
-- camera-roll upload behavior
-- practical site usability
-
-### Billing / Stripe
-- only after core flows are stable enough that charging users will not amplify support pain
-
-### Team / organisation accounts
-- document library
-- shared project access
-- PM/foreman review flow
-
-### SDK / integration packaging
-- only after public behavior and contracts are stable enough to support external consumers
-
----
-
-## DEFERRED / REVISIT
-
-| Item | Current position |
-|------|------------------|
-| Large architectural refactors | Avoid during bug-fix and stabilisation periods |
-| Single-call architecture | Still deferred |
-| Feedback-loop generation | Still deferred |
-| Big template migrations without validation harness | Not safe |
-| Stream timeout assumption | Revisit as part of reliability hardening |
-| Aggressive expansion before tests improve | Not recommended |
-
----
-
-## DOMAIN BACKLOG
-
-Open known issue:
-- D004: crane licence wording should be generalised to the appropriate HRWL for crane class used
-
-Closed / no longer backlog priorities:
-- D005 closed
-- D006 closed
-- previous 6 reference-job warnings closed in the latest known baseline
-
-Continue tracking true domain issues in `KNOWN_ISSUES_DOMAIN.md`.
-Do not leave stale items open in multiple planning files.
-
----
-
-## STRATEGIC CONTEXT
-
-There are now three meaningful strategic paths:
-
-1. **Reliable SWMS product**
-- mature the current SWMS workflow
-- deepen trust, validation, and benchmark quality
-
-2. **Reliable standalone RA product**
-- stabilise the newly exposed RA flow
-- make it a first-class path with proper testing and output alignment
-
-3. **Future combined WHS control pack**
-- only after the first two are solid
-- treat as a distinct product mode, not a hidden extension
-
-Current recommendation:
-- stabilise SWMS and RA first
-- delay major combined-pack work until the current runtime experience is consistently trustworthy
-
----
-
-## NEXT IMPLEMENTATION ORDER
-
-1. Reliability / trust hardening still open in the live app
-2. SWMS release gate tightening and renderer/template validation
-3. RA smoke testing and output alignment
-4. D004 domain cleanup
-5. Mobile usability improvements
-6. Billing and organisation features
-7. Combined project WHS control pack discovery/specification
-
----
-
-## SUCCESS DEFINITION
-
-The product is aligned when:
-- user-facing failures are understandable
-- dead/misleading UI is removed
-- each document mode has one clear contract
-- release gates reflect the real live flows
-- backlog status matches source reality
-- SWMS and RA are treated as separate current products
-- future combined-pack work is explicit, not implied
+### Priority 7 - Integration surface decision
+Do not expose a broad SDK yet.
+Choose the first supported integration surface deliberately.

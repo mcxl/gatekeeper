@@ -300,6 +300,7 @@ async def generate_swms(
     hot_work_ok = _hot_work_legitimate(inference)
     task_blocks = [_normalise_task(tb, inference, jurisdiction, hot_work_ok) for tb in task_blocks]
     _suppress_false_ccvs(task_blocks, inference)
+    task_blocks = _reorder_tasks(task_blocks)
 
     # Log any flagged citations for monitoring
     ccvs_codes = inference.get("ccvs_codes", [])
@@ -417,37 +418,45 @@ async def generate_swms_stream(
     # ── Parallel per-task execution ───────────────────────────
     _SEM = asyncio.Semaphore(3)
 
+    _MAX_RETRIES = 1
+
     async def _process_single_task(idx: int, task: dict) -> tuple[int, dict]:
         seq = task["sequence"]
         risk = risks_by_seq.get(seq, {})
-        async with _SEM:
-            try:
-                ctrl = await write_controls_single(task, risk, inference)
+        last_error = None
+        for attempt in range(_MAX_RETRIES + 1):
+            async with _SEM:
+                try:
+                    ctrl = await write_controls_single(task, risk, inference)
 
-                single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
-                single_risk = {**risk_manifest, "risks": [risk] if risk else []}
-                single_ctrl = {"controls": [ctrl]}
-                result = await run_assembler(
-                    single_manifest, single_risk, single_ctrl, inference, project_meta
-                )
-                tb = result[0] if result else {}
+                    single_manifest = {**task_manifest, "tasks": [task], "total_tasks": 1}
+                    single_risk = {**risk_manifest, "risks": [risk] if risk else []}
+                    single_ctrl = {"controls": [ctrl]}
+                    result = await run_assembler(
+                        single_manifest, single_risk, single_ctrl, inference, project_meta
+                    )
+                    tb = result[0] if result else {}
 
-                val = _validate_task_block(tb)
-                if not val["valid"]:
-                    try:
-                        tb = await run_assembler_single(tb, val["errors"], inference)
-                    except Exception:
-                        pass
+                    val = _validate_task_block(tb)
+                    if not val["valid"]:
+                        try:
+                            tb = await run_assembler_single(tb, val["errors"], inference)
+                        except Exception:
+                            pass
 
-                tb = _enforce_plain_english(tb)
-                tb = _plain_english_pass(tb)
-                _enrich_risk_labels(tb)
-                log.warning(f"Task {idx+1} complete")
-                return (idx, tb)
+                    # Full normalisation (same as non-streaming path)
+                    hot_work_ok = _hot_work_legitimate(inference)
+                    tb = _normalise_task(tb, inference, jurisdiction, hot_work_ok)
+                    log.warning(f"Task {idx+1} complete")
+                    return (idx, tb)
 
-            except Exception as e:
-                log.error(f"Task {idx+1} failed: {e}")
-                return (idx, {})
+                except Exception as e:
+                    last_error = e
+                    if attempt < _MAX_RETRIES:
+                        log.warning(f"Task {idx+1} failed (attempt {attempt+1}), retrying: {e}")
+                    else:
+                        log.error(f"Task {idx+1} failed after {_MAX_RETRIES+1} attempts: {e}")
+        return (idx, {})
 
     yield {"type": "task_count", "count": total}
 
@@ -464,8 +473,18 @@ async def generate_swms_stream(
     assembled = [assembled_map[i] for i in range(total)]
     log.warning(f"Parallel execution complete — {total} tasks assembled")
 
+    # Full normalisation pass (same as non-streaming path)
+    hot_work_ok = _hot_work_legitimate(inference)
+    assembled = [_normalise_task(tb, inference, jurisdiction, hot_work_ok)
+                 for tb in assembled if tb.get("task")]
     _suppress_false_ccvs(assembled, inference)
-    yield {"type": "done", "task_count": len(assembled), "route": selected_route}
+    assembled = _reorder_tasks(assembled)
+    yield {
+        "type": "done",
+        "task_count": len(assembled),
+        "route": selected_route,
+        "tasks": assembled,
+    }
 
 
 # ── Risk label enrichment ─────────────────────────────────────────────────────
@@ -632,6 +651,116 @@ _HOT_WORK_CONFIRM_PATTERNS = [
 ]
 
 
+# ── Task sequence ordering ────────────────────────────────────────────────────
+
+# Phase keywords scored by expected site workflow order.
+# Lower score = earlier in sequence. Tasks matched to the first matching phase.
+_PHASE_ORDER = [
+    # Phase 0: Preliminaries / site setup / access
+    (0, ["set up", "setup", "establish site", "establish and",
+         "site prep", "plan access", "preliminar", "induction",
+         "site setup", "mobilise site", "mobilize site",
+         "mobilise and", "mobilize and", "establish scaffold"]),
+    # Phase 1: Access equipment erection
+    (1, ["erect scaffold", "scaffold erect", "install scaffold",
+         "position ewp", "ewp setup", "access equipment",
+         "set up scaffold", "scaffolding and"]),
+    # Phase 2: Removals / stripping / preparation
+    (2, ["remove green", "remove wall", "strip", "dismantle green",
+         "prepare surface", "surface prep", "prep surface", "prepare masonry",
+         "prepare render", "prepare facade", "clean facade",
+         "pressure wash", "survey", "mark area",
+         "inspect facade", "check and expose", "check and isolate",
+         "crack inspection", "inspect crack"]),
+    # Phase 3: Structural repairs
+    (3, ["crack stitch", "spalling", "concrete repair", "reconstruct",
+         "repoint", "brickwork", "structural"]),
+    # Phase 4: Sealant / waterproofing / sealer
+    (4, ["sealant", "seal", "caulk", "silane", "waterproof", "sealer"]),
+    # Phase 5: Coatings / painting / finishes
+    (5, ["paint", "coating", "primer", "stain", "timber treat", "treat timber",
+         "finish", "render seal"]),
+    # Phase 6: Reinstatement
+    (6, ["reinstate", "reinstall", "restore green", "green wall reinstat"]),
+    # Phase 7: QA / defect check / completion
+    (7, ["defect", "check work", "quality", "completion", "sign-off",
+         "practical completion", "make good"]),
+    # Phase 8: Demobilisation — checked BEFORE phase 0 in _task_phase_score
+    (8, ["demobilise", "demobilize", "demob", "dismantle scaffold",
+         "remove scaffold", "site restor"]),
+]
+
+
+_DEMOB_KEYWORDS = ["demobilise", "demobilize", "demob", "dismantle scaffold",
+                    "remove scaffold", "site restor"]
+_REPAIR_KEYWORDS = ["crack stitch", "spalling", "concrete repair", "reconstruct",
+                     "repoint", "brickwork reconstruct", "brickwork repoint",
+                     "brickwork repair", "structural repair", "repair concrete",
+                     "repair brick", "mortar joint", "repair spalling"]
+_QA_KEYWORDS = ["check work", "check completed", "check remedial",
+                "quality", "practical completion", "make good defect",
+                "sign-off"]
+
+
+_COATING_TASK_KEYWORDS = ["paint", "stain", "coat", "seal unpaint", "timber treat",
+                          "treat timber", "primer", "timber beam"]
+
+
+def _task_phase_score(tb: dict) -> int:
+    """Return a phase score for sorting. Unmatched tasks get score 5 (coatings).
+
+    Priority order (checked against task name first, then scope):
+      demob (8) > coating-by-name (5) > repair (3) > QA (7) > phase table > default (5).
+    Coating is checked on task name BEFORE the phase table so 'Paint masonry'
+    doesn't get scored as prep (2) due to 'surface prep' in the scope.
+    """
+    task_name = tb.get("task", "").lower()
+    scope = tb.get("scope", "").lower()
+    text = task_name + " " + scope
+    # Check demob first
+    if any(kw in text for kw in _DEMOB_KEYWORDS):
+        return 8
+    # Check repair before QA
+    if any(kw in text for kw in _REPAIR_KEYWORDS):
+        return 3
+    # Check scaffold/access erection by task name — must be before QA check
+    if any(kw in task_name for kw in ("erect scaffold", "scaffold erect", "install scaffold",
+                                       "position ewp", "erect and certify",
+                                       "erect access", "access equipment")) and "dismantle" not in task_name:
+        return 1
+    # Check reinstatement by task name — before coating check (avoids "finishing" matching coat)
+    if any(kw in task_name for kw in ("reinstate", "reinstall")):
+        return 6
+    # Check coating by TASK NAME only — avoids scope keywords (surface prep) overriding
+    if any(kw in task_name for kw in _COATING_TASK_KEYWORDS):
+        return 5
+    # QA / defect check
+    if any(kw in text for kw in _QA_KEYWORDS) or ("defect" in text and "repair" not in text):
+        return 7
+    for score, keywords in _PHASE_ORDER:
+        if score >= 7:
+            continue
+        if any(kw in text for kw in keywords):
+            return score
+    return 5
+
+
+def _reorder_tasks(task_blocks: list[dict]) -> list[dict]:
+    """Sort tasks into a logical site workflow sequence.
+
+    Preserves relative order of tasks within the same phase.
+    Re-numbers step fields (1.1, 1.2, ...) after sorting.
+    """
+    if not task_blocks:
+        return task_blocks
+    # Stable sort by phase score
+    sorted_tasks = sorted(task_blocks, key=_task_phase_score)
+    # Re-number
+    for i, tb in enumerate(sorted_tasks, 1):
+        tb["step"] = f"1.{i}"
+    return sorted_tasks
+
+
 def _hot_work_legitimate(inference: dict) -> bool:
     """Return True if inference indicates real hot work is present in the job."""
     all_inf = str(inference).lower()
@@ -662,6 +791,462 @@ def _suppress_false_ccvs(task_blocks: list[dict], inference: dict) -> None:
         _suppress_false_ccvs_single(tb, hot_work_ok)
 
 
+def _fix_unsupported_waterproofing(tb: dict) -> None:
+    """
+    If a task says 'waterproofing' but the scope mentions sealant/silane/recaulk,
+    replace the task name with quote-faithful wording.
+    Prevents agent drift from 'apply sealant' to 'waterproofing'.
+    """
+    task = tb.get("task", "").lower()
+    scope = tb.get("scope", "").lower()
+    if "waterproof" not in task:
+        return
+    _SEALANT_KEYWORDS = ("sealant", "silane", "recaulk", "caulk", "sealer")
+    if any(kw in scope for kw in _SEALANT_KEYWORDS):
+        # Replace waterproofing with sealant-faithful wording
+        tb["task"] = _re.sub(
+            r'(?i)\bwaterproofing\b', 'sealer application', tb["task"])
+        tb["task"] = _re.sub(
+            r'(?i)\bApply\s+sealants\s+and\s+waterproofing\b',
+            'Apply sealants and sealer', tb["task"])
+        # If task still contains "waterproof", do a final cleanup
+        tb["task"] = _re.sub(
+            r'(?i)\bwaterproof\w*', 'sealer application', tb["task"])
+
+
+# ── Content-quality post-processing ───────────────────────────────────────────
+
+_DEMOLITION_PHRASES = [
+    "demolition notification", "demolition licence", "demolition supervisor",
+    "pre-demolition", "cpccde3016", "demolition swms",
+    "structures over 6m", "demolition of load", "demolish",
+    "repair-demolition", "demolition work",
+    "load-bearing demolition", "demolition applies",
+    "demolition or scaffolding competency", "demolition competency",
+    "demolition method statement", "demolition method",
+    "demolition experience",
+]
+
+# Controls the agent invents that are not supported by a typical remedial painting quote
+_UNSUPPORTED_CONTROL_PHRASES = [
+    "utility isolation certificate", "utility isolation",
+    "shoring plan", "shoring and stability",
+    "council development consent", "council consent",
+    "structural engineer approval", "structural engineer sign",
+    "structural engineer's shoring",
+    "power isolation certificate",
+]
+
+# Active hazmat survey/assessment workflow — the quote treats these as latent conditions
+_ACTIVE_HAZMAT_PHRASES = [
+    "hazardous materials survey", "hazmat survey", "pre-refurbishment survey",
+    "asbestos survey", "asbestos register", "acm status",
+    "licensed assessor", "asbestos assessor",
+    "hazardous material assessment",
+]
+
+
+def _strip_unsupported_controls(tb: dict) -> None:
+    """Strip controls the agent invents that are not supported by the source quote.
+
+    Remedial painting quotes typically do not require utility isolation
+    certificates, structural shoring plans, council development consent, etc.
+    These are reasonable for larger construction projects but not quote-faithful
+    for a painting/remedial scope.
+    """
+    for field in ("controls", "admin", "hold_points"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(p in item.lower() for p in _UNSUPPORTED_CONTROL_PHRASES)]
+
+
+_SEALANT_DRIFT_PHRASES = [
+    "membrane", "waterproofing membrane", "damp-proof membrane",
+    "tanking", "waterproof coat", "waterproofing system",
+    "waterproof sealant", "hydrophobic or waterproof",
+    "waterproofing", "waterproof",
+]
+
+
+def _strip_sealant_drift(tb: dict) -> None:
+    """Strip membrane/waterproofing drift from sealant tasks.
+
+    The quote specifies recaulking (Parchem Nitoseal MS250 / Emer-seal) and
+    silane clear sealer — not waterproofing membranes. Agent drift into
+    membrane/tanking/waterproofing is unsupported.
+    """
+    task_name = tb.get("task", "").lower()
+    if not any(kw in task_name for kw in ("sealant", "seal", "caulk")):
+        return
+    if "paint" in task_name:  # don't touch painting tasks
+        return
+    # Strip membrane/waterproofing from scope
+    scope = tb.get("scope", "")
+    for phrase in _SEALANT_DRIFT_PHRASES:
+        scope = scope.replace(phrase, "").replace(phrase.title(), "")
+    # Clean up trailing semicolons/commas from removal
+    import re
+    scope = re.sub(r';\s*;', ';', scope)
+    scope = re.sub(r',\s*,', ',', scope)
+    scope = re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
+    tb["scope"] = scope
+    # Strip from all list fields including hazards
+    for field in ("controls", "admin", "hazards", "hold_points", "stop_work"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(p in item.lower() for p in _SEALANT_DRIFT_PHRASES)]
+
+
+_TIMBER_DRIFT_PHRASES = [
+    "decay", "rot ", "rot,", "biocide", "preservative", "fungicid",
+    "insecticid", "timber decay", "check for decay", "insect damage",
+]
+
+
+_GREEN_WALL_DRIFT_PHRASES = [
+    "irrigation", "test irrigation", "drainage test", "pressure test",
+    "electrical isolation", "energise", "power isolation",
+    "certification", "certif", "commissioning",
+]
+
+
+def _strip_green_wall_drift(tb: dict) -> None:
+    """Strip testing/certification scope from green wall reinstatement.
+
+    The quote says 'green wall x 2 - removal / reinstatement works'.
+    No irrigation testing, electrical commissioning, or certification is mentioned.
+    """
+    task_name = tb.get("task", "").lower()
+    if "reinstate" not in task_name and "reinstall" not in task_name:
+        return
+    if "green wall" not in task_name and "green" not in tb.get("scope", "").lower():
+        return
+    # Clean task name
+    tb["task"] = _re.sub(r'(?i)\s+and\s+test\b.*$', '', tb["task"]).strip()
+    if not tb["task"]:
+        tb["task"] = "Reinstate green wall system"
+    # Clean scope string
+    scope = tb.get("scope", "")
+    for phrase in _GREEN_WALL_DRIFT_PHRASES:
+        scope = _re.sub(r'(?i)\b' + _re.escape(phrase) + r'\w*\b', '', scope)
+    scope = _re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
+    if scope:
+        tb["scope"] = scope
+    else:
+        tb["scope"] = "Reinstall green wall modules and fixings to prepared substrate"
+    # Strip drift from all list fields
+    for field in ("controls", "admin", "hazards", "hold_points", "stop_work"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(p in item.lower() for p in _GREEN_WALL_DRIFT_PHRASES)]
+
+
+def _strip_timber_drift(tb: dict) -> None:
+    """Strip decay/biocide/preservative drift from timber stain tasks.
+
+    The quote specifies: prepare timbers with Intergrain Ultraprep timber
+    cleaner, finish in 2x coats Intergrain Ultradeck timber stain. No decay
+    diagnosis, preservative, or biocide treatment is in scope.
+    """
+    task_name = tb.get("task", "").lower()
+    if not any(kw in task_name for kw in ("timber beam", "treat timber", "timber treat",
+                                           "timber stain", "timber feature",
+                                           "structural timber", "treat structural")):
+        return
+    # Clean task name
+    tb["task"] = _re.sub(r'(?i)\band\s+check\s+for\s+decay\b', '', tb["task"]).strip()
+    # Clean scope
+    scope = tb.get("scope", "")
+    for phrase in _TIMBER_DRIFT_PHRASES:
+        scope = _re.sub(r'(?i)\b' + _re.escape(phrase) + r'\b', '', scope)
+    scope = _re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
+    if not scope or len(scope) < 20:
+        scope = ("Prepare unpainted timber beams and architectural features with "
+                 "timber cleaner, finish in 2 coats timber stain per specification")
+    tb["scope"] = scope
+    # Strip drift from controls, admin, and hazards
+    for field in ("controls", "admin", "hazards"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(p in item.lower() for p in _TIMBER_DRIFT_PHRASES)]
+
+
+def _strip_active_hazmat(tb: dict) -> None:
+    """Strip active hazmat survey/assessment workflow from tasks.
+
+    The quote treats pre-existing toxic materials as latent conditions subject
+    to variation — not as an active work task. Remove active survey controls
+    but preserve the latent-condition pathway (stop work if encountered).
+    """
+    task_name = tb.get("task", "").lower()
+    # If the task IS a hazmat survey/assessment/check, convert to a stop-work note
+    _is_hazmat_task = (
+        ("survey" in task_name and ("hazardous" in task_name or "latent" in task_name))
+        or ("test" in task_name and "toxic" in task_name)
+        or ("check" in task_name and "latent" in task_name and "toxic" in task_name)
+        or ("identify" in task_name and ("hazardous" in task_name or "toxic" in task_name))
+    )
+    if _is_hazmat_task:
+        # Replace active survey workflow with latent-condition stop-work
+        tb["task"] = "Latent conditions check — stop work if toxic materials encountered"
+        tb["scope"] = ("Pre-existing toxic materials (lead paint, asbestos) are latent conditions "
+                       "subject to additional cost — deemed variation per contract. "
+                       "If suspect material is found, stop work and notify supervisor.")
+        tb["controls"] = [
+            "Stop work immediately if suspect material (e.g. fibrous board, flaking paint on pre-1970 surfaces) is encountered",
+            "Do not disturb, sample, or remove any suspect material",
+            "Notify supervisor and site manager — arrange licensed assessment before resuming",
+        ]
+        tb["admin"] = [
+            "Brief all workers at induction: if you see suspect material, stop and report",
+        ]
+        tb["hold_points"] = [
+            "\u26a0\ufe0f HOLD POINT — do not resume work in affected area until licensed assessor has cleared the material",
+        ]
+        tb["stop_work"] = [
+            "\U0001f6d1 STOP WORK if: any suspect fibrous, powdery, or flaking material is disturbed or exposed",
+        ]
+        tb["hazards"] = [
+            "Exposure to pre-existing toxic materials (lead paint, asbestos) if disturbed during remedial works",
+        ]
+        tb["responsibility"] = {
+            "SUP": "Brief crew on latent conditions, stop work if suspect material found, arrange assessment",
+            "WKR": "Report any suspect material immediately, do not disturb or sample",
+        }
+        monitoring = tb.get("monitoring")
+        if isinstance(monitoring, dict):
+            monitoring["critical_control"] = "All workers briefed on latent-condition stop-work procedure"
+            monitoring["who_checks"] = "Supervisor"
+            monitoring["frequency"] = "at induction and start of each new work area"
+            monitoring["what_to_look_for"] = "Workers can describe stop-work trigger; no suspect material disturbed"
+        return
+
+    # For other tasks, strip active hazmat controls but keep stop-work triggers
+    for field in ("controls", "admin", "hold_points"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(p in item.lower() for p in _ACTIVE_HAZMAT_PHRASES)]
+    # Also fix monitoring critical_control if it references hazmat survey
+    mon = tb.get("monitoring")
+    if isinstance(mon, dict):
+        cc = mon.get("critical_control", "")
+        if any(p in cc.lower() for p in _ACTIVE_HAZMAT_PHRASES):
+            # Replace with the task's actual dominant hazard monitoring
+            _improve_monitoring(tb)
+
+
+def _strip_demolition_content(tb: dict) -> None:
+    """Strip demolition-specific controls/admin from non-demolition tasks.
+
+    The agents sometimes inject demolition requirements into scaffold
+    dismantling, green wall removal, and other tasks that are not demolition.
+    """
+    task_name = tb.get("task", "").lower()
+    # If the task is actual demolition, keep everything
+    if "demolit" in task_name and "dismantle" not in task_name:
+        return
+    for field in ("controls", "admin", "hold_points"):
+        items = tb.get(field, [])
+        if isinstance(items, list):
+            tb[field] = [item for item in items
+                         if not any(dp in item.lower() for dp in _DEMOLITION_PHRASES)]
+
+
+def _improve_responsibility(tb: dict) -> None:
+    """Replace generic SUP/WKR boilerplate with task-specific responsibility text.
+
+    The assembler agent generates 'Supervise [task name]' and 'Perform [task name]
+    per SWMS' for every task. This replaces those with more specific language
+    based on task type.
+    """
+    resp = tb.get("responsibility")
+    if not isinstance(resp, dict):
+        return
+    task_name = tb.get("task", "").lower()
+    ccvs = tb.get("ccvs_code", "N/A")
+
+    # Only replace if current text is the generic boilerplate pattern
+    sup = resp.get("SUP", "")
+    wkr = resp.get("WKR", "")
+    sup_is_generic = sup.startswith("Supervise ") and len(sup.split()) <= 8
+    wkr_is_generic = "per SWMS" in wkr and wkr.startswith("Perform ")
+
+    if not (sup_is_generic or wkr_is_generic):
+        return
+
+    # Task-specific responsibility patterns
+    if any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise")):
+        if sup_is_generic:
+            resp["SUP"] = "Verify exclusion zone complete, barriers intact, access controlled before work starts"
+        if wkr_is_generic:
+            resp["WKR"] = "Set up and maintain barriers, stop work if zone breached, report access issues"
+    elif any(kw in task_name for kw in ("scaffold", "ewp", "erect", "dismantle")):
+        if sup_is_generic:
+            resp["SUP"] = "Verify scaffold or EWP certification, supervise erection, sign off load checks"
+        if wkr_is_generic:
+            resp["WKR"] = "Follow erection plan, wear harness at height, report defects"
+    elif any(kw in task_name for kw in ("paint", "coat", "stain", "treat timber", "timber beam")):
+        # Check painting BEFORE repair — "paint masonry" should match painting, not repair
+        if sup_is_generic:
+            resp["SUP"] = "Verify scaffold and fall arrest systems, enforce exclusion zone, check SDS"
+        if wkr_is_generic:
+            resp["WKR"] = "Use harness and lanyard, wear respiratory protection, report faults"
+    elif any(kw in task_name for kw in ("crack", "repoint", "brick", "masonry", "spalling", "concrete")):
+        if sup_is_generic:
+            resp["SUP"] = "Supervise repairs, check scaffold safety, approve debris controls, sign hold points"
+        if wkr_is_generic:
+            resp["WKR"] = "Perform repairs per SWMS, wear PPE, use dust control, report defects"
+    elif any(kw in task_name for kw in ("seal", "sealant", "caulk", "silane")):
+        if sup_is_generic:
+            resp["SUP"] = "Verify SDS on site, check ventilation, sign off hold points"
+        if wkr_is_generic:
+            resp["WKR"] = "Apply sealant per specification, wear PPE, report chemical exposure"
+    elif any(kw in task_name for kw in ("green wall", "reinstate", "reinstall")):
+        if sup_is_generic:
+            resp["SUP"] = "Verify fall protection, check module weights, sign off hold points"
+        if wkr_is_generic:
+            resp["WKR"] = "Wear fall harness, check lanyard attachment, report equipment damage"
+    elif any(kw in task_name for kw in ("check", "defect", "make good", "quality")):
+        if sup_is_generic:
+            resp["SUP"] = "Verify access equipment safe, approve defect list, sign off completion"
+        if wkr_is_generic:
+            resp["WKR"] = "Inspect per specification, photograph defects, report issues"
+    elif any(kw in task_name for kw in ("demob", "handover", "site restor")):
+        if sup_is_generic:
+            resp["SUP"] = "Supervise dismantling and demobilisation, verify controls, manage site access"
+        if wkr_is_generic:
+            resp["WKR"] = "Dismantle and clear per SWMS, report hazards, obey spotter directions"
+
+
+# Monitoring critical-control patterns by hazard type
+_MONITORING_BY_HAZARD = {
+    "setup": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who_checks": "Supervisor",
+        "frequency": "before each shift start",
+        "what_to_look_for": "Barriers intact, signage legible, no unauthorised entry",
+    },
+    "scaffold": {
+        "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+        "who_checks": "Supervisor and competent scaffolder or qualified operator",
+        "frequency": "daily",
+        "what_to_look_for": "Completed checklist sheet, dated and signed, attached to scaffold or EWP",
+    },
+    "dust": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who_checks": "Supervisor",
+        "frequency": "before each use",
+        "what_to_look_for": "Worker confirmation and visual check of extraction hose and respirator seal",
+    },
+    "chemical": {
+        "critical_control": "SDS on site, PPE matched to chemical, ventilation confirmed",
+        "who_checks": "Supervisor",
+        "frequency": "before each shift start",
+        "what_to_look_for": "SDS visible at work station, correct gloves/respirator worn, ventilation adequate",
+    },
+    "wah": {
+        "critical_control": "Harness clipped to anchor and lanyard taut before worker goes to height",
+        "who_checks": "Supervisor",
+        "frequency": "daily",
+        "what_to_look_for": "Visual confirmation of harness fit, lanyard connection, anchor point integrity",
+    },
+    "removal": {
+        "critical_control": "Exclusion zone marked, barriers in place, no pedestrians below work area",
+        "who_checks": "Supervisor",
+        "frequency": "daily",
+        "what_to_look_for": "Visual inspection; hazard tape, signage, and netting installed and intact",
+    },
+}
+
+
+def _improve_monitoring(tb: dict) -> None:
+    """Replace generic WAH-only monitoring with hazard-specific critical controls."""
+    mon = tb.get("monitoring")
+    if not isinstance(mon, dict):
+        # Create monitoring if missing
+        tb["monitoring"] = {"critical_control": "", "who_checks": "",
+                            "frequency": "", "what_to_look_for": ""}
+        mon = tb["monitoring"]
+    task_name = tb.get("task", "").lower()
+    scope = tb.get("scope", "").lower()
+    text = task_name + " " + scope
+
+    # Determine dominant hazard type for monitoring
+    if any(kw in text for kw in ("establish", "setup", "set up", "mobilise", "exclusion")):
+        pattern = "setup"
+    elif any(kw in text for kw in ("scaffold", "ewp", "erect", "dismantle")):
+        pattern = "scaffold"
+    elif any(kw in text for kw in ("grind", "cutting", "drill", "crack stitch", "repoint", "spalling", "mortar", "brickwork re")):
+        pattern = "dust"
+    elif any(kw in text for kw in ("sealant", "paint", "stain", "primer", "coat", "treat")):
+        pattern = "chemical"
+    elif any(kw in text for kw in ("remove green", "remove wall", "strip",
+                                     "reinstate green", "reinstall green", "reinstate wall",
+                                     "reinstate and")):
+        pattern = "removal"
+    else:
+        pattern = "wah"  # fallback
+
+    template = _MONITORING_BY_HAZARD[pattern]
+    # Only overwrite empty or generic fields
+    if not mon.get("who_checks"):
+        mon["who_checks"] = template["who_checks"]
+    if not mon.get("frequency"):
+        mon["frequency"] = template["frequency"]
+    if not mon.get("what_to_look_for"):
+        mon["what_to_look_for"] = template["what_to_look_for"]
+    # Replace critical control if it's a generic harness-only pattern
+    # (even for scaffold tasks — they should mention scaffold/EWP checks, not just harness)
+    cc = mon.get("critical_control", "")
+    cc_is_generic_harness = "harness" in cc.lower() and "scaffold" not in cc.lower() and "ewp" not in cc.lower()
+    if cc_is_generic_harness and pattern != "wah":
+        mon["critical_control"] = template["critical_control"]
+
+
+def _correct_ccvs_by_task_type(tb: dict) -> None:
+    """Correct CCVS code based on the task's dominant hazard, not just access method.
+
+    The agents tend to assign WAH-H6 to every task performed on a scaffold.
+    But the CCVS should reflect the dominant METHOD hazard:
+    - Painting/coating/sealant → CHM (chemical exposure)
+    - Grinding/cutting/repointing → SIL (silica/dust)
+    - Scaffold erection/dismantling → WAH (genuinely WAH)
+    - Site setup/demob → SYS-M3 or N/A
+    WAH remains as an additional flag via wah_applicable.
+    """
+    ccvs = tb.get("ccvs_code", "N/A")
+    task_name = tb.get("task", "").lower()
+
+    # Only correct if currently WAH and the task is not genuinely a WAH-method task
+    if not ccvs.startswith("WAH"):
+        return
+
+    _WAH_METHOD_TASKS = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
+                          "rope access", "abseil", "ladder")
+    if any(kw in task_name for kw in _WAH_METHOD_TASKS):
+        return  # genuinely WAH — keep it
+
+    # Determine correct CCVS by dominant method hazard
+    if any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
+                                       "treat", "primer", "timber")):
+        tb["ccvs_code"] = "CHM-H6"
+    elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",
+                                         "spalling", "mortar", "reconstruct")):
+        tb["ccvs_code"] = "SIL-H6"
+    elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise")):
+        tb["ccvs_code"] = "SYS-M3"
+    elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good")):
+        tb["ccvs_code"] = "SYS-M3"
+    elif any(kw in task_name for kw in ("remove green", "reinstate")):
+        tb["ccvs_code"] = "WAH-H6"  # green wall at height is genuinely WAH
+    # wah_applicable stays True since the work IS at height
+
+
 def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: bool) -> dict:
     """Apply all per-task post-processing in a single call."""
     from renderers.docx_renderer import validate_ccvs_code
@@ -679,9 +1264,20 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
                 strip_unverified_citations(ctrl, jurisdiction, ccvs_codes)
                 for ctrl in tb[field]
             ]
+    _fix_unsupported_waterproofing(tb)
+    _strip_demolition_content(tb)
+    _strip_unsupported_controls(tb)
+    _strip_active_hazmat(tb)
+    _strip_sealant_drift(tb)
+    _strip_timber_drift(tb)
+    _strip_green_wall_drift(tb)
+    _improve_responsibility(tb)
+    _improve_monitoring(tb)
     _propagate_scaffold_wah(tb, inference)
     _inject_occupied_controls(tb, inference)
+    _inject_interface_controls(tb, inference)
     _inject_ewp_transfer_controls(tb, inference)
+    _correct_ccvs_by_task_type(tb)
     tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
 
@@ -754,7 +1350,7 @@ _OCCUPIED_ELEVATED_ADMIN = [
 ]
 
 _OCCUPIED_ELEVATED_STOP_WORK = [
-    "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded",
+    "\U0001f6d1 STOP WORK if: occupant balcony below work zone is not closed and barricaded",
 ]
 
 
@@ -807,6 +1403,45 @@ def _inject_occupied_controls(tb: dict, inference: dict) -> None:
                 if sw not in stop_work:
                     stop_work.append(sw)
                     existing_text += " " + sw.lower()
+
+
+# —— Interface controls injection (residential / strata / occupied) ────────────
+
+_INTERFACE_CONTROLS_RESIDENTIAL = [
+    "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase — area left/excluded if not cleared",
+    "Temporary access to neighbouring properties required — confirm access arrangements before commencing",
+    "Vegetation trimmed away from surfaces designated for painting or remedial works prior to commencement — area excluded if vegetation impedes access",
+    "On-site parking or provision of parking permits required for duration of works",
+    "Final inspection and agreed scope of works to be confirmed before commencement",
+]
+
+
+def _inject_interface_controls(tb: dict, inference: dict) -> None:
+    """
+    Inject interface controls for occupied residential / strata jobs.
+
+    These are quote-derived conditions (resident clearing, neighbour access,
+    vegetation, parking, pre-commencement inspection) added to the first
+    site-setup task.
+    """
+    classification = inference.get("swms_classification", {})
+    if classification.get("occupancy_context") != "occupied":
+        return
+    # Only inject into site-setup / mobilisation tasks
+    task_name = tb.get("task", "").lower()
+    _SETUP_KW = ["set up", "setup", "establish", "mobilise", "mobilize",
+                  "plan access", "site and plan"]
+    if not any(kw in task_name for kw in _SETUP_KW):
+        return
+
+    admin = tb.setdefault("admin", [])
+    existing_text = " ".join(admin).lower()
+    for ctrl in _INTERFACE_CONTROLS_RESIDENTIAL:
+        # Only add if the key phrase is not already present
+        key_phrase = ctrl.split(" — ")[0][:40].lower()
+        if key_phrase not in existing_text:
+            admin.append(ctrl)
+            existing_text += " " + ctrl.lower()
 
 
 # —— EWP transfer-point control injection ─────────────────────────────────────

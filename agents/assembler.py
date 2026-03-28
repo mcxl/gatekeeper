@@ -174,7 +174,8 @@ async def run_assembler_single(
         raise ValueError(f"Unexpected content block type: {type(block)}")
     text = strip_fences(block.text)
 
-    fixed = json.loads(text)
+    from core.utils import extract_json
+    fixed = extract_json(text)
     _post_process_task_block(fixed)
     return fixed
 

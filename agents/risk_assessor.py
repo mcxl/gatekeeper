@@ -155,7 +155,8 @@ async def run_risk_assessor(task_manifest: dict, inference: dict, scope_context:
     text = strip_fences(block.text)
 
     text = re.sub(r",\s*([}\]])", r"", text)
-    manifest = json.loads(text)
+    from core.utils import extract_json
+    manifest = extract_json(text)
     _validate_risk_manifest(manifest, len(task_manifest["tasks"]))
     return manifest
 

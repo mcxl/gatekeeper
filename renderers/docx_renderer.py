@@ -142,9 +142,12 @@ _PPE_DOUBLE_PREFIX = _re_sanitise.compile(
 
 
 def sanitise_text(text: str) -> str:
-    """Remove duplicate tokens, double spaces, surrogates, and legacy AUDIT metadata."""
+    """Remove duplicate tokens, double spaces, surrogates, artifacts, and legacy AUDIT metadata."""
     # Strip surrogate characters that crash lxml
     text = text.encode("utf-8", errors="replace").decode("utf-8")
+    # Strip ?? replacement artifacts from surrogate stripping (e.g. "?? STOP WORK" → "STOP WORK")
+    # Only strip ?? when followed by space or at start — preserves legitimate "??" in prose
+    text = _re_sanitise.sub(r'(?:^|\b)\?\?\s+', '', text).strip()
     # Strip legacy AUDIT: metadata lines
     text = _AUDIT_PATTERN.sub('', text).strip()
     for bad, good in _DUPLICATE_TOKENS:
@@ -735,7 +738,8 @@ def _fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date) -> Non
     _set_cover(2, 1, work_activity)
     _set_cover(2, 3, pc)
     # Row 4: Supervisor (compliance) + Date received
-    _set_cover(4, 1, supervisor)
+    sup_text, _ = resolve_field(supervisor, 'supervisor_name')
+    _set_cover(4, 1, sup_text)
     _set_cover(4, 3, doc_date)
     # Row 6: Reviewer name + Date received by reviewer
     _set_cover(6, 1, reviewer)
@@ -1038,10 +1042,21 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
     for c_item in cert_items:
         if c_item not in qual_items:
             qual_items.append(c_item)
+
+    # Strip demolition-specific prerequisites unless job is demolition
+    _is_demo = any("demolition" in t.task.lower() for t in tasks)
+    if not _is_demo:
+        _DEMO_KEYWORDS = ("demolition", "pre-demolition", "demolish")
+        qual_items = [q for q in qual_items
+                      if not any(dk in q.lower() for dk in _DEMO_KEYWORDS)]
     _clear_and_write(2, 1, qual_items)
 
     # —— (2,3) Permits & Approvals ————————————————————————————————————
-    _clear_and_write(2, 3, inference.get("permits", []))
+    permit_items = list(inference.get("permits", []))
+    if not _is_demo:
+        permit_items = [p for p in permit_items
+                        if not any(dk in p.lower() for dk in _DEMO_KEYWORDS)]
+    _clear_and_write(2, 3, permit_items)
 
     # —— (3,1) Plant & Equipment ——————————————————————————————————————
     plant_items = list(inference.get("plant", []))
@@ -1122,6 +1137,10 @@ def _fill_prerequisites_table(doc, tasks: list, inference: dict,
         if cleaned and cleaned.lower() not in _base_lower and cleaned not in _cleaned_notes:
             _cleaned_notes.append(cleaned)
     all_legislation = (_BASE_LEGISLATION + _cleaned_notes)[:4]  # max 4 lines
+    # Strip demolition-specific legislation for non-demolition jobs
+    if not _is_demo:
+        all_legislation = [l for l in all_legislation
+                           if "demolition" not in l.lower()]
     _clear_and_write(4, 3, all_legislation)
 
 
@@ -1214,7 +1233,8 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date, description_te
         footer_date = date.today().strftime("%d%m%Y")
     else:
         footer_date = footer_date.replace("/", "")
-    footer_text = f"SWMS-{footer_date}-V1.docx"
+    _version = project_meta.get("version", "V1")
+    footer_text = f"SWMS-{footer_date}-{_version}.docx"
 
     section = doc.sections[0]
     footer = section.footer

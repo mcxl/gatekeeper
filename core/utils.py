@@ -51,6 +51,40 @@ def strip_fences(text: str) -> str:
     return text
 
 
+def extract_json(text: str) -> object:
+    """Extract JSON from text that may contain trailing commentary.
+
+    Handles the common "Extra data" failure where an LLM returns valid JSON
+    followed by natural-language commentary. Tries in order:
+    1. json.loads(text) — fast path
+    2. Find the first { or [ and use json.JSONDecoder to parse exactly one object
+    3. Raise ValueError if no valid JSON found
+    """
+    import json
+    text = strip_fences(text)
+    # Fast path
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Find first JSON structure and decode exactly one object/array
+    # Try [ before { so arrays are detected correctly
+    candidates = []
+    for start_char in ('[', '{'):
+        idx = text.find(start_char)
+        if idx >= 0:
+            candidates.append(idx)
+    candidates.sort()
+    decoder = json.JSONDecoder()
+    for idx in candidates:
+        try:
+            obj, _ = decoder.raw_decode(text, idx)
+            return obj
+        except json.JSONDecodeError:
+            continue
+    raise ValueError(f"No valid JSON found in text: {text[:200]}")
+
+
 def enforce_wah_flag(task: dict) -> dict:
     """Force ``wah_applicable`` to ``False`` when ``ccvs_code`` is not a WAH code.
 

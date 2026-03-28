@@ -153,7 +153,8 @@ async def run_decomposer(description: str, inference: dict, scope_context: dict 
     text = strip_fences(block.text)
 
     text = re.sub(r",\s*([}\]])", r"", text)
-    manifest = json.loads(text)
+    from core.utils import extract_json
+    manifest = extract_json(text)
     _validate_task_manifest(manifest)
     return manifest
 

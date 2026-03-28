@@ -243,7 +243,8 @@ async def _write_controls_for_task(
         raise ValueError(f"Unexpected content block type: {type(block)}")
     text = strip_fences(block.text)
 
-    result = json.loads(text)
+    from core.utils import extract_json
+    result = extract_json(text)
     _validate_control_entry(result, task["sequence"])
     return result
 
