@@ -52,7 +52,7 @@ def test_stream_forwards_scope_context(auth_client, monkeypatch):
     resp = auth_client.post(
         "/generate/stream",
         json={
-            "description": "Waterproofing works",
+            "description": "Waterproofing works to level B1 basement car park areas",
             "scope_context": scope,
         },
     )
@@ -60,9 +60,14 @@ def test_stream_forwards_scope_context(auth_client, monkeypatch):
     # Consume the stream
     _ = resp.text
 
-    assert captured.get("scope_context") == scope, (
-        f"scope_context not forwarded: captured={captured.get('scope_context')}"
-    )
+    ctx = captured.get("scope_context")
+    assert ctx is not None, "scope_context not forwarded at all"
+    # The orchestrator enriches scope_context with classification fields.
+    # Check that the original user-provided fields are still present.
+    for key, val in scope.items():
+        assert ctx.get(key) == val, (
+            f"scope_context['{key}'] not forwarded: expected {val}, got {ctx.get(key)}"
+        )
 
 
 # ── T3-B: /generate/full forwards scope_context ──────────────────────────────
