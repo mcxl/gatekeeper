@@ -6980,43 +6980,53 @@ def infer_requirements(work_description: str) -> Requirements:
             result.plant.append(item)
 
     # Compute individual HRCW boolean flags for checkbox ticking
+    # Use _is_negated to suppress flags for keywords in exclusion/variation context
+    original_text = work_description.lower()
+
+    def _hrcw_check(keywords):
+        """Check if any keyword is in expanded AND not negated in original text."""
+        for k in keywords:
+            if k in expanded and not _is_negated(k, original_text):
+                return True
+        return False
+
     result.hrcw_flags = {}
     # falling_2m — from keywords or category
-    result.hrcw_flags["falling_2m"] = any(k in expanded for k in (
+    result.hrcw_flags["falling_2m"] = _hrcw_check((
         "at height", "above ground", "elevated", "roof", "ewp", "boom lift",
         "scissor lift", "cherry picker", "ladder", "scaffold", "platform",
         "mezzanine", "working at heights"))
     # tiltup_precast
-    result.hrcw_flags["tiltup_precast"] = any(k in expanded for k in (
+    result.hrcw_flags["tiltup_precast"] = _hrcw_check((
         "tilt-up", "tilt up", "tiltup", "precast", "precast concrete",
         "tilt-up panel", "precast panel", "concrete panel", "panel erection"))
     # mobile_plant
-    result.hrcw_flags["mobile_plant"] = any(k in expanded for k in (
+    result.hrcw_flags["mobile_plant"] = _hrcw_check((
         "crane", "mobile crane", "franna", "ewp", "boom lift", "scissor lift",
         "cherry picker", "mobile plant", "forklift", "telehandler", "excavat"))
     # demolition
-    result.hrcw_flags["demolition"] = any(k in expanded for k in (
+    result.hrcw_flags["demolition"] = _hrcw_check((
         "demolition", "demolish", "strip out", "strip-out"))
     # asbestos
-    result.hrcw_flags["asbestos"] = any(k in expanded for k in (
+    result.hrcw_flags["asbestos"] = _hrcw_check((
         "asbestos", "acm", "fibro", "asbestos cement"))
     # confined_space
-    result.hrcw_flags["confined_space"] = any(k in expanded for k in (
+    result.hrcw_flags["confined_space"] = _hrcw_check((
         "confined space", "confined", "tank entry", "sewer", "manhole"))
     # electrical
-    result.hrcw_flags["electrical"] = any(k in expanded for k in (
+    result.hrcw_flags["electrical"] = _hrcw_check((
         "electrical", "live electrical", "switchboard", "high voltage"))
     # shaft_trench
-    result.hrcw_flags["shaft_trench"] = any(k in expanded for k in (
+    result.hrcw_flags["shaft_trench"] = _hrcw_check((
         "trench", "shaft", "tunnel", "excavat"))
     # chemical_fuel
-    result.hrcw_flags["chemical_fuel"] = any(k in expanded for k in (
+    result.hrcw_flags["chemical_fuel"] = _hrcw_check((
         "chemical", "fuel", "flammable", "combustible"))
     # traffic_corridor
-    result.hrcw_flags["traffic_corridor"] = any(k in expanded for k in (
+    result.hrcw_flags["traffic_corridor"] = _hrcw_check((
         "traffic", "roadway", "road work", "public road"))
     # temp_support
-    result.hrcw_flags["temp_support"] = any(k in expanded for k in (
+    result.hrcw_flags["temp_support"] = _hrcw_check((
         "temporary support", "falsework", "propping"))
 
     return result
