@@ -142,7 +142,9 @@ _PPE_DOUBLE_PREFIX = _re_sanitise.compile(
 
 
 def sanitise_text(text: str) -> str:
-    """Remove duplicate tokens, double spaces, and legacy AUDIT metadata from generated text."""
+    """Remove duplicate tokens, double spaces, surrogates, and legacy AUDIT metadata."""
+    # Strip surrogate characters that crash lxml
+    text = text.encode("utf-8", errors="replace").decode("utf-8")
     # Strip legacy AUDIT: metadata lines
     text = _AUDIT_PATTERN.sub('', text).strip()
     for bad, good in _DUPLICATE_TOKENS:
