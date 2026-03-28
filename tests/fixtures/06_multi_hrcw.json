@@ -1,0 +1,98 @@
+{
+  "label": "Multiple HRCW flags — WAH + electrical + confined space all ticked",
+  "project_meta": {
+    "project_name": "Plant Room Remedial Works",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.2 — Construction work at height — risk of fall >2m",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": true,
+      "electrical": true,
+      "mobile_plant": false
+    },
+    "ppe": ["Full-body harness", "Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest"],
+    "certifications": [
+      "Working at heights — RIIWHS204E",
+      "Confined space entry — RIIWHS202E",
+      "Electrical safety observer — site induction"
+    ],
+    "permits": [
+      "Working at heights permit",
+      "Confined space entry permit",
+      "Electrical isolation certificate"
+    ],
+    "qualifications": ["Confined space rescue trained standby person"],
+    "notifications": [],
+    "regulatory_notes": [
+      "WHS Reg 2017 cl.66 — confined space entry procedure required",
+      "WHS Reg 2017 Sch 3 cl.2 and cl.6 — HRCW"
+    ],
+    "plant": [],
+    "safework_notification_required": false,
+    "epa_license_required": false
+  },
+  "tasks": [
+    {
+      "task": "Enter and prepare plant room pit",
+      "scope": "Confined space entry to clean and prepare below-ground plant room",
+      "hazards": [
+        "Oxygen-deficient atmosphere — asphyxiation",
+        "Fall into pit — >2m drop at entry point",
+        "Energised electrical services — electrocution"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "⚠️ HOLD POINT — CCVS CFS-H9: atmosphere tested and entry permit signed before entry",
+        "Electrical services isolated and locked out before entry — LOTO applied",
+        "Standby person stationed at entry point — continuous communication",
+        "Rescue equipment at entry point before first worker enters"
+      ],
+      "hold_points": [
+        "⚠️ HOLD POINT — Atmosphere test result sighted and permit signed",
+        "⚠️ HOLD POINT — Electrical isolation certificate sighted"
+      ],
+      "stop_work": [
+        "🛑 STOP WORK if: atmosphere reading outside safe limits",
+        "🛑 STOP WORK if: communication with standby person lost",
+        "🛑 STOP WORK if: electrical isolation cannot be verified"
+      ],
+      "admin": [
+        "Confined space entry permit completed and on site",
+        "Rescue plan on site and rehearsed before entry",
+        "Continuous gas monitoring during occupation"
+      ],
+      "ppe": ["Full-body harness — retrieval lanyard attached", "Hard hat", "Steel-capped footwear", "Hi-viz shirt or vest"],
+      "responsibility": {"SUP": "Sign permit, verify isolation, manage standby", "WKR": "Follow entry procedure, maintain contact with standby"},
+      "ccvs_code": "CFS-H9",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Confirm atmosphere reading within safe limits before each entry",
+        "who": "Supervisor",
+        "frequency": "each shift start",
+        "evidence": "Gas monitor reading logged on entry permit"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 1,
+    "ccvs_row_count": 1,
+    "hrcw_ticked": ["falling_2m", "confined_space", "electrical"],
+    "task_names": ["Enter and prepare plant room pit"],
+    "ccvs_codes": ["CFS-H9"],
+    "no_placeholders": true
+  }
+}

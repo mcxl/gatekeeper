@@ -1,0 +1,80 @@
+{
+  "label": "Basic ground-level painting — no HRCW, no CCVS",
+  "project_meta": {
+    "project_name": "Double Bay Strata Remedial",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": false,
+    "hrcw_category": null,
+    "hrcw_flags": {
+      "falling_2m": false,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "mobile_plant": false
+    },
+    "ppe": ["Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest", "Eye protection"],
+    "certifications": [],
+    "permits": [],
+    "qualifications": [],
+    "notifications": [],
+    "regulatory_notes": [],
+    "plant": [],
+    "safework_notification_required": false,
+    "epa_license_required": false
+  },
+  "tasks": [
+    {
+      "task": "Prepare and clean substrate",
+      "scope": "Pressure wash and sand all painted surfaces before application",
+      "hazards": ["Slip on wet surface — fall injury", "Dust inhalation — respiratory irritation"],
+      "risk_pre": "M",
+      "risk_post": "L",
+      "controls": ["Wet areas barricaded until dry", "P2 mask worn during sanding"],
+      "hold_points": [],
+      "stop_work": ["🛑 STOP WORK if: surface wet and barricades not in place"],
+      "admin": ["SDS for all products reviewed before use"],
+      "ppe": ["Steel-capped footwear", "Eye protection", "P2 mask/respirator (fit-tested)"],
+      "responsibility": {"SUP": "Supervise prep, check surface condition", "WKR": "Perform prep per SWMS, report hazards"},
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": null,
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    },
+    {
+      "task": "Apply coating system",
+      "scope": "Apply primer, intermediate and topcoat per specification",
+      "hazards": ["Skin sensitisation from epoxy primer — chemical burns", "Solvent vapour inhalation — dizziness"],
+      "risk_pre": "M",
+      "risk_post": "L",
+      "controls": ["Chemical-resistant gloves worn at all times", "Natural ventilation maintained — doors and windows open"],
+      "hold_points": [],
+      "stop_work": ["🛑 STOP WORK if: ventilation not available or SDS not on site"],
+      "admin": ["SDS for all epoxy and primer products reviewed", "Wet film thickness checks during application"],
+      "ppe": ["Steel-capped footwear", "Chemical-resistant gloves", "Eye protection", "P2 mask/respirator (fit-tested)"],
+      "responsibility": {"SUP": "Supervise application, check ventilation", "WKR": "Apply coating per spec, wear PPE"},
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": null,
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 2,
+    "ccvs_row_count": 0,
+    "hrcw_ticked": [],
+    "task_names": ["Prepare and clean substrate", "Apply coating system"],
+    "no_placeholders": true
+  }
+}

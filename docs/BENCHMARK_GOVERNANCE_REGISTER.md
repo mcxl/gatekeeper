@@ -35,6 +35,7 @@ Use this as the working control sheet for LBV benchmark management.
 | Facade remedial benchmark | SWMS | Internal product owner | CLOSED | Previously task/control quality and consultant trust | Maintain by regression only | Keep closed unless regression or new specialist gap appears |
 | EWP roof access benchmark | SWMS | Internal product owner | ACTIVE | Issue-ready gating, rescue/recovery completeness, method-validity evidence | Add stronger issue gate and rescue/method-validity checks | Close when draft is materially strong and obvious issue-ready blockers are automatically caught |
 | Lingate remedial works benchmark | SWMS | Internal product owner | ACTIVE | Issue gating, pre-refurbishment validation, scope-to-task completeness | Add intrusive-work validation and tighten task structure/coverage | Close when draft is materially strong and consultant-trust gaps are bounded and visible |
+| Principal-contractor risk register to subcontractor SWMS alignment benchmark | SWMS Review Engine | Internal product owner | HOLD | Benchmark asset readiness and review-contract definition | Select first project risk register, first subcontractor SWMS, and define comparison result contract | Move to ACTIVE only when first benchmark assets and comparison expectations are ready |
 | Data centre fit-out benchmark | RA | Internal product owner | CLOSED | Previously classification/HRCW/control quality | Maintain by regression only | Keep closed unless regression or product-boundary shift appears |
 | Withers Road civil benchmark | RA | Internal product owner | CLOSED | Previously civil classification and HRCW/package relevance | Maintain by regression only | Keep closed unless regression or new civil benchmark gap appears |
 | Withers Road project WHS benchmark draft | Project WHS benchmark / control pack | Internal product owner | CLOSED | Materially satisfied as benchmark-quality draft | Maintain by regression only | Closed 2026-03-28 — reopen only if expert review or new civil benchmark exposes material gaps |
@@ -90,4 +91,3 @@ Review this register whenever:
 - [LBV_FLYWHEEL_ARCHITECTURE.md](C:\Users\AlanRichardson\gatekeeper\docs\LBV_FLYWHEEL_ARCHITECTURE.md)
 - [QUALITY_GOVERNANCE_NOTE.md](C:\Users\AlanRichardson\gatekeeper\docs\QUALITY_GOVERNANCE_NOTE.md)
 - [IP_MAP.md](C:\Users\AlanRichardson\gatekeeper\docs\IP_MAP.md)
-

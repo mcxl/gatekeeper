@@ -1,0 +1,84 @@
+{
+  "label": "Asbestos removal — ASB-H9 CCVS, HRCW asbestos flag",
+  "project_meta": {
+    "project_name": "Double Bay Strata Remedial",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.4 — Disturbance of asbestos",
+    "hrcw_flags": {
+      "falling_2m": false,
+      "demolition": false,
+      "asbestos": true,
+      "confined_space": false,
+      "electrical": false,
+      "mobile_plant": false
+    },
+    "ppe": ["P2 mask/respirator (fit-tested)", "Disposable coveralls", "Steel-capped footwear", "Chemical-resistant gloves"],
+    "certifications": ["Asbestos removal licence — Class B minimum (friable requires Class A)"],
+    "permits": ["Asbestos removal permit — notified to SafeWork NSW 5 days prior"],
+    "qualifications": ["Competent person — asbestos removal supervisor"],
+    "notifications": ["SafeWork NSW — 5 business days notice before removal"],
+    "regulatory_notes": [
+      "WHS Reg 2017 Sch 3 cl.4 — HRCW notification required",
+      "Work Health and Safety Regulation 2017 — Chapter 8 — asbestos"
+    ],
+    "plant": [],
+    "safework_notification_required": true,
+    "epa_license_required": true
+  },
+  "tasks": [
+    {
+      "task": "Establish asbestos exclusion zone",
+      "scope": "Erect hoarding, signage and decontamination unit before removal starts",
+      "hazards": [
+        "Asbestos fibre release — mesothelioma, asbestosis if inhaled",
+        "Unauthorised entry — public or workers without PPE exposed"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "⚠️ HOLD POINT — CCVS ASB-H9: exclusion zone established and signed off before any disturbance",
+        "Hoarding minimum 2m high — no gaps",
+        "Decontamination unit set up at exclusion zone entry — three-stage wet/dry/clean"
+      ],
+      "hold_points": ["⚠️ HOLD POINT — Supervisor confirms exclusion zone and decon unit before work starts"],
+      "stop_work": [
+        "🛑 STOP WORK if: hoarding breached or decon unit not operational",
+        "🛑 STOP WORK if: wind speed causes fibre dispersal risk"
+      ],
+      "admin": [
+        "SafeWork NSW notified 5 business days prior",
+        "Asbestos removal permit on site",
+        "Emergency response plan on site"
+      ],
+      "ppe": ["P2 mask/respirator (fit-tested)", "Disposable coveralls — full body", "Chemical-resistant gloves", "Steel-capped footwear"],
+      "responsibility": {"SUP": "Establish and sign off exclusion zone before work", "WKR": "Follow exclusion zone procedure, use decon unit"},
+      "ccvs_code": "ASB-H9",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Check exclusion zone integrity and decon unit operation each shift start",
+        "who": "Supervisor",
+        "frequency": "each shift start",
+        "evidence": "Signed exclusion zone checklist on site"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 1,
+    "ccvs_row_count": 1,
+    "hrcw_ticked": ["asbestos"],
+    "task_names": ["Establish asbestos exclusion zone"],
+    "ccvs_codes": ["ASB-H9"],
+    "no_placeholders": true
+  }
+}

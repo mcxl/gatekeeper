@@ -1,0 +1,70 @@
+{
+  "label": "High risk task with N/A CCVS — monitoring must be null, not dash",
+  "project_meta": {
+    "project_name": "Double Bay Strata Remedial",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": false,
+    "hrcw_category": null,
+    "hrcw_flags": {
+      "falling_2m": false,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "mobile_plant": false
+    },
+    "ppe": ["Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest"],
+    "certifications": [],
+    "permits": [],
+    "qualifications": [],
+    "notifications": [],
+    "regulatory_notes": [],
+    "plant": [],
+    "safework_notification_required": false,
+    "epa_license_required": false
+  },
+  "tasks": [
+    {
+      "task": "Break out and remove damaged concrete",
+      "scope": "Remove delaminated concrete from balcony soffits using jackhammer",
+      "hazards": [
+        "Struck by falling concrete — head and body injury",
+        "Vibration from jackhammer — hand-arm vibration syndrome"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "Exclusion zone below work area — barricaded, no persons below",
+        "Anti-vibration gloves worn during jackhammer use",
+        "Rotation of workers every 30 minutes — vibration exposure limit"
+      ],
+      "hold_points": ["⚠️ HOLD POINT — Exclusion zone confirmed before breaking out starts"],
+      "stop_work": ["🛑 STOP WORK if: persons enter exclusion zone during breakout"],
+      "admin": ["Vibration exposure log maintained", "HAV assessment completed before work starts"],
+      "ppe": ["Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest", "Anti-vibration gloves", "Eye protection", "Hearing protection"],
+      "responsibility": {"SUP": "Establish exclusion zone, manage vibration rotation", "WKR": "Use anti-vibration gloves, rotate as directed"},
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": null,
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 1,
+    "ccvs_row_count": 0,
+    "hrcw_ticked": [],
+    "task_names": ["Break out and remove damaged concrete"],
+    "ccvs_codes": ["N/A"],
+    "monitoring_is_null": true,
+    "no_placeholders": true
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "label": "WAH rope access — WAH-H6 CCVS, monitoring required",
+  "project_meta": {
+    "project_name": "Double Bay Strata Remedial",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.2 — Construction work at height — risk of fall >2m",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "mobile_plant": false
+    },
+    "ppe": ["Full-body harness", "Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest", "Eye protection"],
+    "certifications": ["Working at heights — RIIWHS204E", "Rope access — IRATA Level 1 minimum"],
+    "permits": ["Working at heights permit — signed before elevated work"],
+    "qualifications": ["Competent person — rescue plan in place before work starts"],
+    "notifications": [],
+    "regulatory_notes": ["WHS Reg 2017 Sch 3 cl.2 — HRCW notification to SafeWork NSW if required"],
+    "plant": [],
+    "safework_notification_required": true,
+    "epa_license_required": false
+  },
+  "tasks": [
+    {
+      "task": "Rig rope access system",
+      "scope": "Set up anchor points, lines and descenders for facade access",
+      "hazards": [
+        "Fall from height — anchor failure or incorrect rigging",
+        "Dropped tools — strike injury to persons below"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "⚠️ HOLD POINT — CCVS WAH-H6: anchor point load-tested by competent person before use",
+        "Exclusion zone below work area — barricaded, signage posted",
+        "Tool lanyards on all hand tools"
+      ],
+      "hold_points": ["⚠️ HOLD POINT — Anchor points load-tested and signed off before descent"],
+      "stop_work": ["🛑 STOP WORK if: wind speed exceeds 45km/h", "🛑 STOP WORK if: anchor point integrity in question"],
+      "admin": ["Rescue plan completed and on site before work starts", "Working at heights permit signed"],
+      "ppe": ["Full-body harness — short-lanyard to anchor", "Hard hat", "Hi-viz shirt or vest", "Steel-capped footwear"],
+      "responsibility": {"SUP": "Verify anchor points, sign permit, brief workers", "WKR": "Rig per procedure, check harness before descent"},
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check anchor point load test record sighted before each descent",
+        "who": "Supervisor",
+        "frequency": "each shift start",
+        "evidence": "Signed load test record and permit on site"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    },
+    {
+      "task": "Carry out facade repairs at height",
+      "scope": "Crack injection, render patch and coating application from rope access",
+      "hazards": [
+        "Fall from height — harness or line failure",
+        "Chemical exposure — epoxy and coating products at height"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "Continuous connection to rope system — never unclip both lines simultaneously",
+        "Chemical-resistant gloves worn — no solvent contact"
+      ],
+      "hold_points": ["⚠️ HOLD POINT — Supervisor visual check of harness fit before each descent"],
+      "stop_work": ["🛑 STOP WORK if: weather conditions deteriorate", "🛑 STOP WORK if: worker shows signs of fatigue or distress"],
+      "admin": ["Buddy system — no solo rope access work"],
+      "ppe": ["Full-body harness", "Chemical-resistant gloves", "Eye protection", "Hard hat"],
+      "responsibility": {"SUP": "Monitor workers, control weather decision", "WKR": "Follow rope procedures, report any equipment concern"},
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Confirm dual anchor connection before worker leaves platform",
+        "who": "Supervisor",
+        "frequency": "each shift start",
+        "evidence": "Visual check recorded in site diary"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 2,
+    "ccvs_row_count": 2,
+    "hrcw_ticked": ["falling_2m"],
+    "task_names": ["Rig rope access system", "Carry out facade repairs at height"],
+    "ccvs_codes": ["WAH-H6", "WAH-H6"],
+    "no_placeholders": true
+  }
+}

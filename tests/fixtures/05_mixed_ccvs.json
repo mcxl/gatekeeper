@@ -1,0 +1,124 @@
+{
+  "label": "Mixed CCVS and non-CCVS tasks — monitoring table must have exactly 1 row",
+  "project_meta": {
+    "project_name": "Double Bay Strata Remedial",
+    "site_address": "1 Bay Street, Double Bay NSW 2028",
+    "principal_contractor": "Robertson's Remedial and Painting Pty Ltd",
+    "pcbu_name": "Robertson's Remedial and Painting Pty Ltd",
+    "manager_name": "Jim Georgiadis",
+    "supervisor_name": "Nick Vuckovic",
+    "version": "1.0"
+  },
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.2 — Construction work at height — risk of fall >2m",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "mobile_plant": false
+    },
+    "ppe": ["Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest", "Full-body harness"],
+    "certifications": ["Working at heights — RIIWHS204E"],
+    "permits": ["Working at heights permit"],
+    "qualifications": [],
+    "notifications": [],
+    "regulatory_notes": [],
+    "plant": ["EWP"],
+    "safework_notification_required": false,
+    "epa_license_required": false
+  },
+  "tasks": [
+    {
+      "task": "Mobilise and establish site",
+      "scope": "Deliver materials, set up site office, establish exclusion zones",
+      "hazards": [
+        "Struck by vehicle — delivery truck movement in site area",
+        "Manual handling — muscle strain from unloading"
+      ],
+      "risk_pre": "M",
+      "risk_post": "L",
+      "controls": [
+        "Traffic management plan in place before deliveries start",
+        "Mechanical aids used for loads over 20kg"
+      ],
+      "hold_points": [],
+      "stop_work": ["🛑 STOP WORK if: delivery area not clear of persons"],
+      "admin": ["Site induction completed by all workers before starting"],
+      "ppe": ["Steel-capped footwear", "Hard hat", "Hi-viz shirt or vest"],
+      "responsibility": {"SUP": "Supervise delivery, manage traffic", "WKR": "Follow TMP, use mechanical aids"},
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": null,
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    },
+    {
+      "task": "EWP access for high-level inspection",
+      "scope": "Use scissor lift to inspect and mark defects above 4m",
+      "hazards": [
+        "Fall from height — EWP tip or guardrail failure",
+        "Overhead power line contact — electrocution"
+      ],
+      "risk_pre": "H",
+      "risk_post": "M",
+      "controls": [
+        "⚠️ HOLD POINT — CCVS WAH-H6: EWP pre-start checklist completed and signed",
+        "Minimum clearance 3m from overhead lines — spotter required",
+        "Guardrails at full height — no leaning over"
+      ],
+      "hold_points": ["⚠️ HOLD POINT — Pre-start checklist signed before EWP use"],
+      "stop_work": ["🛑 STOP WORK if: wind speed exceeds manufacturer limit", "🛑 STOP WORK if: overhead line clearance cannot be maintained"],
+      "admin": ["Pre-start checklist completed each shift", "Ground conditions checked — level and firm"],
+      "ppe": ["Full-body harness — anchored to EWP anchor point", "Hard hat", "Hi-viz shirt or vest", "Steel-capped footwear"],
+      "responsibility": {"SUP": "Verify pre-start, manage overhead line exclusion", "WKR": "Complete pre-start, wear harness, report faults"},
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Confirm EWP pre-start checklist signed before each shift use",
+        "who": "Supervisor",
+        "frequency": "each shift start",
+        "evidence": "Signed pre-start checklist on site"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    },
+    {
+      "task": "Apply waterproof membrane to balconies",
+      "scope": "Prepare substrate and apply liquid membrane to all balcony decks",
+      "hazards": [
+        "Chemical skin contact — uncured membrane causes sensitisation",
+        "Slip on membrane during application — fall on same level"
+      ],
+      "risk_pre": "M",
+      "risk_post": "L",
+      "controls": [
+        "Chemical-resistant gloves worn at all times during application",
+        "Wet area barriers erected — no foot traffic on membrane for minimum 4 hours"
+      ],
+      "hold_points": [],
+      "stop_work": ["🛑 STOP WORK if: rain forecast within cure time window"],
+      "admin": ["SDS reviewed before use", "Wet film thickness checked during application"],
+      "ppe": ["Chemical-resistant gloves", "Eye protection", "Steel-capped footwear"],
+      "responsibility": {"SUP": "Check weather, supervise application", "WKR": "Apply per spec, wear chemical PPE"},
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": null,
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0"
+    }
+  ],
+  "expect": {
+    "task_count": 3,
+    "ccvs_row_count": 1,
+    "hrcw_ticked": ["falling_2m"],
+    "task_names": ["Mobilise and establish site", "EWP access for high-level inspection", "Apply waterproof membrane to balconies"],
+    "ccvs_codes": ["N/A", "WAH-H6", "N/A"],
+    "no_placeholders": true
+  }
+}

@@ -1,0 +1,711 @@
+# GATEKEEPER RENDERING AUDIT — CODEX IMPLEMENTATION CHECKLIST
+**Safe Method SWMS Generator | renderers/docx_renderer.py**
+Version: 2026-03-13 | Scope: Template migration to Safe_Method_SWMS_Template_V1.docx
+
+---
+
+## SCOPE
+
+Single file: renderers/docx_renderer.py
+Single template: src/Safe_Method_SWMS_Template_V1.docx (10 tables)
+Do not touch: inference pipeline, orchestrator, agents, schema, validate.py
+
+This checklist is the complete and authoritative implementation plan.
+Complete steps in order. Mark each step DONE with date before proceeding.
+
+---
+
+## AUDIT LOG — COMPLIANCE TRACKING
+
+| Step | Description                                  | Status  | Date | Notes |
+|------|----------------------------------------------|---------|------|-------|
+| 0    | Place template file in repo                  | PENDING |      |       |
+| 1    | Fix table count guard 9 → 10                 | PENDING |      |       |
+| 2    | HRCW protected boundary review (gate check)  | PENDING |      |       |
+| 3    | Rewrite HRCW checkbox rendering              | PENDING |      |       |
+| 3T   | HRCW isolated test — must pass before Step 4 | PENDING |      |       |
+| 4    | Fix cover table field mapping                | PENDING |      |       |
+| 5    | Rebuild task table 8-column                  | PENDING |      |       |
+| 6    | Confirm monitoring table (rename + skip rule)| PENDING |      |       |
+| 7    | Replace old tables with _fill_prerequisites  | PENDING |      |       |
+| 8    | Fix signoff table index                      | PENDING |      |       |
+| 9    | Update render_swms_document orchestration    | PENDING |      |       |
+| 10   | Convert return type to io.BytesIO            | PENDING |      |       |
+| T1   | HRCW isolated render test                   | PENDING |      |       |
+| T2   | Full end-to-end render test                  | PENDING |      |       |
+| T3   | WAH task render test                         | PENDING |      |       |
+| T4   | Monitoring data render test                  | PENDING |      |       |
+| T5   | BytesIO caller test                          | PENDING |      |       |
+
+---
+
+## PROTECTED BOUNDARY — READ BEFORE ANY HRCW WORK
+
+The following must not change under any circumstances:
+- core/inference_matrix.py
+- inference["hrcw_flags"] dict structure and key names (18 keys)
+- inference["hrcw_category"] string
+- task.wah_applicable derivation logic in assembler.py
+- _HRCW_KEYWORD_MAP key names (must match inference pipeline output exactly)
+
+HRCW inference is unchanged. Only the render target changes.
+Old template: checkboxes in discrete cells at (row, col) addresses.
+New template: all checkboxes inline in one merged cell t0.cell(3, 0).
+
+Verify merged cell structure before writing any tick logic:
+```python
+from docx import Document
+doc = Document("src/Safe_Method_SWMS_Template_V1.docx")
+for i, para in enumerate(doc.tables[0].cell(3, 0).paragraphs):
+    print(i, repr(para.text))
+```
+
+---
+
+## STEP 0 — Place template file in repo
+
+File: src/Safe_Method_SWMS_Template_V1.docx
+No structural changes to the template file needed in Word.
+
+Update path constant in render_swms_document():
+```python
+# Old:
+template_path = Path(__file__).parent.parent / "src" / "SWMS-260306-V1.docx"
+# New:
+template_path = Path(__file__).parent.parent / "src" / "Safe_Method_SWMS_Template_V1.docx"
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 1 — Fix table count guard
+
+Location: render_swms_document(), near top of function.
+
+```python
+# Old:
+if len(doc.tables) != 9:
+    raise ValueError(f"Template has {len(doc.tables)} tables, expected 9.")
+# New:
+if len(doc.tables) != 10:
+    raise ValueError(f"Template has {len(doc.tables)} tables, expected 10.")
+```
+
+Without this fix, every generation call raises ValueError before any content is written.
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 2 — HRCW PROTECTED BOUNDARY REVIEW (no code change)
+
+Before writing any code in Steps 3+, confirm:
+[ ] core/inference_matrix.py is not open or modified
+[ ] hrcw_flags key names in inference output match _HRCW_KEYWORD_MAP keys below exactly
+[ ] wah_applicable logic in assembler.py is not touched
+[ ] Merged cell structure confirmed via inspection script above
+
+This step has no code output. It is a gate check only.
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 3 — Rewrite HRCW checkbox rendering
+
+### 3a — Replace _HRCW_TICK_MAP with _HRCW_KEYWORD_MAP
+
+Remove _HRCW_TICK_MAP entirely. Add:
+
+```python
+# _HRCW_KEYWORD_MAP — keys match inference_matrix.py hrcw_flags output exactly.
+# DO NOT rename keys. Values are substrings to locate checkboxes in merged cell.
+_HRCW_KEYWORD_MAP = {
+    "falling_2m":        "fall",
+    "telecom_tower":     "telecommunications",
+    "demolition":        "demolition",
+    "asbestos":          "asbestos",
+    "temp_support":      "temporary support",
+    "confined_space":    "confined space",
+    "shaft_trench":      "shaft or trench",
+    "explosives":        "explosives",
+    "pressurised_gas":   "pressurised gas",
+    "chemical_fuel":     "chemical",
+    "electrical":        "energised electrical",
+    "contaminated_atmo": "contaminated atmosphere",
+    "tiltup_precast":    "tilt-up",
+    "traffic_corridor":  "road used by traffic",
+    "mobile_plant":      "mobile plant",
+    "extreme_temp":      "extreme temperature",
+    "drowning":          "drowning",
+    "diving":            "diving",
+}
+```
+
+### 3b — Add _tick_hrcw_checkbox function
+
+```python
+def _tick_hrcw_checkbox(cell, keyword: str) -> bool:
+    """
+    Find the checkbox (☐) adjacent to `keyword` in the merged HRCW cell
+    and replace with ticked (☑). Returns True if ticked, False if not found.
+
+    New template places all HRCW checkboxes inline in one merged cell.
+    Cell-address targeting no longer works — must target by keyword proximity.
+    Inference pipeline output is unchanged. Only render target changes.
+    """
+    keyword_lower = keyword.lower()
+    for para in cell.paragraphs:
+        if keyword_lower not in para.text.lower():
+            continue
+        for run in para.runs:
+            if "☐" in run.text:
+                run.text = run.text.replace("☐", "☑", 1)
+                run.bold = True
+                return True
+    return False
+```
+
+### 3c — Replace HRCW tick block inside _fill_cover_table
+
+Remove:
+```python
+for key, (row, col) in _HRCW_TICK_MAP.items():
+    if hrcw_flags.get(key):
+        _tick_checkbox(t0.cell(row, col))
+for task in tasks:
+    if task.wah_applicable:
+        _tick_checkbox(t0.cell(3, 1))
+```
+
+Replace with:
+```python
+hrcw_cell = t0.cell(3, 0)
+for key, keyword in _HRCW_KEYWORD_MAP.items():
+    should_tick = hrcw_flags.get(key, False)
+    if key == "falling_2m" and not should_tick:
+        # Fallback: wah_applicable on any task also ticks falling_2m
+        should_tick = any(t.wah_applicable for t in tasks)
+    if should_tick:
+        result = _tick_hrcw_checkbox(hrcw_cell, keyword)
+        if not result:
+            import logging
+            logging.warning(
+                f"HRCW tick failed — keyword '{keyword}' not found in cell. "
+                f"Flag: '{key}'. Check template t0.cell(3,0) paragraph text."
+            )
+```
+
+### STEP 3T — ISOLATED TEST (required before Step 4)
+
+Run a render with known hrcw_flags = {"falling_2m": True, "asbestos": True}.
+Open the DOCX. Confirm:
+[ ] ☑ appears next to "fall" text
+[ ] ☑ appears next to "asbestos" text
+[ ] All other checkboxes remain ☐
+[ ] No logging warnings in console output
+[ ] No IndexError or KeyError raised
+
+Do not proceed to Step 4 until this test passes.
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 4 — Fix cover table field mapping
+
+Location: _fill_cover_table()
+
+New T0 has 4 columns (not 7) and 10 rows (not 14).
+All _set_cover calls with col 5 or 6, or rows 9, 11, 13, will IndexError.
+
+```python
+# Replace these _set_cover calls:
+_set_cover(0, 6, site_name)   →  _set_cover(0, 3, site_name)
+_set_cover(1, 6, doc_date)    →  _set_cover(1, 3, doc_date)
+_set_cover(2, 6, pc)          →  _set_cover(2, 3, pc)
+_set_cover(9, 2, supervisor)  →  _set_cover(4, 1, supervisor)
+_set_cover(9, 5, doc_date)    →  _set_cover(4, 3, doc_date)
+_set_cover(11, 2, manager)    →  _set_cover(6, 1, manager)
+_set_cover(11, 5, doc_date)   →  _set_cover(6, 3, doc_date)
+_set_cover(13, 2, manager)    →  _set_cover(8, 1, manager)
+_set_cover(13, 5, doc_date)   →  _set_cover(8, 3, doc_date)
+
+# These stay unchanged:
+_set_cover(0, 1, pcbu)
+_set_cover(1, 1, manager)
+_set_cover(2, 1, work_activity)
+```
+
+Fix font size loop — old applied 9pt to rows 3–8, new has one HRCW row only:
+```python
+# Old:
+sz = Pt(9) if 3 <= ri <= 8 else Pt(10)
+# New:
+sz = Pt(9) if ri == 3 else Pt(10)
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 5 — Rebuild _build_task_table for 8-column structure
+
+### 5a — Update constants
+
+```python
+_HEADERS = [
+    "Step",
+    "Work Activity / Task",
+    "Hazard / Risk",
+    "Risk Rating\n(Pre)",
+    "Controls — Hierarchy of Control",
+    "Risk Rating\n(Post)",
+    "Responsible",
+    "Hold Point / Verification /\nStop-Work Trigger",
+]
+# Absolute DXA widths from template tblGrid inspection
+_COL_W_DXA = [622, 1459, 2379, 875, 4475, 780, 1355, 2743]
+
+BLUE_HOLD = RGBColor(0x2E, 0x75, 0xB6)
+```
+
+### 5b — Replace _build_task_table
+
+```python
+def _build_task_table(doc, tasks) -> None:
+    """Populate T1 — 8-col step table. Banner row (0) untouched. Headers at row 1."""
+    t1 = doc.tables[1]
+    _set_table_cell_margins(t1)
+
+    # Keep row 0 (banner) and row 1 (headers). Delete all sample data rows.
+    while len(t1.rows) > 2:
+        tr = t1.rows[2]._tr
+        tr.getparent().remove(tr)
+
+    # Reformat row 1 column headers. Row 0 is black banner — leave untouched.
+    for i, h in enumerate(_HEADERS):
+        cell = t1.rows[1].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Add one row per task
+    for idx, task in enumerate(tasks, 1):
+        row = t1.add_row()
+        c = row.cells
+        for i, w in enumerate(_COL_W_DXA):
+            c[i].width = w
+
+        # Col 0 — Step number
+        _run(c[0].paragraphs[0], str(idx), bold=True, size_pt=_SZ)
+
+        # Col 1 — Task name + scope
+        _run(c[1].paragraphs[0], task.task, bold=True, size_pt=_SZ)
+        if task.scope:
+            _run(c[1].add_paragraph(), "[%s]" % task.scope, color=GREY, size_pt=_SZ)
+
+        # Col 2 — Hazards
+        _hazard_cell(c[2], task, size_pt=_SZ)
+
+        # Col 3 — Risk Pre (10pt bold per Gatekeeper standard)
+        _risk_cell(c[3], task.risk_pre or "", size_pt=10)
+
+        # Col 4 — Controls
+        _controls_cell(c[4], task, size_pt=_SZ)
+
+        # Col 5 — Risk Post (10pt bold per Gatekeeper standard)
+        _risk_cell(c[5], task.risk_post or "", size_pt=10)
+
+        # Col 6 — Responsible
+        _responsibility_cell(c[6], task, size_pt=_SZ)
+
+        # Col 7 — Hold Points + Stop-Work Triggers + CCVS code
+        _hold_point_cell(c[7], task, size_pt=_SZ)
+```
+
+### 5c — Add _hold_point_cell helper
+
+CCVS code renders at the bottom of col 7, beneath hold points and stop-work triggers.
+It does NOT appear as a column in the monitoring table (T2).
+
+```python
+def _hold_point_cell(cell, task, size_pt: int = 9) -> None:
+    """
+    Render hold points, stop-work triggers, and CCVS code into col 7.
+    ⚠️ HOLD POINT  — bold, colour #2E75B6
+    🛑 STOP-WORK TRIGGER — bold, colour #C00000
+    CCVS code — bold grey, appended at bottom beneath stop-work triggers.
+    """
+    p = cell.paragraphs[0]
+    first = True
+
+    if task.hold_points:
+        for item in task.hold_points:
+            if not first:
+                p = cell.add_paragraph()
+            text = item.lstrip("⚠️").strip()
+            _run(p, "⚠️ HOLD POINT", bold=True, color=BLUE_HOLD, size_pt=size_pt)
+            if text:
+                _run(p, f"\n{text}", size_pt=size_pt)
+            first = False
+
+    if task.stop_work:
+        for item in task.stop_work:
+            if not first:
+                p = cell.add_paragraph()
+            text = item.lstrip("🛑").strip()
+            _run(p, "🛑 STOP-WORK TRIGGER", bold=True, color=RED, size_pt=size_pt)
+            if text:
+                _run(p, f"\n{text}", size_pt=size_pt)
+            first = False
+
+    if first:  # nothing written yet
+        _run(p, "—", size_pt=size_pt)
+
+    # CCVS code — appended at bottom of cell, bold grey
+    code = validate_ccvs_code(task.ccvs_code or "N/A")
+    if code != "N/A":
+        p = cell.add_paragraph()
+        _run(p, code, bold=True, color=GREY, size_pt=size_pt)
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 6 — Monitoring table (_build_monitoring_table)
+
+Rename _build_ccvs_table → _build_monitoring_table.
+Update call in render_swms_document() accordingly.
+
+T2 index is doc.tables[2] — correct for new template, no change needed.
+T2 template file: no changes needed. Stays at 5 columns.
+CCVS code renders in T1 col 7 only — not in T2.
+
+Update constants:
+```python
+_MON_HEADERS = ["Task", "Critical Control", "Who Checks", "How Often", "What They Look For"]
+_MON_PCT = [16, 28, 14, 14, 28]  # 5 cols
+_MON_W = [_USABLE_CM * p / 100 for p in _MON_PCT]
+```
+
+Replace function body:
+```python
+def _build_monitoring_table(doc, tasks) -> None:
+    """
+    Populate T2 — monitoring rows.
+    One row per task with a valid CCVS code.
+    If monitoring object is null, render dash placeholders — do not skip row.
+    CCVS code renders in step table col 7 only — not here.
+    """
+    t2 = doc.tables[2]
+    _set_table_cell_margins(t2)
+
+    # Reformat header row
+    for i, h in enumerate(_MON_HEADERS):
+        cell = t2.rows[0].cells[i]
+        for para in cell.paragraphs:
+            para.clear()
+        _header_cell(cell, h, size_pt=_SZ)
+
+    # Remove blank template data row (row 1), keep header only
+    if len(t2.rows) > 1:
+        tr = t2.rows[1]._tr
+        tr.getparent().remove(tr)
+
+    # Add one row per task — skip only if CCVS code is N/A
+    for task in tasks:
+        code = validate_ccvs_code(task.ccvs_code or "N/A")
+        if code == "N/A":
+            continue  # no valid CCVS code — no monitoring row
+
+        m = task.monitoring  # may be None — render dashes if so
+        row = t2.add_row()
+        for i, w in enumerate(_MON_W):
+            row.cells[i].width = Cm(w)
+
+        vals = [
+            task.task,
+            m.critical_control if m else "—",
+            m.who              if m else "—",
+            m.frequency        if m else "—",
+            m.evidence         if m else "—",
+        ]
+        for i, val in enumerate(vals):
+            p = row.cells[i].paragraphs[0]
+            _run(p, val or "—", size_pt=_SZ)
+```
+
+NOTE: If dash rows appear in output, the fix is in agents/control_writer.py
+(Agent 3 must populate monitoring object for CCVS-coded tasks). Not a renderer issue.
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 7 — Replace old tables with _fill_prerequisites_table
+
+Delete both: _fill_legislation_table and _fill_requirements_table
+Add: _fill_prerequisites_table
+
+Move all existing assembly logic verbatim (PPE, plant, hazmat, legislation).
+Only the cell destinations change. No logic changes.
+
+T9 cell map:
+  (1, 1) PPE — All Persons
+  (1, 3) Additional PPE — WAH
+  (2, 1) Licences / Qualifications
+  (2, 3) Permits & Approvals
+  (3, 1) Plant & Equipment
+  (3, 3) Hazardous Substances
+  (4, 1) Consultation
+  (4, 3) Legislative Basis
+
+Content rules (applied inside _set_prereq for each cell):
+  MAX 6 items per cell — trim to highest-priority if inference returns more.
+  Hazmat format: "{name} — SDS on site — {one control note}"
+  Plant format:  "{name} — pre-start checklist required"
+  Legislation:   Primary acts only. Max 4 items. Not full bibliography.
+  No WAH RA form text in T9 at all.
+
+```python
+def _fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction) -> None:
+    """
+    Populate T9 — 8-cell pre-requisites table.
+    Replaces _fill_legislation_table and _fill_requirements_table.
+    All assembly logic moved here verbatim — only cell destination changes.
+    Content rules: max 6 items per cell, concise format per Gatekeeper standard.
+    """
+    t9 = doc.tables[9]
+    _set_table_cell_margins(t9)
+
+    def _set_prereq(row_idx: int, col_idx: int, items: list[str]) -> None:
+        """Write bullet list into a T9 cell. Max 6 items."""
+        cell = t9.cell(row_idx, col_idx)
+        for para in cell.paragraphs:
+            para.clear()
+        if not items:
+            _run(cell.paragraphs[0], "—", size_pt=_SZ)
+            return
+        capped = items[:6]  # hard cap — field document must be scannable
+        p = cell.paragraphs[0]
+        for i, item in enumerate(capped):
+            if i > 0:
+                p = cell.add_paragraph()
+            _run(p, f"•  {item}", size_pt=_SZ)
+
+    # ── (1,1) PPE — All Persons ───────────────────────────────────────────────
+    # Move existing PPE assembly logic verbatim from old _fill_requirements_table
+    # (baseline list + inference["ppe"] + dedup). Output → final_ppe.
+    # ... [existing PPE assembly logic] ...
+    _set_prereq(1, 1, final_ppe)
+
+    # ── (1,3) Additional PPE — WAH ───────────────────────────────────────────
+    wah_ppe = [
+        "Full body harness (AS/NZS 1891.1) with rope grab",
+        "Trauma straps fitted to all harnesses",
+        "P2 respirator (AS/NZS 1716)",
+        "Hearing protection if ≥85 dBA",
+        "Sun protection SPF 50+",
+        "Hard hat with chin strap for elevated work",
+    ]
+    _set_prereq(1, 3,
+        wah_ppe if any(t.wah_applicable for t in tasks)
+        else ["As required for task — see controls column"])
+
+    # ── (2,1) Licences / Qualifications ──────────────────────────────────────
+    quals = inference.get("qualifications", []) + inference.get("certifications", [])
+    _set_prereq(2, 1, quals)
+
+    # ── (2,3) Permits & Approvals ────────────────────────────────────────────
+    _set_prereq(2, 3, inference.get("permits", []))
+
+    # ── (3,1) Plant & Equipment ──────────────────────────────────────────────
+    # Move existing plant assembly logic verbatim from old row 4.
+    # Trim verbose maintenance text to: "{name} — pre-start checklist required"
+    # ... [existing plant assembly logic, output → plant_items] ...
+    _set_prereq(3, 1, plant_items)
+
+    # ── (3,3) Hazardous Substances ───────────────────────────────────────────
+    # Move existing haz_sub assembly logic verbatim from old row 6.
+    # Trim to: "{name} — SDS on site — {one control note}"
+    # Remove WES limits, RPE spec — those belong in controls column.
+    # ... [existing haz_sub assembly logic, output → haz_sub_items] ...
+    _set_prereq(3, 3, haz_sub_items)
+
+    # ── (4,1) Consultation ───────────────────────────────────────────────────
+    consultation = [
+        "Workers consulted per WHS Reg r.299(3) and r.300(2)",
+        "SWMS reviewed with all workers before work starts",
+        "Workers sign off before starting",
+    ]
+    _set_prereq(4, 1, consultation)
+
+    # ── (4,3) Legislative Basis ──────────────────────────────────────────────
+    # Move existing legislation assembly verbatim from old _fill_legislation_table.
+    # Trim to primary acts only — max 4 items total.
+    # Codes of Practice → one line "Applicable Codes of Practice".
+    # ... [existing legislation assembly, output → all_legislation] ...
+    _set_prereq(4, 3, all_legislation[:4])
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 8 — Fix _fill_signoff_table index
+
+```python
+# Old:
+if len(doc.tables) > 7:
+    for _row in doc.tables[7].rows:
+# New:
+if len(doc.tables) > 3:
+    for _row in doc.tables[3].rows:
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 9 — Update render_swms_document orchestration block
+
+```python
+# Old call sequence:
+_fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
+_build_task_table(doc, tasks)
+_format_risk_matrix(doc)
+_fill_legislation_table(doc, inference, jur, jurisdiction)
+_fill_requirements_table(doc, tasks, inference, project_meta)
+_build_ccvs_table(doc, tasks)
+_fill_signoff_table(doc)
+_build_footer(doc, project_meta, jur, jurisdiction, doc_date)
+
+# New call sequence:
+_fill_cover_table(doc, tasks, project_meta, inference, jur, doc_date)
+_build_task_table(doc, tasks)
+_format_risk_matrix(doc)
+_fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction)
+_build_monitoring_table(doc, tasks)
+_fill_signoff_table(doc)
+_build_footer(doc, project_meta, jur, jurisdiction, doc_date)
+```
+
+Update render_swms_document docstring:
+```
+Table 0  header             — project_meta + HRCW ticks (merged cell, keyword-based)
+Table 1  step table         — 8-col, banner row 0, headers row 1, task rows appended
+Table 2  monitoring         — critical controls, one row per CCVS-coded task
+Table 3  worker sign-off    — induction (untouched)
+Tables 4, 6  amendment sign-off — (untouched)
+Tables 5, 7  amendments     — (untouched)
+Table 8  risk matrix        — font pass only
+Table 9  pre-requisites     — PPE, licences, plant, hazmat, consultation, legislation
+```
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## STEP 10 — Convert return type to io.BytesIO
+
+Architecture rule: render_swms_document must return BytesIO, not bytes.
+
+```python
+# Old:
+buf = BytesIO()
+doc.save(buf)
+return buf.getvalue()
+
+# New:
+buf = BytesIO()
+doc.save(buf)
+buf.seek(0)
+return buf
+```
+
+Update both callers in api/main.py (~lines 300 and 628):
+```python
+# Old:
+docx_bytes = render_swms_document(...)
+
+# New:
+buf = render_swms_document(...)
+docx_bytes = buf.read()
+```
+
+Confirm both call sites updated before marking done.
+
+DONE: [ ]  Date: __________  Notes: ________________________________
+
+---
+
+## TEST SEQUENCE
+
+All tests required before closing this audit.
+
+### T1 — HRCW isolated render test
+Input:  hrcw_flags = {"falling_2m": True, "asbestos": True, "confined_space": True}
+Expect: ☑ next to fall, asbestos, confined space text in T0. All others ☐.
+        No logging warnings. No IndexError.
+Result: [ ] PASS  [ ] FAIL  Date: __________
+
+### T2 — Full end-to-end render test
+Input:  Standard generation run with real task data
+Expect: All 10 tables populated. No placeholder tokens remaining.
+        validate_output() returns empty list.
+Result: [ ] PASS  [ ] FAIL  Date: __________
+
+### T3 — WAH task render test
+Input:  Task with ccvs_code = "WAH-H6", wah_applicable = True
+Expect: falling_2m ticked in T0. Additional PPE row populated in T9 (1,3).
+        Monitoring row appears in T2 for this task.
+        WAH-H6 appears bold grey in T1 col 7, beneath stop-work triggers.
+Result: [ ] PASS  [ ] FAIL  Date: __________
+
+### T4 — Monitoring data render test
+Input:  Mix of tasks — some with monitoring object, some with monitoring = None
+Expect: All CCVS-coded tasks appear in T2.
+        Tasks with monitoring = None show dash placeholders in T2 (not skipped).
+        Tasks with CCVS code = N/A do not appear in T2.
+Result: [ ] PASS  [ ] FAIL  Date: __________
+
+### T5 — BytesIO caller test
+Input:  Both api/main.py call sites exercised via /render/docx endpoint
+Expect: No TypeError. DOCX downloads correctly. PDF conversion path still works.
+Result: [ ] PASS  [ ] FAIL  Date: __________
+
+---
+
+## DEFERRED — NOT IN THIS SESSION
+
+Phase banners: TaskBlock has no phase field. Assembler outputs flat list.
+Tasks render as flat numbered steps (1, 2, 3...) until schema decision made.
+
+Plain English pass: _plain_english_pass() scheduled after this audit closes.
+  Word substitutions: commence → start, utilise → use, prior to → before,
+  inspect → check, rectify → fix.
+  File: core/validate.py or agents/assembler.py.
+
+---
+
+## FILES TOUCHED — COMPLETE LIST
+
+| File                                      | Change                                    |
+|-------------------------------------------|-------------------------------------------|
+| renderers/docx_renderer.py                | All steps above                           |
+| src/Safe_Method_SWMS_Template_V1.docx     | Placed in repo. No structural changes.    |
+| api/main.py                               | Two BytesIO caller updates (Step 10 only) |
+
+No other files. inference pipeline, orchestrator, agents, schema, validate.py — untouched.
+
+---
+
+## KNOWN PRE-EXISTING ISSUES — DO NOT FIX IN THIS SESSION
+
+A. CCVS code system mismatch: generate.py score-based (WAH-H6) vs
+   control_writer.py sub-codes (WAH-H1 to WAH-H8). Schedule separately.
+B. Stream path CCVS suppression runs after yield — never reaches client.
+C. Legacy POST /generate has no auth guard. Schedule separately.
