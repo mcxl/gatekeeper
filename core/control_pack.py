@@ -34,7 +34,7 @@ _TRADE_PACKAGE_DEFAULTS = {
         "required_before": "Before any works commence in the road corridor",
     },
     "service location": {
-        "hrcw_refs": ["H07", "H09", "H11"],
+        "hrcw_refs": ["H07", "H09", "H11", "H15"],
         "swms_title": "Service Location and NDD SWMS",
         "required_before": "Before any machine excavation commences in the road corridor",
     },
@@ -64,7 +64,7 @@ _TRADE_PACKAGE_DEFAULTS = {
         "required_before": "Before commencement of drainage works",
     },
     "earthworks": {
-        "hrcw_refs": ["H14", "H15"],
+        "hrcw_refs": ["H07", "H14", "H15"],
         "swms_title": "Bulk Earthworks and Pavement Construction SWMS",
         "required_before": "Before commencement of earthworks or pavement construction",
     },
@@ -516,6 +516,9 @@ _PACKAGE_BENCHMARK_RISKS = {
         {"activity": "Excavation of stormwater pit and pipe trenches in road corridor",
          "controls": "Shoring/battering for depths >1.5m. Traffic management in place before excavation in road reserve.",
          "initial_risk": "High", "residual_risk": "Medium"},
+        {"activity": "Entry into stormwater pits and chambers during or after construction",
+         "controls": "Confined space entry permit where required per AS 2865. Atmospheric testing before entry. Rescue plan and standby person.",
+         "initial_risk": "High", "residual_risk": "Medium"},
     ],
     "Bulk Earthworks and Pavement": [
         {"activity": "Removal of existing chip seal pavement and earthworks to design level",
@@ -538,6 +541,9 @@ _PACKAGE_BENCHMARK_RISKS = {
     "Kerb, Gutter and Footpath": [
         {"activity": "Kerb, gutter, footpath and pedestrian ramp construction",
          "controls": "Pedestrian pathways maintained during construction. DDA-compliant temporary access where existing paths are disrupted.",
+         "initial_risk": "Medium", "residual_risk": "Low"},
+        {"activity": "Pedestrian management at intersection and along works corridor",
+         "controls": "Temporary pedestrian exclusion from active pour/construction zones. Physical barriers not just signage.",
          "initial_risk": "Medium", "residual_risk": "Low"},
     ],
     "Line Marking and Reinstatement": [
@@ -608,10 +614,16 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
             "signage": "Line Marking and Reinstatement",
         }
 
+        # Count existing entries per group
+        _group_counts = {}
+        for e in entries:
+            _group_counts[e["group"]] = _group_counts.get(e["group"], 0) + 1
+        _seeded_groups = set()
+
         for entry in swms_matrix:
             pkg = entry.get("trade_package", "").lower()
             group = _PKG_TO_GROUP.get(pkg)
-            if group and group not in covered_groups:
+            if group and group not in _seeded_groups and _group_counts.get(group, 0) < 2:
                 benchmarks = _PACKAGE_BENCHMARK_RISKS.get(group, [])
                 for br in benchmarks:
                     entries.append({
@@ -624,7 +636,7 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
                         "responsible": "Relevant subcontractor",
                         "status": "benchmark",
                     })
-                covered_groups.add(group)
+                _seeded_groups.add(group)
 
     # Sort by construction sequence
     _GROUP_ORDER = [g for g, _ in _HAZARD_TO_PACKAGE] + ["General Construction"]
