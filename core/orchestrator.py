@@ -237,6 +237,10 @@ async def generate_swms(
     if swms_classification["scope_modifiers"]:
         scope_context.setdefault("scope_modifiers", ", ".join(swms_classification["scope_modifiers"]))
 
+    excluded = _detect_excluded_items(description)
+    if excluded:
+        scope_context["excluded_items"] = "DO NOT generate tasks for: " + ", ".join(excluded) + " — these are latent conditions or variations, not contracted scope"
+
     # Build jurisdiction context for agent prompts
     if jurisdiction != "AU":
         from core.jurisdictions import get_jurisdiction
@@ -354,6 +358,11 @@ async def generate_swms_stream(
     scope_context.setdefault("occupancy_context", swms_classification["occupancy_context"])
     if swms_classification["scope_modifiers"]:
         scope_context.setdefault("scope_modifiers", ", ".join(swms_classification["scope_modifiers"]))
+
+    # Detect excluded/variation items and pass to agents as exclusions
+    excluded = _detect_excluded_items(description)
+    if excluded:
+        scope_context["excluded_items"] = "DO NOT generate tasks for: " + ", ".join(excluded) + " — these are latent conditions or variations, not contracted scope"
 
     # Build jurisdiction context for agent prompts
     if jurisdiction != "AU":
@@ -493,6 +502,32 @@ def _enrich_risk_labels(tb: dict) -> None:
 
 
 # ── Plain English enforcement ─────────────────────────────────────────────────
+
+def _detect_excluded_items(description: str) -> list[str]:
+    """
+    Detect items mentioned in exclusion/variation/latent-condition context.
+    Returns a list of excluded item labels for the decomposer to avoid.
+    """
+    from core.inference_matrix import _EXCLUSION_CONTEXT_PATTERNS
+    text = description.lower()
+    excluded = []
+
+    _HAZMAT_KEYWORDS = {
+        "asbestos": "asbestos removal or survey",
+        "lead paint": "lead paint removal or testing",
+        "toxic material": "toxic material handling",
+        "hazardous material": "hazardous material handling",
+    }
+    for kw, label in _HAZMAT_KEYWORDS.items():
+        if kw in text:
+            # Check if it's in an exclusion context
+            idx = text.find(kw)
+            context = text[max(0, idx - 200):idx + len(kw) + 200]
+            if any(pat in context for pat in _EXCLUSION_CONTEXT_PATTERNS):
+                excluded.append(label)
+
+    return excluded
+
 
 def _enforce_plain_english(tb: dict) -> dict:
     """Auto-replace formal phrases with plain English in all control text fields."""
