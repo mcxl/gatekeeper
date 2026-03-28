@@ -3179,7 +3179,7 @@ MATRIX = [
     {
         "keywords": ["road opening", "road work", "road repair", "pavement repair",
                      "asphalt", "bitumen", "road surface", "carriageway",
-                     "road cut", "road opening permit", "rop"],
+                     "road cut", "road opening permit"],
         "hrcw": False,
         "hrcw_category": None,
         "hrcw_license_class": None,
