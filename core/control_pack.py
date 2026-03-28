@@ -563,10 +563,39 @@ def _assign_package_group(hazard_name: str) -> str:
     return "General Construction"
 
 
+_REG_PREFIXES = (
+    "WHS Reg ", "AS/NZS ", "AS ", "Sydney Water Act", "Roads Act",
+    "Protection of the Environment",
+)
+
+
+def _clean_control_for_register(ctrl_text: str) -> str:
+    """
+    Rewrite control text for the risk register.
+    If the text leads with a regulatory citation, move it to the end
+    so the practical control action comes first.
+    """
+    # Split on '. ' to find sentence boundaries
+    sentences = [s.strip() for s in ctrl_text.split(". ") if s.strip()]
+    if not sentences:
+        return ctrl_text
+
+    # Check if the first sentence is a regulation
+    first = sentences[0]
+    is_reg = any(first.startswith(p) for p in _REG_PREFIXES)
+
+    if is_reg and len(sentences) > 1:
+        # Move regulation to end as a reference
+        reg = first.rstrip(".")
+        action = ". ".join(sentences[1:])
+        return f"{action} ({reg})"
+
+    return ctrl_text
+
+
 def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
                          swms_matrix: list[dict] | None = None) -> list[dict]:
     """Build risk register grouped by trade package, seeded with benchmark risks."""
-    # First assign inference-derived hazards to package groups
     entries = []
     covered_groups = set()
 
@@ -574,7 +603,8 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
         ctrls = h.get("controls", {})
         eng = ctrls.get("engineering", [])
         adm = ctrls.get("admin", [])
-        control_summary = ". ".join(eng[:1] + adm[:1]) if (eng or adm) else "Refer to site-specific controls"
+        raw_summary = ". ".join(eng[:1] + adm[:1]) if (eng or adm) else "Refer to site-specific controls"
+        control_summary = _clean_control_for_register(raw_summary)
 
         group = _assign_package_group(h.get("hazard", ""))
         confidence = h.get("confidence", "if_applicable")
