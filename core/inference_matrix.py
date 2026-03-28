@@ -6730,6 +6730,24 @@ NEGATION_PREFIXES = (
     "not applicable", "n/a",
 )
 
+# Broader exclusion/variation context — keywords mentioned in these contexts
+# should be treated as latent conditions, not confirmed scope.
+_EXCLUSION_CONTEXT_PATTERNS = (
+    "subject to additional cost",
+    "deemed variation",
+    "latent condition",
+    "variation to the contract",
+    "additional costs and time",
+    "subject to additional",
+    "excluded from",
+    "not included in",
+    "outside the scope",
+    "not part of the scope",
+    "if uncovered during",
+    "if identified during",
+    "pre-existing toxic",
+)
+
 
 def _expand_description(text: str) -> str:
     """
@@ -6763,15 +6781,22 @@ def _expand_description(text: str) -> str:
 
 def _is_negated(keyword: str, text: str) -> bool:
     """
-    Improvement 4: Check if a keyword is preceded by a negation phrase
-    within 60 characters in the original text.
+    Improvement 4: Check if a keyword is negated or appears in an
+    exclusion/variation/latent-condition context.
     Returns True if keyword should be suppressed.
     """
     idx = text.find(keyword)
     if idx == -1:
         return False
+    # Check direct negation (within 60 chars before)
     preceding = text[max(0, idx - 60):idx]
-    return any(neg in preceding for neg in NEGATION_PREFIXES)
+    if any(neg in preceding for neg in NEGATION_PREFIXES):
+        return True
+    # Check broader exclusion/variation context (within 200 chars around)
+    context = text[max(0, idx - 200):idx + len(keyword) + 200].lower()
+    if any(pat in context for pat in _EXCLUSION_CONTEXT_PATTERNS):
+        return True
+    return False
 
 
 def _normalise_item(item: str) -> str:
