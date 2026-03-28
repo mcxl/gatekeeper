@@ -13,7 +13,10 @@ import re
 import anthropic
 from core.utils import strip_fences
 
-SYSTEM_PROMPT = """\
+from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
+from prompts.swms import SWMS_BEHAVIOUR
+
+SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are an Australian WHS risk assessor for construction work in NSW.
 
 Your ONLY job is to identify hazards and assign risk ratings for each task.

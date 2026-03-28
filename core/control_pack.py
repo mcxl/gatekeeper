@@ -276,6 +276,14 @@ def build_control_pack(
     """
     Assemble the complete control pack data structure.
 
+    Behavioural policy: see prompts/control_pack.py (CONTROL_PACK_BEHAVIOUR).
+    This function implements the deterministic project WHS benchmark rules:
+    - package-led structure with confirmed/provisional status
+    - HRCW tri-state with specific conditional reasons
+    - hold points classified as WHS-critical or QA/authority
+    - risk register package-led and sequence-aware
+    - visible open items and uncertainty
+
     Args:
         description: project scope description
         project_meta: project metadata (name, address, pcbu, client, etc.)

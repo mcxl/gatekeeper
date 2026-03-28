@@ -14,7 +14,10 @@ import asyncio
 import anthropic
 from core.utils import strip_fences
 
-SYSTEM_PROMPT = """\
+from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
+from prompts.swms import SWMS_BEHAVIOUR
+
+SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are an Australian WHS control measure writer for construction SWMS documents.
 
 Your ONLY job is to write controls, hold points, stop work triggers, admin

@@ -14,7 +14,10 @@ import re
 import anthropic
 from core.utils import strip_fences
 
-SYSTEM_PROMPT = """\
+from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
+from prompts.swms import SWMS_BEHAVIOUR
+
+SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are a construction SWMS task decomposer for Australian construction work.
 
 Your ONLY job is to break a work description into an ordered list of logical tasks.

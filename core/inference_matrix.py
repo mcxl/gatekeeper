@@ -8028,7 +8028,16 @@ def _build_ra_hrcw_register(
 
 def infer_to_dict_ra(work_description: str, jurisdiction: str = "AU",
                      ca_province: str = "") -> dict:
-    """Return inference result with hazard_list and phase_groups for RA documents."""
+    """Return inference result with hazard_list and phase_groups for RA documents.
+
+    Behavioural policy: see prompts/ra.py (RA_BEHAVIOUR).
+    This function implements the deterministic RA generation rules:
+    - classification before hazard selection
+    - tri-state HRCW (YES/CONDITIONAL/NO)
+    - confidence per hazard
+    - phase grouping
+    - negation/exclusion awareness
+    """
     result = infer_to_dict(work_description, jurisdiction=jurisdiction)
     result["ra_classification"] = classify_ra_scope(work_description)
     result["hazard_list"] = _build_hazard_list(work_description, result)

@@ -15,7 +15,10 @@ from core.utils import strip_fences, enforce_wah_flag
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """\
+from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
+from prompts.swms import SWMS_BEHAVIOUR
+
+SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are a SWMS document assembler for Australian construction.
 
 You receive outputs from three specialist agents and must merge them into a
