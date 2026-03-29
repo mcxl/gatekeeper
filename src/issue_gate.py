@@ -113,6 +113,25 @@ _PLACEHOLDER_PATTERNS = (
     "[insert supervisor", "[insert manager",
 )
 
+# Expected CCVS prefix for task-name keyword groups (for C5b cross-check)
+_CCVS_EXPECTED = {
+    "SIL": ("grind", "cut", "repoint", "crack stitch", "stitch", "spalling",
+            "mortar", "reconstruct"),
+    "CHM": ("paint", "coat", "stain", "seal", "sealant", "treat", "primer",
+            "timber"),
+    "WAH": ("scaffold", "ewp", "erect", "dismantle", "rope access", "abseil",
+            "ladder", "roof access", "green wall"),
+    "SYS": ("establish", "setup", "set up", "mobilise", "check", "defect",
+            "inspect", "make good", "demob"),
+}
+
+# Latent-condition task indicators
+_LATENT_CONDITION_KEYWORDS = (
+    "latent condition", "latent hazard", "toxic material",
+    "hazardous material survey", "asbestos survey", "hazmat",
+    "pre-existing toxic",
+)
+
 
 # ── Check implementations ────────────────────────────────────────────────────
 
@@ -185,27 +204,86 @@ def _check_ccvs_coverage(tasks: list[dict]) -> GateCheck:
 
 
 def _check_ccvs_alignment(tasks: list[dict]) -> GateCheck:
-    """C5: Monitoring evidence matches the CCVS code's dominant hazard."""
+    """C5: Monitoring evidence matches the CCVS code's dominant hazard,
+    AND the CCVS code is appropriate for the task's dominant hazard as written.
+
+    Two-part check:
+      (a) Monitoring evidence keywords match the CCVS prefix
+      (b) CCVS prefix matches what the task name suggests
+    """
     mismatches = []
     for t in tasks:
         ccvs = t.get("ccvs_code", "N/A")
+        if ccvs == "N/A":
+            continue  # handled by C5b (ccvs_completeness)
+        prefix = ccvs.split("-")[0] if "-" in ccvs else ccvs
         mon = t.get("monitoring", {})
         cc = mon.get("critical_control", "").lower() if isinstance(mon, dict) else ""
-        if not cc:
-            continue
-        if ccvs.startswith("SIL") and not any(k in cc for k in
-                ("dust", "p2", "extraction", "respiratory", "silica")):
-            mismatches.append(f"{t.get('step','?')}[{ccvs}]: no dust evidence")
-        elif ccvs.startswith("CHM") and not any(k in cc for k in
-                ("sds", "chemical", "ventilation", "respirat")):
-            mismatches.append(f"{t.get('step','?')}[{ccvs}]: no chemical evidence")
-        elif ccvs.startswith("SYS") and any(k in cc for k in
-                ("harness", "dust extraction")):
-            mismatches.append(f"{t.get('step','?')}[{ccvs}]: SYS has harness/dust evidence")
+        step = t.get("step", "?")
+        tn = t.get("task", "").lower()
+
+        # (a) Evidence matches CCVS prefix
+        if cc:
+            if prefix == "SIL" and not any(k in cc for k in
+                    ("dust", "p2", "extraction", "respiratory", "silica")):
+                mismatches.append(f"{step}[{ccvs}]: no dust evidence in monitoring")
+            elif prefix == "CHM" and not any(k in cc for k in
+                    ("sds", "chemical", "ventilation", "respirat")):
+                mismatches.append(f"{step}[{ccvs}]: no chemical evidence in monitoring")
+            elif prefix == "SYS" and any(k in cc for k in
+                    ("harness", "dust extraction")):
+                mismatches.append(f"{step}[{ccvs}]: SYS task has harness/dust monitoring")
+
+        # (b) CCVS prefix matches task-name dominant hazard
+        expected_prefix = None
+        for exp_prefix, keywords in _CCVS_EXPECTED.items():
+            if any(kw in tn for kw in keywords):
+                expected_prefix = exp_prefix
+                break
+        if expected_prefix and expected_prefix != prefix:
+            # Don't flag WAH tasks that got CHM/SIL — WAH is always secondary
+            # Only flag if the expected prefix is more specific than the assigned one
+            if expected_prefix in ("SIL", "CHM") and prefix == "WAH":
+                mismatches.append(
+                    f"{step}[{ccvs}]: task suggests {expected_prefix} but coded WAH")
+
     if mismatches:
         return GateCheck("ccvs_alignment", CheckResult.FAIL,
                          "; ".join(mismatches[:3]))
     return GateCheck("ccvs_alignment", CheckResult.PASS)
+
+
+def _check_ccvs_completeness(tasks: list[dict]) -> GateCheck:
+    """C5b: CCVS code should not be N/A for any task that has hazards listed."""
+    missing = []
+    for t in tasks:
+        ccvs = t.get("ccvs_code", "N/A")
+        hazards = t.get("hazards", [])
+        if ccvs == "N/A" and hazards and len(hazards) > 0:
+            missing.append(f"{t.get('step', '?')}: {t.get('task', '?')[:40]}")
+    if missing:
+        return GateCheck("ccvs_completeness", CheckResult.FAIL,
+                         f"Tasks with hazards but N/A CCVS: {missing[:3]}")
+    return GateCheck("ccvs_completeness", CheckResult.PASS,
+                     f"All tasks with hazards have CCVS codes")
+
+
+def _check_latent_condition_packaging(tasks: list[dict]) -> GateCheck:
+    """C10: Latent-condition tasks appearing as standalone work tasks should be
+    flagged as REVIEW. These should ideally be framework hold-points, not tasks.
+    """
+    standalone = []
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        scope = t.get("scope", "").lower()
+        text = tn + " " + scope
+        if any(kw in text for kw in _LATENT_CONDITION_KEYWORDS):
+            standalone.append(f"{t.get('step', '?')}: {t.get('task', '?')[:45]}")
+    if standalone:
+        return GateCheck("latent_condition_packaging", CheckResult.REVIEW,
+                         f"Standalone latent-condition tasks (should be hold-points): "
+                         f"{standalone[:2]}")
+    return GateCheck("latent_condition_packaging", CheckResult.PASS)
 
 
 def _check_wah_percentage(tasks: list[dict],
@@ -226,9 +304,38 @@ def _check_wah_percentage(tasks: list[dict],
                      f"WAH: {wah}/{len(tasks)} ({pct}%)")
 
 
+def _check_unsupported_controls_json(tasks: list[dict]) -> GateCheck:
+    """C7: No unsupported controls in task data (controls, admin, hold_points, stop_work).
+
+    Checks task JSON fields directly — works even without a rendered .docx.
+    Uses substring matching to catch known phrases in any sentence structure.
+    """
+    found = []
+    for t in tasks:
+        step = t.get("step", "?")
+        tn = t.get("task", "").lower()
+        # Combine all control-bearing fields
+        all_items = (
+            t.get("controls", []) + t.get("admin", [])
+            + t.get("hold_points", []) + t.get("stop_work", [])
+        )
+        all_text = " ".join(item.lower() for item in all_items)
+        for kw in _UNSUPPORTED_KEYWORDS:
+            if kw in all_text:
+                if kw in ("propping plan", "propping design"):
+                    continue
+                found.append(f"{step}:{kw}")
+        # Irrigation only outside green wall tasks
+        if "irrigation" in all_text and "green wall" not in tn:
+            found.append(f"{step}:irrigation")
+    if found:
+        return GateCheck("unsupported_controls", CheckResult.FAIL,
+                         "; ".join(found[:5]))
+    return GateCheck("unsupported_controls", CheckResult.PASS)
+
+
 def _check_unsupported_controls_docx(doc) -> GateCheck:
-    """C7: No unsupported controls in rendered document."""
-    from docx import Document
+    """C7 (docx variant): No unsupported controls in rendered document."""
     found = []
     t2 = doc.tables[2] if len(doc.tables) > 2 else None
     if not t2:
@@ -238,12 +345,10 @@ def _check_unsupported_controls_docx(doc) -> GateCheck:
         row_text = " ".join(t2.rows[r].cells[c].text for c in range(
             min(8, len(t2.rows[r].cells)))).lower()
         step = t2.rows[r].cells[0].text.strip() if t2.rows[r].cells else "?"
-        # Skip irrigation in green wall tasks (legitimate)
         task_text = t2.rows[r].cells[1].text.lower() if len(t2.rows[r].cells) > 1 else ""
         for kw in _UNSUPPORTED_KEYWORDS:
             if kw in row_text:
-                # Exceptions: "propping" in hazard column is legitimate for brickwork
-                if kw == "propping plan" or kw == "propping design":
+                if kw in ("propping plan", "propping design"):
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in row_text and "green wall" not in task_text:
@@ -346,16 +451,19 @@ def run_issue_gate(
 
     result.task_count = len(task_list)
 
-    # Run task-based checks (C1-C6)
+    # Run task-based checks (C1-C6, C5b, C7-json, C10)
     if task_list:
         result.checks.append(_check_access_before_dependents(task_list))
         result.checks.append(_check_no_coat_reinstate_merge(task_list))
         result.checks.append(_check_no_prestart_in_demob(task_list))
         result.checks.append(_check_ccvs_coverage(task_list))
         result.checks.append(_check_ccvs_alignment(task_list))
+        result.checks.append(_check_ccvs_completeness(task_list))
         result.checks.append(_check_wah_percentage(task_list, wah_threshold))
+        result.checks.append(_check_unsupported_controls_json(task_list))
+        result.checks.append(_check_latent_condition_packaging(task_list))
 
-    # Run docx-based checks (C7-C9)
+    # Run docx-based checks (C7-docx, C8, C9)
     if doc:
         result.checks.append(_check_unsupported_controls_docx(doc))
         result.checks.append(_check_responsibility_field(doc, stage))

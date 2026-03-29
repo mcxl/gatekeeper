@@ -17,9 +17,12 @@ from src.issue_gate import (
     _check_no_prestart_in_demob,
     _check_ccvs_coverage,
     _check_ccvs_alignment,
+    _check_ccvs_completeness,
     _check_wah_percentage,
+    _check_unsupported_controls_json,
     _check_responsibility_field,
     _check_footer,
+    _check_latent_condition_packaging,
     run_issue_gate,
 )
 
@@ -227,7 +230,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 6  # C1-C6 only (no docx)
+        assert len(result.checks) == 9  # C1-C6 + C5b + C7-json + C10
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -288,7 +291,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 9  # C1-C9
+        assert len(result.checks) == 12  # C1-C6 + C5b + C7-json + C10 + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -298,6 +301,102 @@ class TestRealBenchmarkOutput:
         if hard_fails:
             details = "; ".join(f"{c.name}: {c.detail}" for c in hard_fails)
             pytest.fail(f"Hard failures in benchmark output: {details}")
+
+
+# ── C5 strengthened: CCVS-task cross-check ───────────────────────────────────
+
+class TestCcvsAlignmentStrengthened:
+    def test_wah_on_paint_task_flagged(self):
+        """WAH code on a paint task should be flagged (expects CHM)."""
+        t = _tasks(("Paint exterior masonry", "WAH-H6"))
+        t[0]["monitoring"]["critical_control"] = "Harness check"
+        result = _check_ccvs_alignment(t)
+        assert result.result == CheckResult.FAIL
+        assert "suggests CHM but coded WAH" in result.detail
+
+    def test_sil_on_repoint_passes(self):
+        t = _tasks(("Repoint brickwork", "SIL-H6"))
+        t[0]["monitoring"]["critical_control"] = "Dust extraction running"
+        assert _check_ccvs_alignment(t).result == CheckResult.PASS
+
+    def test_wah_on_scaffold_passes(self):
+        """WAH on a scaffold task is correct."""
+        t = _tasks(("Erect scaffolding", "WAH-H6"))
+        t[0]["monitoring"]["critical_control"] = "Scaffold tag checked"
+        assert _check_ccvs_alignment(t).result == CheckResult.PASS
+
+
+# ── C5b: CCVS completeness ──────────────────────────────────────────────────
+
+class TestCcvsCompleteness:
+    def test_pass_all_have_ccvs(self):
+        t = _tasks(("Paint", "CHM-H6"), ("Scaffold", "WAH-H6"))
+        t[0]["hazards"] = ["Chemical exposure"]
+        t[1]["hazards"] = ["Fall from height"]
+        assert _check_ccvs_completeness(t).result == CheckResult.PASS
+
+    def test_fail_na_with_hazards(self):
+        t = _tasks(("Repair concrete", "N/A"))
+        t[0]["hazards"] = ["Silica dust", "Falling objects"]
+        result = _check_ccvs_completeness(t)
+        assert result.result == CheckResult.FAIL
+        assert "N/A CCVS" in result.detail
+
+    def test_pass_na_without_hazards(self):
+        t = _tasks(("Demobilise", "N/A"))
+        t[0]["hazards"] = []
+        assert _check_ccvs_completeness(t).result == CheckResult.PASS
+
+
+# ── C10: Latent-condition packaging ──────────────────────────────────────────
+
+class TestLatentConditionPackaging:
+    def test_review_standalone_latent_task(self):
+        t = _tasks("Latent conditions check — stop work if toxic materials found")
+        result = _check_latent_condition_packaging(t)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_no_latent_tasks(self):
+        t = _tasks("Paint masonry", "Repair concrete")
+        assert _check_latent_condition_packaging(t).result == CheckResult.PASS
+
+    def test_review_hazmat_survey_task(self):
+        t = _tasks("Survey and identify hazardous material")
+        t[0]["scope"] = "Asbestos survey before work starts"
+        result = _check_latent_condition_packaging(t)
+        assert result.result == CheckResult.REVIEW
+
+
+# ── C7 strengthened: JSON-based unsupported controls ─────────────────────────
+
+class TestUnsupportedControlsJson:
+    def test_pass_clean(self):
+        t = _tasks("Paint masonry")
+        t[0]["controls"] = ["Wear harness", "Check scaffold tag"]
+        assert _check_unsupported_controls_json(t).result == CheckResult.PASS
+
+    def test_fail_utility_isolation(self):
+        t = _tasks("Establish site")
+        t[0]["controls"] = ["Verify utility isolation certificate"]
+        result = _check_unsupported_controls_json(t)
+        assert result.result == CheckResult.FAIL
+
+    def test_fail_structural_engineer_in_admin(self):
+        t = _tasks("Repoint brickwork")
+        t[0]["admin"] = ["Obtain structural engineer approval before starting"]
+        result = _check_unsupported_controls_json(t)
+        assert result.result == CheckResult.FAIL
+
+    def test_fail_membrane_in_controls(self):
+        t = _tasks("Apply sealant")
+        t[0]["controls"] = ["Apply membrane where required"]
+        result = _check_unsupported_controls_json(t)
+        assert result.result == CheckResult.FAIL
+
+    def test_irrigation_ok_for_green_wall(self):
+        t = _tasks("Remove green wall")
+        t[0]["controls"] = ["Check irrigation before removal"]
+        assert _check_unsupported_controls_json(t).result == CheckResult.PASS
 
 
 import json
