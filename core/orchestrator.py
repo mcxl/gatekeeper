@@ -1246,14 +1246,17 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     # Dust/silica checked BEFORE chemical — "repoint and seal" is primarily dust
     _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
                     "rope access", "abseil", "ladder", "remove green", "reinstate",
-                    "roof", "gutter", "flashing", "mobilise boom", "lower waste")
+                    "roof access", "roof perimeter", "on roof",
+                    "gutter", "flashing", "mobilise boom", "lower waste")
     if any(kw in task_name for kw in _WAH_METHOD):
         correct = "WAH-H6"
     elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",
-                                         "stitch", "spalling", "mortar", "reconstruct")):
+                                         "stitch", "spalling", "mortar", "reconstruct",
+                                         "demolition", "slab crack", "tile")):
         correct = "SIL-H6"
     elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
-                                         "treat", "primer", "timber", "prepare")):
+                                         "treat", "primer", "timber", "prepare",
+                                         "waterproof", "render", "epoxy", "membrane")):
         correct = "CHM-H6"
     elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise")):
         correct = "SYS-M3"
