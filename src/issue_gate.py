@@ -95,8 +95,9 @@ _DEPENDENT_KEYWORDS = ("repair", "crack", "paint", "seal", "repoint", "treat",
 _COATING_KEYWORDS = ("paint", "seal", "treat", "stain", "coat", "primer",
                      "timber")
 
-_PRESTART_KEYWORDS = ("resident", "neighbour", "vegetation", "parking",
-                      "pre-commencement", "interface control")
+_PRESTART_KEYWORDS = ("vegetation", "parking",
+                      "pre-commencement", "interface control",
+                      "resident clearing", "resident responsible for clearing")
 
 _DEMOB_KEYWORDS = ("demob", "dismantle", "remove scaffold")
 
@@ -304,28 +305,34 @@ def _check_wah_percentage(tasks: list[dict],
                      f"WAH: {wah}/{len(tasks)} ({pct}%)")
 
 
-def _check_unsupported_controls_json(tasks: list[dict]) -> GateCheck:
+def _check_unsupported_controls_json(tasks: list[dict],
+                                      allowed_keywords: tuple[str, ...] = ()
+                                      ) -> GateCheck:
     """C7: No unsupported controls in task data (controls, admin, hold_points, stop_work).
 
     Checks task JSON fields directly — works even without a rendered .docx.
     Uses substring matching to catch known phrases in any sentence structure.
+
+    Args:
+        allowed_keywords: tuple of keywords to exclude from the unsupported check
+            (e.g. ("waterproof", "membrane") for a waterproofing-scope job).
     """
+    active_keywords = tuple(kw for kw in _UNSUPPORTED_KEYWORDS
+                            if kw not in allowed_keywords)
     found = []
     for t in tasks:
         step = t.get("step", "?")
         tn = t.get("task", "").lower()
-        # Combine all control-bearing fields
         all_items = (
             t.get("controls", []) + t.get("admin", [])
             + t.get("hold_points", []) + t.get("stop_work", [])
         )
         all_text = " ".join(item.lower() for item in all_items)
-        for kw in _UNSUPPORTED_KEYWORDS:
+        for kw in active_keywords:
             if kw in all_text:
                 if kw in ("propping plan", "propping design"):
                     continue
                 found.append(f"{step}:{kw}")
-        # Irrigation only outside green wall tasks
         if "irrigation" in all_text and "green wall" not in tn:
             found.append(f"{step}:irrigation")
     if found:
@@ -334,8 +341,12 @@ def _check_unsupported_controls_json(tasks: list[dict]) -> GateCheck:
     return GateCheck("unsupported_controls", CheckResult.PASS)
 
 
-def _check_unsupported_controls_docx(doc) -> GateCheck:
+def _check_unsupported_controls_docx(doc,
+                                      allowed_keywords: tuple[str, ...] = ()
+                                      ) -> GateCheck:
     """C7 (docx variant): No unsupported controls in rendered document."""
+    active_keywords = tuple(kw for kw in _UNSUPPORTED_KEYWORDS
+                            if kw not in allowed_keywords)
     found = []
     t2 = doc.tables[2] if len(doc.tables) > 2 else None
     if not t2:
@@ -346,7 +357,7 @@ def _check_unsupported_controls_docx(doc) -> GateCheck:
             min(8, len(t2.rows[r].cells)))).lower()
         step = t2.rows[r].cells[0].text.strip() if t2.rows[r].cells else "?"
         task_text = t2.rows[r].cells[1].text.lower() if len(t2.rows[r].cells) > 1 else ""
-        for kw in _UNSUPPORTED_KEYWORDS:
+        for kw in active_keywords:
             if kw in row_text:
                 if kw in ("propping plan", "propping design"):
                     continue
@@ -423,6 +434,7 @@ def run_issue_gate(
     tasks: Optional[list[dict]] = None,
     stage: Stage = Stage.BENCHMARK,
     wah_threshold: int = 50,
+    allowed_keywords: tuple[str, ...] = (),
 ) -> GateResult:
     """Run all issue-gate checks and return structured results.
 
@@ -460,12 +472,12 @@ def run_issue_gate(
         result.checks.append(_check_ccvs_alignment(task_list))
         result.checks.append(_check_ccvs_completeness(task_list))
         result.checks.append(_check_wah_percentage(task_list, wah_threshold))
-        result.checks.append(_check_unsupported_controls_json(task_list))
+        result.checks.append(_check_unsupported_controls_json(task_list, allowed_keywords))
         result.checks.append(_check_latent_condition_packaging(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:
-        result.checks.append(_check_unsupported_controls_docx(doc))
+        result.checks.append(_check_unsupported_controls_docx(doc, allowed_keywords))
         result.checks.append(_check_responsibility_field(doc, stage))
         result.checks.append(_check_footer(doc))
 

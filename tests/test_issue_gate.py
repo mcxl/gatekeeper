@@ -88,9 +88,9 @@ class TestNoPrestartInDemob:
         t = _tasks("Dismantle scaffold and demobilise")
         assert _check_no_prestart_in_demob(t).result == CheckResult.PASS
 
-    def test_fail_resident_in_demob(self):
+    def test_fail_vegetation_in_demob(self):
         t = _tasks("Demobilise site")
-        t[0]["admin"] = ["Notify resident of completion"]
+        t[0]["admin"] = ["Vegetation trimmed away from surfaces"]
         assert _check_no_prestart_in_demob(t).result == CheckResult.FAIL
 
     def test_pass_resident_in_setup(self):
