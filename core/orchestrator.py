@@ -1477,6 +1477,9 @@ _TRANSFER_TASK_KEYWORDS = [
     "transfer", "guardrail opening", "platform to roof", "roof to platform",
     "ewp to roof", "roof to ewp", "return to lift", "return to platform",
     "cross guardrail", "step onto roof", "step off roof",
+    # Agent-generated variants for EWP roof access
+    "access roof", "roof perimeter", "roof access",
+    "position ewp", "ascent", "descent",
 ]
 
 _EWP_TRANSFER_CONTROLS = [
@@ -1491,8 +1494,8 @@ _EWP_TRANSFER_HOLD_POINTS = [
 ]
 
 _EWP_TRANSFER_STOP_WORK = [
-    "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
-    "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+    "\U0001f6d1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+    "\U0001f6d1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
     "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind",
 ]
 
