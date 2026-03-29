@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import re as _re
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -63,8 +64,7 @@ def route(description: str, inference: dict) -> str:
         return "full"
 
     # Estimate task count from sentence/clause structure
-    import re
-    clauses = re.split(r"[.;,\n]", description)
+    clauses = _re.split(r"[.;,\n]", description)
     clauses = [c.strip() for c in clauses if len(c.strip()) > 10]
     if len(clauses) > SENTENCE_THRESHOLD:
         log.info(f"Route: full — {len(clauses)} clauses detected (threshold: {SENTENCE_THRESHOLD})")
@@ -585,8 +585,6 @@ def _plain_english_pass(tb: dict) -> dict:
     return tb
 
 
-import re as _re
-
 _CHEMICAL_KEYWORDS = _re.compile(
     r"\b(epoxy|resin|hardener|solvent|chemical|acid|alkali|caustic|adhesive|"
     r"primer|paint|coating|membrane|sealant|grout|mortar|waterproof|hazardous\s+substance)\b",
@@ -816,25 +814,15 @@ def _fix_unsupported_waterproofing(tb: dict) -> None:
 
 # ── Content-quality post-processing ───────────────────────────────────────────
 
-_DEMOLITION_PHRASES = [
-    "demolition notification", "demolition licence", "demolition supervisor",
-    "pre-demolition", "cpccde3016", "demolition swms",
-    "structures over 6m", "demolition of load", "demolish",
-    "repair-demolition", "demolition work",
-    "load-bearing demolition", "demolition applies",
-    "demolition or scaffolding competency", "demolition competency",
-    "demolition method statement", "demolition method",
-    "demolition experience",
-]
-
 # Controls the agent invents that are not supported by a typical remedial painting quote
 _UNSUPPORTED_CONTROL_PHRASES = [
     "utility isolation certificate", "utility isolation",
-    "shoring plan", "shoring and stability",
+    "service isolation", "electrical isolation", "gas isolation", "water isolation",
+    "shoring plan", "shoring and stability", "propping plan", "propping design",
     "council development consent", "council consent",
-    "structural engineer approval", "structural engineer sign",
-    "structural engineer's shoring",
+    "structural engineer", "structural engineering",
     "power isolation certificate",
+    "traffic controller", "traffic control plan",
 ]
 
 # Active hazmat survey/assessment workflow — the quote treats these as latent conditions
@@ -854,7 +842,7 @@ def _strip_unsupported_controls(tb: dict) -> None:
     These are reasonable for larger construction projects but not quote-faithful
     for a painting/remedial scope.
     """
-    for field in ("controls", "admin", "hold_points"):
+    for field in ("controls", "admin", "hold_points", "stop_work"):
         items = tb.get(field, [])
         if isinstance(items, list):
             tb[field] = [item for item in items
@@ -886,10 +874,9 @@ def _strip_sealant_drift(tb: dict) -> None:
     for phrase in _SEALANT_DRIFT_PHRASES:
         scope = scope.replace(phrase, "").replace(phrase.title(), "")
     # Clean up trailing semicolons/commas from removal
-    import re
-    scope = re.sub(r';\s*;', ';', scope)
-    scope = re.sub(r',\s*,', ',', scope)
-    scope = re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
+    scope = _re.sub(r';\s*;', ';', scope)
+    scope = _re.sub(r',\s*,', ',', scope)
+    scope = _re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
     tb["scope"] = scope
     # Strip from all list fields including hazards
     for field in ("controls", "admin", "hazards", "hold_points", "stop_work"):
@@ -900,13 +887,15 @@ def _strip_sealant_drift(tb: dict) -> None:
 
 
 _TIMBER_DRIFT_PHRASES = [
-    "decay", "rot ", "rot,", "biocide", "preservative", "fungicid",
-    "insecticid", "timber decay", "check for decay", "insect damage",
+    "decay", "biocide", "preservativ", "fungicid",
+    "insecticid", "insect damage", "rot and",
+    "timber rot", "check for rot",
 ]
 
 
 _GREEN_WALL_DRIFT_PHRASES = [
-    "irrigation", "test irrigation", "drainage test", "pressure test",
+    "irrigat",  # catches irrigation, irrigating, irrigated
+    "drainage test", "pressure test",
     "electrical isolation", "energise", "power isolation",
     "certification", "certif", "commissioning",
 ]
@@ -958,10 +947,11 @@ def _strip_timber_drift(tb: dict) -> None:
         return
     # Clean task name
     tb["task"] = _re.sub(r'(?i)\band\s+check\s+for\s+decay\b', '', tb["task"]).strip()
-    # Clean scope
+    # Clean scope — use case-insensitive substring removal (no word boundaries
+    # because phrases like "preservativ" need to match "preservative")
     scope = tb.get("scope", "")
     for phrase in _TIMBER_DRIFT_PHRASES:
-        scope = _re.sub(r'(?i)\b' + _re.escape(phrase) + r'\b', '', scope)
+        scope = _re.sub(r'(?i)' + _re.escape(phrase) + r'\w*', '', scope)
     scope = _re.sub(r'\s+', ' ', scope).strip().rstrip(';,.')
     if not scope or len(scope) < 20:
         scope = ("Prepare unpainted timber beams and architectural features with "
@@ -1041,20 +1031,22 @@ def _strip_active_hazmat(tb: dict) -> None:
 
 
 def _strip_demolition_content(tb: dict) -> None:
-    """Strip demolition-specific controls/admin from non-demolition tasks.
+    """Strip any content containing 'demolition' from non-demolition tasks.
 
-    The agents sometimes inject demolition requirements into scaffold
-    dismantling, green wall removal, and other tasks that are not demolition.
+    Uses broad pattern matching — any list item containing 'demolition' (case-insensitive)
+    is removed. This is aggressive but justified: the quote is for remedial painting,
+    and no item mentioning demolition is source-supported.
     """
     task_name = tb.get("task", "").lower()
     # If the task is actual demolition, keep everything
     if "demolit" in task_name and "dismantle" not in task_name:
         return
-    for field in ("controls", "admin", "hold_points"):
+    # Broad match: remove any item containing "demolition" (any variant)
+    for field in ("controls", "admin", "hold_points", "hazards", "stop_work"):
         items = tb.get(field, [])
         if isinstance(items, list):
             tb[field] = [item for item in items
-                         if not any(dp in item.lower() for dp in _DEMOLITION_PHRASES)]
+                         if "demolit" not in item.lower()]
 
 
 def _improve_responsibility(tb: dict) -> None:
@@ -1161,6 +1153,12 @@ _MONITORING_BY_HAZARD = {
         "frequency": "daily",
         "what_to_look_for": "Visual inspection; hazard tape, signage, and netting installed and intact",
     },
+    "qa": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who_checks": "Supervisor",
+        "frequency": "before each rectification session",
+        "what_to_look_for": "Signed defect list, photographic record, specification document on site",
+    },
 }
 
 
@@ -1168,9 +1166,10 @@ def _improve_monitoring(tb: dict) -> None:
     """Replace generic WAH-only monitoring with hazard-specific critical controls."""
     mon = tb.get("monitoring")
     if not isinstance(mon, dict):
-        # Create monitoring if missing
-        tb["monitoring"] = {"critical_control": "", "who_checks": "",
-                            "frequency": "", "what_to_look_for": ""}
+        # Create monitoring if missing — use schema field names (who, evidence)
+        # with fallback aliases (who_checks, what_to_look_for) for renderer compatibility
+        tb["monitoring"] = {"critical_control": "", "who": "", "who_checks": "",
+                            "frequency": "", "evidence": "", "what_to_look_for": ""}
         mon = tb["monitoring"]
     task_name = tb.get("task", "").lower()
     scope = tb.get("scope", "").lower()
@@ -1185,6 +1184,8 @@ def _improve_monitoring(tb: dict) -> None:
         pattern = "dust"
     elif any(kw in text for kw in ("sealant", "paint", "stain", "primer", "coat", "treat")):
         pattern = "chemical"
+    elif any(kw in text for kw in ("check", "defect", "inspect", "make good", "rectif")):
+        pattern = "qa"
     elif any(kw in text for kw in ("remove green", "remove wall", "strip",
                                      "reinstate green", "reinstall green", "reinstate wall",
                                      "reinstate and")):
@@ -1193,58 +1194,75 @@ def _improve_monitoring(tb: dict) -> None:
         pattern = "wah"  # fallback
 
     template = _MONITORING_BY_HAZARD[pattern]
-    # Only overwrite empty or generic fields
-    if not mon.get("who_checks"):
+    # Only overwrite empty or generic fields — set both alias pairs for schema/renderer compat
+    if not mon.get("who_checks") and not mon.get("who"):
         mon["who_checks"] = template["who_checks"]
+        mon["who"] = template["who_checks"]
     if not mon.get("frequency"):
         mon["frequency"] = template["frequency"]
-    if not mon.get("what_to_look_for"):
+    if not mon.get("what_to_look_for") and not mon.get("evidence"):
         mon["what_to_look_for"] = template["what_to_look_for"]
-    # Replace critical control if it's a generic harness-only pattern
-    # (even for scaffold tasks — they should mention scaffold/EWP checks, not just harness)
+        mon["evidence"] = template["what_to_look_for"]
+    # Replace critical control if it doesn't match the task's dominant hazard.
+    # For dust/chemical tasks, harness/scaffold monitoring is the wrong focus —
+    # the critical control should be about dust extraction or SDS, not access.
     cc = mon.get("critical_control", "")
-    cc_is_generic_harness = "harness" in cc.lower() and "scaffold" not in cc.lower() and "ewp" not in cc.lower()
-    if cc_is_generic_harness and pattern != "wah":
+    cc_lower = cc.lower()
+    should_replace = False
+    if pattern == "dust" and "dust" not in cc_lower and "p2" not in cc_lower and "extraction" not in cc_lower:
+        should_replace = True
+    elif pattern == "chemical" and "sds" not in cc_lower and "chemical" not in cc_lower and "ventilation" not in cc_lower:
+        should_replace = True
+    elif pattern == "setup" and "exclusion" not in cc_lower and "barrier" not in cc_lower:
+        should_replace = True
+    elif pattern == "scaffold" and "scaffold" not in cc_lower and "ewp" not in cc_lower and "tag" not in cc_lower:
+        should_replace = True
+    elif pattern == "removal" and "exclusion" not in cc_lower and "barrier" not in cc_lower:
+        should_replace = True
+    elif pattern == "qa" and "defect" not in cc_lower and "specification" not in cc_lower and "sign" not in cc_lower:
+        should_replace = True
+    elif pattern == "wah":
+        should_replace = False  # keep whatever the agent set for WAH tasks
+    if should_replace:
         mon["critical_control"] = template["critical_control"]
 
 
 def _correct_ccvs_by_task_type(tb: dict) -> None:
-    """Correct CCVS code based on the task's dominant hazard, not just access method.
+    """Correct CCVS code based on the task's dominant hazard.
 
-    The agents tend to assign WAH-H6 to every task performed on a scaffold.
-    But the CCVS should reflect the dominant METHOD hazard:
-    - Painting/coating/sealant → CHM (chemical exposure)
+    Runs on ALL tasks — fixes WAH overcall, fills N/A, and corrects mismatches
+    (e.g. CHM on a dust task). The CCVS should reflect the dominant METHOD hazard:
     - Grinding/cutting/repointing → SIL (silica/dust)
+    - Painting/coating/sealant → CHM (chemical exposure)
     - Scaffold erection/dismantling → WAH (genuinely WAH)
-    - Site setup/demob → SYS-M3 or N/A
-    WAH remains as an additional flag via wah_applicable.
+    - Green wall removal/reinstatement → WAH (at height)
+    - Site setup/QA → SYS-M3
     """
     ccvs = tb.get("ccvs_code", "N/A")
     task_name = tb.get("task", "").lower()
 
-    # Only correct if currently WAH and the task is not genuinely a WAH-method task
-    if not ccvs.startswith("WAH"):
-        return
-
-    _WAH_METHOD_TASKS = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
-                          "rope access", "abseil", "ladder")
-    if any(kw in task_name for kw in _WAH_METHOD_TASKS):
-        return  # genuinely WAH — keep it
-
-    # Determine correct CCVS by dominant method hazard
-    if any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
-                                       "treat", "primer", "timber")):
-        tb["ccvs_code"] = "CHM-H6"
+    # Determine the correct CCVS from task name keywords
+    # Dust/silica checked BEFORE chemical — "repoint and seal" is primarily dust
+    _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
+                    "rope access", "abseil", "ladder", "remove green", "reinstate")
+    if any(kw in task_name for kw in _WAH_METHOD):
+        correct = "WAH-H6"
     elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",
-                                         "spalling", "mortar", "reconstruct")):
-        tb["ccvs_code"] = "SIL-H6"
+                                         "stitch", "spalling", "mortar", "reconstruct")):
+        correct = "SIL-H6"
+    elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
+                                         "treat", "primer", "timber", "prepare")):
+        correct = "CHM-H6"
     elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise")):
-        tb["ccvs_code"] = "SYS-M3"
+        correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good")):
-        tb["ccvs_code"] = "SYS-M3"
-    elif any(kw in task_name for kw in ("remove green", "reinstate")):
-        tb["ccvs_code"] = "WAH-H6"  # green wall at height is genuinely WAH
-    # wah_applicable stays True since the work IS at height
+        correct = "SYS-M3"
+    else:
+        return  # no confident match — keep whatever the agent set
+
+    # Apply correction if current code doesn't match
+    if ccvs == "N/A" or ccvs != correct:
+        tb["ccvs_code"] = correct
 
 
 def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: bool) -> dict:
@@ -1366,13 +1384,18 @@ def _inject_occupied_controls(tb: dict, inference: dict) -> None:
         return
 
     task_name = tb.get("task", "").lower()
+
+    # Skip demob/dismantle tasks — interface controls don't belong here
+    if any(kw in task_name for kw in ("demob", "dismantle", "remove scaffold")):
+        return
+
     controls = tb.setdefault("controls", [])
     admin = tb.setdefault("admin", [])
     hold_points = tb.setdefault("hold_points", [])
     stop_work = tb.setdefault("stop_work", [])
 
     # Detect if this is a setup/mobilisation task
-    _SETUP_KEYWORDS = ["set up", "setup", "establish", "mobilise", "mobilize", "plan"]
+    _SETUP_KEYWORDS = ["set up", "setup", "establish", "mobilise site", "mobilize site", "plan"]
     is_setup = any(kw in task_name for kw in _SETUP_KEYWORDS)
 
     # Detect if this is an elevated task
@@ -1427,9 +1450,11 @@ def _inject_interface_controls(tb: dict, inference: dict) -> None:
     classification = inference.get("swms_classification", {})
     if classification.get("occupancy_context") != "occupied":
         return
-    # Only inject into site-setup / mobilisation tasks
+    # Only inject into site-setup / mobilisation tasks (not demob)
     task_name = tb.get("task", "").lower()
-    _SETUP_KW = ["set up", "setup", "establish", "mobilise", "mobilize",
+    if any(kw in task_name for kw in ("demob", "dismantle", "remove scaffold")):
+        return
+    _SETUP_KW = ["set up", "setup", "establish", "mobilise site", "mobilize site",
                   "plan access", "site and plan"]
     if not any(kw in task_name for kw in _SETUP_KW):
         return

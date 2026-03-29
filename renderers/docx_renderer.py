@@ -7,6 +7,7 @@ Aptos 9pt content, 10pt bold risk cells. No amber fill on data rows.
 """
 
 import os
+import re as _re
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -126,18 +127,16 @@ _DUPLICATE_TOKENS = [
     ("  ", " "),
 ]
 
-import re as _re_audit
-_AUDIT_PATTERN = _re_audit.compile(r'AUDIT:\s*[\w\-|,\s]+$', _re_audit.MULTILINE)
 
-import re as _re_sanitise
+_AUDIT_PATTERN = _re.compile(r'AUDIT:\s*[\w\-|,\s]+$', _re.MULTILINE)
 
 # Pattern: "steel-capped footwear— steel-capped" → "steel-capped footwear"
 # Catches: "<prefix> <word>— <prefix>" or "<prefix> <word>—<prefix>"
-_PPE_DOUBLE_PREFIX = _re_sanitise.compile(
+_PPE_DOUBLE_PREFIX = _re.compile(
     r'\b(steel-capped|cut-resistant|chemical-resistant|high-visibility)'
     r'(\s+\w[\w\s,]*?)'
     r'[—\-]+\s*\1',
-    _re_sanitise.IGNORECASE,
+    _re.IGNORECASE,
 )
 
 
@@ -147,7 +146,7 @@ def sanitise_text(text: str) -> str:
     text = text.encode("utf-8", errors="replace").decode("utf-8")
     # Strip ?? replacement artifacts from surrogate stripping (e.g. "?? STOP WORK" → "STOP WORK")
     # Only strip ?? when followed by space or at start — preserves legitimate "??" in prose
-    text = _re_sanitise.sub(r'(?:^|\b)\?\?\s+', '', text).strip()
+    text = _re.sub(r'(?:^|\b)\?\?\s+', '', text).strip()
     # Strip legacy AUDIT: metadata lines
     text = _AUDIT_PATTERN.sub('', text).strip()
     for bad, good in _DUPLICATE_TOKENS:
@@ -162,14 +161,13 @@ def sanitise_text(text: str) -> str:
     return text
 
 # —— CCVS code validator ——————————————————————————————————————————————————————
-import re as _re_ccvs
 
 _VALID_CCVS_STREAMS = [
     'WFR', 'WFA', 'WAH', 'IRA', 'ELE', 'SIL', 'STR', 'CFS',
     'ENE', 'HOT', 'MOB', 'ASB', 'LED', 'TRF', 'ENV', 'CHM',
     'SCF', 'CRN', 'EXC', 'MNH', 'NOI', 'TLT', 'DEM', 'FMW',
 ]
-_VALID_CCVS_PATTERN = _re_ccvs.compile(
+_VALID_CCVS_PATTERN = _re.compile(
     r'^(' + '|'.join(_VALID_CCVS_STREAMS) + r')-(H6|H9|M3|M4|L1|L2)$'
 )
 
@@ -446,8 +444,6 @@ def _write_bullet_para(cell, text: str, size_pt: int = 9, bold: bool = False,
 
     return para
 
-
-import re as _re
 
 _STOP_WORK_PREFIX = _re.compile(
     r"^(\U0001f6d1\s*)?STOP\s+WORK\s+(if\s*:\s*)?",
@@ -1212,61 +1208,67 @@ def _fill_signoff_table(doc) -> None:
 
 
 def _build_footer(doc, project_meta, jur, jurisdiction, doc_date, description_text: str = "") -> None:
-    """Build document footer with SWMS ID slug and jurisdiction reference."""
-    import re as _re
-    from datetime import date
-    _address = (project_meta.get("project_address")
-                or project_meta.get("site_name")
-                or project_meta.get("site_address", ""))
-    if _address:
-        _slug_parts = _address.split(",")[0].strip()
-        _slug = _re.sub(r'[^a-zA-Z0-9\s]', '', _slug_parts)
-        _slug = _re.sub(r'\s+', '-', _slug.strip())
-        _suburb_match = _re.search(r',\s*([A-Za-z]+)', _address)
-        if _suburb_match:
-            _slug += '-' + _suburb_match.group(1)
-    else:
-        _slug = project_meta.get("project_name", "UNKNOWN")
-    _slug = _re.sub(r'[\\/:*?"<>|]', "-", _slug)
+    """Build document footer by replacing template placeholders with actual values.
+
+    Template placeholders (set in the .docx footer table):
+      [DOCUMENT_FILENAME]  → SWMS-{date}-{version}.docx
+      [DOCUMENT_VERSION]   → Version: {version_number}
+      [DOCUMENT_DATES]     → Issue Date: {issue_date} / Review Date: {review_date}
+      [Insert Work Activity Here] → truncated description text
+    """
+    from datetime import date, timedelta
+
+    # Build filename
     footer_date = project_meta.get("date", "")
     if not footer_date:
         footer_date = date.today().strftime("%d%m%Y")
     else:
-        footer_date = footer_date.replace("/", "")
+        footer_date = footer_date.replace("/", "").replace("-", "")
     _version = project_meta.get("version", "V1")
-    footer_text = f"SWMS-{footer_date}-{_version}.docx"
+    _version_num = _version.replace("V", "") if _version.startswith("V") else _version
+    footer_filename = f"SWMS-{footer_date}-{_version}.docx"
+
+    # Build dates
+    issue_date_str = doc_date
+    try:
+        _issue = date.today()
+        review_date_str = (_issue + timedelta(days=365)).strftime("%d-%m-%Y")
+        issue_date_str = _issue.strftime("%d-%m-%Y")
+    except Exception:
+        review_date_str = ""
+    dates_text = f"Issue Date: {issue_date_str} / Review Date: {review_date_str}"
+
+    # Placeholder map for footer table cells
+    _PLACEHOLDERS = {
+        "[DOCUMENT_FILENAME]": footer_filename,
+        "[DOCUMENT_VERSION]": f"Version: {_version_num}",
+        "[DOCUMENT_DATES]": dates_text,
+    }
 
     section = doc.sections[0]
     footer = section.footer
     footer.is_linked_to_previous = False
 
-    # Replace filename in footer table row 0, col 0 (template has static filename there)
     if footer.tables:
-        cell = footer.tables[0].cell(0, 0)
-        for para in cell.paragraphs:
-            para.clear()
-        _run(cell.paragraphs[0], footer_text, size_pt=_SZ)
-        # Replace [Insert Work Activity Here] in row 1 with description text
-        if description_text and len(footer.tables[0].rows) > 1:
-            desc_cell = footer.tables[0].cell(1, 0)
-            if "[Insert" in desc_cell.text or "[insert" in desc_cell.text:
-                for para in desc_cell.paragraphs:
-                    para.clear()
-                _run(desc_cell.paragraphs[0], description_text, size_pt=_SZ)
+        ft = footer.tables[0]
+        # Replace placeholders in all footer table cells
+        for row in ft.rows:
+            for cell in row.cells:
+                cell_text = cell.text
+                for placeholder, value in _PLACEHOLDERS.items():
+                    if placeholder in cell_text:
+                        for para in cell.paragraphs:
+                            para.clear()
+                        _run(cell.paragraphs[0], value, size_pt=_SZ)
+                        break  # one replacement per cell
 
-    # Resolve footer tokens in all sections
-    _FOOTER_TOKENS = {
-        "{doc_ref}":  project_meta.get("doc_ref", f"SWMS-{_slug}"),
-        "{revision}": project_meta.get("revision", "V01"),
-        "{project}":  project_meta.get("project_name", ""),
-        "{date}":     project_meta.get("issue_date", doc_date),
-    }
-    for _sec in doc.sections:
-        for _fp in _sec.footer.paragraphs:
-            for _fr in _fp.runs:
-                for _tok, _val in _FOOTER_TOKENS.items():
-                    if _tok in _fr.text:
-                        _fr.text = _fr.text.replace(_tok, _val)
+        # Replace [Insert Work Activity Here] in row 1 with description text
+        if description_text and len(ft.rows) > 1:
+            for cell in ft.rows[1].cells:
+                if "[Insert" in cell.text or "[insert" in cell.text:
+                    for para in cell.paragraphs:
+                        para.clear()
+                    _run(cell.paragraphs[0], description_text, size_pt=_SZ)
 
 
 # —— Main SWMS document renderer ——————————————————————————————————————————
@@ -1377,8 +1379,7 @@ def render_swms_document(
     doc_date = project_meta.get("date", "")
     if doc_date:
         # Normalise ISO format (2026-03-11) to local format (11/03/2026)
-        import re as _re_date
-        if _re_date.match(r'^\d{4}-\d{2}-\d{2}$', doc_date):
+        if _re.match(r'^\d{4}-\d{2}-\d{2}$', doc_date):
             from datetime import datetime
             doc_date = datetime.strptime(doc_date, '%Y-%m-%d').strftime(
                 jur.get("date_format", "%d/%m/%Y")
@@ -1471,7 +1472,7 @@ def validate_output(doc) -> list[str]:
             errors.append(f"Unresolved placeholder found: '{token}'")
 
     # Check for malformed CCVS codes (missing hyphen)
-    bad_codes = _re_ccvs.findall(
+    bad_codes = _re.findall(
         r'\b(' + '|'.join(_VALID_CCVS_STREAMS) + r')[A-Z]\d\b', full_text
     )
     for code in bad_codes:

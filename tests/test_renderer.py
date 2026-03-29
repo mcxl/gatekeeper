@@ -513,3 +513,49 @@ class TestDomainRegression:
             "Banned word 'rectify' not substituted in task name"
         assert "utilise" not in result["scope"].lower(), \
             "Banned word 'utilise' not substituted in scope"
+
+
+# ── Footer placeholder tests ─────────────────────────────────────────────────
+
+class TestFooterPlaceholders:
+    """Verify that template footer placeholders are replaced during render."""
+
+    @pytest.fixture(autouse=True)
+    def _render(self):
+        """Render fixture 01 and store the Document for assertions."""
+        fixture = _load_fixture("01_basic_painting.json")
+        blocks = _build_task_blocks(fixture)
+        meta = fixture.get("project_meta", {})
+        meta["version"] = "V2"
+        inference = fixture.get("inference", {})
+        docx_bytes = render_swms_document(
+            tasks=blocks, project_meta=meta, inference=inference, jurisdiction="AU",
+        )
+        self.doc = Document(BytesIO(docx_bytes))
+        self.footer_table = None
+        footer = self.doc.sections[0].footer
+        if footer.tables:
+            self.footer_table = footer.tables[0]
+
+    def test_footer_table_exists(self):
+        assert self.footer_table is not None
+
+    def test_filename_placeholder_replaced(self):
+        cell_text = self.footer_table.cell(0, 0).text
+        assert "[DOCUMENT_FILENAME]" not in cell_text
+        assert "SWMS-" in cell_text
+        assert ".docx" in cell_text
+
+    def test_filename_contains_version(self):
+        cell_text = self.footer_table.cell(0, 0).text
+        assert "V2" in cell_text
+
+    def test_version_placeholder_replaced(self):
+        cell_text = self.footer_table.cell(0, 1).text
+        assert "[DOCUMENT_VERSION]" not in cell_text
+        assert "Version:" in cell_text or "2" in cell_text
+
+    def test_dates_placeholder_replaced(self):
+        cell_text = self.footer_table.cell(0, 3).text
+        assert "[DOCUMENT_DATES]" not in cell_text
+        assert "Issue Date:" in cell_text
