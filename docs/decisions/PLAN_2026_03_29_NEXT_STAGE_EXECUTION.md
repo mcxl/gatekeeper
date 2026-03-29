@@ -5,13 +5,13 @@
 
 ### Phase Sequence
 
-| Phase | Target | Type | Dependency |
-|-------|--------|------|------------|
-| 1 | Danks disposition | Governance update | None |
-| 2 | Issue-gate automation | Build (deterministic) | None |
-| 3 | Benchmark regression runner | Build (deterministic) | Phase 2 pattern |
-| 4 | EWP roof access stream | Benchmark refinement | Phase 2 available |
-| 5 | SWMS Review Engine | Benchmark setup | Real project assets |
+| Phase | Target | Type | Dependency | Status |
+|-------|--------|------|------------|--------|
+| 1 | Danks disposition | Governance update | None | **DONE** — status updated to AWAITING_EXTERNAL_REVIEW |
+| 2 | Issue-gate automation | Build (deterministic) | None | **DONE** — `src/issue_gate.py`, 9 checks, 29 tests |
+| 3 | Benchmark regression runner | Build (deterministic) | Phase 2 pattern | **DONE** — `src/regression_runner.py`, 5 streams, 175 tests |
+| 4 | EWP roof access stream | Benchmark refinement | Phase 2 available | **DONE** — 2 LBV cycles, transfer controls verified against SD Group reference |
+| 5 | SWMS Review Engine | Benchmark setup | Real project assets | NOT STARTED — awaiting benchmark asset selection |
 
 ### Phase 2 Detail: Issue-Gate Automation
 
@@ -45,4 +45,6 @@ Run as CI step or pre-commit check.
 
 ### Next Active Refinement Target
 
-EWP roof access benchmark — after Phase 2 is built.
+**Immediate:** External Aussie WHS review of 18 Danks Street SWMS (V12).
+**After review:** EWP deeper method-validity cycle or Lingate remedial works — depending on where the most value is.
+**Longer term:** SWMS Review Engine benchmark asset selection (Phase 5).
