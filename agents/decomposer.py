@@ -48,6 +48,18 @@ TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
 - Demolition: site setup → services isolation → hazmat survey
   and removal → structural demolition (top-down) → debris
   removal → demobilisation.
+- Remedial waterproofing / balcony / terrace: site setup →
+  scaffold or access → remove existing membrane, screed, and
+  tile bed (silica-producing demolition task) → repair substrate
+  (cracks, spalling) → apply new waterproofing membrane →
+  retile or finish → reinstate fittings → demobilisation.
+  ALWAYS include a separate removal/demolition task before
+  waterproofing application. Do not skip straight to membrane
+  application without first removing the failed existing system.
+- Remedial painting / facade repairs: site setup → scaffold or
+  access → removals and preparation → structural repairs →
+  sealant and coating application → finish coats → reinstatement
+  → defects → demobilisation. Keep repairs before coatings.
 
 - Each task must be a discrete, observable unit of work
 - task field: verb first, plain English, under 10 words
