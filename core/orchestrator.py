@@ -1184,7 +1184,8 @@ def _improve_monitoring(tb: dict) -> None:
         pattern = "dust"
     elif any(kw in text for kw in ("sealant", "paint", "stain", "primer", "coat", "treat")):
         pattern = "chemical"
-    elif any(kw in text for kw in ("check", "defect", "inspect", "make good", "rectif")):
+    elif any(kw in text for kw in ("check", "defect", "inspect", "make good", "rectif",
+                                     "test and check", "confirm")):
         pattern = "qa"
     elif any(kw in text for kw in ("remove green", "remove wall", "strip",
                                      "reinstate green", "reinstall green", "reinstate wall",
@@ -1244,7 +1245,8 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     # Determine the correct CCVS from task name keywords
     # Dust/silica checked BEFORE chemical — "repoint and seal" is primarily dust
     _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
-                    "rope access", "abseil", "ladder", "remove green", "reinstate")
+                    "rope access", "abseil", "ladder", "remove green", "reinstate",
+                    "roof", "gutter", "flashing", "mobilise boom", "lower waste")
     if any(kw in task_name for kw in _WAH_METHOD):
         correct = "WAH-H6"
     elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",

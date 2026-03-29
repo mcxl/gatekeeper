@@ -208,15 +208,20 @@ def _check_ccvs_alignment(tasks: list[dict]) -> GateCheck:
     return GateCheck("ccvs_alignment", CheckResult.PASS)
 
 
-def _check_wah_percentage(tasks: list[dict]) -> GateCheck:
-    """C6: WAH codes are < 50% of total tasks."""
+def _check_wah_percentage(tasks: list[dict],
+                          wah_threshold: int = 50) -> GateCheck:
+    """C6: WAH codes are below threshold percentage.
+
+    Default threshold: 50% for general SWMS.
+    For WAH-dominant streams (EWP, rope access), pass a higher threshold.
+    """
     if not tasks:
         return GateCheck("wah_percentage", CheckResult.PASS, "No tasks")
     wah = sum(1 for t in tasks if t.get("ccvs_code", "").startswith("WAH"))
     pct = wah * 100 // len(tasks)
-    if pct >= 50:
+    if pct >= wah_threshold:
         return GateCheck("wah_percentage", CheckResult.FAIL,
-                         f"WAH: {wah}/{len(tasks)} ({pct}%)")
+                         f"WAH: {wah}/{len(tasks)} ({pct}%) — threshold {wah_threshold}%")
     return GateCheck("wah_percentage", CheckResult.PASS,
                      f"WAH: {wah}/{len(tasks)} ({pct}%)")
 
@@ -312,6 +317,7 @@ def run_issue_gate(
     json_path: Optional[str] = None,
     tasks: Optional[list[dict]] = None,
     stage: Stage = Stage.BENCHMARK,
+    wah_threshold: int = 50,
 ) -> GateResult:
     """Run all issue-gate checks and return structured results.
 
@@ -347,7 +353,7 @@ def run_issue_gate(
         result.checks.append(_check_no_prestart_in_demob(task_list))
         result.checks.append(_check_ccvs_coverage(task_list))
         result.checks.append(_check_ccvs_alignment(task_list))
-        result.checks.append(_check_wah_percentage(task_list))
+        result.checks.append(_check_wah_percentage(task_list, wah_threshold))
 
     # Run docx-based checks (C7-C9)
     if doc:
@@ -375,6 +381,8 @@ def main():
     parser.add_argument("--json", dest="json_path", help="Path to task JSON")
     parser.add_argument("--stage", choices=["benchmark", "issue_ready"],
                         default="benchmark", help="Stage (default: benchmark)")
+    parser.add_argument("--wah-threshold", type=int, default=50,
+                        help="WAH percentage threshold (default: 50, use 90 for EWP streams)")
     args = parser.parse_args()
 
     if not args.docx and not args.json_path:
@@ -385,6 +393,7 @@ def main():
         docx_path=args.docx,
         json_path=args.json_path,
         stage=stage,
+        wah_threshold=args.wah_threshold,
     )
     print(result.summary())
     sys.exit(0 if result.failed == 0 else 1)
