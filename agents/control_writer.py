@@ -67,6 +67,16 @@ CONTROL RULES:
 - Controls must address the dominant hazard first
 - Follow hierarchy: Eliminate → Substitute → Isolate → Engineering →
   Administrative → PPE
+- CRITICAL — DOMINANT HAZARD FIRST:
+  Do NOT lead every task with harness/scaffold/WAH controls.
+  The first 2-3 controls must address the task's actual method hazard:
+  - Silica / dust tasks: lead with wet suppression, dust extraction, RPE
+  - Chemical / coating tasks: lead with SDS, ventilation, PPE match
+  - Structural / removal tasks: lead with engineer approval, temp support, edge protection
+  - Crane / lift tasks: lead with lift plan, exclusion zone, rigging
+  WAH controls (harness, scaffold tag) are secondary for tasks where
+  the dominant hazard is dust, chemical, or structural — include them
+  but do NOT put them first.
 
 HOLD POINT FORMAT:  ⚠️ HOLD POINT — do not [action] until: [condition met]
 STOP WORK FORMAT:   🛑 STOP WORK if: [specific observable trigger condition]

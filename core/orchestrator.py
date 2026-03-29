@@ -826,6 +826,7 @@ _UNSUPPORTED_CONTROL_PHRASES = [
     "road opening permit", "traffic management plan", "traffic management",
     "lane closure", "speed reduction",
     "as 1742",
+    "after-hours work permit", "after-hours permit", "council after-hours",
 ]
 
 # Active hazmat survey/assessment workflow — the quote treats these as latent conditions
