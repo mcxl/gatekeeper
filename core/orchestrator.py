@@ -1204,10 +1204,17 @@ def _improve_monitoring(tb: dict) -> None:
     ccvs = tb.get("ccvs_code", "N/A")
     _CCVS_TO_PATTERN = {
         "SIL": "dust", "CHM": "chemical", "WAH": "wah",
-        "SYS": "qa", "TRF": "setup", "ELE": "scaffold",
+        "TRF": "setup", "ELE": "scaffold",
     }
     ccvs_prefix = ccvs.split("-")[0] if "-" in ccvs else ccvs
-    ccvs_pattern = _CCVS_TO_PATTERN.get(ccvs_prefix)
+    # SYS maps to either "setup" or "qa" depending on task keywords
+    if ccvs_prefix == "SYS":
+        if any(kw in text for kw in ("establish", "mobilise", "setup", "set up")):
+            ccvs_pattern = "setup"
+        else:
+            ccvs_pattern = "qa"
+    else:
+        ccvs_pattern = _CCVS_TO_PATTERN.get(ccvs_prefix)
     if ccvs_pattern and ccvs_pattern != pattern and ccvs_pattern in _MONITORING_BY_HAZARD:
         pattern = ccvs_pattern
 
@@ -1259,8 +1266,14 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     ccvs = tb.get("ccvs_code", "N/A")
     task_name = tb.get("task", "").lower()
 
-    # Determine the correct CCVS from task name keywords
-    # Dust/silica checked BEFORE chemical — "repoint and seal" is primarily dust
+    # Determine the correct CCVS from task name keywords.
+    # Chemical-dominant keywords override SIL when both are present
+    # (e.g. "Apply waterproofing membrane and new tile" → CHM, not SIL).
+    _CHM_DOMINANT = ("waterproof", "membrane", "epoxy", "primer")
+    if any(kw in task_name for kw in _CHM_DOMINANT):
+        tb["ccvs_code"] = "CHM-H6"
+        return
+
     _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
                     "rope access", "abseil", "ladder", "remove green", "reinstate",
                     "roof access", "roof perimeter", "on roof",
