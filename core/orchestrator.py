@@ -1175,7 +1175,9 @@ def _improve_monitoring(tb: dict) -> None:
     scope = tb.get("scope", "").lower()
     text = task_name + " " + scope
 
-    # Determine dominant hazard type for monitoring
+    # Determine dominant hazard type for monitoring.
+    # First try task-name keywords, then use the final CCVS code as authoritative
+    # override if it disagrees — since _correct_ccvs_by_task_type already ran.
     if any(kw in text for kw in ("establish", "setup", "set up", "mobilise", "exclusion")):
         pattern = "setup"
     elif any(kw in text for kw in ("scaffold", "ewp", "erect", "dismantle")):
@@ -1193,6 +1195,19 @@ def _improve_monitoring(tb: dict) -> None:
         pattern = "removal"
     else:
         pattern = "wah"  # fallback
+
+    # CCVS-based override: if the corrected CCVS code disagrees with the keyword
+    # pattern, trust the CCVS (it was set by _correct_ccvs_by_task_type which
+    # uses a more comprehensive keyword set).
+    ccvs = tb.get("ccvs_code", "N/A")
+    _CCVS_TO_PATTERN = {
+        "SIL": "dust", "CHM": "chemical", "WAH": "wah",
+        "SYS": "qa", "TRF": "setup", "ELE": "scaffold",
+    }
+    ccvs_prefix = ccvs.split("-")[0] if "-" in ccvs else ccvs
+    ccvs_pattern = _CCVS_TO_PATTERN.get(ccvs_prefix)
+    if ccvs_pattern and ccvs_pattern != pattern and ccvs_pattern in _MONITORING_BY_HAZARD:
+        pattern = ccvs_pattern
 
     template = _MONITORING_BY_HAZARD[pattern]
     # Only overwrite empty or generic fields — set both alias pairs for schema/renderer compat
@@ -1295,12 +1310,12 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
     _strip_timber_drift(tb)
     _strip_green_wall_drift(tb)
     _improve_responsibility(tb)
-    _improve_monitoring(tb)
     _propagate_scaffold_wah(tb, inference)
     _inject_occupied_controls(tb, inference)
     _inject_interface_controls(tb, inference)
     _inject_ewp_transfer_controls(tb, inference)
     _correct_ccvs_by_task_type(tb)
+    _improve_monitoring(tb)  # runs AFTER CCVS correction so monitoring aligns to final code
     tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
     return tb
 
