@@ -294,8 +294,90 @@ Default workflow:
 5. Report what changed and any remaining risk.
 6. Commit only if tests pass.
 
-Benchmark workflow:
-1. Compare current output to benchmark output.
-2. Identify top 1-3 gaps only.
-3. Pick the next slice.
-4. Implement that slice only.
+Headless-by-default workflow:
+1. Treat serious work as a bounded phase, not an open-ended session.
+2. Work checkpoint-to-checkpoint without stopping for minor questions.
+3. Complete the current phase end-to-end where feasible:
+   - implementation
+   - verification
+   - decision log / governance update if needed
+   - local git commit if the phase is coherent
+4. Stop only at a real checkpoint:
+   - external review is required
+   - a material blocker is hit
+   - a decision has non-obvious consequences
+   - the current phase is complete and verified
+5. Always finish with:
+   - what was completed
+   - what was verified
+   - what decision was reached
+   - whether governance artifacts should be updated
+   - whether a local git commit was made
+   - the exact next prompt to paste
+
+Permanent operator preference:
+- Claude should own the bounded phase end-to-end wherever feasible.
+- Manual terminal / shell work should be exceptional, not normal.
+- For normal benchmark, automation, regression, and cleanup phases, Claude should:
+  - do the work
+  - run the checks
+  - update governance artifacts if needed
+  - make the local git commit if the phase is coherent
+  - stop with the exact next prompt to paste
+- Only fall back to manual terminal work for:
+  - recovery
+  - explicit manual inspection requested by the operator
+  - explicit manual override
+  - explicit GitHub push when the operator wants to control that step
+
+Prompting rule:
+- include the headless checkpoint-to-checkpoint wrapper by default in serious prompts
+- include the multi-agent role layer when role separation is useful
+- include an explicit stop condition and exact-next-prompt handoff
+
+Terminal minimisation rule:
+- prefer Claude-owned phase execution over manual shell micromanagement
+- use the terminal mainly for:
+  - recovery
+  - one-off inspection
+  - explicit manual override
+- for normal benchmark, automation, and cleanup phases, Claude should own the work end-to-end and leave a clean handoff
+
+## Headless Benchmark Workflow
+
+Default operating mode: **headless checkpoint-to-checkpoint**.
+
+### Phase flow
+1. Understand the bounded phase objective
+2. Do the work end-to-end within that phase
+3. Verify the result (tests, issue gate, regression runner)
+4. Update governance if appropriate
+5. Local git commit if coherent
+6. Stop with a clear handoff (what was done, what was verified, exact next prompt)
+
+### Benchmark loop (one cycle)
+1. Generate → compare against reference/benchmark → run issue gate
+2. Classify defects: deterministic fix / prompt fix / case-specific / expert-review-only
+3. Apply one narrow fix set only
+4. Verify: rerun generation + issue gate + regression runner
+5. Governance update + decision log
+6. Checkpoint
+
+### Checkpoint rules
+- Stop at real checkpoints only: external review needed, material blocker, non-obvious decision, phase complete
+- Do not stop for minor questions or partial progress
+- Do not keep polishing after diminishing returns
+- If issue gate has hard fails, do not send for external review unless explicitly directed
+- If external review says below strong working draft, move stream back to ACTIVE
+- If repeated narrow cycles stop improving the same defect, treat the stream as at deterministic limit
+
+### External review
+- External Aussie WHS review is the independent consultant-trust test
+- Internal Claude review handles comparison work when criteria exist
+- External review is for confirming benchmark quality, not for finding obvious defects (issue gate should catch those first)
+
+### Source of truth
+- `docs/BENCHMARK_GOVERNANCE_REGISTER.md` is the single source of truth for stream status
+- Decision logs in `docs/decisions/` record each cycle outcome
+- `src/issue_gate.py` is the deterministic pre-review gate (12 checks)
+- `src/regression_runner.py` protects closed streams (5 streams, 175 tests)
