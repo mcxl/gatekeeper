@@ -45,6 +45,10 @@ Run as CI step or pre-commit check.
 
 ### Next Active Refinement Target
 
-**Immediate:** External Aussie WHS review of 18 Danks Street SWMS (V12).
-**After review:** EWP deeper method-validity cycle or Lingate remedial works — depending on where the most value is.
-**Longer term:** SWMS Review Engine benchmark asset selection (Phase 5).
+**Danks disposition (2026-03-29):** Closed as STRONG_WORKING_DRAFT_ONLY after external review. Not benchmark-quality confirmed. Learnings carried forward.
+
+**Next priorities:**
+1. Strengthen HRCW/CCVS issue-gate checks using Danks learnings (applies to all SWMS streams)
+2. EWP deeper method-validity cycle or agent prompt enrichment
+3. Lingate remedial works — first LBV cycle
+4. SWMS Review Engine benchmark asset selection (Phase 5, when ready)
