@@ -103,8 +103,9 @@ _DEMOB_KEYWORDS = ("demob", "dismantle", "remove scaffold")
 
 _UNSUPPORTED_KEYWORDS = (
     "utility isolation", "service isolation", "electrical isolation",
-    "traffic controller", "traffic control plan",
-    "road opening permit", "traffic management plan", "as 1742",
+    "traffic controller", "traffic control plan", "traffic control",
+    "road opening permit", "traffic management plan", "traffic management",
+    "lane closure", "speed reduction", "as 1742",
     "commissioning", "membrane", "biocide", "waterproof", "demolit",
     "council consent", "shoring plan", "propping plan", "propping design",
     "disconnection certificate", "provider certification",

@@ -60,6 +60,22 @@ TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
   access → removals and preparation → structural repairs →
   sealant and coating application → finish coats → reinstatement
   → defects → demobilisation. Keep repairs before coatings.
+- CLT / mass timber panel installation: site setup → crane
+  positioning and lift plan confirmation → prepare prop bases
+  (check bearing, timber packing where required) → lift and
+  position panel with crane → plumb panel and install temporary
+  props → release crane hook (only after props confirmed loaded)
+  → repeat for remaining panels → install permanent structural
+  connections (bolts, brackets, screws per engineer drawing) →
+  engineer inspection and hold for temporary works release →
+  remove props only on engineer written approval → demobilisation.
+  ALWAYS include a separate permanent-connection task.
+  ALWAYS include an engineer hold-point before any prop removal.
+  NEVER allow prop removal or loosening except in the
+  engineer-approved release sequence.
+  Do NOT add traffic management, road opening, or lane closure
+  tasks for residential sites unless the description explicitly
+  requires road work.
 
 - Each task must be a discrete, observable unit of work
 - task field: verb first, plain English, under 10 words
