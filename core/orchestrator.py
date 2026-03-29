@@ -658,7 +658,8 @@ _PHASE_ORDER = [
     (0, ["set up", "setup", "establish site", "establish and",
          "site prep", "plan access", "preliminar", "induction",
          "site setup", "mobilise site", "mobilize site",
-         "mobilise and", "mobilize and", "establish scaffold"]),
+         "mobilise and", "mobilize and", "establish scaffold",
+         "mobilise boom", "mobilize boom"]),
     # Phase 1: Access equipment erection
     (1, ["erect scaffold", "scaffold erect", "install scaffold",
          "position ewp", "ewp setup", "access equipment",
