@@ -381,9 +381,9 @@ class TestUnsupportedControlsJson:
         result = _check_unsupported_controls_json(t)
         assert result.result == CheckResult.FAIL
 
-    def test_fail_structural_engineer_in_admin(self):
-        t = _tasks("Repoint brickwork")
-        t[0]["admin"] = ["Obtain structural engineer approval before starting"]
+    def test_fail_road_opening_in_admin(self):
+        t = _tasks("Establish site")
+        t[0]["admin"] = ["Obtain road opening permit before work starts"]
         result = _check_unsupported_controls_json(t)
         assert result.result == CheckResult.FAIL
 

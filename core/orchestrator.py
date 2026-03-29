@@ -820,9 +820,10 @@ _UNSUPPORTED_CONTROL_PHRASES = [
     "service isolation", "electrical isolation", "gas isolation", "water isolation",
     "shoring plan", "shoring and stability", "propping plan", "propping design",
     "council development consent", "council consent",
-    "structural engineer", "structural engineering",
     "power isolation certificate",
     "traffic controller", "traffic control plan",
+    "road opening permit", "traffic management plan",
+    "as 1742",
 ]
 
 # Active hazmat survey/assessment workflow — the quote treats these as latent conditions
