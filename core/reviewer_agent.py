@@ -141,6 +141,25 @@ You are an Australian WHS consultant. Review unsupported controls and profession
 credibility only. Check: unsupported admin and governance controls, filler controls,
 template contamination from another job family, whether the document reads like a
 practitioner wrote it or a compliance collage.
+
+BELOW_STRONG_WORKING_DRAFT signals — return status FAIL if ANY of these are present:
+- unsupported controls in live task steps: after-hours council permit, owners corporation
+  special resolution, strata by-law compliance, NATA certificate, active asbestos
+  clearance as live scope when source says latent only
+- plant/equipment listed not supported by source method: EWP and mobile crane on a
+  scaffold-led occupied remedial job
+- HRCW set thinner than both task content and source scope
+- CCVS evidence checking access/harness on non-WAH dominant tasks
+- framework controls packaged as live work package tasks
+- active asbestos presumption embedded in live tasks when source confirms latent only
+
+STRONG_WORKING_DRAFT minimum bar — ALL must be true:
+- broad sequence correct for job family
+- dominant hazard controls present per task, not just listed
+- HRCW coherent with actual task content, not just keywords
+- no unsupported controls in live task steps
+- CCVS evidence verifies the dominant control family
+
 Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
 All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
 status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
@@ -316,8 +335,16 @@ async def run_parallel_review(
             elif finding.status == "REVIEW":
                 review_items.append(tagged)
 
+    # Credibility-drift floor: if credibility agent returns FAIL,
+    # overall status cannot be STRONG_WORKING_DRAFT or above.
+    # Unsupported controls in live task steps are trust-killers.
+    cred_floor_active = cred.status == "FAIL"
+
     # Determine overall status using calibrated thresholds
-    if len(hard_fails) >= HARD_FAIL_THRESHOLD_FULL_REWORK:
+    if cred_floor_active:
+        overall_status = OVERALL_STATUS_BELOW_DRAFT
+        recommended = RECOMMENDED_ACTION_TARGETED
+    elif len(hard_fails) >= HARD_FAIL_THRESHOLD_FULL_REWORK:
         overall_status = OVERALL_STATUS_BELOW_DRAFT
         recommended = RECOMMENDED_ACTION_FULL
     elif len(hard_fails) > 0:
