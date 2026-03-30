@@ -740,7 +740,7 @@ def _validate_rendered_output(
                 loop = _asyncio.new_event_loop()
                 reviewer_result = loop.run_until_complete(
                     run_parallel_review(
-                        swms_content=_json.dumps(tasks_raw[:5], default=str),
+                        swms_content=_json.dumps(tasks_raw, default=str, separators=(',', ':')),
                         scope_content=scope_text,
                         job_type=job_type_val,
                     )

@@ -37,7 +37,7 @@ RECOMMENDED_ACTION_FULL = "FULL_REWORK"
 HARD_FAIL_THRESHOLD_FULL_REWORK = 2
 
 MODEL = "claude-haiku-4-5"
-MAX_TOKENS = 1500
+MAX_TOKENS = 4000
 
 
 # ── Anthropic client (same lazy singleton pattern as other agents) ───────────
@@ -73,11 +73,13 @@ class ReviewerResult:
     hard_fails: list[str] = field(default_factory=list)
     review_items: list[str] = field(default_factory=list)
     recommended_action: str = RECOMMENDED_ACTION_TARGETED
+    tasks_reviewed: int = 0
 
     def to_dict(self) -> dict:
         return {
             "overall_status": self.overall_status,
             "overall_summary": self.overall_summary,
+            "tasks_reviewed": self.tasks_reviewed,
             "architecture_sequence": {
                 "status": self.architecture_sequence.status,
                 "findings": self.architecture_sequence.findings,
@@ -114,30 +116,34 @@ _ARCH_PROMPT = """\
 You are an Australian WHS consultant. Review task architecture and sequencing only.
 Check: document control, task order against job-type mandatory sequence, framework vs
 work-package misuse, latent condition packaging.
-Return JSON with keys: status, findings, automatable_defects, human_judgment_required.
-No narrative. status must be PASS, FAIL, or REVIEW."""
+Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
+All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
+status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
 
 _HRCW_PROMPT = """\
 You are an Australian WHS consultant. Review HRCW selection and dominant hazard logic only.
 Check: HRCW selection vs actual task wording, dominant control family match per task type,
 HRCW undercall and overcall, silica and hazmat adequacy.
-Return JSON with keys: status, findings, automatable_defects, human_judgment_required.
-No narrative. status must be PASS, FAIL, or REVIEW."""
+Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
+All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
+status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
 
 _CCVS_PROMPT = """\
 You are an Australian WHS consultant. Review CCVS evidence alignment only.
 Check: evidence field matches dominant control family for each live task, WAH dominance,
 missing CCVS rows for live tasks, N/A rows hiding real task risk.
-Return JSON with keys: status, findings, automatable_defects, human_judgment_required.
-No narrative. status must be PASS, FAIL, or REVIEW."""
+Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
+All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
+status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
 
 _CRED_PROMPT = """\
 You are an Australian WHS consultant. Review unsupported controls and professional
 credibility only. Check: unsupported admin and governance controls, filler controls,
 template contamination from another job family, whether the document reads like a
 practitioner wrote it or a compliance collage.
-Return JSON with keys: status, findings, automatable_defects, human_judgment_required.
-No narrative. status must be PASS, FAIL, or REVIEW."""
+Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
+All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
+status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
 
 
 # ── Agent call ───────────────────────────────────────────────────────────────
@@ -250,10 +256,19 @@ async def run_parallel_review(
     Returns:
         ReviewerResult with assembled findings from all four agents.
     """
+    # Count tasks for logging
+    try:
+        _parsed = json.loads(swms_content) if isinstance(swms_content, str) else swms_content
+        _task_count = len(_parsed) if isinstance(_parsed, list) else 0
+    except Exception:
+        _task_count = 0
+    log.info(f"Reviewer agent receiving {_task_count} tasks, {len(swms_content)} chars")
+
     user_content = (
         f"Job type: {job_type or 'unknown'}\n"
+        f"Total tasks: {_task_count}\n"
         f"Scope: {scope_content[:500]}\n\n"
-        f"SWMS task data:\n{swms_content[:3000]}"
+        f"SWMS task data (full):\n{swms_content}"
     )
 
     # Run all four agents concurrently
@@ -308,4 +323,5 @@ async def run_parallel_review(
         hard_fails=hard_fails,
         review_items=review_items,
         recommended_action=recommended,
+        tasks_reviewed=_task_count,
     )
