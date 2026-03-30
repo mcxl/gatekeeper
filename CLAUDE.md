@@ -379,5 +379,7 @@ Default operating mode: **headless checkpoint-to-checkpoint**.
 ### Source of truth
 - `docs/BENCHMARK_GOVERNANCE_REGISTER.md` is the single source of truth for stream status
 - Decision logs in `docs/decisions/` record each cycle outcome
-- `src/issue_gate.py` is the deterministic pre-review gate (12 checks)
+- `src/issue_gate.py` is the deterministic pre-review gate (20 checks)
 - `src/regression_runner.py` protects closed streams (5 streams, 175 tests)
+- `core/reviewer_agent.py` — parallel Critic reviewer agent (4 specialist agents)
+- `core/job_type_rules.py` — job-type rule packs (remedial, new_build, demolition, maintenance)
