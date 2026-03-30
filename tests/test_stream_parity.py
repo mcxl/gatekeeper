@@ -74,6 +74,34 @@ def test_enrich_risk_labels_already_enriched_unchanged():
     assert tb["risk_post"] == "Low(2)"
 
 
+# ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
+
+def test_ccvs_demob_task_corrected_to_sys():
+    """Demob/reinstatement task should get SYS-M3, not WAH-H6."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Site demobilisation and building reinstatement", "ccvs_code": "WAH-H6"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
+def test_ccvs_handover_task_corrected_to_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Handover and site clean", "ccvs_code": "WAH-H6"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
+def test_ccvs_green_wall_reinstate_stays_wah():
+    """Green wall reinstatement is genuinely at height — stays WAH."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Reinstate green wall panels", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
 # ── T2-C: _suppress_false_ccvs_single ────────────────────────────────────────
 
 def test_suppress_false_ccvs_painting_task():

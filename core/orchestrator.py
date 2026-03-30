@@ -1357,9 +1357,18 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
         return
 
     _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
-                    "rope access", "abseil", "ladder", "remove green", "reinstate",
+                    "rope access", "abseil", "ladder", "remove green",
+                    "reinstate green", "reinstall green", "reinstate wall",
                     "roof access", "roof perimeter", "on roof",
                     "gutter", "flashing", "mobilise boom", "lower waste")
+    # Demob / site demobilisation tasks are procedural (SYS), not WAH
+    _DEMOB_SYS = ("demob", "demobilise", "demobilize", "site demobil",
+                   "building reinstate", "site reinstate", "handover",
+                   "site restor", "site clean")
+    if any(kw in task_name for kw in _DEMOB_SYS):
+        tb["ccvs_code"] = "SYS-M3"
+        return
+
     # Removal/demolition tasks are SIL regardless of what they're removing
     if is_removal:
         tb["ccvs_code"] = "SIL-H6"
