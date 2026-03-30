@@ -1269,10 +1269,12 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     task_name = tb.get("task", "").lower()
 
     # Determine the correct CCVS from task name keywords.
-    # Chemical-dominant keywords override SIL when both are present
-    # (e.g. "Apply waterproofing membrane and new tile" → CHM, not SIL).
+    # Removal/demolition context overrides CHM-dominant — removing a membrane
+    # is a SIL task (dust/debris), not a CHM task (chemical application).
+    _REMOVAL_CONTEXT = ("remove", "strip", "demolit", "break out", "rip out")
     _CHM_DOMINANT = ("waterproof", "membrane", "epoxy", "primer")
-    if any(kw in task_name for kw in _CHM_DOMINANT):
+    is_removal = any(kw in task_name for kw in _REMOVAL_CONTEXT)
+    if any(kw in task_name for kw in _CHM_DOMINANT) and not is_removal:
         tb["ccvs_code"] = "CHM-H6"
         return
 
@@ -1287,11 +1289,17 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                     "rope access", "abseil", "ladder", "remove green", "reinstate",
                     "roof access", "roof perimeter", "on roof",
                     "gutter", "flashing", "mobilise boom", "lower waste")
+    # Removal/demolition tasks are SIL regardless of what they're removing
+    if is_removal:
+        tb["ccvs_code"] = "SIL-H6"
+        return
+
     if any(kw in task_name for kw in _WAH_METHOD):
         correct = "WAH-H6"
     elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",
                                          "stitch", "spalling", "mortar", "reconstruct",
-                                         "demolition", "slab crack", "tile")):
+                                         "demolition", "slab crack", "tile",
+                                         "repair concrete", "repair substrate", "patch")):
         correct = "SIL-H6"
     elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
                                          "treat", "primer", "timber",
