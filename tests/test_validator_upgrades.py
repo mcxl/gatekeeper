@@ -228,3 +228,27 @@ class TestJobTypeRulePacks:
         from core.job_type_rules import detect_ewp_roof
         tasks = [_task("Use boom lift for painting")]
         assert detect_ewp_roof(tasks) is False
+
+
+# ── Improvement 5: Dominant control family constraint injection ──────────────
+
+class TestDominantFamilyInjection:
+    def test_demolition_gets_sil(self):
+        from agents.control_writer import _get_dominant_family
+        assert _get_dominant_family("Demolition of tile bed") == "SIL"
+
+    def test_waterproofing_gets_chm(self):
+        from agents.control_writer import _get_dominant_family
+        assert _get_dominant_family("Apply waterproofing membrane") == "CHM"
+
+    def test_unknown_gets_none(self):
+        from agents.control_writer import _get_dominant_family
+        assert _get_dominant_family("Mobilise site and establish zones") is None
+
+    def test_removal_gets_sil(self):
+        from agents.control_writer import _get_dominant_family
+        assert _get_dominant_family("Remove existing screed and membrane") == "SIL"
+
+    def test_crane_gets_lift(self):
+        from agents.control_writer import _get_dominant_family
+        assert _get_dominant_family("Crane setup and lift plan") == "LIFT"

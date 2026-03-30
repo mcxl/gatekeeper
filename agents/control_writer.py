@@ -226,6 +226,40 @@ async def write_controls_single(
     return await _write_controls_for_task(task, risk, inference_context, scope_block)
 
 
+# Dominant control family lookup — local copy to avoid circular import from src/issue_gate.py
+_DOMINANT_CONTROL_FAMILY = {
+    "demolition": "SIL",
+    "removal": "SIL",
+    "remove": "SIL",
+    "strip-out": "SIL",
+    "strip out": "SIL",
+    "crack repair": "SIL+STRUCT",
+    "slab repair": "SIL+STRUCT",
+    "substrate prep": "SIL+STRUCT",
+    "waterproofing": "CHM",
+    "membrane": "CHM",
+    "sealant": "CHM",
+    "coating": "CHM",
+    "painting": "CHM",
+    "clt erection": "TEMP_WORKS",
+    "panel lift": "TEMP_WORKS",
+    "crane setup": "LIFT",
+    "temporary bracing": "TEMP_WORKS",
+    "propping": "TEMP_WORKS",
+    "ewp roof access": "WAH",
+}
+
+
+def _get_dominant_family(task_name: str) -> str | None:
+    """Look up the dominant control family for a task by keyword match.
+    Returns None if no keyword matches (safe default — no constraint injected)."""
+    tn = task_name.lower()
+    for kw, family in _DOMINANT_CONTROL_FAMILY.items():
+        if kw in tn:
+            return family
+    return None
+
+
 async def _write_controls_for_task(
     task: dict,
     risk: dict,
@@ -236,6 +270,18 @@ async def _write_controls_for_task(
     hazards_str = "\n".join(f"  - {h}" for h in risk["hazards"])
     hrcw_str = f"\nHRCW category: {risk['hrcw_category']}" if risk.get("hrcw_category") else ""
 
+    # Dominant control family constraint — injected per task
+    family = _get_dominant_family(task["task"])
+    family_constraint = ""
+    if family:
+        family_constraint = (
+            f"\n\nDOMINANT CONTROL FAMILY FOR THIS TASK: {family}.\n"
+            f"Your first 2-3 controls MUST directly address {family} hazards.\n"
+            f"WAH controls are secondary for this task unless the "
+            f"access method IS the primary hazard.\n"
+            f"Do not lead with admin, permit, or PPE controls."
+        )
+
     user_content = (
         f"Task {task['sequence']}: {task['task']}\n"
         f"Scope: {task['scope']}\n"
@@ -245,6 +291,7 @@ async def _write_controls_for_task(
         f"Dominant hazard: {risk.get('dominant_hazard', risk['hazards'][0])}\n"
         f"All hazards:\n{hazards_str}"
         f"{hrcw_str}"
+        f"{family_constraint}"
         f"\n\nInference pre-fill (mandatory requirements):\n{inference_context}"
         f"{scope_block}"
         f"\n\nWrite controls for this task. Return single-task JSON only."
