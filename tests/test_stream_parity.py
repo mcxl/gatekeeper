@@ -100,6 +100,15 @@ def test_exclusion_zone_phases_before_scaffold():
     assert _task_phase_score(tb_excl) == 0
 
 
+def test_isolate_in_scope_does_not_trigger_phase_zero():
+    """'isolate' in scope text (e.g. 'isolate work area') should not force phase 0."""
+    from core.orchestrator import _task_phase_score
+
+    tb = {"task": "Remove existing waterproofing", "scope": "isolate work area from occupied spaces"}
+    # Should NOT be phase 0 — 'isolate' is a control within the task, not a standalone task
+    assert _task_phase_score(tb) != 0
+
+
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
 def test_ccvs_demob_task_corrected_to_sys():

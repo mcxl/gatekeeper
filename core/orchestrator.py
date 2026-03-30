@@ -730,9 +730,7 @@ _PHASE_ORDER = [
          "site prep", "plan access", "preliminar", "induction",
          "site setup", "mobilise site", "mobilize site",
          "mobilise and", "mobilize and", "establish scaffold",
-         "mobilise boom", "mobilize boom",
-         "isolate", "barricade", "exclusion zone", "hoarding",
-         "site isolation"]),
+         "mobilise boom", "mobilize boom"]),
     # Phase 1: Access equipment erection
     (1, ["erect scaffold", "scaffold erect", "install scaffold",
          "position ewp", "ewp setup", "access equipment",
@@ -795,6 +793,11 @@ def _task_phase_score(tb: dict) -> int:
     # Check repair before QA
     if any(kw in text for kw in _REPAIR_KEYWORDS):
         return 3
+    # Check isolate/barricade by TASK NAME only — avoid matching "isolate" in scope text
+    if any(kw in task_name for kw in ("isolate and barricade", "barricade and isolate",
+                                       "isolate work", "barricade work", "barricade ",
+                                       "exclusion zone", "hoarding", "site isolation")) and "demob" not in task_name:
+        return 0
     # Check scaffold/access erection by task name — must be before QA check
     if any(kw in task_name for kw in ("erect scaffold", "scaffold erect", "install scaffold",
                                        "position ewp", "erect and certify",
