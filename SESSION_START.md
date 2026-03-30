@@ -39,6 +39,9 @@ Regression runner:   src/regression_runner.py
 Findings store:      core/findings_store.py
 Pattern detector:    core/pattern_detector.py
 Rule promoter:       core/rule_promoter.py
+Findings log:        src/data/findings_log.jsonl
+Rule candidates:     src/data/rule_candidates.jsonl
+Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
@@ -49,17 +52,19 @@ Passing: 504
 Checks: 20
 
 ## Pipeline summary — one line each
-Decomposer:       extracts tasks and job_type from scope input
-Risk assessor:    assigns CCVS codes and HRCW flags per task
-Control writer:   writes controls led by dominant hazard per task
-Assembler:        assembles final task table
-Validator:        runs issue gate, classifies defects, returns PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
-Reviewer agent:   parallel Critic specialisation, runs only on ESCALATE_EXTERNAL, four agents concurrent
-Output:           docx + validator_result.json + reviewer_result.json if reviewer ran
+Decomposer:       task architecture + job_type detection
+Risk assessor:    hazards, HRCW, CCVS codes
+Control writer:   dominant-hazard-first + _get_dominant_family() constraint injected per task
+Assembler:        final SWMS assembly
+Validator:        issue gate (20 checks) + PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
+Reviewer agent:   parallel Critic — 4 agents concurrent — recalibrated credibility floor active
+Findings store:   captures all validator + reviewer findings to findings_log.jsonl
+Pattern detector: surfaces rule candidates on demand from findings store
+Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           ACTIVE (V7 — demob CCVS fix, 0 hard fails, at deterministic limit)
+Lingate remedial:           ACTIVE — deterministic limit reached (V7: 0 hard fails, 54 review items, prompt fixes next)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY

@@ -123,6 +123,7 @@ If repeated narrow cycles stop improving the same defect, the stream is at the *
 | **Case-specific** | Only applies to one benchmark case | N/A — note and move on |
 | **Expert-review-only** | Requires consultant judgment | External review |
 | **Product-investment** | Requires new capability | Product decision |
+| **Deterministic-limit-reached** | No further deterministic fixes available | Prompt changes or acceptance |
 
 ---
 
@@ -150,10 +151,52 @@ If repeated narrow cycles stop improving the same defect, the stream is at the *
 
 | Tool | Location | Purpose |
 |------|----------|---------|
-| Issue-gate checker | `src/issue_gate.py` | 12 deterministic checks, stage-aware, scope-configurable |
+| Issue-gate checker | `src/issue_gate.py` | 20 deterministic checks, stage-aware, scope-configurable |
 | Regression runner | `src/regression_runner.py` | 5 closed streams, 175 tests |
+| Validator wrapper | `core/validator_runner.py` | PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL classification |
+| Reviewer agent | `core/reviewer_agent.py` | 4 parallel specialist agents, credibility floor active |
+| Job-type rules | `core/job_type_rules.py` | remedial, new_build, demolition, maintenance + CLT/EWP sub-patterns |
+| Findings store | `core/findings_store.py` | Append-only JSONL, deterministic fingerprinting |
+| Pattern detector | `core/pattern_detector.py` | Rule candidate detection, severity scoring |
+| Rule promoter | `core/rule_promoter.py` | Human-approved promotion proposals, no source mutation in v1 |
 | CI pipeline | `.github/workflows/ci.yml` | Lint + full pytest on push to main |
 | Reference jobs | `tests/run_reference_jobs.py` | 8 SWMS inference reference jobs |
+
+## Self-Learning Layer
+
+Current state (2026-03-30):
+
+**Findings store** (`core/findings_store.py`):
+- `append_finding()` + `load_findings()` called from `api/main.py` after every validator and reviewer run
+- `FindingRecord` includes fingerprint (sha256 of defect_type|check_name|job_type|task_name), schema_version, pipeline_version
+- Storage: `src/data/findings_log.jsonl`
+
+**Pattern detector** (`core/pattern_detector.py`):
+- `detect_patterns()` groups by composite key: defect_family + check_name + job_type + source
+- Severity scoring: external_review x2.0, validator x1.5, reviewer_agent x1.0; systemic x3.0, hard_fail x2.0, review_flag x1.0
+- Surfaces `RuleCandidate` objects above occurrence threshold
+- Storage: `src/data/rule_candidates.jsonl`
+
+**Rule promoter** (`core/rule_promoter.py`):
+- `approve_candidate()` generates `PromotionProposal` — no source mutation in v1
+- Proposal includes target file, implementation notes, and generated patch stub
+- Proposal is the next Claude Code implementation prompt
+- Findings marked resolved only after implementation phase lands and tests pass
+- Storage: `src/data/promotion_log.jsonl`
+
+## Pipeline Architecture Enhancements
+
+**Dominant control family injection** (`agents/control_writer.py`):
+- `_get_dominant_family()`: deterministic keyword lookup
+- Injects dominant control family constraint into user_content per task at generation time
+- No schema changes required
+
+**Inference matrix suppression guards** (`core/orchestrator.py`):
+- `_suppress_inference_for_remedial()`: scaffold-led remedial jobs suppress EWP, mobile crane, active asbestos clearance categories when not in source
+
+**Reviewer credibility floor** (`core/reviewer_agent.py`):
+- BELOW_WORKING_DRAFT is forced if credibility_drift agent returns FAIL
+- Triggers on unsupported council permits, active asbestos clearance, EWP in scaffold-only scope, latent condition drift
 
 ---
 

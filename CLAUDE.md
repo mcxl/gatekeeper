@@ -29,7 +29,8 @@ The current state is:
 - control-pack benchmark draft stream materially closed
 - Phase 2 stabilisation completed
 - post-Phase-2 governance and multi-agent operating layer written
-- first automation layer around issue gates and benchmark regression is now the main outstanding system task
+- first automation layer around issue gates and benchmark regression is built and active
+- self-learning layer (findings store, pattern detector, rule promoter) is built and exercised
 
 Working assumption:
 - standalone RA is a product
@@ -381,5 +382,16 @@ Default operating mode: **headless checkpoint-to-checkpoint**.
 - Decision logs in `docs/decisions/` record each cycle outcome
 - `src/issue_gate.py` is the deterministic pre-review gate (20 checks)
 - `src/regression_runner.py` protects closed streams (5 streams, 175 tests)
-- `core/reviewer_agent.py` — parallel Critic reviewer agent (4 specialist agents)
+- `core/reviewer_agent.py` — parallel Critic reviewer agent (4 specialist agents, recalibrated credibility floor)
 - `core/job_type_rules.py` — job-type rule packs (remedial, new_build, demolition, maintenance)
+- `core/findings_store.py` — append-only findings log with deterministic fingerprinting
+- `core/pattern_detector.py` — rule candidate detection from findings store
+- `core/rule_promoter.py` — human-approved promotion proposals (no source mutation in v1)
+- `src/data/findings_log.jsonl` — live finding records
+- `src/data/rule_candidates.jsonl` — detected pattern candidates
+- `src/data/promotion_log.jsonl` — promotion decisions
+
+### Pipeline enhancements (active)
+- `_get_dominant_family()` in `agents/control_writer.py` — injects dominant control family constraint per task at generation time
+- Inference matrix suppression guards in `core/orchestrator.py` — scaffold-led remedial jobs suppress EWP/crane/admin categories not in source
+- Reviewer credibility floor in `core/reviewer_agent.py` — BELOW_WORKING_DRAFT forced if credibility_drift agent returns FAIL

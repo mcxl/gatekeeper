@@ -35,7 +35,7 @@ Use this as the working control sheet for LBV benchmark management.
 | 18 Danks Street quote-to-SWMS benchmark | SWMS | Internal product owner | CLOSED — STRONG_WORKING_DRAFT_ONLY | Externally reviewed 2026-03-29. Not benchmark-quality confirmed. Main gap: HRCW/CCVS misalignment with written method. Secondary: latent-condition packaging, unsupported controls, generic WAH monitoring defaults. Deterministic layer at practical limit. | No further deterministic refinement. Carry learnings into HRCW/CCVS issue-gate improvement and agent-prompt work on future streams. | Closed as strong working draft. Benchmark-quality requires agent-prompt-level HRCW/CCVS improvements that apply across all SWMS streams, not Danks-specific fixes. |
 | Facade remedial benchmark | SWMS | Internal product owner | CLOSED | Previously task/control quality and consultant trust | Maintain by regression only | Keep closed unless regression or new specialist gap appears |
 | EWP roof access benchmark | SWMS | Internal product owner | ACTIVE | Agent-level EWP method knowledge (transfer scenarios, wind OEM limits) — product investment decision | Agent prompt enrichment for EWP-specific content, or deeper method-validity comparison | Two LBV cycles complete (2026-03-29). Transfer controls verified against SD Group reference. Remaining gap is agent-level. Close when issue gate passes consistently. |
-| Lingate remedial works benchmark | SWMS | Internal product owner | AWAITING_EXTERNAL_REVIEW | Issue gate 11/12 (0 fail, 1 review — placeholder). Control-writer dominant-hazard-first. After-hours stripped. | External Aussie WHS resubmission — compare against RPD reference | Five LBV cycles. Resubmitted 2026-03-30. |
+| Lingate remedial works benchmark | SWMS | Internal product owner | ACTIVE — deterministic limit reached | V7: 0 reviewer hard fails (was 2 in V6), 54 review items (architecture/sequencing). Validator: RETRY_INTERNAL (generation variance). Fixes applied: membrane false positive, hrcw boolean contradiction, demob CCVS correction. Self-learning layer exercised: 231 findings, 4 pattern candidates. | Decomposer prompt sequencing rules, then internal re-review before external resubmission | Seven LBV cycles + 3 deterministic fix rounds. Updated 2026-03-30. |
 | CLT install drawing-to-SWMS benchmark | SWMS | Internal product owner | AWAITING_EXTERNAL_REVIEW | Issue gate 10/12 (0 fail, 2 reviews — no scaffold + placeholder). CLT decomposer rules. Permanent connection + engineer hold. | External Aussie WHS resubmission — assess CLT method fidelity | Three LBV cycles + prop-removal CCVS fix. Resubmitted 2026-03-30. |
 | Principal-contractor risk register to subcontractor SWMS alignment benchmark | SWMS Review Engine | Internal product owner | HOLD | Benchmark asset readiness and review-contract definition | Select first project risk register, first subcontractor SWMS, and define comparison result contract | Move to ACTIVE only when first benchmark assets and comparison expectations are ready |
 | Data centre fit-out benchmark | RA | Internal product owner | CLOSED | Previously classification/HRCW/control quality | Maintain by regression only | Keep closed unless regression or product-boundary shift appears |
@@ -87,16 +87,22 @@ Review this register whenever:
 
 ---
 
-## Automation Status (2026-03-29)
+## Automation Status (2026-03-30)
 
 | Tool | Location | Coverage | Status |
 |------|----------|----------|--------|
-| Issue-gate checker | `src/issue_gate.py` | 9 deterministic checks, stage-aware, configurable WAH threshold | Built, 29 tests |
-| Regression runner | `src/regression_runner.py` | 5 closed streams, 175 tests | Built, 7 tests |
+| Issue-gate checker | `src/issue_gate.py` | 20 deterministic checks, stage-aware, configurable WAH threshold | Built, active |
+| Regression runner | `src/regression_runner.py` | 5 closed streams, 175 tests | Built, active |
+| Validator wrapper | `core/validator_runner.py` | PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL | Built, active |
+| Reviewer agent | `core/reviewer_agent.py` | 4 parallel specialist agents, credibility floor | Built, active |
+| Job-type rules | `core/job_type_rules.py` | remedial, new_build, demolition, maintenance + CLT/EWP detection | Built, active |
+| Findings store | `core/findings_store.py` | Append-only JSONL with fingerprinting | Built, active |
+| Pattern detector | `core/pattern_detector.py` | Rule candidate detection from findings | Built, active |
+| Rule promoter | `core/rule_promoter.py` | Human-approved promotion proposals | Built, active |
 | CI pipeline | `.github/workflows/ci.yml` | Lint + full pytest on push to main | Active |
 | Reference jobs | `tests/run_reference_jobs.py` | 8 SWMS inference jobs | Active |
 
-**Total test suite:** 377 tests passing
+**Total test suite:** 504 tests passing
 
 ---
 
