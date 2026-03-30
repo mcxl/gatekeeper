@@ -730,7 +730,9 @@ _PHASE_ORDER = [
          "site prep", "plan access", "preliminar", "induction",
          "site setup", "mobilise site", "mobilize site",
          "mobilise and", "mobilize and", "establish scaffold",
-         "mobilise boom", "mobilize boom"]),
+         "mobilise boom", "mobilize boom",
+         "isolate", "barricade", "exclusion zone", "hoarding",
+         "site isolation"]),
     # Phase 1: Access equipment erection
     (1, ["erect scaffold", "scaffold erect", "install scaffold",
          "position ewp", "ewp setup", "access equipment",

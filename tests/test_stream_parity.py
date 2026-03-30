@@ -74,6 +74,32 @@ def test_enrich_risk_labels_already_enriched_unchanged():
     assert tb["risk_post"] == "Low(2)"
 
 
+# ── T2-B1.5: _task_phase_score — isolate/barricade tasks ─────────────────────
+
+def test_isolate_task_phases_before_scaffold():
+    """Isolate/barricade tasks should get phase 0 (before scaffold at 1)."""
+    from core.orchestrator import _task_phase_score
+
+    tb_isolate = {"task": "Isolate and barricade work areas", "scope": ""}
+    tb_scaffold = {"task": "Erect scaffold to balconies", "scope": ""}
+    assert _task_phase_score(tb_isolate) < _task_phase_score(tb_scaffold)
+
+
+def test_barricade_task_phases_before_scaffold():
+    from core.orchestrator import _task_phase_score
+
+    tb_barricade = {"task": "Barricade balconies and common areas", "scope": ""}
+    tb_scaffold = {"task": "Erect scaffold via courtyard", "scope": ""}
+    assert _task_phase_score(tb_barricade) < _task_phase_score(tb_scaffold)
+
+
+def test_exclusion_zone_phases_before_scaffold():
+    from core.orchestrator import _task_phase_score
+
+    tb_excl = {"task": "Set up exclusion zone around building", "scope": ""}
+    assert _task_phase_score(tb_excl) == 0
+
+
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
 def test_ccvs_demob_task_corrected_to_sys():
