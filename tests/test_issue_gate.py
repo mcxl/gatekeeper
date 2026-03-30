@@ -393,6 +393,30 @@ class TestUnsupportedControlsJson:
         result = _check_unsupported_controls_json(t)
         assert result.result == CheckResult.FAIL
 
+    def test_membrane_ok_for_waterproofing_task(self):
+        """Membrane is legitimate in a waterproofing task — not a false positive."""
+        t = _tasks("Apply waterproofing membrane system")
+        t[0]["controls"] = ["Apply membrane primer to prepared substrate"]
+        assert _check_unsupported_controls_json(t).result == CheckResult.PASS
+
+    def test_membrane_ok_for_membrane_removal_task(self):
+        t = _tasks("Remove existing membrane and screed")
+        t[0]["controls"] = ["Strip membrane using hand tools only"]
+        assert _check_unsupported_controls_json(t).result == CheckResult.PASS
+
+    def test_membrane_ok_across_job_scope(self):
+        """If any task is waterproofing, membrane references in other tasks are not drift."""
+        tasks = [
+            {"step": "1.1", "task": "Apply waterproofing membrane", "controls": [], "admin": [], "hold_points": [], "stop_work": []},
+            {"step": "1.2", "task": "Install screed and tiles", "controls": ["Check membrane bond before screed"], "admin": [], "hold_points": [], "stop_work": []},
+        ]
+        assert _check_unsupported_controls_json(tasks).result == CheckResult.PASS
+
+    def test_demolit_ok_for_removal_task(self):
+        t = _tasks("Remove existing tile bed")
+        t[0]["controls"] = ["Demolition sequence per method statement"]
+        assert _check_unsupported_controls_json(t).result == CheckResult.PASS
+
     def test_irrigation_ok_for_green_wall(self):
         t = _tasks("Remove green wall")
         t[0]["controls"] = ["Check irrigation before removal"]

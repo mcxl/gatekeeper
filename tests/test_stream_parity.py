@@ -144,3 +144,62 @@ def test_hot_work_legitimate_with_welding_returns_true():
 
     inference = {"activities": ["welding", "grinding"], "hrcw": True}
     assert _hot_work_legitimate(inference) is True
+
+
+# ── T2-E: hrcw boolean correction from hrcw_category ─────────────────────────
+
+def test_hrcw_corrected_when_category_cl2():
+    """hrcw_category containing cl.2 forces hrcw=true even if originally false."""
+    from core.orchestrator import _normalise_task
+
+    tb = {
+        "task": "Remove existing membrane",
+        "scope": "Balcony waterproofing removal",
+        "risk_pre": "H", "risk_post": "M",
+        "ccvs_code": "SIL-H6",
+        "hrcw": False,
+        "hrcw_category": "SIL-H6-cl.2",
+        "controls": ["Wet suppression"], "admin": [],
+        "hold_points": [], "stop_work": [],
+        "ppe": ["P2 mask"], "hazards": ["Silica dust"],
+    }
+    result = _normalise_task(tb, inference={}, jurisdiction="AU", hot_work_ok=False)
+    assert result["hrcw"] is True
+
+
+def test_hrcw_unchanged_when_category_no_class():
+    """hrcw_category without cl.1/cl.2 does not force hrcw=true."""
+    from core.orchestrator import _normalise_task
+
+    tb = {
+        "task": "Site establishment",
+        "scope": "General setup",
+        "risk_pre": "M", "risk_post": "L",
+        "ccvs_code": "SYS-M3",
+        "hrcw": False,
+        "hrcw_category": "WAH-H4",
+        "controls": ["Induction"], "admin": [],
+        "hold_points": [], "stop_work": [],
+        "ppe": ["Hard hat"], "hazards": ["Trip"],
+    }
+    result = _normalise_task(tb, inference={}, jurisdiction="AU", hot_work_ok=False)
+    assert result["hrcw"] is False
+
+
+def test_hrcw_unchanged_when_category_empty():
+    """Empty hrcw_category does not change hrcw."""
+    from core.orchestrator import _normalise_task
+
+    tb = {
+        "task": "Clean up",
+        "scope": "General",
+        "risk_pre": "L", "risk_post": "L",
+        "ccvs_code": "N/A",
+        "hrcw": False,
+        "hrcw_category": "",
+        "controls": ["Sweep area"], "admin": [],
+        "hold_points": [], "stop_work": [],
+        "ppe": [], "hazards": [],
+    }
+    result = _normalise_task(tb, inference={}, jurisdiction="AU", hot_work_ok=False)
+    assert result["hrcw"] is False

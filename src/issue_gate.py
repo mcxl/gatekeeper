@@ -387,6 +387,12 @@ def _check_unsupported_controls_json(tasks: list[dict],
     """
     active_keywords = tuple(kw for kw in _UNSUPPORTED_KEYWORDS
                             if kw not in allowed_keywords)
+    # Job-scope detection: if any task name references a keyword domain,
+    # that domain is in-scope for the whole SWMS — not drift.
+    all_task_names = " ".join(t.get("task", "").lower() for t in tasks)
+    waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
+    demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
+
     found = []
     for t in tasks:
         step = t.get("step", "?")
@@ -399,6 +405,12 @@ def _check_unsupported_controls_json(tasks: list[dict],
         for kw in active_keywords:
             if kw in all_text:
                 if kw in ("propping plan", "propping design"):
+                    continue
+                # Skip waterproofing terms when waterproofing is in job scope
+                if kw in ("membrane", "waterproof") and waterproof_in_scope:
+                    continue
+                # Skip demolition terms when demolition/removal is in job scope
+                if kw == "demolit" and demolition_in_scope:
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in all_text and "green wall" not in tn:

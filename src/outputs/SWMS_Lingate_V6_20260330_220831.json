@@ -1,0 +1,2318 @@
+{
+  "route": "full",
+  "tasks": [
+    {
+      "sequence": 1,
+      "task": "Site setup and occupied building interface",
+      "scope": "Establish site boundaries, residents communication plan, dust control, waste management staging, toilet and welfare facilities coordination with building management.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Dust and debris migration into occupied building affecting residents",
+        "Trip and fall hazard from temporary barriers, hoses and welfare facilities in courtyard and access routes",
+        "Noise and vibration disturbance to residents during setup and work hours",
+        "Inadequate waste segregation causing cross-contamination and disposal delays"
+      ],
+      "dominant_hazard": "Trip and fall hazard from temporary infrastructure in shared access areas",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Barricade all temporary infrastructure (barriers, hoses, welfare units) with 1.2 m high barriers and 'DO NOT ENTER' signage at each courtyard and access route entry point.",
+        "Install dust suppression at source \u2014 wet all excavated material and temporary stockpiles before placement; activate water spray systems during dust-generating setup tasks.",
+        "Establish and post a residents' notice board in building foyer with: project duration, work hours, site contact, complaint hotline, and weekly activity schedule.",
+        "Coordinate with building management before setup: confirm welfare facility locations (toilet, shed), waste bin staging areas, and confirmation that all utility services are marked and isolated.",
+        "Mark all temporary hoses, cables, and trip hazards with high-visibility tape and edge protection; keep all pathways clear of equipment and materials during non-work hours.",
+        "Implement waste segregation with separate labelled bins (general, concrete, timber, metal) at waste staging area; confirm removal schedule with waste contractor before site start.",
+        "Brief all workers on occupied building interface \u2014 identify resident access routes, keep noise below 75 dB during early morning and evening, and report any resident complaints immediately.",
+        "Check that all scaffolding handover certificates are signed by the licenced scaffolder and filed on site before any worker accesses the scaffold.",
+        "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not allow any worker on site until: residents' notice board is installed, welfare facilities are confirmed operational with building management, and all temporary barriers are erected.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not erect or use any scaffold until: load calculations are certified by engineer, scaffold handover certificate is signed by licenced scaffolder, and working-at-heights permit is issued and displayed on site.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: dust or debris is visibly migrating into occupied areas despite suppression measures \u2014 reposition suppression systems and re-test before restart.",
+        "\ud83d\uded1 STOP WORK if: any temporary barrier, hose, or welfare facility is missing signage, damaged, or creating a trip hazard \u2014 reinstate or remove from pathway before work resumes.",
+        "\ud83d\uded1 STOP WORK if: waste bins are overflowing or mixed waste is detected in segregation bins \u2014 sort and empty before any further material is added.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain signed residents' communication plan from building management; display contact details on site noticeboard.",
+        "Verify EPA licence is current and displayed on site before waste staging begins.",
+        "Obtain and file scaffold erection permit signed by licenced scaffolder; obtain working-at-heights permit before any elevated task.",
+        "Obtain noise management plan from principal contractor; confirm compliance with local council noise limits (typically 75 dB daytime, 55 dB evening/weekend).",
+        "Verify all workers hold current White Card (CPCCWHS1001) and relevant scaffolding licence (if working on scaffold) before site entry.",
+        "Brief building manager weekly on waste removal schedule and any resident complaints; record in site diary.",
+        "Check and confirm utility markings (water, power, gas, communications) are visible and building management has verified their accuracy before any excavation or ground work.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels",
+        "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase \u2014 area left/excluded if not cleared",
+        "Temporary access to neighbouring properties required \u2014 confirm access arrangements before commencing",
+        "Vegetation trimmed away from surfaces designated for painting or remedial works prior to commencement \u2014 area excluded if vegetation impedes access",
+        "On-site parking or provision of parking permits required for duration of works",
+        "Final inspection and agreed scope of works to be confirmed before commencement"
+      ],
+      "ppe": [
+        "High-visibility vest or shirt (AS/NZS 1906.4 Class D) \u2014 worn during all site setup activities in shared areas.",
+        "Hard hat (AS/NZS 2807.1) \u2014 worn when working on or near temporary structures, scaffolding, or welfare installations.",
+        "steel-capped footwear\u2014 worn always on site.",
+        "Dust mask (P2/FFP2) \u2014 worn during dust-generating setup tasks (material handling, suppression system setup).",
+        "High-visibility barriers and 'DO NOT ENTER' signage \u2014 installed at all temporary infrastructure entry points (not PPE, but critical interface control)."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Check all temporary barriers are in place with legible signage before each shift start.",
+        "who": "Supervisor",
+        "frequency": "before each shift start and after each major setup change",
+        "evidence": "Photographic record of barriers and signage placement; signed-off supervision log; resident complaint register (nil or documented)."
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 2,
+      "task": "Erect scaffold to balconies via Kiora Lane and courtyard",
+      "scope": "Install and certify scaffold system accessing all balconies. make sure stability, safe access, and compliance with 4m height classification. Obtain scaffold tag and certifier sign-off before any personnel work at height.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 scaffold collapse or structural failure during assembly",
+        "Fall from height \u2014 incomplete or unstable scaffold preventing safe work at height",
+        "Dropped object from scaffold platform or tools striking persons or building below",
+        "Crush injury to workers during scaffold component handling and assembly",
+        "Contact with building facade or balustrade elements during scaffold positioning"
+      ],
+      "dominant_hazard": "Fall from height \u2014 scaffold collapse or failure during assembly and use",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain signed scaffold erection permit from licenced scaffolder before any component placement begins.",
+        "Verify load calculations and design documentation match site conditions and balcony geometry.",
+        "Check all scaffold components for damage, deformation, or corrosion before assembly.",
+        "Establish exclusion zone minimum 2m radius below scaffold footprint \u2014 barricade with tape and signage.",
+        "Assemble scaffold only on level, compacted ground or approved temporary support pads.",
+        "Secure base plates, standards, and ledger beams to prevent lateral movement during erection.",
+        "Attach guardrails and toe boards to each platform as section rises \u2014 do not work on incomplete sections.",
+        "Verify all connections torqued, pinned, and locked before moving to next level."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not permit worker access to scaffold until: handover certificate signed by licenced scaffolder and white card verified for all personnel",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not erect sections over 4m until: working at heights permit signed and competency verification (RIIOHS204E or equivalent) confirmed for supervisor"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: scaffold components show cracks, bending, or corrosion during assembly.",
+        "\ud83d\uded1 STOP WORK if: guardrails, toe boards, or edge protection removed or missing on any active platform.",
+        "\ud83d\uded1 STOP WORK if: ground conditions become saturated, unstable, or base support pads shift.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain signed scaffold erection permit from licenced scaffolder before work begins.",
+        "Obtain handover certificate from licenced scaffolder before any personnel access scaffold.",
+        "Obtain working at heights permit signed by supervisor before elevated work commences.",
+        "Verify White Card (CPCCWHS1001) current for all workers.",
+        "Verify Scaffolding Licence (class appropriate to system) current for supervisor.",
+        "Verify working at heights competency (RIIOHS204E or equivalent) current for supervisor.",
+        "tell building occupants of exclusion zones and access restrictions via notice board and verbal brief.",
+        "Record scaffold tag number and certification date on site induction board."
+      ],
+      "ppe": [
+        "Hard hat with chin strap.",
+        "High-visibility vest or jacket.",
+        "steel-capped footwear",
+        "cut-resistant gloves",
+        "Fall arrest harness and lanyard (where working over edges or unsupported voids)."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check guardrails and toe boards present on all active platforms before shift start.",
+        "who": "Supervisor",
+        "frequency": "Before each shift and after any scaffold modification.",
+        "evidence": "Visual walk-around; photo record; supervisor sign-off on site diary."
+      },
+      "responsibility": {
+        "SUP": "Verify scaffold or EWP certification, supervise erection, sign off load checks",
+        "WKR": "Follow erection plan, wear harness at height, report defects"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 3,
+      "task": "Remove existing waterproofing membrane, screed and tile bed",
+      "scope": "Strip all existing membrane, screed layer and tile bed to expose concrete slab. Manage silica dust and debris control. Segregate and remove all waste off-site.",
+      "trade_type": "Demolition",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Inhalation of silica dust from grinding and cutting membrane and screed",
+        "Respiratory irritation from dust and tile particulates during removal",
+        "Cut and laceration injuries from tile shards and sharp membrane edges",
+        "Fall from height \u2014 loss of footing on wet or debris-covered scaffold platform",
+        "Noise exposure from mechanical cutting and grinding equipment"
+      ],
+      "dominant_hazard": "Inhalation of respirable crystalline silica dust during removal and grinding",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Wet-cut all membrane and screed using water suppression system \u2014 apply water continuously during cutting to suppress silica dust at source.",
+        "Use HEPA-filtered dust extraction connected directly to cutting equipment \u2014 maintain negative pressure and check filter saturation before each shift.",
+        "Wear P2 mask/respirator (fit-tested) fitted and sealed before starting work \u2014 verify fit each shift using manufacturer's fit-test protocol.",
+        "Barricade work area with exclusion zone 2 metres beyond drop edge \u2014 restrict entry to authorized workers only.",
+        "Remove debris to collection bin inside exclusion zone \u2014 do not throw debris from height or allow fallout onto occupied areas below.",
+        "check scaffold platform for debris and wet surfaces before each work phase \u2014 clear debris and allow surfaces to dry before proceeding.",
+        "Segregate all asbestos-suspect material separately during removal \u2014 do not mix with general waste; hold and tell site supervisor for verification.",
+        "Wear eye protection, heavy-duty gloves and cut-resistant sleeves when handling tile shards and sharp membrane edges."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start cutting until: water suppression system is tested and running, HEPA extraction is connected and sealed, and P2 respirators are fitted to all workers.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove debris until: exclusion zone is barricaded and all occupants below have been notified and kept clear."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: water suppression system fails or dust extraction loses pressure \u2014 wait for repair and test before resuming.",
+        "\ud83d\uded1 STOP WORK if: scaffold platform becomes slippery or debris accumulation exceeds 50 mm \u2014 clear and dry platform before continuing.",
+        "\ud83d\uded1 STOP WORK if: asbestos-suspect material is identified \u2014 isolate, do not disturb, and tell site supervisor immediately.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain signed scaffold erection permit and handover certificate before any worker accesses scaffold.",
+        "Obtain working at heights permit signed by site supervisor before each elevated task.",
+        "Verify all workers hold valid White Card and current working at heights competency (RIIOHS204E or equivalent).",
+        "Obtain and display SDS for membrane product on site \u2014 brief all workers on contents before work starts.",
+        "Obtain EPA licence for on-site waste removal and segregation.",
+        "Obtain noise management plan from site supervisor \u2014 confirm neighbours and occupied units have been notified.",
+        "Record daily dust suppression system function check and HEPA filter condition in site logbook.",
+        "Conduct toolbox talk on silica dust hazards, fit-testing of respirators, and exclusion zone requirements before first shift.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "P2 mask/respirator (fit-tested) \u2014 fitted and sealed; fit-test each shift",
+        "eye protection",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Cut-resistant sleeves or arm guards",
+        "Steel-capped boots with good grip",
+        "High-visibility vest",
+        "Hearing protection (if mechanical grinding used)"
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Water suppression system running continuously and HEPA extraction filter pressure gauge in green zone.",
+        "who": "Supervisor / Workers",
+        "frequency": "before each work phase and continuous during cutting",
+        "evidence": "Visual confirmation of water mist at cut point; filter saturation log; respirator fit-test record; exclusion zone barricade photographic record; waste segregation bin labels and daily removal records."
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove existing waterproofing membrane, screed",
+        "WKR": "Perform Remove existing waterproofing membrane, screed per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 7,
+      "task": "Install screed and tile bed",
+      "scope": "Apply protective screed layer over membrane. Install tile bed substrate to falls and to engineer specification. Prepare surface for final tiling.",
+      "trade_type": "Waterproofing",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Inhalation of dust from dry screed mixing and application",
+        "Manual handling strain from carrying bags of screed and tile bed materials",
+        "Chemical irritation from cement and additives in screed product",
+        "Fall from height \u2014 slip from wet screed or mortar on working surface",
+        "Repetitive strain injury from trowelling and levelling operations"
+      ],
+      "dominant_hazard": "Fall from height \u2014 slip on wet screed or mortar during installation",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Wet screed surface with water spray before and during trowelling to reduce slip risk and dust generation.",
+        "Apply screed in layers not exceeding 50mm to engineer specification and allow adequate cure time between coats.",
+        "Install anti-slip tape or grit strips on scaffold platform edges and walkways where wet screed work occurs.",
+        "Mix screed in designated area away from scaffold edge \u2014 use portable mixer with dust extraction on site.",
+        "Wear respiratory protective equipment (P2 mask/respirator (fit-tested) minimum) when mixing dry screed or applying powder additives.",
+        "Check membrane bond and substrate stability before screed application \u2014 stop work if membrane is damaged, lifting, or wet.",
+        "Remove excess wet screed and mortar from scaffold platform immediately after application to prevent slip hazard.",
+        "Limit working platform to maximum 3 workers per 4m\u00b2 during wet screed application to manage slip risk and weight load."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply screed until: membrane has fully cured per manufacturer specification and engineer has signed off membrane installation",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start tiling until: screed has cured to minimum specification (14 days typical) and moisture test confirms surface is dry"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: membrane is visibly damaged, wet, or lifting before or during screed application",
+        "\ud83d\uded1 STOP WORK if: screed product SDS is not available on site or workers cannot confirm they have read SDS",
+        "\ud83d\uded1 STOP WORK if: wet screed or mortar accumulates on platform edges, guardrails, or walkways creating slip hazard",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain and display scaffold handover certificate signed by licenced scaffolder before any worker accesses scaffold.",
+        "Obtain working at heights permit signed by supervisor before screed application commences each day.",
+        "Record scaffold daily inspection checklist on site \u2014 platform condition, guardrails, connections, tie-points.",
+        "Provide SDS for screed product and cement additives to all site workers \u2014 confirm receipt and understanding before work starts.",
+        "Brief all workers on wet surface slip hazard, maximum platform occupancy (3 workers per 4m\u00b2), and immediate cleanup of excess material.",
+        "tell building occupants of dust and noise from screed mixing \u2014 use local dust suppression and hearing protection.",
+        "Document screed cure time and moisture testing before tile bed application \u2014 engineer to verify readiness for next phase.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "eye protection",
+        "Respiratory protective equipment \u2014 P2 mask/respirator (fit-tested) minimum (upgrade to P3 if dust extraction not available during mixing)",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Steel-capped boots with slip-resistant sole",
+        "High-visibility clothing"
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Supervisor",
+        "frequency": "before each work period start and continuous during wet screed application",
+        "evidence": "Scaffold platform visual inspection record \u2014 note any wet material, condition of anti-slip tape, guardrail integrity. SDS acknowledgment sheet. Membrane cure certification and moisture test record. Daily scaffold inspection log."
+      },
+      "responsibility": {
+        "SUP": "Supervise Install screed and tile bed",
+        "WKR": "Perform Install screed and tile bed per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 4,
+      "task": "check slab and document crack condition",
+      "scope": "Clean concrete slab. Identify, measure and photograph all cracks and spalling. Document defect locations and severity. Halt works pending Leo and Associates inspection approval before repair method confirmation.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 slipping on wet or dusty slab surface at height",
+        "Inhalation of dust during slab cleaning and crack inspection",
+        "Eye injury from dust and debris during close inspection of crack detail",
+        "Manual handling strain from cleaning equipment and measurement tools"
+      ],
+      "dominant_hazard": "Fall from height \u2014 slip on uneven or contaminated slab surface",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Confirm scaffold handover certificate signed by licenced scaffolder before any worker accesses platform.",
+        "Wet-clean slab surface with mop and water before inspection to suppress dust and reduce slip risk.",
+        "Wear eye protection",
+        "Use dust mask (P2) when dry-sweeping residual dust from crack surfaces.",
+        "Measure cracks with steel rule or crack-width gauge; photograph each defect with date and location label visible.",
+        "Do not work alone on scaffold \u2014 maintain two-person minimum during inspection work.",
+        "Brief all occupants before starting \u2014 noise, dust, and access restrictions; provide contact number for questions.",
+        "Stop work and clear platform if slab becomes wet from rain or building water sources."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not begin crack documentation until: scaffold handover certificate is signed and posted at base, and slab surface has been wet-cleaned and allowed to dry"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: slab surface becomes wet or slippery and cannot be dried within 10 minutes",
+        "\ud83d\uded1 STOP WORK if: weather deteriorates to rain, or building water ingress wets the platform",
+        "\ud83d\uded1 STOP WORK if: crack defects indicate structural concern (wide cracks >5mm, vertical step offset, active movement) \u2014 await Leo and Associates engineer visual before proceeding",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain and display scaffold handover certificate before work starts.",
+        "Confirm working at heights permit is current and posted on site.",
+        "Provide occupant briefing sheet covering dust, noise, and access lock-off.",
+        "Record all defect locations, crack widths, spalling areas, and severity ratings on site defect plan.",
+        "Photograph all cracks with date, location reference, and measurement scale visible.",
+        "Submit inspection report and photos to Leo and Associates for defect repair approval before scheduling repair method.",
+        "Log all work activity, platform conditions, and weather in site diary.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Safety helmet (hard hat)",
+        "eye protection",
+        "High-visibility vest (class D, occupied building)",
+        "Dust mask (P2) for dry-cleaning tasks",
+        "cut-resistant gloves",
+        "Non-slip footwear with ankle support"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor",
+        "frequency": "before each shift starts and before scaffold is occupied",
+        "evidence": "Signed handover certificate posted at base and sighted by supervisor; platform inspection checklist completed and retained on file"
+      },
+      "responsibility": {
+        "SUP": "Supervise repairs, check scaffold safety, approve debris controls, sign hold points",
+        "WKR": "Perform repairs per SWMS, wear PPE, use dust control, report defects"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 5,
+      "task": "Repair slab cracks and spalling",
+      "scope": "Fill and grind cracks per engineer recommendation. Repair spalled areas. Prepare slab to waterproofing substrate standard. Allow full cure before membrane application.",
+      "trade_type": "Concrete",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Inhalation of silica dust and filler particulates during crack filling and grinding",
+        "Chemical burn or skin sensitisation from epoxy or polyurethane repair products",
+        "Respiratory irritation from volatile organic compounds (VOCs) during product application",
+        "Noise and vibration exposure from grinding equipment",
+        "Fall from height \u2014 loss of balance during repair work and grinding operations"
+      ],
+      "dominant_hazard": "Inhalation of silica dust and chemical fumes during crack filling and grinding",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain and review engineer recommendation for crack filling and repair method before starting work.",
+        "Wet grind using shrouded grinding equipment with integral water suppression and dust extraction to suppress silica dust at source.",
+        "Use local exhaust ventilation (LEV) or portable dust extractor on grinder discharge \u2014 position extraction hose within 300mm of grinding point.",
+        "Apply chemical filler products only in naturally ventilated or mechanically ventilated spaces \u2014 no enclosed work without active fume extraction.",
+        "Read safety data sheet (SDS) for epoxy, polyurethane, or cement-based filler before opening containers \u2014 brief all workers on VOC hazards and emergency procedures.",
+        "Barricade slab work area to exclude occupants \u2014 display 'Wet Grinding in Progress' signage at all entry points and on floors below.",
+        "Confirm scaffold handover certificate signed by licensed scaffolder and dated within current month before any worker enters work platform.",
+        "check scaffold condition \u2014 check all braces, connections, and guardrails tight and undamaged \u2014 stop work if any defect found."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start grinding until: wet suppression system is running, dust extraction confirmed active, and SDS briefing recorded for all present workers.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply chemical filler until: substrate is dry, ventilation is running continuously, and spill containment (drip tray or absorbent mat) is in place."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: grinding equipment water supply fails, dust extractor loses suction, or grinding continues dry without suppression.",
+        "\ud83d\uded1 STOP WORK if: any worker reports dizziness, respiratory distress, or chemical burn during filler application \u2014 evacuate and seek medical advice.",
+        "\ud83d\uded1 STOP WORK if: scaffold handover certificate cannot be located, is unsigned, or is dated over 30 days before work start.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain EPA air emissions licence (Category 31 \u2014 Coating or sealing operations) before telling occupied building occupants of work schedule.",
+        "Issue noise management plan to building manager \u2014 identify work hours, expected noise level, and commitment to minimise disturbance to occupied areas.",
+        "Record SDS review and hazard briefing in site diary \u2014 name attendees, date, and signature of supervisor.",
+        "Conduct toolbox talk on VOC symptoms (headache, nausea, respiratory irritation) and emergency response (evacuate, call emergency services, inform supervisor).",
+        "Confirm all workers hold current White Card (CPCCWHS1001) and Working at Heights competency (RIIOHS204E or equivalent) \u2014 retain copy on file before work commences.",
+        "Obtain signed Working at Heights permit from site manager and appointed competent supervisor before first day of elevated work.",
+        "Arrange dust and fume monitoring at start of each shift using portable equipment or by competent external monitor \u2014 record results daily.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Respiratory protective equipment \u2014 P2 particulate respirator (AS/NZS 1716) minimum during active grinding; upgrade to P3 or supplied air if airborne dust concentration exceeds workplace exposure standard.",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "eye protection\u2014 clear polycarbonate or tinted shade 5 to protect eyes from grinding sparks and filler splash.",
+        "Hearing protection \u2014 foam earplugs (SNR 27\u201333 dB minimum) or earmuffs during grinding operations.",
+        "High-visibility vest \u2014 orange or yellow Class D to remain visible to occupants and other workers on the building.",
+        "steel-capped footwear\u2014 steel-capped boots to AS/NZS 2210 minimum.",
+        "Cotton or natural-fibre work clothing \u2014 to avoid static buildup during chemical application; no synthetic fabrics that may trap chemical vapour."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Confirm wet grinding water suppression running and dust extractor suction active before each shift and after any pause exceeding 15 minutes.",
+        "who": "Supervisor",
+        "frequency": "before shift start, after each break, before any change of operator",
+        "evidence": "Daily equipment checklist signed by supervisor; dust extractor filter visual check (no blockage or bypass); water flow visual confirmation at grinding point; air monitoring results recorded in site diary."
+      },
+      "responsibility": {
+        "SUP": "Supervise repairs, check scaffold safety, approve debris controls, sign hold points",
+        "WKR": "Perform repairs per SWMS, wear PPE, use dust control, report defects"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 8,
+      "task": "Lay and grout final tiles and finishes",
+      "scope": "Install finish tiles to balcony surfaces. Grout and seal all joints. Reinstate balustrades and edge trims per original design. Final clean and make good.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Cut and laceration from tile cutting and sharp tile edges",
+        "Inhalation of silica dust from tile cutting",
+        "Manual handling strain from carrying tiles and grout bags to height",
+        "Chemical irritation from grout and sealant products",
+        "Fall from height \u2014 trip on tile materials or tools on working platform",
+        "Repetitive strain injury from tiling and grouting work"
+      ],
+      "dominant_hazard": "Fall from height \u2014 trip hazard from tile materials and equipment on platform",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Establish 2m exclusion zone around balcony edge before laying tiles \u2014 prevent unauthorised entry.",
+        "Check scaffold handover certificate and load calculation match tile and grout material weight before loading platform.",
+        "Wet-cut tiles using water suppression or dust extractor \u2014 do not dry-cut on platform.",
+        "Remove tile cutting equipment and offcuts from platform at end of each shift \u2014 eliminate trip hazard.",
+        "Review SDS for grout and sealant product before work starts \u2014 identify chemical hazards and ventilation needs.",
+        "Apply grout with mechanical mixer on ground, not on platform \u2014 reduce manual handling and fall risk.",
+        "Barricade platform edge with physical barrier if balustrade removed during reinstatement \u2014 maintain edge protection.",
+        "Isolate sealant product in well-ventilated area or use respirator approved for solvent vapour if indoor application required."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start tile laying until: scaffold handover certificate sighted, exclusion zone signage installed, and platform clear of trip hazards.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply sealant until: occupied building entry points isolated, ventilation confirmed or respirator fit-tested, and SDS reviewed with all workers."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: water suppression system fails during tile cutting \u2014 do not resume dry-cutting.",
+        "\ud83d\uded1 STOP WORK if: grout or sealant chemical irritation reported by any worker \u2014 isolate product and review SDS match.",
+        "\ud83d\uded1 STOP WORK if: balustrade removal exposes unprotected edge and no physical barrier installed within 5 minutes.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain current SDS for grout and sealant product \u2014 verify WorkSafe-approved version before delivery.",
+        "Confirm scaffolder holds current class-appropriate scaffolding licence \u2014 sighted before handover.",
+        "Obtain signed working at heights permit for each day elevated work occurs \u2014 kept on site during work.",
+        "Brief workers on occupied building protocols \u2014 restrict noise generation 8am\u20135pm weekdays, use low-noise cutting where possible.",
+        "Record final clean-up completion and trip hazard removal before handover to occupant \u2014 photograph platform clear state."
+      ],
+      "ppe": [
+        "eye protection\u2014 impact-rated for tile cutting debris.",
+        "Dust mask P2 or powered respirator with organic vapour cartridge \u2014 selected per SDS chemical hazards.",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Steel-capped boots \u2014 grip sole to reduce slip on wet platform.",
+        "hi-viz shirt or vest\u2014 protect skin from grout and sealant splash."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Supervisor / Site Lead",
+        "frequency": "before each shift start, mid-shift spot check, after water suppression or sealant application",
+        "evidence": "Daily site checklist signed by supervisor; photographic record of cleared platform at shift end; SDS and scaffold handover certificate held on site."
+      },
+      "responsibility": {
+        "SUP": "Supervise Lay and grout final tiles",
+        "WKR": "Perform Lay and grout final tiles per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 6,
+      "task": "Apply new waterproofing membrane system",
+      "scope": "Apply membrane per system manufacturer specification and engineer design. make sure full coverage, seams, edge details and penetration waterproofing. Obtain Leo and Associates inspection sign-off on completed membrane before screed application.",
+      "trade_type": "Waterproofing",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Inhalation of solvent vapours and chemical fumes from membrane product application",
+        "Skin contact and chemical burn from waterproofing membrane material",
+        "Respiratory sensitisation from isocyanates or other reactive chemicals in coating system",
+        "Fall from height \u2014 slip from wet or chemical-treated surface",
+        "Inadequate membrane coverage creating undetected water ingress pathways"
+      ],
+      "dominant_hazard": "Inhalation of toxic chemical fumes during membrane application",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain and review manufacturer SDS for membrane product before application starts.",
+        "Establish continuous mechanical ventilation across application area \u2014 extract fumes to atmosphere, do not recirculate.",
+        "Check atmospheric conditions \u2014 do not apply if wind speed exceeds 5 m/s or rain forecast within 4 hours.",
+        "Apply membrane using supplied applicator method \u2014 follow system manufacturer specification for coverage, spread rate, and cure time.",
+        "Wear chemical-resistant gloves and replace every 30 minutes or after contact with membrane material.",
+        "Wear respiratory protection \u2014 Type P2 half-mask respirator with organic vapour cartridge during application and 30 minutes post-application.",
+        "Brief all workers on isocyanate sensitisation risk and symptoms \u2014 headache, chest tightness, asthma-like reaction.",
+        "Barricade application area \u2014 restrict entry to personnel involved in membrane work only."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start membrane application until: SDS reviewed, ventilation extraction confirmed running, and atmospheric conditions checked safe",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply screed until: Leo and Associates inspection sign-off obtained and recorded"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: ventilation extraction fails or is switched off during application or 30-minute post-application period",
+        "\ud83d\uded1 STOP WORK if: worker reports respiratory symptoms, headache, or chest tightness during or immediately after membrane application",
+        "\ud83d\uded1 STOP WORK if: visual inspection of membrane coverage shows gaps, thin spots, or incomplete seam overlap before cure completes",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Confirm scaffolding handover certificate signed by licenced scaffolder before elevated work.",
+        "Verify working at heights permit and competency (RIIOHS204E) for all elevated workers.",
+        "Record SDS training and isocyanate sensitisation briefing for each worker before application.",
+        "Photograph completed membrane coverage and seams before inspection call \u2014 retain as evidence.",
+        "tell building occupants of chemical odour and ventilation requirements during application.",
+        "Check wind speed and weather forecast before application \u2014 record proceed or defer decision.",
+        "Keep SDS and manufacturer application guide on site and accessible during work.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Type P2 half-mask respirator with organic vapour cartridge \u2014 fit-tested and user-trained",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "hi-viz shirt or vest",
+        "steel-capped footwear",
+        "Chemical splash eye protection"
+      ],
+      "ccvs_code": "CHM-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Ventilation extraction running and worker respiratory check each 15 minutes",
+        "who": "Supervisor",
+        "frequency": "every 15 minutes during application and post-application period",
+        "evidence": "Extraction fan operating visually confirmed; worker verbally confirms no respiratory symptoms"
+      },
+      "responsibility": {
+        "SUP": "Supervise membrane application, verify controls in place, sign off hold points",
+        "WKR": "Apply membrane per SWMS, report hazards, comply with respiratory and ventilation controls"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 9,
+      "task": "Inspection and defect rectification",
+      "scope": "Carry out final inspection with Leo and Associates. Document and fix any defects or non-conformances. Obtain final approval before scaffold release.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 movement across incomplete or partially repaired balcony surface",
+        "Trip and fall from unfixed balustrades or temporary edge protection",
+        "Exposure to defective waterproofing during inspection allowing water contact"
+      ],
+      "dominant_hazard": "Fall from height \u2014 trip on temporary repairs or incomplete edge protection",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Check scaffold structure for stability before starting inspection \u2014 look for loose connections, bent tubes, or missing bracing.",
+        "Verify all edge protection is in place and secure before moving across work area \u2014 temporary repairs must be fixed, not loose.",
+        "Walk inspection route slowly \u2014 stop and wait if surface is wet, uneven, or has temporary patches.",
+        "Document each defect photographically and on defect sheet with location, description, and severity before fixing.",
+        "Barricade or rope off incomplete repairs or damaged areas \u2014 prevent pedestrian or worker passage until fixed.",
+        "Use only approved waterproofing product per SDS during rectification \u2014 apply in dry conditions only.",
+        "Allow waterproofing membrane minimum cure time per product instructions before final inspection \u2014 do not accelerate drying.",
+        "Confirm with Leo and Associates inspector that all documented defects are rectified to specification before scaffold release sign-off."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not release scaffold until: final approval certificate from Leo and Associates is signed and filed"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: edge protection is incomplete, missing, or unstable and defect repair is not in progress",
+        "\ud83d\uded1 STOP WORK if: waterproofing is wet and worker movement across membrane is required",
+        "\ud83d\uded1 STOP WORK if: balustrade or temporary edge guard is loose, unfixed, or trip hazard",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Brief all workers on defect locations and temporary repair zones before starting inspection.",
+        "Maintain defect register with photograph, location, repair method, and approval sign-off for each item.",
+        "Confirm waterproofing product SDS is on site and all personnel applying product have read it.",
+        "tell building occupants of inspection timing and temporary edge protection changes.",
+        "tell scaffolder and competent person of any scaffold alterations or temporary bracing added during rectification.",
+        "Store all approval certificates and defect records on site until handover completion.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "High-visibility vest",
+        "steel-capped footwear",
+        "cut-resistant gloves",
+        "Eye protection if applying waterproofing product"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Competent person / Supervisor",
+        "frequency": "before each inspection shift and after any repair completion",
+        "evidence": "Defect sheet photo, edge protection check record, final approval certificate signed by Leo and Associates inspector"
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "Inspect per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 10,
+      "task": "Dismantle scaffold",
+      "scope": "Remove all scaffold elements. Obtain certifier release and decommission. Conduct final condition check of balconies and facade.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 worker falling during scaffold removal operations",
+        "Dropped object from height \u2014 scaffold components striking workers or building below",
+        "Crush injury from falling scaffold sections or component stacks",
+        "Loss of stability during partial scaffold dismantling before final removal",
+        "Struck by moving load during lowering of scaffold materials"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker falling during scaffold dismantling",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain written release from scaffold certifier before starting dismantling.",
+        "Brief all workers on dismantling sequence and fall prevention method before work starts.",
+        "Assign a dedicated spotter to control ground movements and restrict pedestrian access below.",
+        "Wear full body harness with 100% tie-off to independent anchor point always while at height.",
+        "Lower scaffold components in controlled stages using certified rigging and mechanical lowering equipment \u2014 no free-dropping.",
+        "Barricade and exclude public from area below scaffold \u2014 maintain exclusion for duration of work and 30 minutes post-completion.",
+        "Stop dismantling immediately if wind speed exceeds 30 km/h or weather conditions impair visibility.",
+        "Check all harness attachment points and rescue equipment are operational before each worker ascends."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not dismantle any scaffold section until: certifier release document is sighted and verified on site",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lower components to ground until: exclusion zone is confirmed clear of pedestrians and ground spotter is in radio contact"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any structural member shows visible cracks, bending, or corrosion suggesting load-bearing compromise",
+        "\ud83d\uded1 STOP WORK if: any worker cannot maintain 100% tie-off due to access obstruction or missing anchor points",
+        "\ud83d\uded1 STOP WORK if: public or occupants enter the exclusion zone below scaffold \u2014 re-establish barrier and resume only when zone is clear"
+      ],
+      "admin": [
+        "Retain scaffold certifier's written release on site before dismantling start.",
+        "Complete handover checklist for each completed dismantling phase \u2014 sign off by supervisor.",
+        "Conduct final condition check of all balconies and facade for damage \u2014 photograph and record any new defects before releasing site.",
+        "Log dismantling completion, removal date, and final inspection outcome in project records."
+      ],
+      "ppe": [
+        "Full body harness with certified lanyard or shock absorber",
+        "Hard hat with chin strap",
+        "High-visibility vest",
+        "steel-capped footwear",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify 100% tie-off maintained and harness attachment points secure before and during each dismantling phase.",
+        "who": "Supervisor",
+        "frequency": "Continuous during all height work",
+        "evidence": "Visual inspection of harness, lanyard routing, and anchor points; sign-off on checklist at phase completion"
+      },
+      "responsibility": {
+        "SUP": "Verify scaffold or EWP certification, supervise erection, sign off load checks",
+        "WKR": "Follow erection plan, wear harness at height, report defects"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    },
+    {
+      "sequence": 11,
+      "task": "Site demobilisation and building reinstatement",
+      "scope": "Remove all temporary facilities, signage, and waste. Clean site. Restore building access and residents communication. Final handover to building management.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Trip and fall from temporary facilities and signage removal",
+        "Noise and dust disturbance to residents during removal and cleaning",
+        "Manual handling strain from removing and stacking materials and facilities",
+        "Inadequate cleaning of dust and debris affecting building access and facilities"
+      ],
+      "dominant_hazard": "Trip and fall hazard during removal of temporary site infrastructure",
+      "risk_pre": "Low(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Clear all temporary site infrastructure (barriers, signs, hoardings) before removing scaffolding or temporary facilities.",
+        "Remove trip hazards from walkways and building access routes before resident access resumes.",
+        "Damp-sweep and vacuum all dust and debris from common areas, corridors, and building entry points.",
+        "Stack removed materials and waste in designated areas away from building entry and resident pathways.",
+        "tell building management and residents 24 hours before starting demobilisation.",
+        "Conduct final walkthrough with building manager to confirm all temporary works removed and site clean.",
+        "Provide handover certificate to building management confirming site reinstatement complete and safe for occupancy.",
+        "Wear steel-capped footwear"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not resume resident access until: all temporary site infrastructure removed, walkways clear of trip hazards, and final cleaning complete"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: temporary facilities or signage create trip hazard that cannot be immediately cleared",
+        "\ud83d\uded1 STOP WORK if: dust or debris clouds residents' visibility or access to building entry"
+      ],
+      "admin": [
+        "Brief all workers on demobilisation sequence and trip hazard locations before start.",
+        "Confirm building management contact and agreed access restrictions during removal work.",
+        "Record waste disposal method and completion date in site log.",
+        "Obtain building manager sign-off on final cleaning and site condition before handover."
+      ],
+      "ppe": [
+        "steel-capped footwear",
+        "High-visibility vest",
+        "Dust mask (P2) if dry sweeping or heavy dust removal"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "",
+        "who": "Supervisor",
+        "who_checks": "Supervisor",
+        "frequency": "daily",
+        "evidence": "Visual confirmation of harness fit, lanyard connection, anchor point integrity",
+        "what_to_look_for": "Visual confirmation of harness fit, lanyard connection, anchor point integrity"
+      },
+      "responsibility": {
+        "SUP": "Verify fall protection, check module weights, sign off hold points",
+        "WKR": "Wear fall harness, check lanyard attachment, report equipment damage"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.11"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.6 \u2014 Work on scaffold over 4m",
+    "hrcw_license_class": "Scaffolding Licence \u2014 Basic (SB), Intermediate (SI), or Advanced (SA)",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "tiltup_precast": false,
+      "mobile_plant": false,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": false,
+    "epa_license_required": true,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "Full-body harness \u2014 when erecting or dismantling above 4m",
+      "Hard hat \u2014 mandatory on scaffold",
+      "Non-slip safety boots",
+      "Chemical-resistant gloves \u2014 nitrile or neoprene",
+      "Organic vapour respirator \u2014 solvent-based products",
+      "Coveralls \u2014 chemical splash protection",
+      "Energy-absorbing lanyard \u2014 double lanyard where continuous attachment required",
+      "Helmet with chin strap \u2014 AS/NZS 1801",
+      "P2 half-face respirator \u2014 lead paint and possible asbestos dust",
+      "Disposable coveralls \u2014 taped at wrists and ankles",
+      "Nitrile gloves \u2014 double layer",
+      "Full body harness with double lanyard \u2014 when working on incomplete scaffold",
+      "Hi-vis vest",
+      "UV protection \u2014 long sleeves, sunscreen, wide-brim hat where harness permits"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Scaffolding Licence \u2014 class appropriate to scaffold type and height",
+      "Working at heights \u2014 verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
+      "SDS training \u2014 safety data sheet for membrane product",
+      "Licensed waterproofer \u2014 where AS 3740 compliance required",
+      "EWP operator licence \u2014 WP class where boom exceeds 11m",
+      "Hazardous materials survey \u2014 before removal of any old corrugated roof",
+      "Lead Assessor Class A \u2014 where lead paint confirmed or suspected",
+      "Asbestos inspection \u2014 where asbestos-backed insulation suspected",
+      "Scaffolding high risk work licence \u2014 Basic (modular, prefab, bracket, fall arrest)"
+    ],
+    "permits": [
+      "Scaffold erection permit \u2014 signed by licenced scaffolder before use",
+      "Handover certificate \u2014 before any worker uses completed scaffold",
+      "Working at heights permit \u2014 signed before each elevated task",
+      "Noise management plan \u2014 required where work affects occupants",
+      "Dust containment plan \u2014 hoarding or plastic sheeting before work starts",
+      "Owners corporation consent \u2014 special resolution required for common property works",
+      "Strata by-law compliance \u2014 check all applicable by-laws before work",
+      "Building manager approval \u2014 written consent before work in common areas",
+      "Hazmat removal plan \u2014 documented before old roof removal commences",
+      "Scaffold permit to strip \u2014 required before dismantling any scaffold from which a person or object could fall >4m",
+      "Roof access permit \u2014 before any worker accesses roof"
+    ],
+    "qualifications": [
+      "Competent person \u2014 weekly inspection and after adverse weather",
+      "Structural engineer \u2014 where scaffold exceeds 15m or non-standard loading",
+      "Applicator certification \u2014 manufacturer certification for warranty purposes",
+      "Rescue plan \u2014 documented before work above 2m begins",
+      "Rescue equipment \u2014 on site and ready for immediate deployment before any elevated work starts",
+      "Occupant notification \u2014 48 hours minimum before noisy or dusty work",
+      "Exclusion zone \u2014 clearly marked, prevents public access to work area",
+      "Lot boundary \u2014 confirm lot vs common property boundary before any work",
+      "Strata manager \u2014 notify minimum 5 business days before work",
+      "Rubbish \u2014 waste must not be stored in common areas, remove daily",
+      "Asbestos check \u2014 insulation blanket behind old iron often chrysotile asbestos",
+      "Lead paint check \u2014 most pre-1970 roofs painted with lead-based paint",
+      "Scaffold inspection \u2014 competent person with scaffolding licence, before first use and after any incident",
+      "30-day periodic inspection \u2014 licensed competent person, inspection certificate completed and scaffold tag updated",
+      "Changes to scaffold design \u2014 authorised and signed off by competent person before changes made",
+      "Anchor point inspection \u2014 roof anchors inspected and certified per AS/NZS 1891.4 before use",
+      "Perimeter edge protection \u2014 installed before workers access roof, maintained throughout"
+    ],
+    "notifications": [
+      "Building manager \u2014 written notification before work commences",
+      "Occupants \u2014 letterbox drop 48 hours before disruptive work",
+      "Strata manager \u2014 written notification minimum 5 business days before work",
+      "Owners corporation \u2014 special resolution for any common property alteration",
+      "All lot owners \u2014 notification where work affects common areas or facilities",
+      "NSW EPA \u2014 notification where asbestos or lead removal exceeds thresholds"
+    ],
+    "regulatory_notes": [
+      "WHS Reg 2017 Part 4.4 \u2014 fall prevention hierarchy applies to all fall risk",
+      "Scaffold handover certificate \u2014 mandatory before any use",
+      "Load calculations \u2014 mandatory for heavy-duty or non-standard scaffold",
+      "AS 3740 \u2014 Waterproofing of domestic wet areas",
+      "AS 4654.2 \u2014 Waterproofing membranes for external above-ground use",
+      "Product SDS \u2014 on site before application starts",
+      "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
+      "Harness inspection \u2014 pre-use check logged before each shift",
+      "WHS Reg 2017 r.305 \u2014 rescue procedure required before commencing work at height",
+      "Suspension trauma \u2014 incapacitated worker must be lowered within 15 minutes; harness straps can cause positional asphyxia",
+      "Emergency contacts \u2014 on-site personnel trained in rescue procedure before elevated work begins",
+      "WHS Reg 2017 r.291-303 \u2014 fall prevention hierarchy: (1) eliminate, (2) passive edge protection/guardrail, (3) restraint system, (4) fall arrest, (5) administrative",
+      "Edge protection first \u2014 guardrails preferred over harness where work area permits fixed barriers",
+      "Control line \u2014 2m setback from edge, used only when guardrail not practicable",
+      "Exclusion zone required below WAH operations \u2014 size proportional to fall/drop zone; physical barrier where practicable, flagging/bunting as minimum",
+      "Emergency access must be maintained to all work zones including WAH exclusion zones",
+      "Strata schemes \u2014 notify strata manager and obtain by-law compliance",
+      "Noise curfew \u2014 residential: 8am\u20135pm weekdays, 8am\u20131pm Saturday, no Sunday",
+      "Dust \u2014 full hoarding required where public or occupant exposure possible",
+      "Common property \u2014 owners corporation owns and is responsible for common property",
+      "By-laws \u2014 non-compliance can result in NCAT order to make good",
+      "Pre-1980 corrugated iron \u2014 assume lead paint until tested",
+      "Asbestos insulation blanket \u2014 common behind corrugated iron in industrial buildings pre-1980",
+      "Sample before disturb \u2014 always test before removal, do not assume clean",
+      "WHS Reg 2017 r.314-318 \u2014 scaffolding licence classes and inspection obligations",
+      "AS 4576 \u2014 Guidelines for scaffolding",
+      "Scaffold >4m fall risk \u2014 handover inspection certificate AND scaffold tag required before use",
+      "Exclusion zones during erection and dismantling \u2014 signage required, nobody below without PPE",
+      "Mobile scaffolds \u2014 castors locked when in use, not moved with workers on scaffold",
+      "Free-standing scaffold max height \u2014 3\u00d7 least base dimension",
+      "Scaffold from which fall >4m possible \u2014 re-inspect after severe weather event or impact by plant",
+      "Incomplete scaffold left unattended \u2014 danger tags and warning signs at access points to prevent unauthorised access",
+      "WHS Reg 2017 r.291-306 \u2014 Falls \u2014 hierarchy of controls applies to all roof work",
+      "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems \u2014 anchor point requirements",
+      "Hold point \u2014 roof structure and structural steel erection complete and approved for loading before any materials placed",
+      "Perimeter safety handrails to be installed as per manufacturer requirements before roof access",
+      "Roof anchors must be fixed to roof structure as specified \u2014 not to cladding or purlins alone",
+      "Roofing fixings at required spacing for wind load \u2014 per specification; not to be reduced on site",
+      "Bolts checked and torque verified 24 hours after erection",
+      "Sealant \u2014 correct grade, type, and colour; sealed guttering and downpipe joints",
+      "Wind conditions \u2014 work suspended in sustained winds exceeding safe limit for harness effectiveness",
+      "Skylights and penetrations \u2014 barricaded or covered before roof access to prevent fall-through",
+      "Sarking/insulation certificate of compliance required",
+      "Roofing material, roof anchor, and installation warranties required as project documentation"
+    ],
+    "plant": [
+      "Scaffolding"
+    ],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "remedial",
+      "building_context": "existing",
+      "occupancy_context": "occupied",
+      "scope_modifiers": [
+        "scaffold_access",
+        "residential",
+        "strata",
+        "external_envelope",
+        "waterproofing",
+        "occupied_interface",
+        "road_corridor"
+      ]
+    }
+  },
+  "agent_outputs": {
+    "task_manifest": {
+      "tasks": [
+        {
+          "sequence": 1,
+          "task": "Site setup and occupied building interface",
+          "scope": "Establish site boundaries, residents communication plan, dust control, waste management staging, toilet and welfare facilities coordination with building management.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 2,
+          "task": "Erect scaffold to balconies via Kiora Lane and courtyard",
+          "scope": "Install and certify scaffold system accessing all balconies. Ensure stability, safe access, and compliance with 4m height classification. Obtain scaffold tag and certifier sign-off before any personnel work at height.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "scaffold over 4m"
+          ],
+          "complexity": "high"
+        },
+        {
+          "sequence": 3,
+          "task": "Remove existing waterproofing membrane, screed and tile bed",
+          "scope": "Strip all existing membrane, screed layer and tile bed to expose concrete slab. Manage silica dust and debris control. Segregate and remove all waste off-site.",
+          "trade_type": "Demolition",
+          "environment": [
+            "at height",
+            "occupied building",
+            "outdoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 4,
+          "task": "Inspect slab and document crack condition",
+          "scope": "Clean concrete slab. Identify, measure and photograph all cracks and spalling. Document defect locations and severity. Halt works pending Leo and Associates inspection approval before repair method confirmation.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 5,
+          "task": "Repair slab cracks and spalling",
+          "scope": "Fill and grind cracks per engineer recommendation. Repair spalled areas. Prepare slab to waterproofing substrate standard. Allow full cure before membrane application.",
+          "trade_type": "Concrete",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 6,
+          "task": "Apply new waterproofing membrane system",
+          "scope": "Apply membrane per system manufacturer specification and engineer design. Ensure full coverage, seams, edge details and penetration waterproofing. Obtain Leo and Associates inspection sign-off on completed membrane before screed application.",
+          "trade_type": "Waterproofing",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "high"
+        },
+        {
+          "sequence": 7,
+          "task": "Install screed and tile bed",
+          "scope": "Apply protective screed layer over membrane. Install tile bed substrate to falls and to engineer specification. Prepare surface for final tiling.",
+          "trade_type": "Waterproofing",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 8,
+          "task": "Lay and grout final tiles and finishes",
+          "scope": "Install finish tiles to balcony surfaces. Grout and seal all joints. Reinstate balustrades and edge trims per original design. Final clean and make good.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 9,
+          "task": "Inspection and defect rectification",
+          "scope": "Carry out final inspection with Leo and Associates. Document and rectify any defects or non-conformances. Obtain final approval before scaffold release.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 10,
+          "task": "Dismantle scaffold",
+          "scope": "Remove all scaffold elements. Obtain certifier release and decommission. Conduct final condition check of balconies and facade.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "scaffold over 4m"
+          ],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 11,
+          "task": "Site demobilisation and building reinstatement",
+          "scope": "Remove all temporary facilities, signage, and waste. Clean site. Restore building access and residents communication. Final handover to building management.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        }
+      ],
+      "total_tasks": 11,
+      "primary_trade": "Waterproofing",
+      "environment_summary": [
+        "at height",
+        "occupied building",
+        "outdoor"
+      ],
+      "hrcw_present": true
+    },
+    "risk_manifest": {
+      "risks": [
+        {
+          "sequence": 1,
+          "task": "Site setup and occupied building interface",
+          "hazards": [
+            "Dust and debris migration into occupied building affecting residents",
+            "Trip and fall hazard from temporary barriers, hoses and welfare facilities in courtyard and access routes",
+            "Noise and vibration disturbance to residents during setup and work hours",
+            "Inadequate waste segregation causing cross-contamination and disposal delays"
+          ],
+          "dominant_hazard": "Trip and fall hazard from temporary infrastructure in shared access areas",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 2,
+          "task": "Erect scaffold to balconies via Kiora Lane and courtyard",
+          "hazards": [
+            "Fall from height \u2014 scaffold collapse or structural failure during assembly",
+            "Fall from height \u2014 incomplete or unstable scaffold preventing safe work at height",
+            "Dropped object from scaffold platform or tools striking persons or building below",
+            "Crush injury to workers during scaffold component handling and assembly",
+            "Contact with building facade or balustrade elements during scaffold positioning"
+          ],
+          "dominant_hazard": "Fall from height \u2014 scaffold collapse or failure during assembly and use",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 3,
+          "task": "Remove existing waterproofing membrane, screed and tile bed",
+          "hazards": [
+            "Inhalation of silica dust from grinding and cutting membrane and screed",
+            "Respiratory irritation from dust and tile particulates during removal",
+            "Cut and laceration injuries from tile shards and sharp membrane edges",
+            "Fall from height \u2014 loss of footing on wet or debris-covered scaffold platform",
+            "Noise exposure from mechanical cutting and grinding equipment"
+          ],
+          "dominant_hazard": "Inhalation of respirable crystalline silica dust during removal and grinding",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 4,
+          "task": "Inspect slab and document crack condition",
+          "hazards": [
+            "Fall from height \u2014 slipping on wet or dusty slab surface at height",
+            "Inhalation of dust during slab cleaning and crack inspection",
+            "Eye injury from dust and debris during close inspection of crack detail",
+            "Manual handling strain from cleaning equipment and measurement tools"
+          ],
+          "dominant_hazard": "Fall from height \u2014 slip on uneven or contaminated slab surface",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 5,
+          "task": "Repair slab cracks and spalling",
+          "hazards": [
+            "Inhalation of silica dust and filler particulates during crack filling and grinding",
+            "Chemical burn or skin sensitisation from epoxy or polyurethane repair products",
+            "Respiratory irritation from volatile organic compounds (VOCs) during product application",
+            "Noise and vibration exposure from grinding equipment",
+            "Fall from height \u2014 loss of balance during repair work and grinding operations"
+          ],
+          "dominant_hazard": "Inhalation of silica dust and chemical fumes during crack filling and grinding",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 6,
+          "task": "Apply new waterproofing membrane system",
+          "hazards": [
+            "Inhalation of solvent vapours and chemical fumes from membrane product application",
+            "Skin contact and chemical burn from waterproofing membrane material",
+            "Respiratory sensitisation from isocyanates or other reactive chemicals in coating system",
+            "Fall from height \u2014 slip from wet or chemical-treated surface",
+            "Inadequate membrane coverage creating undetected water ingress pathways"
+          ],
+          "dominant_hazard": "Inhalation of toxic chemical fumes during membrane application",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 7,
+          "task": "Install screed and tile bed",
+          "hazards": [
+            "Inhalation of dust from dry screed mixing and application",
+            "Manual handling strain from carrying bags of screed and tile bed materials",
+            "Chemical irritation from cement and additives in screed product",
+            "Fall from height \u2014 slip from wet screed or mortar on working surface",
+            "Repetitive strain injury from trowelling and levelling operations"
+          ],
+          "dominant_hazard": "Fall from height \u2014 slip on wet screed or mortar during installation",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 8,
+          "task": "Lay and grout final tiles and finishes",
+          "hazards": [
+            "Cut and laceration from tile cutting and sharp tile edges",
+            "Inhalation of silica dust from tile cutting",
+            "Manual handling strain from carrying tiles and grout bags to height",
+            "Chemical irritation from grout and sealant products",
+            "Fall from height \u2014 trip on tile materials or tools on working platform",
+            "Repetitive strain injury from tiling and grouting work"
+          ],
+          "dominant_hazard": "Fall from height \u2014 trip hazard from tile materials and equipment on platform",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 9,
+          "task": "Inspection and defect rectification",
+          "hazards": [
+            "Fall from height \u2014 movement across incomplete or partially repaired balcony surface",
+            "Trip and fall from unfixed balustrades or temporary edge protection",
+            "Exposure to defective waterproofing during inspection allowing water contact"
+          ],
+          "dominant_hazard": "Fall from height \u2014 trip on temporary repairs or incomplete edge protection",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 10,
+          "task": "Dismantle scaffold",
+          "hazards": [
+            "Fall from height \u2014 worker falling during scaffold removal operations",
+            "Dropped object from height \u2014 scaffold components striking workers or building below",
+            "Crush injury from falling scaffold sections or component stacks",
+            "Loss of stability during partial scaffold dismantling before final removal",
+            "Struck by moving load during lowering of scaffold materials"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker falling during scaffold dismantling",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 11,
+          "task": "Site demobilisation and building reinstatement",
+          "hazards": [
+            "Trip and fall from temporary facilities and signage removal",
+            "Noise and dust disturbance to residents during removal and cleaning",
+            "Manual handling strain from removing and stacking materials and facilities",
+            "Inadequate cleaning of dust and debris affecting building access and facilities"
+          ],
+          "dominant_hazard": "Trip and fall hazard during removal of temporary site infrastructure",
+          "risk_pre": "L",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        }
+      ]
+    },
+    "task_blocks_raw": [
+      {
+        "sequence": 1,
+        "task": "Site setup and occupied building interface",
+        "scope": "Establish site boundaries, residents communication plan, dust control, waste management staging, toilet and welfare facilities coordination with building management.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Dust and debris migration into occupied building affecting residents",
+          "Trip and fall hazard from temporary barriers, hoses and welfare facilities in courtyard and access routes",
+          "Noise and vibration disturbance to residents during setup and work hours",
+          "Inadequate waste segregation causing cross-contamination and disposal delays"
+        ],
+        "dominant_hazard": "Trip and fall hazard from temporary infrastructure in shared access areas",
+        "risk_pre": "Medium(4)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Barricade all temporary infrastructure (barriers, hoses, welfare units) with 1.2 m high barriers and 'DO NOT ENTER' signage at each courtyard and access route entry point.",
+          "Install dust suppression at source \u2014 wet all excavated material and temporary stockpiles before placement; activate water spray systems during dust-generating setup tasks.",
+          "Establish and post a residents' notice board in building foyer with: project duration, work hours, site contact, complaint hotline, and weekly activity schedule.",
+          "Coordinate with building management before setup: confirm welfare facility locations (toilet, shed), waste bin staging areas, and confirmation that all utility services are marked and isolated.",
+          "Mark all temporary hoses, cables, and trip hazards with high-visibility tape and edge protection; keep all pathways clear of equipment and materials during non-work hours.",
+          "Implement waste segregation with separate labelled bins (general, concrete, timber, metal) at waste staging area; confirm removal schedule with waste contractor before site start.",
+          "Brief all workers on occupied building interface \u2014 identify resident access routes, keep noise below 75 dB during early morning and evening, and report any resident complaints immediately.",
+          "Check that all scaffolding handover certificates are signed by the licenced scaffolder and filed on site before any worker accesses the scaffold.",
+          "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not allow any worker on site until: residents' notice board is installed, welfare facilities are confirmed operational with building management, and all temporary barriers are erected.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not erect or use any scaffold until: load calculations are certified by engineer, scaffold handover certificate is signed by licenced scaffolder, and working-at-heights permit is issued and displayed on site.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: dust or debris is visibly migrating into occupied areas despite suppression measures \u2014 reposition suppression systems and re-test before restart.",
+          "\ud83d\uded1 STOP WORK if: any temporary barrier, hose, or welfare facility is missing signage, damaged, or creating a trip hazard \u2014 reinstate or remove from pathway before work resumes.",
+          "\ud83d\uded1 STOP WORK if: waste bins are overflowing or mixed waste is detected in segregation bins \u2014 sort and empty before any further material is added.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain signed residents' communication plan from building management; display contact details on site noticeboard.",
+          "Verify EPA licence is current and displayed on site before waste staging begins.",
+          "Obtain and file scaffold erection permit signed by licenced scaffolder; obtain working-at-heights permit before any elevated task.",
+          "Obtain noise management plan from principal contractor; confirm compliance with local council noise limits (typically 75 dB daytime, 55 dB evening/weekend).",
+          "Verify all workers hold current White Card (CPCCWHS1001) and relevant scaffolding licence (if working on scaffold) before site entry.",
+          "Brief building manager weekly on waste removal schedule and any resident complaints; record in site diary.",
+          "Check and confirm utility markings (water, power, gas, communications) are visible and building management has verified their accuracy before any excavation or ground work.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels",
+          "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase \u2014 area left/excluded if not cleared",
+          "Temporary access to neighbouring properties required \u2014 confirm access arrangements before commencing",
+          "Vegetation trimmed away from surfaces designated for painting or remedial works prior to commencement \u2014 area excluded if vegetation impedes access",
+          "On-site parking or provision of parking permits required for duration of works",
+          "Final inspection and agreed scope of works to be confirmed before commencement"
+        ],
+        "ppe": [
+          "High-visibility vest or shirt (AS/NZS 1906.4 Class D) \u2014 worn during all site setup activities in shared areas.",
+          "Hard hat (AS/NZS 2807.1) \u2014 worn when working on or near temporary structures, scaffolding, or welfare installations.",
+          "steel-capped footwear\u2014 worn always on site.",
+          "Dust mask (P2/FFP2) \u2014 worn during dust-generating setup tasks (material handling, suppression system setup).",
+          "High-visibility barriers and 'DO NOT ENTER' signage \u2014 installed at all temporary infrastructure entry points (not PPE, but critical interface control)."
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Check all temporary barriers are in place with legible signage before each shift start.",
+          "who": "Supervisor",
+          "frequency": "before each shift start and after each major setup change",
+          "evidence": "Photographic record of barriers and signage placement; signed-off supervision log; resident complaint register (nil or documented)."
+        },
+        "responsibility": {
+          "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+          "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.1"
+      },
+      {
+        "sequence": 2,
+        "task": "Erect scaffold to balconies via Kiora Lane and courtyard",
+        "scope": "Install and certify scaffold system accessing all balconies. make sure stability, safe access, and compliance with 4m height classification. Obtain scaffold tag and certifier sign-off before any personnel work at height.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 scaffold collapse or structural failure during assembly",
+          "Fall from height \u2014 incomplete or unstable scaffold preventing safe work at height",
+          "Dropped object from scaffold platform or tools striking persons or building below",
+          "Crush injury to workers during scaffold component handling and assembly",
+          "Contact with building facade or balustrade elements during scaffold positioning"
+        ],
+        "dominant_hazard": "Fall from height \u2014 scaffold collapse or failure during assembly and use",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain signed scaffold erection permit from licenced scaffolder before any component placement begins.",
+          "Verify load calculations and design documentation match site conditions and balcony geometry.",
+          "Check all scaffold components for damage, deformation, or corrosion before assembly.",
+          "Establish exclusion zone minimum 2m radius below scaffold footprint \u2014 barricade with tape and signage.",
+          "Assemble scaffold only on level, compacted ground or approved temporary support pads.",
+          "Secure base plates, standards, and ledger beams to prevent lateral movement during erection.",
+          "Attach guardrails and toe boards to each platform as section rises \u2014 do not work on incomplete sections.",
+          "Verify all connections torqued, pinned, and locked before moving to next level."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not permit worker access to scaffold until: handover certificate signed by licenced scaffolder and white card verified for all personnel",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not erect sections over 4m until: working at heights permit signed and competency verification (RIIOHS204E or equivalent) confirmed for supervisor"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: scaffold components show cracks, bending, or corrosion during assembly.",
+          "\ud83d\uded1 STOP WORK if: guardrails, toe boards, or edge protection removed or missing on any active platform.",
+          "\ud83d\uded1 STOP WORK if: ground conditions become saturated, unstable, or base support pads shift.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain signed scaffold erection permit from licenced scaffolder before work begins.",
+          "Obtain handover certificate from licenced scaffolder before any personnel access scaffold.",
+          "Obtain working at heights permit signed by supervisor before elevated work commences.",
+          "Verify White Card (CPCCWHS1001) current for all workers.",
+          "Verify Scaffolding Licence (class appropriate to system) current for supervisor.",
+          "Verify working at heights competency (RIIOHS204E or equivalent) current for supervisor.",
+          "tell building occupants of exclusion zones and access restrictions via notice board and verbal brief.",
+          "Record scaffold tag number and certification date on site induction board."
+        ],
+        "ppe": [
+          "Hard hat with chin strap.",
+          "High-visibility vest or jacket.",
+          "steel-capped footwear",
+          "cut-resistant gloves",
+          "Fall arrest harness and lanyard (where working over edges or unsupported voids)."
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Check guardrails and toe boards present on all active platforms before shift start.",
+          "who": "Supervisor",
+          "frequency": "Before each shift and after any scaffold modification.",
+          "evidence": "Visual walk-around; photo record; supervisor sign-off on site diary."
+        },
+        "responsibility": {
+          "SUP": "Verify scaffold or EWP certification, supervise erection, sign off load checks",
+          "WKR": "Follow erection plan, wear harness at height, report defects"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.2"
+      },
+      {
+        "sequence": 3,
+        "task": "Remove existing waterproofing membrane, screed and tile bed",
+        "scope": "Strip all existing membrane, screed layer and tile bed to expose concrete slab. Manage silica dust and debris control. Segregate and remove all waste off-site.",
+        "trade_type": "Demolition",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Inhalation of silica dust from grinding and cutting membrane and screed",
+          "Respiratory irritation from dust and tile particulates during removal",
+          "Cut and laceration injuries from tile shards and sharp membrane edges",
+          "Fall from height \u2014 loss of footing on wet or debris-covered scaffold platform",
+          "Noise exposure from mechanical cutting and grinding equipment"
+        ],
+        "dominant_hazard": "Inhalation of respirable crystalline silica dust during removal and grinding",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Wet-cut all membrane and screed using water suppression system \u2014 apply water continuously during cutting to suppress silica dust at source.",
+          "Use HEPA-filtered dust extraction connected directly to cutting equipment \u2014 maintain negative pressure and check filter saturation before each shift.",
+          "Wear P2 mask/respirator (fit-tested) fitted and sealed before starting work \u2014 verify fit each shift using manufacturer's fit-test protocol.",
+          "Barricade work area with exclusion zone 2 metres beyond drop edge \u2014 restrict entry to authorized workers only.",
+          "Remove debris to collection bin inside exclusion zone \u2014 do not throw debris from height or allow fallout onto occupied areas below.",
+          "check scaffold platform for debris and wet surfaces before each work phase \u2014 clear debris and allow surfaces to dry before proceeding.",
+          "Segregate all asbestos-suspect material separately during removal \u2014 do not mix with general waste; hold and tell site supervisor for verification.",
+          "Wear eye protection, heavy-duty gloves and cut-resistant sleeves when handling tile shards and sharp membrane edges."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start cutting until: water suppression system is tested and running, HEPA extraction is connected and sealed, and P2 respirators are fitted to all workers.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not remove debris until: exclusion zone is barricaded and all occupants below have been notified and kept clear."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: water suppression system fails or dust extraction loses pressure \u2014 wait for repair and test before resuming.",
+          "\ud83d\uded1 STOP WORK if: scaffold platform becomes slippery or debris accumulation exceeds 50 mm \u2014 clear and dry platform before continuing.",
+          "\ud83d\uded1 STOP WORK if: asbestos-suspect material is identified \u2014 isolate, do not disturb, and tell site supervisor immediately.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain signed scaffold erection permit and handover certificate before any worker accesses scaffold.",
+          "Obtain working at heights permit signed by site supervisor before each elevated task.",
+          "Verify all workers hold valid White Card and current working at heights competency (RIIOHS204E or equivalent).",
+          "Obtain and display SDS for membrane product on site \u2014 brief all workers on contents before work starts.",
+          "Obtain EPA licence for on-site waste removal and segregation.",
+          "Obtain noise management plan from site supervisor \u2014 confirm neighbours and occupied units have been notified.",
+          "Record daily dust suppression system function check and HEPA filter condition in site logbook.",
+          "Conduct toolbox talk on silica dust hazards, fit-testing of respirators, and exclusion zone requirements before first shift.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "P2 mask/respirator (fit-tested) \u2014 fitted and sealed; fit-test each shift",
+          "eye protection",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "Cut-resistant sleeves or arm guards",
+          "Steel-capped boots with good grip",
+          "High-visibility vest",
+          "Hearing protection (if mechanical grinding used)"
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Water suppression system running continuously and HEPA extraction filter pressure gauge in green zone.",
+          "who": "Supervisor / Workers",
+          "frequency": "before each work phase and continuous during cutting",
+          "evidence": "Visual confirmation of water mist at cut point; filter saturation log; respirator fit-test record; exclusion zone barricade photographic record; waste segregation bin labels and daily removal records."
+        },
+        "responsibility": {
+          "SUP": "Supervise Remove existing waterproofing membrane, screed",
+          "WKR": "Perform Remove existing waterproofing membrane, screed per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.3"
+      },
+      {
+        "sequence": 4,
+        "task": "check slab and document crack condition",
+        "scope": "Clean concrete slab. Identify, measure and photograph all cracks and spalling. Document defect locations and severity. Halt works pending Leo and Associates inspection approval before repair method confirmation.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 slipping on wet or dusty slab surface at height",
+          "Inhalation of dust during slab cleaning and crack inspection",
+          "Eye injury from dust and debris during close inspection of crack detail",
+          "Manual handling strain from cleaning equipment and measurement tools"
+        ],
+        "dominant_hazard": "Fall from height \u2014 slip on uneven or contaminated slab surface",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Confirm scaffold handover certificate signed by licenced scaffolder before any worker accesses platform.",
+          "Wet-clean slab surface with mop and water before inspection to suppress dust and reduce slip risk.",
+          "Wear eye protection",
+          "Use dust mask (P2) when dry-sweeping residual dust from crack surfaces.",
+          "Measure cracks with steel rule or crack-width gauge; photograph each defect with date and location label visible.",
+          "Do not work alone on scaffold \u2014 maintain two-person minimum during inspection work.",
+          "Brief all occupants before starting \u2014 noise, dust, and access restrictions; provide contact number for questions.",
+          "Stop work and clear platform if slab becomes wet from rain or building water sources."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not begin crack documentation until: scaffold handover certificate is signed and posted at base, and slab surface has been wet-cleaned and allowed to dry"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: slab surface becomes wet or slippery and cannot be dried within 10 minutes",
+          "\ud83d\uded1 STOP WORK if: weather deteriorates to rain, or building water ingress wets the platform",
+          "\ud83d\uded1 STOP WORK if: crack defects indicate structural concern (wide cracks >5mm, vertical step offset, active movement) \u2014 await Leo and Associates engineer visual before proceeding",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain and display scaffold handover certificate before work starts.",
+          "Confirm working at heights permit is current and posted on site.",
+          "Provide occupant briefing sheet covering dust, noise, and access lock-off.",
+          "Record all defect locations, crack widths, spalling areas, and severity ratings on site defect plan.",
+          "Photograph all cracks with date, location reference, and measurement scale visible.",
+          "Submit inspection report and photos to Leo and Associates for defect repair approval before scheduling repair method.",
+          "Log all work activity, platform conditions, and weather in site diary.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Safety helmet (hard hat)",
+          "eye protection",
+          "High-visibility vest (class D, occupied building)",
+          "Dust mask (P2) for dry-cleaning tasks",
+          "cut-resistant gloves",
+          "Non-slip footwear with ankle support"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Supervisor",
+          "frequency": "before each shift starts and before scaffold is occupied",
+          "evidence": "Signed handover certificate posted at base and sighted by supervisor; platform inspection checklist completed and retained on file"
+        },
+        "responsibility": {
+          "SUP": "Supervise repairs, check scaffold safety, approve debris controls, sign hold points",
+          "WKR": "Perform repairs per SWMS, wear PPE, use dust control, report defects"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.5"
+      },
+      {
+        "sequence": 5,
+        "task": "Repair slab cracks and spalling",
+        "scope": "Fill and grind cracks per engineer recommendation. Repair spalled areas. Prepare slab to waterproofing substrate standard. Allow full cure before membrane application.",
+        "trade_type": "Concrete",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Inhalation of silica dust and filler particulates during crack filling and grinding",
+          "Chemical burn or skin sensitisation from epoxy or polyurethane repair products",
+          "Respiratory irritation from volatile organic compounds (VOCs) during product application",
+          "Noise and vibration exposure from grinding equipment",
+          "Fall from height \u2014 loss of balance during repair work and grinding operations"
+        ],
+        "dominant_hazard": "Inhalation of silica dust and chemical fumes during crack filling and grinding",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain and review engineer recommendation for crack filling and repair method before starting work.",
+          "Wet grind using shrouded grinding equipment with integral water suppression and dust extraction to suppress silica dust at source.",
+          "Use local exhaust ventilation (LEV) or portable dust extractor on grinder discharge \u2014 position extraction hose within 300mm of grinding point.",
+          "Apply chemical filler products only in naturally ventilated or mechanically ventilated spaces \u2014 no enclosed work without active fume extraction.",
+          "Read safety data sheet (SDS) for epoxy, polyurethane, or cement-based filler before opening containers \u2014 brief all workers on VOC hazards and emergency procedures.",
+          "Barricade slab work area to exclude occupants \u2014 display 'Wet Grinding in Progress' signage at all entry points and on floors below.",
+          "Confirm scaffold handover certificate signed by licensed scaffolder and dated within current month before any worker enters work platform.",
+          "check scaffold condition \u2014 check all braces, connections, and guardrails tight and undamaged \u2014 stop work if any defect found."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start grinding until: wet suppression system is running, dust extraction confirmed active, and SDS briefing recorded for all present workers.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply chemical filler until: substrate is dry, ventilation is running continuously, and spill containment (drip tray or absorbent mat) is in place."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: grinding equipment water supply fails, dust extractor loses suction, or grinding continues dry without suppression.",
+          "\ud83d\uded1 STOP WORK if: any worker reports dizziness, respiratory distress, or chemical burn during filler application \u2014 evacuate and seek medical advice.",
+          "\ud83d\uded1 STOP WORK if: scaffold handover certificate cannot be located, is unsigned, or is dated over 30 days before work start.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain EPA air emissions licence (Category 31 \u2014 Coating or sealing operations) before telling occupied building occupants of work schedule.",
+          "Issue noise management plan to building manager \u2014 identify work hours, expected noise level, and commitment to minimise disturbance to occupied areas.",
+          "Record SDS review and hazard briefing in site diary \u2014 name attendees, date, and signature of supervisor.",
+          "Conduct toolbox talk on VOC symptoms (headache, nausea, respiratory irritation) and emergency response (evacuate, call emergency services, inform supervisor).",
+          "Confirm all workers hold current White Card (CPCCWHS1001) and Working at Heights competency (RIIOHS204E or equivalent) \u2014 retain copy on file before work commences.",
+          "Obtain signed Working at Heights permit from site manager and appointed competent supervisor before first day of elevated work.",
+          "Arrange dust and fume monitoring at start of each shift using portable equipment or by competent external monitor \u2014 record results daily.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Respiratory protective equipment \u2014 P2 particulate respirator (AS/NZS 1716) minimum during active grinding; upgrade to P3 or supplied air if airborne dust concentration exceeds workplace exposure standard.",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "eye protection\u2014 clear polycarbonate or tinted shade 5 to protect eyes from grinding sparks and filler splash.",
+          "Hearing protection \u2014 foam earplugs (SNR 27\u201333 dB minimum) or earmuffs during grinding operations.",
+          "High-visibility vest \u2014 orange or yellow Class D to remain visible to occupants and other workers on the building.",
+          "steel-capped footwear\u2014 steel-capped boots to AS/NZS 2210 minimum.",
+          "Cotton or natural-fibre work clothing \u2014 to avoid static buildup during chemical application; no synthetic fabrics that may trap chemical vapour."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Confirm wet grinding water suppression running and dust extractor suction active before each shift and after any pause exceeding 15 minutes.",
+          "who": "Supervisor",
+          "frequency": "before shift start, after each break, before any change of operator",
+          "evidence": "Daily equipment checklist signed by supervisor; dust extractor filter visual check (no blockage or bypass); water flow visual confirmation at grinding point; air monitoring results recorded in site diary."
+        },
+        "responsibility": {
+          "SUP": "Supervise repairs, check scaffold safety, approve debris controls, sign hold points",
+          "WKR": "Perform repairs per SWMS, wear PPE, use dust control, report defects"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.6"
+      },
+      {
+        "sequence": 6,
+        "task": "Apply new waterproofing membrane system",
+        "scope": "Apply membrane per system manufacturer specification and engineer design. make sure full coverage, seams, edge details and penetration waterproofing. Obtain Leo and Associates inspection sign-off on completed membrane before screed application.",
+        "trade_type": "Waterproofing",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Inhalation of solvent vapours and chemical fumes from membrane product application",
+          "Skin contact and chemical burn from waterproofing membrane material",
+          "Respiratory sensitisation from isocyanates or other reactive chemicals in coating system",
+          "Fall from height \u2014 slip from wet or chemical-treated surface",
+          "Inadequate membrane coverage creating undetected water ingress pathways"
+        ],
+        "dominant_hazard": "Inhalation of toxic chemical fumes during membrane application",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain and review manufacturer SDS for membrane product before application starts.",
+          "Establish continuous mechanical ventilation across application area \u2014 extract fumes to atmosphere, do not recirculate.",
+          "Check atmospheric conditions \u2014 do not apply if wind speed exceeds 5 m/s or rain forecast within 4 hours.",
+          "Apply membrane using supplied applicator method \u2014 follow system manufacturer specification for coverage, spread rate, and cure time.",
+          "Wear chemical-resistant gloves and replace every 30 minutes or after contact with membrane material.",
+          "Wear respiratory protection \u2014 Type P2 half-mask respirator with organic vapour cartridge during application and 30 minutes post-application.",
+          "Brief all workers on isocyanate sensitisation risk and symptoms \u2014 headache, chest tightness, asthma-like reaction.",
+          "Barricade application area \u2014 restrict entry to personnel involved in membrane work only."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start membrane application until: SDS reviewed, ventilation extraction confirmed running, and atmospheric conditions checked safe",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply screed until: Leo and Associates inspection sign-off obtained and recorded"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: ventilation extraction fails or is switched off during application or 30-minute post-application period",
+          "\ud83d\uded1 STOP WORK if: worker reports respiratory symptoms, headache, or chest tightness during or immediately after membrane application",
+          "\ud83d\uded1 STOP WORK if: visual inspection of membrane coverage shows gaps, thin spots, or incomplete seam overlap before cure completes",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Confirm scaffolding handover certificate signed by licenced scaffolder before elevated work.",
+          "Verify working at heights permit and competency (RIIOHS204E) for all elevated workers.",
+          "Record SDS training and isocyanate sensitisation briefing for each worker before application.",
+          "Photograph completed membrane coverage and seams before inspection call \u2014 retain as evidence.",
+          "tell building occupants of chemical odour and ventilation requirements during application.",
+          "Check wind speed and weather forecast before application \u2014 record proceed or defer decision.",
+          "Keep SDS and manufacturer application guide on site and accessible during work.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Type P2 half-mask respirator with organic vapour cartridge \u2014 fit-tested and user-trained",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "hi-viz shirt or vest",
+          "steel-capped footwear",
+          "Chemical splash eye protection"
+        ],
+        "ccvs_code": "CHM-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Ventilation extraction running and worker respiratory check each 15 minutes",
+          "who": "Supervisor",
+          "frequency": "every 15 minutes during application and post-application period",
+          "evidence": "Extraction fan operating visually confirmed; worker verbally confirms no respiratory symptoms"
+        },
+        "responsibility": {
+          "SUP": "Supervise membrane application, verify controls in place, sign off hold points",
+          "WKR": "Apply membrane per SWMS, report hazards, comply with respiratory and ventilation controls"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.8"
+      },
+      {
+        "sequence": 7,
+        "task": "Install screed and tile bed",
+        "scope": "Apply protective screed layer over membrane. Install tile bed substrate to falls and to engineer specification. Prepare surface for final tiling.",
+        "trade_type": "Waterproofing",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Inhalation of dust from dry screed mixing and application",
+          "Manual handling strain from carrying bags of screed and tile bed materials",
+          "Chemical irritation from cement and additives in screed product",
+          "Fall from height \u2014 slip from wet screed or mortar on working surface",
+          "Repetitive strain injury from trowelling and levelling operations"
+        ],
+        "dominant_hazard": "Fall from height \u2014 slip on wet screed or mortar during installation",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Wet screed surface with water spray before and during trowelling to reduce slip risk and dust generation.",
+          "Apply screed in layers not exceeding 50mm to engineer specification and allow adequate cure time between coats.",
+          "Install anti-slip tape or grit strips on scaffold platform edges and walkways where wet screed work occurs.",
+          "Mix screed in designated area away from scaffold edge \u2014 use portable mixer with dust extraction on site.",
+          "Wear respiratory protective equipment (P2 mask/respirator (fit-tested) minimum) when mixing dry screed or applying powder additives.",
+          "Check membrane bond and substrate stability before screed application \u2014 stop work if membrane is damaged, lifting, or wet.",
+          "Remove excess wet screed and mortar from scaffold platform immediately after application to prevent slip hazard.",
+          "Limit working platform to maximum 3 workers per 4m\u00b2 during wet screed application to manage slip risk and weight load."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply screed until: membrane has fully cured per manufacturer specification and engineer has signed off membrane installation",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start tiling until: screed has cured to minimum specification (14 days typical) and moisture test confirms surface is dry"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: membrane is visibly damaged, wet, or lifting before or during screed application",
+          "\ud83d\uded1 STOP WORK if: screed product SDS is not available on site or workers cannot confirm they have read SDS",
+          "\ud83d\uded1 STOP WORK if: wet screed or mortar accumulates on platform edges, guardrails, or walkways creating slip hazard",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain and display scaffold handover certificate signed by licenced scaffolder before any worker accesses scaffold.",
+          "Obtain working at heights permit signed by supervisor before screed application commences each day.",
+          "Record scaffold daily inspection checklist on site \u2014 platform condition, guardrails, connections, tie-points.",
+          "Provide SDS for screed product and cement additives to all site workers \u2014 confirm receipt and understanding before work starts.",
+          "Brief all workers on wet surface slip hazard, maximum platform occupancy (3 workers per 4m\u00b2), and immediate cleanup of excess material.",
+          "tell building occupants of dust and noise from screed mixing \u2014 use local dust suppression and hearing protection.",
+          "Document screed cure time and moisture testing before tile bed application \u2014 engineer to verify readiness for next phase.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat",
+          "eye protection",
+          "Respiratory protective equipment \u2014 P2 mask/respirator (fit-tested) minimum (upgrade to P3 if dust extraction not available during mixing)",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "Steel-capped boots with slip-resistant sole",
+          "High-visibility clothing"
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Supervisor",
+          "frequency": "before each work period start and continuous during wet screed application",
+          "evidence": "Scaffold platform visual inspection record \u2014 note any wet material, condition of anti-slip tape, guardrail integrity. SDS acknowledgment sheet. Membrane cure certification and moisture test record. Daily scaffold inspection log."
+        },
+        "responsibility": {
+          "SUP": "Supervise Install screed and tile bed",
+          "WKR": "Perform Install screed and tile bed per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.4"
+      },
+      {
+        "sequence": 8,
+        "task": "Lay and grout final tiles and finishes",
+        "scope": "Install finish tiles to balcony surfaces. Grout and seal all joints. Reinstate balustrades and edge trims per original design. Final clean and make good.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Cut and laceration from tile cutting and sharp tile edges",
+          "Inhalation of silica dust from tile cutting",
+          "Manual handling strain from carrying tiles and grout bags to height",
+          "Chemical irritation from grout and sealant products",
+          "Fall from height \u2014 trip on tile materials or tools on working platform",
+          "Repetitive strain injury from tiling and grouting work"
+        ],
+        "dominant_hazard": "Fall from height \u2014 trip hazard from tile materials and equipment on platform",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Establish 2m exclusion zone around balcony edge before laying tiles \u2014 prevent unauthorised entry.",
+          "Check scaffold handover certificate and load calculation match tile and grout material weight before loading platform.",
+          "Wet-cut tiles using water suppression or dust extractor \u2014 do not dry-cut on platform.",
+          "Remove tile cutting equipment and offcuts from platform at end of each shift \u2014 eliminate trip hazard.",
+          "Review SDS for grout and sealant product before work starts \u2014 identify chemical hazards and ventilation needs.",
+          "Apply grout with mechanical mixer on ground, not on platform \u2014 reduce manual handling and fall risk.",
+          "Barricade platform edge with physical barrier if balustrade removed during reinstatement \u2014 maintain edge protection.",
+          "Isolate sealant product in well-ventilated area or use respirator approved for solvent vapour if indoor application required."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start tile laying until: scaffold handover certificate sighted, exclusion zone signage installed, and platform clear of trip hazards.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply sealant until: occupied building entry points isolated, ventilation confirmed or respirator fit-tested, and SDS reviewed with all workers."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: water suppression system fails during tile cutting \u2014 do not resume dry-cutting.",
+          "\ud83d\uded1 STOP WORK if: grout or sealant chemical irritation reported by any worker \u2014 isolate product and review SDS match.",
+          "\ud83d\uded1 STOP WORK if: balustrade removal exposes unprotected edge and no physical barrier installed within 5 minutes.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain current SDS for grout and sealant product \u2014 verify WorkSafe-approved version before delivery.",
+          "Confirm scaffolder holds current class-appropriate scaffolding licence \u2014 sighted before handover.",
+          "Obtain signed working at heights permit for each day elevated work occurs \u2014 kept on site during work.",
+          "Brief workers on occupied building protocols \u2014 restrict noise generation 8am\u20135pm weekdays, use low-noise cutting where possible.",
+          "Record final clean-up completion and trip hazard removal before handover to occupant \u2014 photograph platform clear state."
+        ],
+        "ppe": [
+          "eye protection\u2014 impact-rated for tile cutting debris.",
+          "Dust mask P2 or powered respirator with organic vapour cartridge \u2014 selected per SDS chemical hazards.",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "Steel-capped boots \u2014 grip sole to reduce slip on wet platform.",
+          "hi-viz shirt or vest\u2014 protect skin from grout and sealant splash."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Supervisor / Site Lead",
+          "frequency": "before each shift start, mid-shift spot check, after water suppression or sealant application",
+          "evidence": "Daily site checklist signed by supervisor; photographic record of cleared platform at shift end; SDS and scaffold handover certificate held on site."
+        },
+        "responsibility": {
+          "SUP": "Supervise Lay and grout final tiles",
+          "WKR": "Perform Lay and grout final tiles per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.7"
+      },
+      {
+        "sequence": 9,
+        "task": "Inspection and defect rectification",
+        "scope": "Carry out final inspection with Leo and Associates. Document and fix any defects or non-conformances. Obtain final approval before scaffold release.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 movement across incomplete or partially repaired balcony surface",
+          "Trip and fall from unfixed balustrades or temporary edge protection",
+          "Exposure to defective waterproofing during inspection allowing water contact"
+        ],
+        "dominant_hazard": "Fall from height \u2014 trip on temporary repairs or incomplete edge protection",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Check scaffold structure for stability before starting inspection \u2014 look for loose connections, bent tubes, or missing bracing.",
+          "Verify all edge protection is in place and secure before moving across work area \u2014 temporary repairs must be fixed, not loose.",
+          "Walk inspection route slowly \u2014 stop and wait if surface is wet, uneven, or has temporary patches.",
+          "Document each defect photographically and on defect sheet with location, description, and severity before fixing.",
+          "Barricade or rope off incomplete repairs or damaged areas \u2014 prevent pedestrian or worker passage until fixed.",
+          "Use only approved waterproofing product per SDS during rectification \u2014 apply in dry conditions only.",
+          "Allow waterproofing membrane minimum cure time per product instructions before final inspection \u2014 do not accelerate drying.",
+          "Confirm with Leo and Associates inspector that all documented defects are rectified to specification before scaffold release sign-off."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not release scaffold until: final approval certificate from Leo and Associates is signed and filed"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: edge protection is incomplete, missing, or unstable and defect repair is not in progress",
+          "\ud83d\uded1 STOP WORK if: waterproofing is wet and worker movement across membrane is required",
+          "\ud83d\uded1 STOP WORK if: balustrade or temporary edge guard is loose, unfixed, or trip hazard",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Brief all workers on defect locations and temporary repair zones before starting inspection.",
+          "Maintain defect register with photograph, location, repair method, and approval sign-off for each item.",
+          "Confirm waterproofing product SDS is on site and all personnel applying product have read it.",
+          "tell building occupants of inspection timing and temporary edge protection changes.",
+          "tell scaffolder and competent person of any scaffold alterations or temporary bracing added during rectification.",
+          "Store all approval certificates and defect records on site until handover completion.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat",
+          "High-visibility vest",
+          "steel-capped footwear",
+          "cut-resistant gloves",
+          "Eye protection if applying waterproofing product"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Competent person / Supervisor",
+          "frequency": "before each inspection shift and after any repair completion",
+          "evidence": "Defect sheet photo, edge protection check record, final approval certificate signed by Leo and Associates inspector"
+        },
+        "responsibility": {
+          "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+          "WKR": "Inspect per specification, photograph defects, report issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.9"
+      },
+      {
+        "sequence": 10,
+        "task": "Dismantle scaffold",
+        "scope": "Remove all scaffold elements. Obtain certifier release and decommission. Conduct final condition check of balconies and facade.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 worker falling during scaffold removal operations",
+          "Dropped object from height \u2014 scaffold components striking workers or building below",
+          "Crush injury from falling scaffold sections or component stacks",
+          "Loss of stability during partial scaffold dismantling before final removal",
+          "Struck by moving load during lowering of scaffold materials"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker falling during scaffold dismantling",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain written release from scaffold certifier before starting dismantling.",
+          "Brief all workers on dismantling sequence and fall prevention method before work starts.",
+          "Assign a dedicated spotter to control ground movements and restrict pedestrian access below.",
+          "Wear full body harness with 100% tie-off to independent anchor point always while at height.",
+          "Lower scaffold components in controlled stages using certified rigging and mechanical lowering equipment \u2014 no free-dropping.",
+          "Barricade and exclude public from area below scaffold \u2014 maintain exclusion for duration of work and 30 minutes post-completion.",
+          "Stop dismantling immediately if wind speed exceeds 30 km/h or weather conditions impair visibility.",
+          "Check all harness attachment points and rescue equipment are operational before each worker ascends."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not dismantle any scaffold section until: certifier release document is sighted and verified on site",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not lower components to ground until: exclusion zone is confirmed clear of pedestrians and ground spotter is in radio contact"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: any structural member shows visible cracks, bending, or corrosion suggesting load-bearing compromise",
+          "\ud83d\uded1 STOP WORK if: any worker cannot maintain 100% tie-off due to access obstruction or missing anchor points",
+          "\ud83d\uded1 STOP WORK if: public or occupants enter the exclusion zone below scaffold \u2014 re-establish barrier and resume only when zone is clear"
+        ],
+        "admin": [
+          "Retain scaffold certifier's written release on site before dismantling start.",
+          "Complete handover checklist for each completed dismantling phase \u2014 sign off by supervisor.",
+          "Conduct final condition check of all balconies and facade for damage \u2014 photograph and record any new defects before releasing site.",
+          "Log dismantling completion, removal date, and final inspection outcome in project records."
+        ],
+        "ppe": [
+          "Full body harness with certified lanyard or shock absorber",
+          "Hard hat with chin strap",
+          "High-visibility vest",
+          "steel-capped footwear",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Verify 100% tie-off maintained and harness attachment points secure before and during each dismantling phase.",
+          "who": "Supervisor",
+          "frequency": "Continuous during all height work",
+          "evidence": "Visual inspection of harness, lanyard routing, and anchor points; sign-off on checklist at phase completion"
+        },
+        "responsibility": {
+          "SUP": "Verify scaffold or EWP certification, supervise erection, sign off load checks",
+          "WKR": "Follow erection plan, wear harness at height, report defects"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.10"
+      },
+      {
+        "sequence": 11,
+        "task": "Site demobilisation and building reinstatement",
+        "scope": "Remove all temporary facilities, signage, and waste. Clean site. Restore building access and residents communication. Final handover to building management.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Trip and fall from temporary facilities and signage removal",
+          "Noise and dust disturbance to residents during removal and cleaning",
+          "Manual handling strain from removing and stacking materials and facilities",
+          "Inadequate cleaning of dust and debris affecting building access and facilities"
+        ],
+        "dominant_hazard": "Trip and fall hazard during removal of temporary site infrastructure",
+        "risk_pre": "Low(4)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Clear all temporary site infrastructure (barriers, signs, hoardings) before removing scaffolding or temporary facilities.",
+          "Remove trip hazards from walkways and building access routes before resident access resumes.",
+          "Damp-sweep and vacuum all dust and debris from common areas, corridors, and building entry points.",
+          "Stack removed materials and waste in designated areas away from building entry and resident pathways.",
+          "tell building management and residents 24 hours before starting demobilisation.",
+          "Conduct final walkthrough with building manager to confirm all temporary works removed and site clean.",
+          "Provide handover certificate to building management confirming site reinstatement complete and safe for occupancy.",
+          "Wear steel-capped footwear"
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not resume resident access until: all temporary site infrastructure removed, walkways clear of trip hazards, and final cleaning complete"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: temporary facilities or signage create trip hazard that cannot be immediately cleared",
+          "\ud83d\uded1 STOP WORK if: dust or debris clouds residents' visibility or access to building entry"
+        ],
+        "admin": [
+          "Brief all workers on demobilisation sequence and trip hazard locations before start.",
+          "Confirm building management contact and agreed access restrictions during removal work.",
+          "Record waste disposal method and completion date in site log.",
+          "Obtain building manager sign-off on final cleaning and site condition before handover."
+        ],
+        "ppe": [
+          "steel-capped footwear",
+          "High-visibility vest",
+          "Dust mask (P2) if dry sweeping or heavy dust removal"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "",
+          "who": "Supervisor",
+          "who_checks": "Supervisor",
+          "frequency": "daily",
+          "evidence": "Visual confirmation of harness fit, lanyard connection, anchor point integrity",
+          "what_to_look_for": "Visual confirmation of harness fit, lanyard connection, anchor point integrity"
+        },
+        "responsibility": {
+          "SUP": "Verify fall protection, check module weights, sign off hold points",
+          "WKR": "Wear fall harness, check lanyard attachment, report equipment damage"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.11"
+      }
+    ],
+    "validation_errors": [
+      "High pre-risk task must have a CCVS code \u2014 N/A not permitted"
+    ]
+  },
+  "task_count": 11
+}
