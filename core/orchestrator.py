@@ -230,6 +230,9 @@ async def generate_swms(
     swms_classification = classify_swms_scope(description)
     inference["swms_classification"] = swms_classification
 
+    # Suppress unsupported inference items for scaffold-led remedial jobs
+    _suppress_inference_for_remedial(inference, swms_classification, description)
+
     scope_context = scope_context or {}
     scope_context.setdefault("job_type", swms_classification["job_type"])
     scope_context.setdefault("building_context", swms_classification["building_context"])
@@ -351,6 +354,9 @@ async def generate_swms_stream(
     inference = infer_to_dict(description, jurisdiction=jurisdiction)
     swms_classification = classify_swms_scope(description)
     inference["swms_classification"] = swms_classification
+
+    # Suppress unsupported inference items for scaffold-led remedial jobs
+    _suppress_inference_for_remedial(inference, swms_classification, description)
 
     # Merge classification into scope_context for agent prompts
     scope_context = scope_context or {}
@@ -521,6 +527,71 @@ def _enrich_risk_labels(tb: dict) -> None:
 
 
 # ── Plain English enforcement ─────────────────────────────────────────────────
+
+# ── Inference suppression for scaffold-led remedial ──────────────────────────
+
+_SUPPRESS_PLANT_REMEDIAL = (
+    "ewp", "elevated work platform", "boom lift", "scissor lift",
+    "cherry picker", "mobile crane", "franna", "pick and carry",
+    "tower crane", "all terrain crane",
+)
+
+_SUPPRESS_PERMITS_REMEDIAL = (
+    "after-hours", "council after", "council consent", "council permit",
+)
+
+_SUPPRESS_QUALS_REMEDIAL = (
+    "owners corporation", "special resolution", "strata by-law",
+    "nata certificate", "nata scaffold",
+)
+
+
+def _suppress_inference_for_remedial(
+    inference: dict, classification: dict, description: str,
+) -> None:
+    """Suppress EWP, crane, admin-governance items from inference for
+    scaffold-led occupied remedial jobs when not explicitly in source.
+
+    Only fires when job_type=remedial AND scaffold keywords are present
+    AND EWP/crane keywords are NOT explicitly in the description.
+    """
+    if classification.get("job_type") != "remedial":
+        return
+    desc_lower = description.lower()
+
+    # Only suppress if scaffold is the access method and EWP/crane not explicit
+    has_scaffold = any(kw in desc_lower for kw in ("scaffold", "scaffolding"))
+    has_explicit_ewp = any(kw in desc_lower for kw in ("ewp", "boom lift", "scissor lift", "cherry picker"))
+    has_explicit_crane = any(kw in desc_lower for kw in ("crane", "franna"))
+
+    if not has_scaffold:
+        return
+
+    # Suppress EWP and crane plant items if not explicitly in description
+    if not has_explicit_ewp and not has_explicit_crane:
+        plant = inference.get("plant", [])
+        inference["plant"] = [p for p in plant
+                              if not any(kw in p.lower() for kw in _SUPPRESS_PLANT_REMEDIAL)]
+
+    # Suppress admin/governance permits and qualifications
+    for field, suppress_list in [("permits", _SUPPRESS_PERMITS_REMEDIAL),
+                                  ("qualifications", _SUPPRESS_QUALS_REMEDIAL)]:
+        items = inference.get(field, [])
+        inference[field] = [item for item in items
+                            if not any(kw in item.lower() for kw in suppress_list)]
+
+    # Suppress active asbestos when source indicates latent condition
+    _LATENT_SIGNALS = ("latent", "presumed", "deemed variation", "if uncovered",
+                       "if encountered", "pre-existing toxic")
+    has_latent = any(sig in desc_lower for sig in _LATENT_SIGNALS)
+    if has_latent:
+        for field in ("qualifications", "permits", "regulatory_notes"):
+            items = inference.get(field, [])
+            inference[field] = [item for item in items
+                                if "asbestos clearance" not in item.lower()
+                                and "asbestos removal" not in item.lower()
+                                and "licensed asbestos" not in item.lower()]
+
 
 def _detect_excluded_items(description: str) -> list[str]:
     """
