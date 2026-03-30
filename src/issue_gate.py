@@ -111,6 +111,72 @@ _UNSUPPORTED_KEYWORDS = (
     "disconnection certificate", "provider certification",
 )
 
+# ── New constants (Phase A) ───────────────────────────────────────────────────
+
+WAH_DOMINANCE_THRESHOLD = 0.60
+
+UNSUPPORTED_ADMIN_KEYWORDS = [
+    "council permit", "council approval", "epa notification",
+    "demolition supervisor", "utility disconnection certificate",
+    "nata certificate", "owners corporation", "by-law",
+    "special resolution", "asbestos clearance",
+]
+
+FILLER_CONTROL_PHRASES = [
+    "follow swms", "use ppe as required", "supervisor to monitor",
+    "complete permit before work", "take care when carrying out task",
+    "ensure area is safe", "ensure compliance with all relevant regulations",
+    "maintain situational awareness",
+]
+
+HRCW_KEYWORD_TRIGGERS = {
+    "ewp": "powered_mobile_plant",
+    "elevated work platform": "powered_mobile_plant",
+    "scissor lift": "powered_mobile_plant",
+    "boom lift": "powered_mobile_plant",
+    "crane": "crane_hoist",
+    "franna": "crane_hoist",
+    "tower crane": "crane_hoist",
+    "propping": "structural_alteration",
+    "shoring": "structural_alteration",
+    "temporary support": "structural_alteration",
+    "structural alteration": "structural_alteration",
+    "trenching": "excavation",
+    "excavation": "excavation",
+    "confined space": "confined_space",
+    "live traffic": "traffic_management",
+    "road corridor": "traffic_management",
+    "live carriageway": "traffic_management",
+}
+
+DOMINANT_CONTROL_FAMILY = {
+    "demolition": "SIL",
+    "removal": "SIL",
+    "strip-out": "SIL",
+    "crack repair": "SIL+STRUCT",
+    "slab repair": "SIL+STRUCT",
+    "substrate prep": "SIL+STRUCT",
+    "waterproofing": "CHM",
+    "membrane": "CHM",
+    "sealant": "CHM",
+    "coating": "CHM",
+    "painting": "CHM",
+    "clt erection": "TEMP_WORKS",
+    "panel lift": "TEMP_WORKS",
+    "crane setup": "LIFT",
+    "temporary bracing": "TEMP_WORKS",
+    "propping": "TEMP_WORKS",
+    "ewp roof access": "WAH",
+}
+
+WAH_EVIDENCE_KEYWORDS = [
+    "harness", "lanyard", "anchor", "scaffold tag", "anchor point",
+]
+
+SYSTEMIC_THRESHOLD = 2
+
+# ── Existing constants ───────────────────────────────────────────────────────
+
 _PLACEHOLDER_PATTERNS = (
     "[insert", "[to be confirmed", "[tbc", "[tbd",
     "[insert supervisor", "[insert manager",

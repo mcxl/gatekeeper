@@ -90,6 +90,8 @@ class StreamConfig:
     stage: Stage = Stage.BENCHMARK
     wah_threshold: int = 50
     allowed_keywords: tuple[str, ...] = ()
+    job_type: str = ""  # maps to classify_swms_scope() job_type output
+    reference_swms_path: str = ""  # path to reference SWMS if available
 
 
 # ── Defect classification ────────────────────────────────────────────────────
