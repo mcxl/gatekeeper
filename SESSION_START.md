@@ -42,7 +42,7 @@ Rule promoter:       core/rule_promoter.py
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 501
+Passing: 504
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
@@ -59,7 +59,7 @@ Output:           docx + validator_result.json + reviewer_result.json if reviewe
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           ACTIVE (V6 — membrane fix + hrcw fix applied, BELOW_WORKING_DRAFT from reviewer)
+Lingate remedial:           ACTIVE (V7 — demob CCVS fix, 0 hard fails, at deterministic limit)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
