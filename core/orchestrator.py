@@ -1276,6 +1276,13 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
         tb["ccvs_code"] = "CHM-H6"
         return
 
+    # Inspection/investigation tasks are procedural (SYS) even if they mention repair targets
+    _INSPECTION_KW = ("investigate", "survey", "inspect", "check facade", "check slab",
+                       "mark repair", "document condition")
+    if any(kw in task_name for kw in _INSPECTION_KW):
+        tb["ccvs_code"] = "SYS-M3"
+        return
+
     _WAH_METHOD = ("scaffold", "ewp", "erect", "dismantle", "access equipment",
                     "rope access", "abseil", "ladder", "remove green", "reinstate",
                     "roof access", "roof perimeter", "on roof",
@@ -1337,7 +1344,24 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
     _inject_ewp_transfer_controls(tb, inference)
     _correct_ccvs_by_task_type(tb)
     _improve_monitoring(tb)  # runs AFTER CCVS correction so monitoring aligns to final code
-    tb["wah_applicable"] = tb.get("ccvs_code", "N/A").startswith("WAH")
+    # Deduplicate control lists (exact match removal, preserve order)
+    for field in ("controls", "admin", "hold_points", "stop_work", "hazards"):
+        items = tb.get(field, [])
+        if isinstance(items, list) and len(items) > 1:
+            seen = set()
+            deduped = []
+            for item in items:
+                key = item.strip().lower()
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(item)
+            tb[field] = deduped
+
+    # wah_applicable: True if CCVS is WAH OR hrcw_category indicates fall >2m
+    ccvs_wah = tb.get("ccvs_code", "N/A").startswith("WAH")
+    hrcw_cat = str(tb.get("hrcw_category", "")).lower()
+    hrcw_wah = "cl.2" in hrcw_cat or "fall" in hrcw_cat or "height" in hrcw_cat
+    tb["wah_applicable"] = ccvs_wah or hrcw_wah
     return tb
 
 
