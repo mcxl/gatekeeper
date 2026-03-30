@@ -279,23 +279,51 @@ async def run_parallel_review(
         _call_specialist(_CRED_PROMPT, user_content),
     )
 
-    # Collect hard fails and review items
+    # Collect hard fails and review items.
+    # Calibration: don't promote ALL findings from a FAIL agent into hard_fails.
+    # Only findings containing severity keywords are hard fails; the rest are review items.
+    _HARD_FAIL_KEYWORDS = (
+        "critical", "uncontrolled", "false confidence", "structural stability",
+        "live electrical", "no isolation", "no exclusion zone",
+        "systematic mismatch", "missing mandatory", "immediate_fail",
+    )
+    _REVIEW_DEMOTE_KEYWORDS = (
+        "sequence", "order", "preference", "duplicate", "redundant",
+        "template", "filler", "formatting", "version control",
+        "credential", "competency", "vague", "weak", "incomplete",
+        "correctly classified", "correct", "appropriate", "no undercall",
+        "no overcall", "philosophy",
+    )
+
     hard_fails = []
     review_items = []
     for agent_name, finding in [
         ("architecture", arch), ("hrcw", hrcw),
         ("ccvs", ccvs), ("credibility", cred),
     ]:
-        if finding.status == "FAIL":
-            hard_fails.extend(f"[{agent_name}] {f}" for f in finding.findings)
-        elif finding.status == "REVIEW":
-            review_items.extend(f"[{agent_name}] {f}" for f in finding.findings)
+        for f in finding.findings:
+            tagged = f"[{agent_name}] {f}"
+            f_lower = f.lower()
+            if finding.status == "FAIL":
+                # Promote to hard fail only if it contains severity keywords
+                # and does NOT contain review-demote keywords
+                is_hard = any(kw in f_lower for kw in _HARD_FAIL_KEYWORDS)
+                is_demoted = any(kw in f_lower for kw in _REVIEW_DEMOTE_KEYWORDS)
+                if is_hard and not is_demoted:
+                    hard_fails.append(tagged)
+                else:
+                    review_items.append(tagged)
+            elif finding.status == "REVIEW":
+                review_items.append(tagged)
 
-    # Determine overall status using mirrored thresholds
+    # Determine overall status using calibrated thresholds
     if len(hard_fails) >= HARD_FAIL_THRESHOLD_FULL_REWORK:
         overall_status = OVERALL_STATUS_BELOW_DRAFT
         recommended = RECOMMENDED_ACTION_FULL
     elif len(hard_fails) > 0:
+        overall_status = OVERALL_STATUS_STRONG_DRAFT
+        recommended = RECOMMENDED_ACTION_TARGETED
+    elif len(review_items) > 3:
         overall_status = OVERALL_STATUS_STRONG_DRAFT
         recommended = RECOMMENDED_ACTION_TARGETED
     elif len(review_items) > 0:
