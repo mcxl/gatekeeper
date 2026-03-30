@@ -142,10 +142,37 @@ No narrative. status must be PASS, FAIL, or REVIEW."""
 
 # ── Agent call ───────────────────────────────────────────────────────────────
 
+def _flatten_findings(raw: list | dict | str) -> list[str]:
+    """Flatten agent findings into a list of plain strings.
+
+    Agents may return:
+    - list[str]: ["finding1", "finding2"]
+    - list[dict]: [{"category": "...", "detail": "..."}]
+    - dict: {"key": "value", ...}
+    - str: "single finding"
+    """
+    if isinstance(raw, str):
+        return [raw]
+    if isinstance(raw, dict):
+        return [f"{k}: {v}" for k, v in raw.items() if v]
+    if isinstance(raw, list):
+        result = []
+        for item in raw:
+            if isinstance(item, str):
+                result.append(item)
+            elif isinstance(item, dict):
+                # Flatten dict values into one string
+                parts = [str(v) for v in item.values() if v]
+                result.append(" — ".join(parts) if parts else str(item))
+            else:
+                result.append(str(item))
+        return result
+    return [str(raw)]
+
+
 def _parse_agent_response(text: str) -> AgentFinding:
     """Parse agent JSON response into AgentFinding. Gracefully handle bad JSON."""
     try:
-        # Strip markdown fences if present
         cleaned = text.strip()
         if cleaned.startswith("```"):
             cleaned = cleaned.split("\n", 1)[-1]
@@ -153,17 +180,27 @@ def _parse_agent_response(text: str) -> AgentFinding:
             cleaned = cleaned.rsplit("```", 1)[0]
         cleaned = cleaned.strip()
 
-        data = json.loads(cleaned)
+        # Use extract_json for robust parsing (handles trailing text)
+        from core.utils import extract_json
+        data = extract_json(cleaned)
+
+        status = data.get("status", "REVIEW") if isinstance(data, dict) else "REVIEW"
+        # Normalise status to PASS/FAIL/REVIEW
+        if isinstance(status, str):
+            status = status.upper()
+            if status not in ("PASS", "FAIL", "REVIEW"):
+                status = "REVIEW"
+
         return AgentFinding(
-            status=data.get("status", "REVIEW"),
-            findings=data.get("findings", []),
-            automatable_defects=data.get("automatable_defects", []),
-            human_judgment_required=data.get("human_judgment_required", []),
+            status=status,
+            findings=_flatten_findings(data.get("findings", [])) if isinstance(data, dict) else [],
+            automatable_defects=_flatten_findings(data.get("automatable_defects", [])) if isinstance(data, dict) else [],
+            human_judgment_required=_flatten_findings(data.get("human_judgment_required", [])) if isinstance(data, dict) else [],
         )
-    except (json.JSONDecodeError, AttributeError):
+    except Exception:
         return AgentFinding(
             status="REVIEW",
-            findings=[f"Agent returned unparseable response: {text[:100]}"],
+            findings=[f"Agent returned unparseable response: {text[:200]}"],
             human_judgment_required=["Response could not be parsed"],
         )
 
