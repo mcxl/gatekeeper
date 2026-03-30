@@ -36,10 +36,13 @@ Shared prompts:      prompts/system.py, prompts/swms.py
 Governance register: docs/BENCHMARK_GOVERNANCE_REGISTER.md
 Reviewer rubric:     docs/reviewer_rubric.md
 Regression runner:   src/regression_runner.py
+Findings store:      core/findings_store.py
+Pattern detector:    core/pattern_detector.py
+Rule promoter:       core/rule_promoter.py
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 456
+Passing: 494
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
