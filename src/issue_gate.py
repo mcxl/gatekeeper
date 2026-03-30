@@ -494,6 +494,171 @@ def _check_footer(doc) -> GateCheck:
                      f"filename='{filename}', version='{version}'")
 
 
+# ── Checks 14–20 (Phase B) ───────────────────────────────────────────────────
+
+def _check_dominant_control_family(tasks: list[dict]) -> GateCheck:
+    """C14: Dominant control family mismatch — MIXED severity."""
+    findings = []
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        mon = t.get("monitoring", {})
+        cc = mon.get("critical_control", "").lower() if isinstance(mon, dict) else ""
+        if not cc:
+            continue
+        for kw, expected in DOMINANT_CONTROL_FAMILY.items():
+            if kw not in tn:
+                continue
+            has_wah_only = any(w in cc for w in WAH_EVIDENCE_KEYWORDS) and not any(
+                e in cc for e in ("dust", "p2", "extraction", "sds", "chemical",
+                                   "ventilation", "engineer", "lift plan", "temporary",
+                                   "prop", "brace"))
+            if has_wah_only and expected != "WAH":
+                findings.append(
+                    f"{t.get('step','?')}: '{kw}' expects {expected} but evidence is WAH-only")
+            break  # one match per task
+    if len(findings) > SYSTEMIC_THRESHOLD:
+        findings.insert(0, "SYSTEMIC:")
+    if findings:
+        return GateCheck("dominant_control_family", CheckResult.FAIL,
+                         "; ".join(findings[:4]))
+    return GateCheck("dominant_control_family", CheckResult.PASS)
+
+
+def _check_hrcw_undercall(tasks: list[dict],
+                           hrcw_selected: list[str] | None = None) -> GateCheck:
+    """C15: HRCW undercall flag — REVIEW only."""
+    if hrcw_selected is None:
+        hrcw_selected = []
+    findings = []
+    all_text = " ".join(
+        (t.get("task", "") + " " + t.get("scope", "")).lower() for t in tasks
+    )
+    for kw, hrcw_type in HRCW_KEYWORD_TRIGGERS.items():
+        if kw in all_text and hrcw_type not in hrcw_selected:
+            findings.append(f"'{kw}' suggests {hrcw_type} but not in HRCW selection")
+    if findings:
+        return GateCheck("hrcw_undercall", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("hrcw_undercall", CheckResult.PASS)
+
+
+def _check_unsupported_admin_controls(tasks: list[dict],
+                                       allowed: tuple[str, ...] = ()) -> GateCheck:
+    """C16: Unsupported admin/governance controls — HARD FAIL."""
+    findings = []
+    for t in tasks:
+        step = t.get("step", "?")
+        for field in ("controls", "admin", "hold_points", "stop_work"):
+            for item in t.get(field, []):
+                item_lower = item.lower()
+                for kw in UNSUPPORTED_ADMIN_KEYWORDS:
+                    if kw in item_lower and kw not in allowed:
+                        findings.append(f"{step}: '{kw}'")
+    if len(findings) > SYSTEMIC_THRESHOLD:
+        findings.insert(0, "SYSTEMIC:")
+    if findings:
+        return GateCheck("unsupported_admin_controls", CheckResult.FAIL,
+                         "; ".join(findings[:4]))
+    return GateCheck("unsupported_admin_controls", CheckResult.PASS)
+
+
+def _check_framework_control_misuse(tasks: list[dict]) -> GateCheck:
+    """C17: Framework control misuse — REVIEW flag."""
+    findings = []
+    _DEMOB_KW = ("demob", "dismantle", "remove scaffold")
+    _MISPLACED = ("pre-start briefing", "toolbox talk", "swms review", "permit to work")
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        # Latent condition as standalone task
+        if any(k in tn for k in _LATENT_CONDITION_KEYWORDS):
+            findings.append(f"{t.get('step','?')}: latent condition as standalone task")
+        # Pre-start controls in demob
+        if any(k in tn for k in _DEMOB_KW):
+            all_ctrl = " ".join(t.get("controls", []) + t.get("admin", [])).lower()
+            for mp in _MISPLACED:
+                if mp in all_ctrl:
+                    findings.append(f"{t.get('step','?')}: '{mp}' in demob task")
+    result_type = CheckResult.REVIEW
+    if len(findings) > SYSTEMIC_THRESHOLD:
+        findings.insert(0, "SYSTEMIC:")
+        result_type = CheckResult.FAIL
+    if findings:
+        return GateCheck("framework_control_misuse", result_type,
+                         "; ".join(findings[:4]))
+    return GateCheck("framework_control_misuse", CheckResult.PASS)
+
+
+def _check_wah_dominance_extended(tasks: list[dict]) -> GateCheck:
+    """C18: WAH dominance across evidence fields — REVIEW only."""
+    total = 0
+    wah_count = 0
+    for t in tasks:
+        mon = t.get("monitoring", {})
+        cc = mon.get("critical_control", "").lower() if isinstance(mon, dict) else ""
+        if not cc:
+            continue
+        total += 1
+        if any(w in cc for w in WAH_EVIDENCE_KEYWORDS):
+            wah_count += 1
+    if total == 0:
+        return GateCheck("wah_dominance_extended", CheckResult.PASS)
+    pct = wah_count / total
+    if pct > WAH_DOMINANCE_THRESHOLD:
+        return GateCheck("wah_dominance_extended", CheckResult.REVIEW,
+                         f"WAH evidence in {wah_count}/{total} ({pct:.0%}) monitoring fields")
+    return GateCheck("wah_dominance_extended", CheckResult.PASS,
+                     f"WAH evidence: {wah_count}/{total} ({pct:.0%})")
+
+
+def _check_filler_controls(tasks: list[dict]) -> GateCheck:
+    """C19: Filler control detection — REVIEW, HARD FAIL if systemic."""
+    findings = []
+    for t in tasks:
+        step = t.get("step", "?")
+        for item in t.get("controls", []):
+            item_stripped = item.strip().lower().rstrip(".")
+            if item_stripped in FILLER_CONTROL_PHRASES:
+                findings.append(f"{step}: '{item_stripped}'")
+    result_type = CheckResult.REVIEW
+    if len(findings) > SYSTEMIC_THRESHOLD:
+        findings.insert(0, "SYSTEMIC:")
+        result_type = CheckResult.FAIL
+    if findings:
+        return GateCheck("filler_controls", result_type,
+                         "; ".join(findings[:4]))
+    return GateCheck("filler_controls", CheckResult.PASS)
+
+
+def _check_job_type_mandatory_steps(tasks: list[dict],
+                                     job_type: str = "") -> GateCheck:
+    """C20: Job-type mandatory steps — HARD FAIL if missing."""
+    if not job_type:
+        return GateCheck("job_type_mandatory_steps", CheckResult.PASS,
+                         "No job_type specified — skipped")
+    try:
+        from core.job_type_rules import get_rule_pack
+    except ImportError:
+        return GateCheck("job_type_mandatory_steps", CheckResult.PASS,
+                         "job_type_rules not available — skipped")
+    pack = get_rule_pack(job_type)
+    if pack is None:
+        return GateCheck("job_type_mandatory_steps", CheckResult.PASS,
+                         f"No rule pack for '{job_type}' — skipped")
+    all_text = " ".join(t.get("task", "").lower() + " " + t.get("scope", "").lower()
+                        for t in tasks)
+    missing = []
+    for step in pack.immediate_fail_if_missing:
+        # Check if any keyword from the step name appears in all task text
+        step_words = step.replace("_", " ").lower().split()
+        if not any(w in all_text for w in step_words if len(w) > 3):
+            missing.append(step)
+    if missing:
+        return GateCheck("job_type_mandatory_steps", CheckResult.FAIL,
+                         f"Missing for {job_type}: {', '.join(missing[:3])}")
+    return GateCheck("job_type_mandatory_steps", CheckResult.PASS,
+                     f"All mandatory steps present for {job_type}")
+
+
 # ── Main runner ──────────────────────────────────────────────────────────────
 
 def run_issue_gate(
@@ -503,6 +668,8 @@ def run_issue_gate(
     stage: Stage = Stage.BENCHMARK,
     wah_threshold: int = 50,
     allowed_keywords: tuple[str, ...] = (),
+    job_type: str = "",
+    hrcw_selected: list[str] | None = None,
 ) -> GateResult:
     """Run all issue-gate checks and return structured results.
 
@@ -542,6 +709,14 @@ def run_issue_gate(
         result.checks.append(_check_wah_percentage(task_list, wah_threshold))
         result.checks.append(_check_unsupported_controls_json(task_list, allowed_keywords))
         result.checks.append(_check_latent_condition_packaging(task_list))
+        # Checks 14-20
+        result.checks.append(_check_dominant_control_family(task_list))
+        result.checks.append(_check_hrcw_undercall(task_list, hrcw_selected))
+        result.checks.append(_check_unsupported_admin_controls(task_list, allowed_keywords))
+        result.checks.append(_check_framework_control_misuse(task_list))
+        result.checks.append(_check_wah_dominance_extended(task_list))
+        result.checks.append(_check_filler_controls(task_list))
+        result.checks.append(_check_job_type_mandatory_steps(task_list, job_type))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:
