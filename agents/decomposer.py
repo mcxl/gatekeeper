@@ -28,9 +28,13 @@ TASK ARCHITECTURE NON-NEGOTIABLES:
 - Access equipment setup must always appear before access-dependent tasks
 - Pre-start briefing, toolbox talk, SWMS review, and permit controls must not appear inside demobilisation tasks
 - CLT, crane, and EWP patterns are detected from task text — do not force them into job_type
+- Isolate and barricade tasks must appear BEFORE scaffold erection — not after
+- Inspection and QA tasks must appear AFTER all construction tasks are complete
+- Demobilisation must appear AFTER occupant space reinstatement is confirmed
+- Framework tasks (scaffold erection, site setup) use SYS-M3 or WAH codes only — do not duplicate work-package CCVS codes (SIL, CHM) on framework tasks
 
 JOB-TYPE NON-NEGOTIABLES:
-remedial: substrate hold point before membrane mandatory, occupied-site interface as framework control mandatory
+remedial: substrate hold point before membrane mandatory, occupied-site interface as framework control mandatory, named consultant hold points must specify the approval authority by name or role and the condition that must be met before work proceeds (e.g. "Leo and Associates to inspect and approve substrate before membrane application commences")
 CLT/crane detected from task text: engineer sequence mandatory, temporary works framework required, permanent connection before release logic required
 EWP roof access detected from task text: transfer method must be named explicitly, rescue plan must be referenced
 
