@@ -658,9 +658,13 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
         headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
         if validator_summary:
             headers["X-Validator-Status"] = validator_summary.get("status", "")
-            # HTTP headers must be ASCII — strip non-ASCII chars
             action = validator_summary.get("suggested_action", "")[:200]
             headers["X-Validator-Action"] = action.encode("ascii", errors="replace").decode("ascii")
+            # Reviewer headers (present only when ESCALATE_EXTERNAL triggered reviewer)
+            if "reviewer_status" in validator_summary:
+                headers["X-Reviewer-Status"] = validator_summary["reviewer_status"]
+                rev_action = validator_summary.get("reviewer_action", "")[:200]
+                headers["X-Reviewer-Action"] = rev_action.encode("ascii", errors="replace").decode("ascii")
 
         return Response(
             content=docx_bytes,
@@ -715,12 +719,46 @@ def _validate_rendered_output(
                     "defect_classifications": result.defect_classifications,
                 }, f, indent=2)
 
-        return {
+        summary = {
             "status": result.status.value,
             "failing_count": len(result.failing_checks),
             "review_count": len(result.review_checks),
             "suggested_action": result.suggested_action,
         }
+
+        # If ESCALATE_EXTERNAL, trigger parallel reviewer agent
+        if result.status.value == "ESCALATE_EXTERNAL":
+            try:
+                import asyncio as _asyncio
+                from core.reviewer_agent import run_parallel_review
+
+                scope_text = request.get("description", "")
+                if not scope_text:
+                    scope_text = request.get("project_meta", {}).get("work_activity", "")
+                job_type_val = request.get("job_type", "")
+
+                loop = _asyncio.new_event_loop()
+                reviewer_result = loop.run_until_complete(
+                    run_parallel_review(
+                        swms_content=_json.dumps(tasks_raw[:5], default=str),
+                        scope_content=scope_text,
+                        job_type=job_type_val,
+                    )
+                )
+                loop.close()
+
+                # Write reviewer result JSON
+                if os.path.isdir(output_dir):
+                    reviewer_path = os.path.join(output_dir, f"{base}_reviewer_result.json")
+                    with open(reviewer_path, "w", encoding="utf-8") as f:
+                        _json.dump(reviewer_result.to_dict(), f, indent=2)
+
+                summary["reviewer_status"] = reviewer_result.overall_status
+                summary["reviewer_action"] = reviewer_result.recommended_action
+            except Exception as rev_err:
+                logger.warning(f"Reviewer agent skipped: {rev_err}")
+
+        return summary
     except Exception as e:
         logger.warning(f"Post-render validation skipped: {e}")
         return None
