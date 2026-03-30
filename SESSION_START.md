@@ -59,7 +59,7 @@ Output:           docx + validator_result.json + reviewer_result.json if reviewe
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           AWAITING_EXTERNAL_REVIEW (CCVS fix fc2e2ea — V4 resubmitted)
+Lingate remedial:           ACTIVE (V5 flywheel complete, BELOW_WORKING_DRAFT from internal reviewer)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
