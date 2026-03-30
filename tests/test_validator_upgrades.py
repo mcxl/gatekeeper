@@ -174,3 +174,57 @@ class TestJobTypeMandatorySteps:
         r = _check_job_type_mandatory_steps([_task("Paint")], job_type="unknown")
         assert r.result == CheckResult.PASS
         assert "skipped" in r.detail.lower()
+
+    def test_remedial_with_all_steps(self):
+        tasks = [
+            _task("Remove existing membrane", scope="removal demolition"),
+            _task("Waterproof balcony", scope="substrate hold"),
+            _task("Notify residents", scope="occupied site interface"),
+            _task("Check CCVS for demolition", scope="dominant control family"),
+        ]
+        r = _check_job_type_mandatory_steps(tasks, job_type="remedial")
+        assert r.result == CheckResult.PASS
+
+    def test_remedial_missing_steps(self):
+        tasks = [_task("Paint wall")]
+        r = _check_job_type_mandatory_steps(tasks, job_type="remedial")
+        assert r.result == CheckResult.FAIL
+
+
+# ── Job-type rule pack structure ─────────────────────────────────────────────
+
+class TestJobTypeRulePacks:
+    def test_get_empty_returns_none(self):
+        from core.job_type_rules import get_rule_pack
+        assert get_rule_pack("") is None
+
+    def test_get_unknown_returns_none(self):
+        from core.job_type_rules import get_rule_pack
+        assert get_rule_pack("unknown") is None
+
+    def test_get_remedial_returns_pack(self):
+        from core.job_type_rules import get_rule_pack
+        pack = get_rule_pack("remedial")
+        assert pack is not None
+        assert pack.job_type == "remedial"
+        assert len(pack.immediate_fail_if_missing) > 0
+
+    def test_detect_clt_from_tasks(self):
+        from core.job_type_rules import detect_clt_crane
+        tasks = [_task("Lift CLT panel with crane")]
+        assert detect_clt_crane(tasks) is True
+
+    def test_detect_clt_no_match(self):
+        from core.job_type_rules import detect_clt_crane
+        tasks = [_task("Paint masonry")]
+        assert detect_clt_crane(tasks) is False
+
+    def test_detect_ewp_roof(self):
+        from core.job_type_rules import detect_ewp_roof
+        tasks = [_task("Use boom lift for roof access")]
+        assert detect_ewp_roof(tasks) is True
+
+    def test_detect_ewp_no_context(self):
+        from core.job_type_rules import detect_ewp_roof
+        tasks = [_task("Use boom lift for painting")]
+        assert detect_ewp_roof(tasks) is False
