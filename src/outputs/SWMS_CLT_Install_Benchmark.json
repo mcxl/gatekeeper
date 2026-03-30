@@ -1,0 +1,921 @@
+{
+  "tasks": [
+    {
+      "sequence": 1,
+      "task": "Establish site setup and exclusion zones",
+      "scope": "Demarcate laydown area, crane operating zone, exclusion zones around unbraced and partially braced panels. Set up site signage and access control.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Trip hazard from ground-level obstructions, cables, or packing materials in laydown and exclusion zones",
+        "Struck-by hazard from mobile equipment moving through site during demarcation setup",
+        "Inadequate exclusion zone boundaries allowing unauthorised entry into crane operating zone"
+      ],
+      "dominant_hazard": "Struck-by from mobile equipment in active laydown area",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Barricade crane operating zone with Class A or B barriers on all four sides, minimum 2 m from crane base.",
+        "Erect exclusion zone signage around unbraced and partially braced panels: warning signs every 3 m, minimum 1.5 m high.",
+        "Demarcate laydown area with high-visibility tape or paint, clearly separate from pedestrian and vehicle routes.",
+        "Segregate mobile equipment movement routes from pedestrian access using physical barriers or permanent separation.",
+        "Check ground-level area for cables, packing, and debris before allowing workers to enter laydown zone.",
+        "Establish single entry/exit point with sign-in/sign-out log and access control at each shift start."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not allow worker access to laydown area until: all exclusion zone signage and barriers are installed and site induction completed."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: crane operating zone or exclusion zone barriers are missing, damaged, or removed during shift.",
+        "\ud83d\uded1 STOP WORK if: unauthorised personnel enter crane operating zone or exclusion zone.",
+        "\ud83d\uded1 STOP WORK if: trip hazards (cables, packing, debris) accumulate in laydown or pedestrian areas without removal."
+      ],
+      "admin": [
+        "Complete site induction including exclusion zone rules, struck-by hazards, and emergency assembly point before each worker enters site.",
+        "Conduct daily toolbox talk on crane movement schedule and active exclusion zones.",
+        "Record all exclusion zone breaches and corrective actions in site safety log.",
+        "Confirm first aider present on site before demarcation starts; display first aid location signage."
+      ],
+      "ppe": [
+        "High-visibility vest (Class 2 or 3) for all workers in laydown and demarcation area.",
+        "Safety helmet for all workers on site.",
+        "steel-capped footwear, slip-resistant) for all workers in laydown area.",
+        "High-visibility clothing for traffic control personnel complying with AS 1742.3."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Supervisor",
+        "who_checks": "Supervisor",
+        "frequency": "before each shift start",
+        "evidence": "Barriers intact, signage legible, no unauthorised entry",
+        "what_to_look_for": "Barriers intact, signage legible, no unauthorised entry"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 2,
+      "task": "Confirm crane lift plan and positioning",
+      "scope": "Verify crane lift plan with structural engineer. Position mobile crane on firm, level ground. Establish crane exclusion radius and communication protocol.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Crane overturn or loss of stability if ground is inadequately compacted or uneven beneath crane outriggers",
+        "Crane failure or boom collapse if load plan does not match actual panel weights or rigging configuration",
+        "Collision between crane and site boundary, temporary works, or adjacent structures during slew or repositioning",
+        "Communication breakdown between crane operator and ground crew, leading to uncontrolled or unsafe lift"
+      ],
+      "dominant_hazard": "Crane overturn or instability due to inadequate ground bearing",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(4)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "controls": [
+        "Obtain written lift plan from structural engineer confirming load weight, rigging configuration, and crane capacity before positioning crane.",
+        "Check ground bearing capacity with geotechnical report or site engineer; mark soft spots, water pooling, or unstable areas with tape.",
+        "Position mobile crane on firm, level ground with outriggers fully extended and bearing plates under each pad.",
+        "Establish crane exclusion radius of at least 1.5 times boom length; barricade with tape and signage.",
+        "Brief all site workers and contractors on exclusion zone before crane operation starts.",
+        "Establish two-way radio communication between crane operator and appointed ground spotter; confirm radio channel and test before lift.",
+        "Position ground spotter with clear line of sight to crane operator and load; keep spotter outside exclusion zone.",
+        "Stop all other work within exclusion zone during crane positioning and lift operations."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not position crane until: written lift plan is signed by structural engineer and ground bearing capacity is confirmed."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: ground beneath outrigger pads is soft, uneven, or subsiding during load application.",
+        "\ud83d\uded1 STOP WORK if: radio communication is lost or unclear between operator and ground spotter.",
+        "\ud83d\uded1 STOP WORK if: any worker or vehicle enters the crane exclusion zone during lift or slew operations."
+      ],
+      "admin": [
+        "Retain signed lift plan on site before crane arrival.",
+        "Provide ground bearing assessment to crane operator.",
+        "Brief spotter and workers on exclusion zone in toolbox meeting.",
+        "Record spotter radio check in site diary.",
+        "Submit SafeWork NSW notification before crane operation."
+      ],
+      "ppe": [
+        "Hard hat",
+        "High-visibility vest",
+        "Steel-capped boots",
+        "Two-way radio (ground spotter only)"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Supervisor",
+        "frequency": "before each lift",
+        "evidence": "Written confirmation from site engineer and visual inspection of ground contact"
+      },
+      "responsibility": {
+        "SUP": "Supervise crane positioning, verify lift plan signed, confirm ground bearing, authorise lift start",
+        "WKR": "Position crane per plan, maintain exclusion zone, communicate via radio, report ground subsidence"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 4,
+      "task": "Lift and position CLT wall panels",
+      "scope": "Using mobile crane, lift 36 CLT panels from laydown area and position on slab per structural engineer erection sequence. Lower panel to final position under crane supervision.",
+      "trade_type": "Structural",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Uncontrolled swing or drift of panel during lift if rigging fails, spreader bars slip, or wind gusts occur",
+        "Panel dropped or released during lift if crane hook fails, sling breaks, or rigging hardware is undersized",
+        "Struck-by hazard to personnel below panel if load falls or swings into exclusion zone",
+        "Crane boom collision with adjacent panels, temporary works, or site boundary during positioning",
+        "Ground personnel crushed or struck if panel is lowered onto them during final positioning"
+      ],
+      "dominant_hazard": "Panel dropped or uncontrolled swing during lift, striking personnel or structures",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Verify crane operator holds current Class L crane licence for mobile crane before starting work.",
+        "Confirm lifting plan signed by structural engineer and crane supervisor before first panel lift.",
+        "Confirm all slings, shackles, spreader bars and rigging hardware certified and load-rated for 150% of panel weight.",
+        "Establish exclusion zone minimum 1.5 \u00d7 panel height around lift path; barricade with tape and stop all personnel entry.",
+        "Position dedicated banksman at ground level in full view of crane operator; use two-way radio throughout lift.",
+        "Brief all personnel within 50 m of lift before first panel lift on exclusion zone, hand signals, and stop-work triggers.",
+        "Check wind speed before each lift; stop work if sustained wind exceeds 20 km/h or gusts exceed 30 km/h.",
+        "Lower panel slowly under constant crane supervision; position spotters on slab to guide final placement without personnel under load."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lift first panel until: lifting plan signed by engineer, exclusion zone barricaded, banksman and spotters briefed and in position.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lower panel to final position until: slab location verified against plan, personnel cleared from drop zone, spotters confirm safe ground placement area."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: wind speed sustained above 20 km/h or gust speed above 30 km/h.",
+        "\ud83d\uded1 STOP WORK if: any personnel observed inside exclusion zone during lift.",
+        "\ud83d\uded1 STOP WORK if: banksman loses line-of-sight to crane operator or rigging shows visible wear, damage, or deformation."
+      ],
+      "admin": [
+        "make sure SafeWork NSW notification submitted before crane mobilisation.",
+        "Verify structural engineer's erection sequence document on site and followed step-by-step.",
+        "Maintain daily site diary recording each panel lift, weather conditions, and any incidents."
+      ],
+      "ppe": [
+        "High-visibility vest (Class D or E) for all personnel on slab and within 50 m of lift zone.",
+        "Hard hat for all personnel within 100 m of lift zone.",
+        "Steel-capped boots for ground personnel positioning or spotting panels.",
+        "Hearing protection (earmuffs or plugs) during continuous crane operation."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify exclusion zone barricaded and no personnel inside before crane lifts panel.",
+        "who": "Crane supervisor / Banksman",
+        "frequency": "Before each panel lift",
+        "evidence": "Visual confirmation of barricade integrity and zone clear; banksman hand signal to operator; site diary entry"
+      },
+      "responsibility": {
+        "SUP": "Supervise Lift and position CLT wall",
+        "WKR": "Perform Lift and position CLT wall per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 7,
+      "task": "Install permanent structural connections",
+      "scope": "Install bolts, brackets, and screws at all panel junction points per structural engineer drawing. Torque fasteners to specification. Verify alignment before final tightening.",
+      "trade_type": "Structural",
+      "hrcw": false,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Panel movement or drift during fastener installation if temporary props are under-loaded or become loose",
+        "Slip and fall from working on elevated slab edge or between panels at height",
+        "Crush hazard to fingers or hand from fastener installation tool slipping or bolt over-tightening",
+        "Fastener failure if torque specification is not met or fastener is inserted incorrectly, compromising structural integrity"
+      ],
+      "dominant_hazard": "Panel movement during fastening, compromising connection integrity or causing fall from height",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Verify structural engineer drawing and torque specification before starting fastener installation.",
+        "Check all temporary props are in place, tight, and supporting panels without movement.",
+        "Confirm panel alignment using spirit level or alignment jig before installing first fastener.",
+        "Install fasteners in sequence specified on engineer drawing\u2014do not skip or reorder.",
+        "Torque each bolt to specification using calibrated torque wrench\u2014recheck torque after 24 hours.",
+        "Wear eye protection",
+        "Use anti-slip footwear and maintain three-point contact when working at panel edge.",
+        "Stop work immediately if panel shifts, props loosen, or fastener sits misaligned."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not tighten fasteners until: all temporary props verified tight and panel confirmed level and aligned",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not release from edge until: all fasteners torqued to specification and rechecked"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any temporary prop becomes loose or panel drifts during fastening",
+        "\ud83d\uded1 STOP WORK if: fastener cannot be inserted straight or torque wrench does not reach specification",
+        "\ud83d\uded1 STOP WORK if: worker loses three-point contact or feels unstable at height"
+      ],
+      "admin": [
+        "Provide calibrated torque wrench\u2014calibration certificate current and on site.",
+        "Brief all workers on engineer drawing, torque specification, and fastener sequence before work starts.",
+        "Record torque values and fastener locations in site logbook or as-fitted schedule.",
+        "Supervisor to witness first fastener installation and recheck torque after 24 hours."
+      ],
+      "ppe": [
+        "eye protection",
+        "cut-resistant gloves",
+        "Anti-slip footwear",
+        "High-visibility clothing"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check panel is level and all props tight before each fastener installation.",
+        "who": "Supervisor and fastening worker",
+        "frequency": "before each fastener, recheck torque 24 hours after installation",
+        "evidence": "Site logbook entry with torque values, as-fitted schedule, witness signature on first fastener, recalibration certificate on torque wrench"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install permanent structural connections",
+        "WKR": "Perform Install permanent structural connections per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 3,
+      "task": "Prepare prop base locations and packing",
+      "scope": "check slab bearing for all 23 prop bases. Install timber packing on uneven slab at props 6 and 10 per Stora Enso bracing plan. Confirm level and bearing capacity.",
+      "trade_type": "Structural",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Localised slab failure or bearing plate punching if packing is insufficient or unevenly loaded",
+        "Trip hazard from timber packing and prop bases protruding across walkways",
+        "Structural instability if prop bases are not level, causing uneven load distribution and panel racking"
+      ],
+      "dominant_hazard": "Slab bearing failure from inadequate packing or uneven load distribution",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Check slab bearing surface at all 23 prop base locations for cracks, spalling, or uneven wear before installing props.",
+        "Install timber packing at props 6 and 10 per Stora Enso bracing plan dimensions and species specified.",
+        "Confirm packing is level using spirit level across the bearing plate and slab surface \u2014 maximum 5 mm total variance.",
+        "Verify bearing capacity of slab at each prop location against design load \u2014 obtain structural engineer confirmation in writing.",
+        "Barricade prop bases and packing with high-visibility tape and warning signs to prevent trip hazards across walkways.",
+        "Record slab condition, packing installation details, and bearing confirmation in site diary before props are loaded."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install props until: structural engineer confirms slab bearing capacity is adequate for design load",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not load props until: all packing is level and barricaded, and slab condition record is complete"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: slab shows active cracking, spalling, or failure during packing installation or level check",
+        "\ud83d\uded1 STOP WORK if: packing settles or shifts after installation, causing prop bases to become uneven",
+        "\ud83d\uded1 STOP WORK if: structural engineer advises slab bearing capacity is insufficient for design load"
+      ],
+      "admin": [
+        "Obtain Stora Enso bracing plan and confirm packing specifications (timber species, dimensions, grade) before site delivery.",
+        "make sure structural engineer has inspected slab condition report and confirmed bearing capacity in writing.",
+        "Brief all workers on prop base locations, barricade zones, and trip hazard controls before work starts.",
+        "Record slab bearing inspection, packing installation, level confirmation, and engineer approval in site diary.",
+        "Retain written bearing capacity confirmation and packing installation record on file for duration of props on site."
+      ],
+      "ppe": [
+        "Safety helmet",
+        "High-visibility vest",
+        "Steel-capped boots",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor",
+        "who_checks": "Supervisor",
+        "frequency": "before each rectification session",
+        "evidence": "Signed defect list, photographic record, specification document on site",
+        "what_to_look_for": "Signed defect list, photographic record, specification document on site"
+      },
+      "responsibility": {
+        "SUP": "Supervise Prepare prop base locations and",
+        "WKR": "Perform Prepare prop base locations and per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 5,
+      "task": "Plumb and stabilise panel with temporary props",
+      "scope": "Install and adjust push-pull props (10x F5, 13x F3) at each panel. Plumb panel to vertical tolerance. Confirm all props loaded and secure before releasing crane hook.",
+      "trade_type": "Structural",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Panel collapse or tilt if props are not fully loaded or become dislodged during plumbing adjustment",
+        "Struck-by hazard from prop failure or sudden panel movement if props are incorrectly adjusted or unsecured",
+        "Crush hazard to hands or feet if prop adjustment hardware slips or prop base shifts during loading",
+        "Incomplete prop installation allowing panel to remain unstable, creating hazard for subsequent work"
+      ],
+      "dominant_hazard": "Panel collapse or uncontrolled tilt if props are not fully loaded or secured",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Confirm engineer-approved prop schedule and panel load distribution before starting prop installation.",
+        "Check each prop (F5 and F3) for damage, bent sections, or deformation before use.",
+        "Install props in sequence specified on drawings, starting from lowest load-bearing positions.",
+        "Load each prop progressively using threaded adjustment, monitoring plumb level continuously.",
+        "Plumb panel to vertical tolerance using spirit level or laser plumb on at least two faces.",
+        "Confirm all prop adjustment hardware is tight and base plates fully seated on stable ground.",
+        "Test each loaded prop by hand pressure to verify no movement or slippage before release.",
+        "Obtain written sign-off from supervisor confirming all props loaded and panel stable."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not release crane hook until: supervisor has physically checked all prop base plates are fully seated and all adjustment hardware is torqued tight.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not proceed to next panel until: current panel is plumbed to tolerance and all props tested stable with hand pressure."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any prop shows visible deformation, cracking, or permanent bending during adjustment.",
+        "\ud83d\uded1 STOP WORK if: panel cannot be plumbed to tolerance or props cannot be fully loaded without tilting.",
+        "\ud83d\uded1 STOP WORK if: any prop base slips, shifts, or sinks into ground during loading or plumbing."
+      ],
+      "admin": [
+        "Verify engineer-approved prop schedule and load distribution plan is on site and accessible.",
+        "Brief all workers on prop installation sequence and plumbing tolerance before work starts.",
+        "Record plumb readings and supervisor sign-off for each panel in site logbook.",
+        "Establish exclusion zone around panel and props \u2014 no access except installation team."
+      ],
+      "ppe": [
+        "Hard hat",
+        "Steel-capped boots",
+        "High-visibility vest",
+        "cut-resistant gloves",
+        "eye protection"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Supervisor hand-tests each loaded prop for movement before crane release.",
+        "who": "Supervisor",
+        "frequency": "before each prop installation complete and before crane hook release",
+        "evidence": "Written sign-off in site logbook confirming all props secure; plumb readings recorded."
+      },
+      "responsibility": {
+        "SUP": "Supervise Plumb and stabilise panel with",
+        "WKR": "Perform Plumb and stabilise panel with per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 6,
+      "task": "Release crane hook and repeat panel installation",
+      "scope": "Release crane hook only after props confirmed loaded and panel stable. Return to sequence 4 and repeat for remaining 35 panels. Maintain exclusion zones around unbraced panels.",
+      "trade_type": "Structural",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Panel falls or becomes unstable if props are not confirmed loaded or if hook is released prematurely",
+        "Personnel struck-by falling panel if crane hook is released before props are verified secure",
+        "Cumulative instability from multiple partially propped panels if release sequence does not verify each panel independently",
+        "Unauthorised entry into exclusion zone around unbraced panels by personnel or mobile equipment"
+      ],
+      "dominant_hazard": "Panel collapse if hook released before props confirmed loaded and secure",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Confirm props loaded by placing full weight on panel \u2014 check for movement or settlement before signalling hook release.",
+        "Release crane hook only after spotter verbally confirms props secure and panel stable.",
+        "Establish exclusion zone minimum 1.5\u00d7 panel height around unbraced panels \u2014 barricade and post warning signs.",
+        "Brief all site personnel on exclusion zone before each panel lift \u2014 confirm understanding.",
+        "Stop work if panel shows any movement, settlement, or instability before props are confirmed fully loaded.",
+        "Return to sequence 4 and repeat panel installation method for each remaining panel \u2014 do not vary sequence or method.",
+        "Prohibit unauthorised entry into exclusion zone \u2014 position personnel to monitor zone perimeter during each lift and release.",
+        "Complete release check sheet for each panel \u2014 record prop confirmation, hook release time, and spotter name."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not release crane hook until: spotter confirms visual and physical check that props are loaded and panel is stable and level."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: panel shows any movement, tilting, or settlement during prop loading.",
+        "\ud83d\uded1 STOP WORK if: unauthorised personnel or mobile equipment enter exclusion zone around unbraced panels.",
+        "\ud83d\uded1 STOP WORK if: props are not confirmed loaded before hook release is signalled."
+      ],
+      "admin": [
+        "Appoint competent spotter \u2014 trained in panel stability and prop-loading verification \u2014 for each lift and release cycle.",
+        "Prepare panel release check sheet \u2014 record panel number, prop confirmation, release time, spotter name, date.",
+        "Conduct toolbox briefing before starting sequence 6 \u2014 confirm exclusion zone boundary, release procedure, and stop-work triggers.",
+        "tell crane operator of hold point \u2014 no hook release until spotter gives verbal all-clear.",
+        "Maintain exclusion zone signage and barricade for entire duration of panel installation sequence \u2014 refresh daily."
+      ],
+      "ppe": [
+        "Hard hat",
+        "High-visibility vest",
+        "steel-capped footwear",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Spotter confirms prop loaded and panel stable before hook release signal given.",
+        "who": "Competent spotter and crane operator",
+        "frequency": "Before each panel hook release \u2014 continuous visual and physical verification",
+        "evidence": "Signed panel release check sheet per panel; photographic record of prop loading confirmation; exclusion zone barricade and signage in place"
+      },
+      "responsibility": {
+        "SUP": "Supervise Release crane hook and repeat",
+        "WKR": "Perform Release crane hook and repeat per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 9,
+      "task": "Remove temporary props on engineer release",
+      "scope": "Remove push-pull props only in sequence and method specified in engineer release letter. Verify panel stability and alignment after each prop removal. Document removal sequence.",
+      "trade_type": "Structural",
+      "hrcw": false,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Panel collapse or instability if props are removed out of sequence or in wrong order specified by engineer",
+        "Struck-by hazard from suddenly released prop or panel movement if removal procedure is not followed",
+        "Personnel crushed or trapped beneath prop or panel if stability verification is not completed after each removal",
+        "Cumulative drift or misalignment if panel stability is not confirmed independently after each prop removal"
+      ],
+      "dominant_hazard": "Panel collapse or sudden movement during prop removal sequence",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain and read engineer release letter specifying prop removal sequence before starting work.",
+        "Brief all personnel on the exact removal order and hold points from engineer release letter.",
+        "Remove props only in the sequence and method specified in engineer release letter.",
+        "Stop and check panel for movement, drift, or misalignment immediately after each prop removal.",
+        "Record removal sequence, time, and stability confirmation for each prop in site log.",
+        "Use two spotters to monitor panel for visible movement or sound of cracking during removal.",
+        "Do not remove adjacent props in sequence without independent stability check between removals."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove next prop until: panel stability confirmed and recorded after previous prop removal",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start removal work until: engineer release letter received and removal sequence briefed to all personnel on site"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: panel shows visible movement, drift, or audible cracking after prop removal",
+        "\ud83d\uded1 STOP WORK if: removal sequence deviates from engineer release letter specification",
+        "\ud83d\uded1 STOP WORK if: stability check or documentation is skipped or incomplete for any prop removal"
+      ],
+      "admin": [
+        "Obtain engineer release letter and site-specific removal sequence instruction before work starts.",
+        "Hold pre-work meeting with all personnel to confirm removal sequence and hold points.",
+        "Assign dedicated spotter to monitor panel stability during each prop removal.",
+        "Record removal sequence, time, stability outcome, and any drift or movement in site log.",
+        "Keep engineer release letter and removal documentation on site for audit and inspection."
+      ],
+      "ppe": [
+        "Hard hat",
+        "eye protection",
+        "steel-capped footwear",
+        "High-visibility vest"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor and assigned spotters",
+        "frequency": "After each individual prop removal",
+        "evidence": "Site log entry with timestamp, prop ID, stability confirmation, and spotter sign-off; photographic evidence of panel alignment; engineer release letter on site."
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove temporary props on engineer",
+        "WKR": "Perform Remove temporary props on engineer per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 8,
+      "task": "Engineer inspection and temporary works hold",
+      "scope": "Request structural engineer inspection of all panels, props, and connections. Obtain written engineer approval before any prop removal. Document hold point sign-off.",
+      "trade_type": "Structural",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Incomplete or inadequate engineer inspection if inspector does not verify all prop loading, panel plumb, and connection torque",
+        "Unauthorised work commencement (prop removal) before engineer sign-off, leading to panel instability",
+        "Documentation loss or ambiguity of hold point, allowing premature or unsafe work progression"
+      ],
+      "dominant_hazard": "Inadequate engineer verification leading to work commencement on unstable panel configuration",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Obtain written structural engineer inspection report covering all panels, props, connections, and load paths before any prop removal.",
+        "Verify engineer has checked prop plumb, connection torque, panel alignment, and load distribution against design drawings.",
+        "Post engineer approval letter on site at the hold point location \u2014 accessible to all workers.",
+        "Prohibit any prop removal or panel adjustment until engineer sign-off document is sighted by site supervisor.",
+        "Record engineer name, inspection date, approval date, and signature on hold point log before work proceeds.",
+        "Brief all workers on hold point location and content \u2014 confirm understanding before commencement of any prop removal phase."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove any props or adjust panels until: Structural engineer written approval is obtained, dated, signed, and posted on site."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: Any prop removal begins without sighted engineer approval letter.",
+        "\ud83d\uded1 STOP WORK if: Engineer report does not cover plumb, torque, or load verification of all panels in scope.",
+        "\ud83d\uded1 STOP WORK if: Hold point sign-off log is incomplete or unsigned by supervising engineer or site supervisor."
+      ],
+      "admin": [
+        "Request structural engineer inspection before work package release.",
+        "Site supervisor to verify engineer credentials and check permit on file.",
+        "Maintain hold point sign-off log on site \u2014 record engineer name, date, and worker names briefed.",
+        "Keep engineer approval letter pinned at hold point for 7 days post-work or until panel removal complete."
+      ],
+      "ppe": [
+        "Hard hat",
+        "High-visibility vest"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Confirm structural engineer approval letter dated, signed, and on-site before any prop removal starts.",
+        "who": "Site Supervisor",
+        "frequency": "before first prop removal task",
+        "evidence": "Signed engineer report + hold point log entry with supervisor and engineer signature + photo of posted approval at hold point."
+      },
+      "responsibility": {
+        "SUP": "Supervise Engineer inspection and temporary works",
+        "WKR": "Perform Engineer inspection and temporary works per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 10,
+      "task": "check panels and document defects",
+      "scope": "Visually check all 36 panels for damage, misalignment, or defects. Record defects and repair requirements. tell contractor before demobilisation.",
+      "trade_type": "Structural",
+      "hrcw": false,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height if inspector accesses panel upper surfaces or edges without fall protection",
+        "Struck-by hazard from unstable panel if defects indicate panel misalignment or inadequate bracing",
+        "Documentation failure if defects are not accurately recorded, leading to unidentified structural or safety issues"
+      ],
+      "dominant_hazard": "Fall from height during panel inspection at upper level",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Wear harness and lanyard attached to fixed anchor point before accessing panel upper surfaces or edges.",
+        "Check all anchor points and attachment hardware for damage, corrosion, or movement before use.",
+        "Complete fall arrest system inspection and tag before each shift starts.",
+        "Brief all inspectors on panel defect types, documentation format, and stop-work triggers before inspection starts.",
+        "Establish exclusion zone below inspection area \u2014 minimum 3 m radius \u2014 barricade and signage.",
+        "Document each defect with panel ID, defect type, location, and photograph in site logbook.",
+        "Assess panel alignment and bracing condition \u2014 stop work if panel shows lateral movement or tilting.",
+        "tell site supervisor immediately if defects indicate structural instability or safety risk."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not access panel upper surfaces until: harness, lanyard, and anchor point are checked, tagged, and confirmed load-bearing by supervisor.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not demobilise until: defect report is completed, photographed, and signed off by contractor representative."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: panel shows visible lateral movement, tilting, or separation from bracing during inspection.",
+        "\ud83d\uded1 STOP WORK if: harness or lanyard is damaged, torn, or shows signs of impact or wear.",
+        "\ud83d\uded1 STOP WORK if: anchor point shows corrosion, cracks, or movement when load tested by hand."
+      ],
+      "admin": [
+        "Confirm fall arrest system is certified, tagged, and valid before issue to inspector.",
+        "Verify inspector holds current White Card (CPCCWHS1001) and site induction.",
+        "Obtain written sign-off from contractor on defect severity and repair priority before demobilisation.",
+        "Record all defects, photographs, and corrective actions in site logbook for audit trail."
+      ],
+      "ppe": [
+        "Full body harness \u2014 certified, adjusted, and tagged.",
+        "Lanyard \u2014 1.8 m or less, shock absorber, attached to harness dorsal d-ring.",
+        "Hard hat with chin strap.",
+        "High-visibility vest.",
+        "eye protection",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor",
+        "frequency": "before each access and continuous during inspection",
+        "evidence": "Visual confirmation of attachment, tag on harness valid and current, supervisor sign-off in logbook."
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "check per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    },
+    {
+      "sequence": 11,
+      "task": "Demobilise crane and remove support equipment",
+      "scope": "Derig crane from site. Remove props, temporary bracing, and support equipment. Leave site clean and panels ready for next trade.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Struck-by hazard from crane or derrig equipment during demobilisation if exclusion zone is not maintained",
+        "Uncontrolled movement of props or temporary bracing during removal if not sequenced or secured",
+        "Trip hazard from scattered props, bracing, or packing materials during site clean-up"
+      ],
+      "dominant_hazard": "Struck-by from moving crane or derrig equipment during demobilisation",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Establish and maintain exclusion zone 1.5 times crane radius around derrig operations \u2014 no workers or vehicles enter until crane movement stops",
+        "Brief all site workers on derrig sequence and exclusion zone boundaries before crane movement starts",
+        "Remove props and temporary bracing in reverse order of installation \u2014 follow engineer-approved removal sequence",
+        "Secure all loose props, bracing, and packing materials before moving or stacking \u2014 use straps or netting to prevent scatter",
+        "Lower all equipment and materials to ground level under control \u2014 do not drop or throw from height",
+        "Segregate demobilised equipment into designated lay-down areas \u2014 prevent trip hazards across work zones",
+        "Sweep and clear all scattered debris, packing, and materials from site before handing over to next trade"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start crane derrig until: exclusion zone is established, barricaded, and all workers briefed on boundaries and stop signals"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any worker or vehicle enters exclusion zone during crane movement",
+        "\ud83d\uded1 STOP WORK if: props or bracing are not secured and risk falling or scattering during removal",
+        "\ud83d\uded1 STOP WORK if: weather conditions (wind speed exceeds manufacturer limits or visibility poor) prevent safe derrig operations"
+      ],
+      "admin": [
+        "Record exclusion zone briefing attendance and time before derrig starts",
+        "Verify crane operator holds current ticket and has conducted pre-use check",
+        "Confirm engineer-approved removal sequence is on site and followed in order",
+        "Complete site walkover and photograph cleared condition before handover to next trade"
+      ],
+      "ppe": [
+        "High-visibility clothing (Class D minimum)",
+        "Safety helmet",
+        "steel-capped footwear",
+        "Long pants and closed-toe footwear"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone is barricaded and no workers or vehicles are within 1.5 times crane radius during movement",
+        "who": "Supervisor / Traffic control personnel / Crane operator",
+        "frequency": "continuous during all crane movement and derrig operations",
+        "evidence": "Visual confirmation that zone is clear; no personnel within barrier; exclusion zone briefing sheet signed by all workers"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.11"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.8 \u2014 Work involving use of explosives or crane",
+    "hrcw_license_class": "Crane Licence \u2014 C6 (mobile crane), C2 (tower crane), or relevant class",
+    "hrcw_flags": {
+      "falling_2m": false,
+      "tiltup_precast": false,
+      "mobile_plant": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": true,
+    "epa_license_required": false,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "Hard hat",
+      "Steel-capped boots",
+      "Hi-vis vest",
+      "Full body harness \u2014 when working at height attaching or releasing lifting inserts",
+      "Gloves \u2014 cut-resistant, rigging gear handling",
+      "Hi-vis Class D day/night vest or shirt"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Traffic Control accreditation \u2014 TCP and TCS minimum",
+      "Roads and Maritime Services road opening permit",
+      "First aid \u2014 at least one trained first aider on site",
+      "Crane operator licence \u2014 C6 mobile crane or C2 tower crane (SafeWork NSW)",
+      "Dogman licence \u2014 DG class (SafeWork NSW)",
+      "Rigger licence \u2014 RB basic, RI intermediate, or RA advanced (SafeWork NSW)",
+      "Rigging gear inspection \u2014 pre-use inspection logged before each use",
+      "Dogging licence (DG) \u2014 SafeWork NSW",
+      "Rigging licence (RB/RI/RE) \u2014 SafeWork NSW",
+      "Crane licence (CN/C2/C6) \u2014 SafeWork NSW",
+      "Traffic controller accreditation \u2014 current TCS (Traffic Controller) and TCP (Traffic Control Plan) certification"
+    ],
+    "permits": [
+      "Road opening permit \u2014 Transport for NSW or council before any road cut",
+      "Traffic Management Plan \u2014 approved before work commences",
+      "Lane closure approval \u2014 Transport for NSW where state road affected",
+      "Speed reduction approval \u2014 Transport for NSW or council",
+      "Lift study \u2014 documented before every critical lift",
+      "Ground bearing assessment \u2014 engineer certification before mobile crane setup",
+      "Crane exclusion zone \u2014 established and enforced before lift commences",
+      "Outrigger mat design \u2014 engineer-certified where soft or uncertain ground",
+      "Crane set-up permit \u2014 ground bearing capacity confirmed before outriggers deployed",
+      "Bracing design \u2014 engineer-certified bracing layout required before first panel erected",
+      "Engineer approval \u2014 written approval from structural engineer required before any temporary bracing removed",
+      "Written approval from project design engineer or independent qualified engineer \u2014 required before removing temporary bracing from precast elements",
+      "Lift plan \u2014 documented and signed before each lift"
+    ],
+    "qualifications": [
+      "Accredited traffic controller \u2014 on site whenever traffic affected",
+      "Reinstatement \u2014 temporary reinstatement within 24 hours of completion",
+      "Exclusion zone \u2014 minimum distance from live traffic lanes enforced",
+      "Lift supervisor \u2014 responsible person designated for every lift",
+      "Wind speed limit \u2014 maximum defined in lift study, anemometer on site",
+      "Pre-lift inspection \u2014 daily pre-use check logged before first lift",
+      "Outrigger pads \u2014 design verified for ground bearing capacity by competent person before lift",
+      "Communication \u2014 dogman/rigger on continuous two-way communication with crane operator during lift",
+      "Erection sequence \u2014 engineer-certified sequence; no deviation without engineer sign-off",
+      "Brace footings \u2014 must achieve specified concrete strength before bracing is loaded; verified by engineer",
+      "Lifting insert testing \u2014 pull-out capacity tested to AS 3850 before panel is lifted",
+      "Rigging register \u2014 all lifting gear tagged and within inspection period",
+      "SWL marking \u2014 every sling, shackle and hook must show SWL",
+      "Discard criteria \u2014 rigging gear with cuts, kinks or corrosion must be removed",
+      "Traffic management arrangement accepted by principal contractor before any works in road corridor",
+      "Temporary speed zone signs installed and confirmed before workers enter live lane area"
+    ],
+    "notifications": [
+      "Transport for NSW \u2014 5 business days before state road work",
+      "Council \u2014 road opening permit application minimum 5 business days",
+      "Utility authorities \u2014 Dial Before You Dig before any road cutting",
+      "Emergency services \u2014 notification of road closures affecting access",
+      "Airspace authority \u2014 CASA notification where crane exceeds 110m AGL",
+      "SafeWork NSW notification \u2014 where road works are notifiable HRCW"
+    ],
+    "regulatory_notes": [
+      "Roads Act 1993 (NSW) \u2014 road opening permit mandatory",
+      "AS 1742.3 \u2014 Traffic control devices for works on roads",
+      "Permanent reinstatement \u2014 within 30 days of temporary reinstatement",
+      "SafeWork NSW \u2014 Traffic Management Code of Practice",
+      "Exclusion zone \u2014 minimum 1m from live traffic lane edge, barriers preferred",
+      "AS 2550 \u2014 Cranes, hoists and winches \u2014 safe use",
+      "Critical lift \u2014 any lift over 75% capacity, tandem lift, or near powerlines",
+      "Dogman \u2014 must maintain visual contact with load at all times",
+      "WHS Reg 2017 r.211-240 \u2014 plant with potential to cause harm; registration, inspection, and operator licence obligations",
+      "Wind limits \u2014 all crane operations suspended in sustained winds exceeding manufacturer's rated limit (typically 48-72km/h depending on crane and jib configuration)",
+      "Tagline required \u2014 unguided loads create uncontrolled swing hazard; taglines used on all loads except where impracticable",
+      "Load chart \u2014 operator must verify SWL for the specific radius and jib configuration before lift",
+      "WHS Reg 2017 Schedule 3 cl.5 \u2014 tilt-up and precast is notifiable HRCW",
+      "AS 3850 \u2014 Tilt-up concrete and precast concrete elements \u2014 lifting insert requirements",
+      "Shop drawings \u2014 must be approved by structural engineer and on site before erection commences",
+      "Birth certificates \u2014 required for each precast element; records mix design, strength test results, and lifting insert certification",
+      "Concrete strength \u2014 must reach design MPa (verified by compressive strength test report) before any element is lifted",
+      "Temporary bracing \u2014 remains in place until engineer certifies permanent structure can take load",
+      "Tag lines \u2014 required on all panels to control rotation during lift",
+      "Wind speed \u2014 erection suspended in sustained winds exceeding manufacturer/engineer limits for the specific panel size",
+      "Adjacent panel bracing \u2014 brace second panel before unhooking crane from first panel",
+      "AS 3569 \u2014 Steel wire ropes",
+      "AS 1353 \u2014 Flat webbing slings",
+      "AS 4497 \u2014 Round slings",
+      "SWL \u2014 never exceed Safe Working Load, apply derated values for angled slings",
+      "WHS Reg 2017 Part 5.2 \u2014 General duties for plant",
+      "Crane set-up on firm level ground \u2014 outrigger pads required",
+      "WHS Reg 2017 Sch 3 cl.14 \u2014 work on or adjacent to a traffic corridor is HRCW",
+      "Workers must not enter live lane area until traffic management is in place and accepted"
+    ],
+    "plant": [
+      "Mobile crane",
+      "Traffic control equipment"
+    ],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "civil_infrastructure",
+      "building_context": "new",
+      "occupancy_context": "unoccupied",
+      "scope_modifiers": [
+        "residential",
+        "civil_infrastructure",
+        "road_corridor"
+      ]
+    }
+  }
+}

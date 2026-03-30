@@ -1,0 +1,988 @@
+{
+  "tasks": [
+    {
+      "sequence": 1,
+      "task": "Mobilise and position boom lift on hardstand",
+      "scope": "Deliver EWP boom lift to site, position on level hardstand, confirm stability and ground bearing capacity.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Boom lift tip-over or rollover on uneven or soft ground",
+        "Collision with building, parked vehicles, or pedestrians during positioning",
+        "Inadequate ground bearing capacity causing subsidence or sinkage",
+        "Overhead power line strike during boom deployment"
+      ],
+      "dominant_hazard": "Boom lift tip-over or rollover causing serious injury or fatality",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain current EWP operator licence (WP class) and verify competency before positioning boom lift.",
+        "Check ground bearing capacity and subsidence risk using site survey or engineer assessment before delivery.",
+        "Confirm level hardstand surface within 1\u00b0 cross-slope tolerance using laser level before positioning.",
+        "Position boom lift with outriggers fully extended and locked on firm, level ground away from building and pedestrian zones.",
+        "Establish exclusion zone minimum 1.5 \u00d7 machine height around boom lift perimeter using barriers and signage.",
+        "Confirm overhead power line clearance minimum 3 m (or per local supply authority) before any boom deployment.",
+        "Check all safety devices functional: alarms, emergency descent, tilt sensors, load indicators working.",
+        "Brief all personnel on exclusion zone, pedestrian management, and stop-work triggers before operation starts."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not position boom lift until: site survey confirms bearing capacity \u2265 machine weight and ground is level within 1\u00b0",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not deploy boom until: overhead power line clearance \u2265 3 m confirmed and exclusion zone established"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: ground subsidence, tilting, or uneven settlement observed during positioning",
+        "\ud83d\uded1 STOP WORK if: operator licence expired, invalid, or competency not verified",
+        "\ud83d\uded1 STOP WORK if: boom lift movement within 3 m of overhead power lines or structures",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain working at heights permit signed by supervisor before first elevated task.",
+        "Obtain SafeWork NSW high-risk construction work (HRCW) notification and approval before mobilisation.",
+        "Record ground bearing capacity assessment, survey data, and EWP pre-use check on site documentation.",
+        "Conduct toolbox talk covering exclusion zone rules, pedestrian controls, and tip-over prevention.",
+        "tell building occupants and public of boom lift operation via signage and warning broadcast.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "High-visibility clothing (Class D minimum).",
+        "Safety helmet (hard hat) to AS/NZS 1801.",
+        "steel-capped footwear, slip-resistant)."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Site Supervisor / EWP Operator",
+        "frequency": "before positioning starts",
+        "evidence": "Site survey report, engineer sign-off, laser level reading, exclusion zone barriers visible and signed"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 2,
+      "task": "Establish site access control and exclusion zones",
+      "scope": "Establish pedestrian barriers around lift footprint and roof access zone. Mark overhead power line exclusion zone on street frontage. Brief tenants on work timing and access restrictions.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": "cl.1",
+      "hazards": [
+        "Pedestrians or tenants enter exclusion zone and struck by boom lift boom or materials",
+        "Overhead power line strike during barrier installation near street frontage",
+        "Inadequate briefing to tenants leading to unauthorised access during work"
+      ],
+      "dominant_hazard": "Pedestrian struck by moving boom lift or falling materials from height",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Barricade lift footprint perimeter with rigid barriers minimum 1.2 m high before EWP arrival.",
+        "Install warning signs at each barricade point: 'Danger \u2014 Lift Operating' visible from 10 m.",
+        "Mark overhead power line exclusion zone on street frontage with high-visibility tape and ground markers.",
+        "Brief all on-site tenants and staff in writing and verbally on work timing, exclusion zones, and no-entry periods before work starts.",
+        "Designate and brief a tenant liaison contact for emergency notifications and access queries during work.",
+        "Post exclusion zone signage at all tenant entry points and lift lobbies on affected floors.",
+        "Confirm pedestrian traffic flow does not cross lift exclusion zone; redirect foot traffic if needed.",
+        "Establish radio or phone contact between site supervisor and tenant reception for real-time access control.",
+        "tell building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts",
+        "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not position EWP until: barricades are installed, tested stable, and all on-site occupants have received written and verbal briefing with documented sign-off.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not work near overhead power line until: exclusion zone is marked, verified by supervisor, and distance to live lines confirmed safe by licensed electrician or SafeWork NSW powerline clearance tool."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: pedestrian, tenant, or unauthorised person enters exclusion zone during lift operation.",
+        "\ud83d\uded1 STOP WORK if: barricades are moved, damaged, or missing during the work shift.",
+        "\ud83d\uded1 STOP WORK if: tenant briefing records cannot be produced on request or new tenants arrive without induction.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain Working at Heights Permit signed by competent person before EWP operation.",
+        "Obtain Noise Management Plan if any pile or impact work is planned; distribute to affected tenants.",
+        "Maintain tenant briefing log with names, dates, times, and signatures; retain on file.",
+        "Document exclusion zone layout on site plan with marked powerline distance and pedestrian diversion route.",
+        "Conduct daily pre-start meeting with all workers to confirm briefing currency and exclusion zone compliance.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels",
+        "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase \u2014 area left/excluded if not cleared",
+        "Temporary access to neighbouring properties required \u2014 confirm access arrangements before starting",
+        "Vegetation trimmed away from surfaces designated for painting or remedial works before commencement \u2014 area excluded if vegetation impedes access",
+        "On-site parking or provision of parking permits required for duration of works",
+        "Final inspection and agreed scope of works to be confirmed before commencement"
+      ],
+      "ppe": [
+        "High-visibility vest \u2014 Class D minimum.",
+        "Hard hat \u2014 labelled with site name.",
+        "steel-capped footwear\u2014 closed toe, anti-slip."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Supervisor",
+        "frequency": "before each work shift and continuously during EWP operation",
+        "evidence": "Daily site walk-around checklist signed by supervisor; photographic record of barricades and signage; tenant briefing log with dated signatures; exclusion zone compliance record in daily report."
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 4,
+      "task": "Access roof perimeter and survey existing guttering and flashings",
+      "scope": "Use boom lift to raise worker to roof perimeter. check all damaged guttering, flashings, and box gutter condition. Mark removal zones and confirm access route for material removal.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from boom lift platform due to loss of balance, platform movement, or platform edge strike",
+        "Boom lift platform collision with building, roof edge, or antenna during positioning",
+        "Worker struck by rotating boom or jib during positioning on roof",
+        "Inadequate harness or lanyard attachment point on boom lift platform causing fall",
+        "Overhead power line strike during boom lift vertical travel"
+      ],
+      "dominant_hazard": "Worker fall from boom lift platform >2m to ground or lower roof level",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+        "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+        "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+        "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+        "Verify boom lift operator holds current WP class licence and EWP pre-use checklist is signed before positioning boom.",
+        "Confirm harness is rated for suspension, lanyard is 1.5m max, and attachment point on boom platform is load-rated and marked with identity tag.",
+        "Establish 10m exclusion zone around boom lift base; position traffic control and barricades before boom deployment.",
+        "Check overhead power line clearance is minimum 3m vertical and 3m horizontal before raising boom; confirm with site electrical contact if any doubt.",
+        "Wear full-body harness and secure lanyard to load-rated anchorpoint before entering boom platform; never lean outside platform rails.",
+        "Brief worker on boom movement hazards, platform egress route, and stop-work signals before boom lift commences.",
+        "Position boom slowly and check roof edge and building contact clearances continuously; stop immediately if boom strikes structure.",
+        "Mark all damaged guttering and flashing zones with survey flags or tape; record location and condition in site logbook before descending."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise boom until: harness attachment point is load-tested and marked, operator licence is verified current, and exclusion zone is barricaded and clear of traffic."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: boom platform strikes building, roof edge, or antenna during positioning or travel.",
+        "\ud83d\uded1 STOP WORK if: worker loses balance or reports platform instability, or lanyard attachment fails.",
+        "\ud83d\uded1 STOP WORK if: boom lift is within 3m of overhead power lines or there is uncertainty about line location.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded",
+        "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+        "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+      ],
+      "admin": [
+        "Obtain and file Working at Heights Permit signed by site supervisor before boom lift arrives.",
+        "Verify EWP pre-use checklist completed and signed by operator; attach checklist to site file.",
+        "Conduct toolbox meeting with worker and operator on boom movement, platform instability signals, and emergency descent procedure.",
+        "tell building occupants of elevated work and provide contact for emergency stop.",
+        "Photograph or video-record damaged areas for survey documentation; do not rely on memory alone.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat (site standard)",
+        "High-visibility vest or shirt",
+        "Full-body safety harness (AS/NZS 1891.1 rated)",
+        "Lanyard 1.5m max with double-eye connectors (AS/NZS 1891.1 rated)",
+        "Steel-capped boots",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Harness and lanyard attachment point load-rated; operator licence current; boom clearance to power lines confirmed before each lift cycle.",
+        "who": "Supervisor and EWP operator",
+        "frequency": "Before each boom lift deployment and continuous during work",
+        "evidence": "EWP pre-use checklist signed; harness load-test label visible; operator licence copy on site; photographs of power line clearance assessment in site logbook"
+      },
+      "responsibility": {
+        "SUP": "Supervise Access roof perimeter and survey",
+        "WKR": "Perform Access roof perimeter and survey per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 6,
+      "task": "Prepare roof line and install new guttering",
+      "scope": "Clean roof line and fascia. Install new Colorbond guttering, box gutters, and brackets to existing roof structure. Secure all fixings to manufacturer specification and structural drawing.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from boom lift platform during bracket installation or fastening",
+        "Inadequate fixing of brackets to roof structure causing subsequent collapse of guttering",
+        "Worker struck by swinging or falling bracket or fastening tool from height",
+        "Boom lift platform collision with roof edge or building structure during installation",
+        "New guttering not secured to manufacturer specification creating ongoing fall hazard"
+      ],
+      "dominant_hazard": "Worker fall from boom lift platform >2m during bracket installation and fastening",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Verify boom lift operator holds current WP-class licence before platform deployment.",
+        "Confirm EWP pre-start check completed and tagged, with defects log signed before work starts.",
+        "Wear full-body harness with lanyard attached to fixed anchor point on boom platform always.",
+        "Install guardrails or edge protection to boom platform perimeter to prevent inadvertent step-off.",
+        "Brief all personnel on bracket swing hazard and establish exclusion zone below 5m radius of work area.",
+        "Secure brackets to fascia using fasteners matching manufacturer specification and structural drawing.",
+        "Use manufacturer-approved fastening pattern and torque settings, logged on site completion form.",
+        "Position EWP to prevent platform contact with roof edge, guttering line, or adjacent structures."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not deploy boom platform until: working at heights permit is signed and on-site, and all competencies verified.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not begin bracket fastening until: structural drawing fastening details reviewed and confirmed by site supervisor."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: harness attachment point on boom is damaged, missing, or not certified fixed.",
+        "\ud83d\uded1 STOP WORK if: bracket fasteners do not match manufacturer specification or structural drawing.",
+        "\ud83d\uded1 STOP WORK if: EWP platform shows visible movement, hydraulic leaks, or alarm activation during operation.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain and hold working at heights permit signed before each elevated task shift.",
+        "Verify operator EWP licence and working at heights competency (RIIOHS204E equivalent) current and on file.",
+        "Complete and sign EWP pre-start check log before deployment; retain defect register on-site.",
+        "Record harness pre-use check and anchor point certification in site daily log.",
+        "Document bracket fastening completion against structural drawing and manufacturer fastening schedule.",
+        "tell SafeWork NSW of work at height notifiable event if required under WHS Reg 2017 Sch 3 cl.3.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat with chin strap.",
+        "eye protection",
+        "Full-body harness with leg and shoulder attachment points.",
+        "High-visibility vest.",
+        "Steel-capped boots with slip-resistant sole.",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify harness lanyard attached to fixed anchor before platform raises.",
+        "who": "Supervisor",
+        "frequency": "before each platform deployment and each shift start",
+        "evidence": "Signed harness check log, anchor point certification tag, EWP pre-start checklist on-site."
+      },
+      "responsibility": {
+        "SUP": "Supervise Prepare roof line and install",
+        "WKR": "Perform Prepare roof line and install per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 7,
+      "task": "Install new flashings and sealant",
+      "scope": "From boom lift, install new flashings around roof penetrations, eaves, and transitions. Apply sealant to all joints and fixings per specification. Confirm all flashings are secure and watertight",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from boom lift platform during flashing installation",
+        "Sealant or flashing material falls from height onto workers or public below",
+        "Worker exposure to sealant vapour or skin contact causing irritation or sensitisation",
+        "Inadequate flashing installation creating water leak and structural damage post-work",
+        "Boom lift platform movement during sealant application causing loss of balance"
+      ],
+      "dominant_hazard": "Worker fall from boom lift platform >2m during flashing and sealant installation",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Wear full-body harness with lanyard secured to boom lift anchorage point before entering platform.",
+        "Check harness and lanyard for damage, wear, or defects before each shift start.",
+        "Review SDS for sealant product and confirm ventilation adequate before opening containers.",
+        "Wear respiratory protection (P2 mask/respirator (fit-tested) minimum) when applying sealant in enclosed or poorly ventilated areas.",
+        "Barricade ground area directly below work zone with cones and signage to prevent public access.",
+        "Secure all flashing materials and tools to platform with lanyards or tool bags to prevent dropping.",
+        "Stop platform movement and isolate controls before applying sealant to joints.",
+        "Confirm all fixings are tight and flashings are seated flush before releasing harness tension."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not enter boom lift platform until: harness pre-use check is completed and recorded, platform safety gate is closed, and site supervisor has signed off on working at heights permit."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: harness or lanyard shows visible damage or deterioration during shift.",
+        "\ud83d\uded1 STOP WORK if: platform sways or moves unexpectedly during sealant application.",
+        "\ud83d\uded1 STOP WORK if: weather conditions change to rain, high wind (>40 km/h), or poor visibility affecting work safety.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain signed working at heights permit before starting elevated work.",
+        "Verify EWP operator holds current WP class licence for boom lift model.",
+        "Brief all workers on fall arrest system, anchor point location, and emergency descent procedure.",
+        "Establish ground spotter to monitor work area and prevent unauthorised access below platform.",
+        "Record harness pre-use check in site safety log before each shift.",
+        "Confirm sealant SDS and product specifications available on site and understood by applicator.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Full-body harness with double-lanyard connector",
+        "Safety helmet with chin strap",
+        "High-visibility vest or clothing",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "P2 respiratory protection mask (or higher if SDS requires)",
+        "steel-capped footwear",
+        "hi-viz shirt or vest"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check harness attachment point is secure and lanyard length prevents platform edge contact.",
+        "who": "Supervisor and EWP operator before platform elevation",
+        "frequency": "before each shift start and after any platform repositioning",
+        "evidence": "Dated harness pre-use checklist in site safety record, supervisor sign-off on permit"
+      },
+      "responsibility": {
+        "SUP": "Verify SDS on site, check ventilation, sign off hold points",
+        "WKR": "Apply sealant per specification, wear PPE, report chemical exposure"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 8,
+      "task": "check guttering and flashing installation",
+      "scope": "From boom lift, check all new guttering, flashings, and sealant joints. Check for gaps, misalignment, and fixings security. Test gutter run-off by flushing with water.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from boom lift platform during inspection work at height",
+        "Inspection equipment or tools fall from platform onto workers or public",
+        "Water from flushing gutters falls on workers below or leaks into building",
+        "Inadequate inspection allowing defects to remain undetected post-handover"
+      ],
+      "dominant_hazard": "Worker fall from boom lift platform >2m during roof inspection",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Verify EWP operator holds current licence and competency certification before platform operation starts.",
+        "Check harness, lanyard, and anchor points for damage or wear before each shift \u2014 do not use if damaged.",
+        "Wear full-body harness connected to secure anchor point on boom lift platform always when elevated.",
+        "Establish exclusion zone 5 metres below platform using cones and signage \u2014 restrict public and worker access.",
+        "Brief all workers on platform and ground on water flushing sequence and fall risk before starting inspection.",
+        "check guttering and flashings from platform only \u2014 do not lean beyond handrails or rest edge protection.",
+        "Place drop sheets below platform before flushing to contain water runoff and prevent leakage into building.",
+        "Flush guttering with water at low pressure \u2014 stop immediately if water flows into occupied areas or building."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise boom lift until: harness inspection completed and recorded, anchor points confirmed secure, and ground exclusion zone established with signage.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not flush guttering until: drop sheets positioned below platform, all personnel briefed on water sequence, and building water ingress points identified and protected."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: harness or lanyard shows damage, fraying, or loose stitching.",
+        "\ud83d\uded1 STOP WORK if: water from flushing enters occupied building interior or flows onto workers below.",
+        "\ud83d\uded1 STOP WORK if: worker leans beyond platform handrails or removes harness connection while elevated.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain working at heights permit signed by site supervisor before each elevated task.",
+        "Verify EWP operator licence matches platform class and height \u2014 record on site induction log.",
+        "Brief platform user and ground spotters on exclusion zone and water runoff plan.",
+        "Complete harness inspection checklist and sign log before platform raise.",
+        "tell building occupants of water flushing schedule \u2014 confirm no outdoor events or air-intake vents in runoff zone.",
+        "Record water test results, any defects found, and remedial actions required post-inspection.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Full-body harness with shock absorber",
+        "Secure lanyard (maximum 2 metre length) rated for platform attachment",
+        "Hard hat with chin strap",
+        "High-visibility vest or clothing",
+        "steel-capped footwear",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Eye protection if water splash risk"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check harness connection remains secure and untwisted throughout inspection \u2014 visual confirmation every 10 minutes.",
+        "who": "Supervisor / Ground spotter",
+        "frequency": "Continuous during elevated work",
+        "evidence": "Signed harness inspection log, dated platform raise/lower times, photographic record of exclusion zone, water test results recorded on defects sheet"
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "check per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 3,
+      "task": "Confirm rescue plan and EWP pre-start checks",
+      "scope": "Brief rescue team on emergency procedure. Confirm rescue plan posted on site. Complete boom lift pre-start checklist and safety audit before first lift.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Rescue team unfamiliar with emergency procedure, delay in rescue causing serious injury or fatality",
+        "Pre-start checklist incomplete or not signed off, defective EWP used for work at height",
+        "Rescue plan not visible on site during emergency"
+      ],
+      "dominant_hazard": "Delayed or failed rescue from boom lift platform due to inadequate rescue plan or team briefing",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Brief rescue team on emergency procedure including platform descent, ground rescue, and communication protocol before first lift.",
+        "Post rescue plan on site in visible location accessible to rescue team and EWP operator during all elevated work.",
+        "Complete EWP pre-start checklist including boom articulation, platform safety rails, hydraulic pressure, alarm function, and tie-down condition.",
+        "Verify harness and lanyard are present, undamaged, and tagged with current inspection date before operator enters platform.",
+        "Test EWP lower-to-ground control and emergency descent function with no load to confirm operational safety.",
+        "Confirm working at heights permit is signed and posted on site before first lift of the shift.",
+        "Certify EWP operator holds current WP class licence and is competent in rescue from the specific EWP model.",
+        "tell building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts",
+        "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not operate EWP until: rescue team briefing is complete, recorded, and all attendees confirm understanding",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise platform until: pre-start checklist is fully completed and signed by competent operator",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: rescue plan cannot be located on site or is not clearly visible to emergency responders",
+        "\ud83d\uded1 STOP WORK if: EWP pre-start checklist identifies defect, alarm malfunction, or hydraulic pressure below manufacturer specification",
+        "\ud83d\uded1 STOP WORK if: harness or lanyard shows damage, fraying, burns, or is untagged with current inspection date",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Supervisor to hold pre-shift briefing with rescue team covering emergency descent, ground support role, and communication method.",
+        "Maintain EWP pre-start checklist on site with operator signature and date; retain for work record.",
+        "Post working at heights permit, rescue plan, and EWP operator licence copy in visible location on site.",
+        "Document harness and lanyard inspection tag status daily; remove any item with expired or missing tag.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Full-body harness rated for suspension rescue",
+        "Lanyard with shock absorber and D-ring connector",
+        "High-visibility vest",
+        "Hard hat",
+        "Steel-capped boots"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify rescue team briefing sign-in sheet and EWP pre-start checklist signed by competent operator.",
+        "who": "Supervisor",
+        "frequency": "before each shift start and before first lift",
+        "evidence": "Dated briefing attendance record, signed pre-start checklist, visible rescue plan on site, harness inspection tags current"
+      },
+      "responsibility": {
+        "SUP": "Verify scaffold or EWP certification, supervise erection, sign off load checks",
+        "WKR": "Follow erection plan, wear harness at height, report defects"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 5,
+      "task": "Remove damaged guttering, flashings, and fixings",
+      "scope": "From boom lift platform, disconnect and remove all damaged Colorbond guttering, flashings, and box gutters. Lower materials to ground into skip bin. Remove and dispose of fasteners and fixings.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from boom lift platform during removal work",
+        "Guttering or flashing material falls from height onto workers below or public",
+        "Sharp edges on removed material causing laceration or puncture wound to hands",
+        "Boom lift platform instability due to weight imbalance of removed materials",
+        "Worker struck by removed fasteners or fixings ejected during disconnection"
+      ],
+      "dominant_hazard": "Worker fall from boom lift platform >2m during removal work",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Wear full body harness with lanyard secured to anchor point on boom lift platform before starting work.",
+        "Check harness and lanyard for damage, wear, or defects before each shift; log check in register.",
+        "Confirm boom lift is positioned stable and level; check outriggers locked and base clear of obstructions.",
+        "Barricade ground area directly below work zone with traffic cones and warning tape; post spotter.",
+        "Disconnect guttering fasteners with impact driver or spanner; do not pry or force connections.",
+        "Place removed guttering flat on platform deck; do not stack or overhang platform edge.",
+        "Lower guttering and flashing materials in secure container or cradle to skip bin on ground; use tag line to control descent.",
+        "Collect loose fasteners into container before lowering; do not throw or drop fasteners."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start removal work until: harness checked and logged, boom lift certified, ground zone barricaded, and spotter in position.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lower materials until: container is secure, tag line attached, and spotter signals clear ground."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: harness or lanyard shows damage, fraying, or wear.",
+        "\ud83d\uded1 STOP WORK if: platform tilts, shifts, or feels unstable during material removal.",
+        "\ud83d\uded1 STOP WORK if: wind gusts exceed 10 m/s or rain/weather reduces visibility below 30 metres.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain signed working at heights permit before boom lift deployment.",
+        "Verify EWP operator holds current licence (WP class) and SafeWork NSW certification.",
+        "Brief all workers on barricade location, exclusion zone, and spotter role before work starts.",
+        "Establish ground spotter role; assign single person to monitor drop zone and signal crane operator.",
+        "Record pre-shift harness inspection in site log with date, time, and inspector name.",
+        "Confirm building occupants notified of overhead work; post warning signs on entry doors.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Full body harness with shock absorber",
+        "Lanyard (max 2 m) with secure anchor attachment",
+        "cut-resistant gloves",
+        "hi-viz shirt or vest",
+        "High-visibility vest",
+        "Safety helmet with chin strap",
+        "eye protection",
+        "Steel-capped boots"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Harness fitted and lanyard secured to platform anchor point before each task start.",
+        "who": "Supervisor",
+        "frequency": "before each shift and before re-entry after break",
+        "evidence": "Pre-use check log signed; visual confirmation harness on body and lanyard clipped to anchor point."
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove damaged guttering, flashings, and",
+        "WKR": "Perform Remove damaged guttering, flashings, and per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 9,
+      "task": "Reinstate site and remove barriers",
+      "scope": "Lower all tools and materials from roof. Remove pedestrian barriers and exclusion zone markers. Sweep roof and ground areas. Brief tenants that work is complete.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Worker fall from height while lowering tools or materials from boom lift platform",
+        "Tool or material falls from boom lift platform onto workers below during lowering",
+        "Pedestrians enter site before exclusion zone barriers are fully removed",
+        "Roof area not properly cleaned leaving hazards for building occupants"
+      ],
+      "dominant_hazard": "Tool or material falls from boom lift platform onto worker below during lowering",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Lower tools and materials in closed containers or secured bundles using boom lift hoist with rated sling and tag line control.",
+        "Station ground spotter below lift platform to guide lowering and stop load if drift or swing occurs.",
+        "Check exclusion zone barriers are in place and secure before starting tool lowering.",
+        "Remove barriers only after all tools and materials are lowered to ground and ground spotter confirms area is clear.",
+        "Sweep roof with broom and shovel to collect all loose debris and materials into labelled waste container.",
+        "Sweep ground area around building perimeter and site entry to remove dust, debris, and trip hazards.",
+        "Brief site supervisor and building occupants that work is complete and site is safe for normal use.",
+        "Wear high-visibility vest and hard hat during all reinstatement work on and below boom lift platform."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove barriers until: all tools and materials are on ground and ground spotter confirms clear zone below lift platform",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not brief occupants until: roof and ground areas are swept clean and all barriers are removed"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: load drifts or swings during lowering \u2014 do not resume until spotter and operator reposition load",
+        "\ud83d\uded1 STOP WORK if: pedestrians or building occupants enter exclusion zone during tool lowering \u2014 do not resume until zone is clear",
+        "\ud83d\uded1 STOP WORK if: harness or EWP fails daily pre-use check \u2014 tell supervisor and do not use equipment",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Verify working at heights permit is signed and dated before tool lowering starts.",
+        "Confirm EWP operator holds current class WP licence (or equivalent competency) and has valid ticket-in-pocket.",
+        "Check harness inspection log is completed and signed before each shift.",
+        "Verify ground spotter holds White Card or higher construction induction.",
+        "Record barrier removal completion time and occupant briefing date in site diary.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "tell affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "High-visibility vest",
+        "eye protection",
+        "cut-resistant gloves",
+        "Steel-capped boots"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Ground spotter confirms no pedestrians below platform before operator lowers each load.",
+        "who": "Ground spotter and EWP operator",
+        "frequency": "continuous during tool and material lowering",
+        "evidence": "Verbal confirmation between spotter and operator logged in site diary; harness daily check sheet signed"
+      },
+      "responsibility": {
+        "SUP": "Verify fall protection, check module weights, sign off hold points",
+        "WKR": "Wear fall harness, check lanyard attachment, report equipment damage"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 10,
+      "task": "Demobilise boom lift",
+      "scope": "Perform final safety audit on EWP. Lower boom fully, stow safely. Arrange transport to depot. Confirm site is clear and secure.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Boom lift instability during final audit or boom stowage causing tip-over",
+        "Overhead power line strike during boom lowering to stowed position",
+        "Inadequate securing of boom lift for transport causing load shift during transit",
+        "Site hazards remain after boom lift removal (barriers, damaged areas)"
+      ],
+      "dominant_hazard": "Boom lift tip-over or collision with building or power line during demobilisation",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Conduct final safety audit of EWP before lowering boom: check hydraulic lines, seals, bucket condition, and harness integrity.",
+        "Verify overhead power lines are clear and isolated with site supervisor before lowering boom.",
+        "Lower boom fully and slowly, monitoring ground clearance and building proximity continuously.",
+        "Stow boom in transport lock position and secure with manufacturer-specified pins and locking devices.",
+        "Check all boom securing bolts are tight and all pins are seated before transport departure.",
+        "Confirm transport vehicle is level, within tare weight, and has appropriate restraint before loading.",
+        "Barricade lift-off and landing areas until EWP is fully removed from site.",
+        "Walk the site perimeter to confirm no residual hazards, barriers, or damaged areas remain."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lower boom until: overhead power line clearance is confirmed by site supervisor and clearance distance is maintained at 3 metres minimum."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: boom lowering causes loss of stability or tilting is observed.",
+        "\ud83d\uded1 STOP WORK if: EWP cannot be stowed to full lock position or securing pins cannot be fully seated."
+      ],
+      "admin": [
+        "Obtain signed final safety audit checklist before boom lowering starts.",
+        "Brief operator and assistants on power line locations, boom stow procedure, and transport restrictions.",
+        "Record final condition of EWP and all securing pins fitted before transport departs site.",
+        "Confirm site clearance sign-off with Site Supervisor before demobilisation completion."
+      ],
+      "ppe": [
+        "High-visibility shirt or vest (Class D, day work).",
+        "Hard hat.",
+        "Steel-capped boots.",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify boom lowering is smooth and level; check securing pins are fully seated before transport.",
+        "who": "EWP Operator / Supervisor",
+        "frequency": "continuous during boom lowering; before transport departure",
+        "evidence": "Final audit checklist signed; photographic record of boom in stowed lock position with pins visible; transport restraint certificate"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.3 \u2014 Work at height with risk of fall >2m",
+    "hrcw_license_class": "EWP Licence \u2014 WP class (boom over 11m)",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "tiltup_precast": false,
+      "mobile_plant": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": true,
+    "epa_license_required": false,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "Full-body harness \u2014 AS/NZS 1891.1 compliant",
+      "Energy-absorbing lanyard \u2014 double lanyard where continuous attachment required",
+      "Helmet with chin strap \u2014 AS/NZS 1801",
+      "Non-conductive PPE \u2014 where within exclusion zone",
+      "Hard hat \u2014 non-metallic where near energised lines",
+      "Non-slip footwear \u2014 soft-soled boots, no hard soles on metal roof",
+      "UV-rated clothing \u2014 long sleeves, metal roof radiant heat in summer",
+      "P2 respirator with organic vapour cartridge \u2014 zinc fume during cutting or welding",
+      "Welding helmet \u2014 full shade during any welding on zinc-coated material",
+      "Gloves \u2014 cut-resistant for sheet metal handling",
+      "Three points of contact \u2014 mandatory on all ladder access",
+      "Full body harness with double lanyard \u2014 all workers on roof surface",
+      "Non-slip safety boots \u2014 mandatory on roof",
+      "Hi-vis vest",
+      "UV protection \u2014 long sleeves, sunscreen, wide-brim hat where harness permits"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Working at heights \u2014 verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
+      "EWP operator licence \u2014 WP class where boom exceeds 11m",
+      "Traffic Control accreditation \u2014 where work affects traffic flow",
+      "SafeWork NSW notification \u2014 before work within 4m of overhead powerlines",
+      "Roof anchor installation \u2014 engineer-certified anchor points before use",
+      "SDS review \u2014 Zincalume and Colorbond SDS reviewed before work",
+      "Ladder safety training \u2014 pre-use inspection and safe use training"
+    ],
+    "permits": [
+      "Working at heights permit \u2014 signed before each elevated task",
+      "Noise management plan \u2014 required where work affects occupants",
+      "Dust containment plan \u2014 hoarding or plastic sheeting before work starts",
+      "After-hours work permit \u2014 council consent where applicable",
+      "Council hoarding permit \u2014 where hoarding encroaches on footpath",
+      "Traffic Management Plan \u2014 approved by council before work starts",
+      "Pedestrian management plan \u2014 approved by council before footpath closure",
+      "Alternative pedestrian path \u2014 safe, accessible alternative before closure",
+      "Tactile ground surface indicators \u2014 at diversions for vision-impaired users",
+      "Network operator approval \u2014 Ausgrid or Endeavour Energy before work near lines",
+      "Spotter \u2014 designated, trained spotter on site at all times near lines",
+      "Roof safety plan \u2014 documented fall prevention hierarchy before work starts",
+      "Edge protection \u2014 installed before workers access roof perimeter",
+      "Structural engineer assessment \u2014 roof load capacity before any plant or materials on roof",
+      "Anchor pull-out test \u2014 before any anchor point is used for fall arrest",
+      "Ventilation plan \u2014 no welding or cutting of zinc-coated material in enclosed space without extraction",
+      "Roof access permit \u2014 before any worker accesses roof",
+      "Access management plan \u2014 define work zones vs occupied zones"
+    ],
+    "qualifications": [
+      "Competent person \u2014 pre-use inspection of fall arrest equipment",
+      "Rescue plan \u2014 documented before work above 2m begins",
+      "Rescue equipment \u2014 on site and ready for immediate deployment before any elevated work starts",
+      "Occupant notification \u2014 48 hours minimum before noisy or dusty work",
+      "Exclusion zone \u2014 clearly marked, prevents public access to work area",
+      "Traffic controller \u2014 accredited, on site when traffic affected",
+      "DDA compliance \u2014 alternative route must meet Disability Discrimination Act",
+      "Lighting \u2014 pedestrian diversion lit to minimum 50 lux after dark",
+      "Signage \u2014 clear directional signs at every decision point on diversion route",
+      "Council approval \u2014 footpath closure approved before implementation",
+      "Spotter \u2014 must have unobstructed view of plant and lines at all times",
+      "Plant height restriction \u2014 confirm maximum height before mobilising",
+      "Zone A (0-3m from 11kV, 0-6m from 33kV, 0-8m from 132kV+) \u2014 no work; de-energisation or insulated barrier required before any entry",
+      "Zone B (3-6m from 11kV, 6-10m from 33kV) \u2014 work only with spotter maintaining exclusion; no plant in this zone without network operator approval",
+      "Zone C (approach zone) \u2014 spotter and supervisor awareness required; plant operators briefed on powerline location before commencing",
+      "De-energisation request \u2014 submitted to network operator (Ausgrid/Essential Energy) minimum 48 hours before work requiring Zone A entry",
+      "Anchor point certification \u2014 engineer or manufacturer certification required",
+      "Structural engineer \u2014 written advice on safe working load for roof zone",
+      "Purlin inspection \u2014 visual and physical inspection before personnel access",
+      "Materials staging \u2014 maximum distributed load confirmed before staging on roof",
+      "Ladder secured \u2014 tied or footed at base before use",
+      "Ladder angle \u2014 1:4 ratio (75 degrees) for lean-to ladders",
+      "Ladder overhang \u2014 minimum 1m above landing point at top",
+      "Tools and materials \u2014 use tool belt or hoist, never carry on ladder",
+      "Pre-use inspection \u2014 check rungs, feet and stiles before every use",
+      "Anchor point inspection \u2014 roof anchors inspected and certified per AS/NZS 1891.4 before use",
+      "Perimeter edge protection \u2014 installed before workers access roof, maintained throughout",
+      "Temporary pedestrian pathways maintained throughout \u2014 minimum 1.2m clear width, DDA compliant",
+      "Pedestrian exclusion from active work zones \u2014 physical barriers, not just signage",
+      "Hoarding / physical separation \u2014 between construction zone and occupied area",
+      "Communication plan \u2014 notify building occupants of work schedule, access restrictions, and emergency procedures"
+    ],
+    "notifications": [
+      "Building manager \u2014 written notification before work commences",
+      "Occupants \u2014 letterbox drop 48 hours before disruptive work",
+      "Council \u2014 hoarding licence application minimum 10 business days before",
+      "Disability organisations \u2014 notification where accessible routes affected",
+      "SafeWork NSW \u2014 notification mandatory before work within 4m of powerlines",
+      "Network operator (Ausgrid/Endeavour Energy) \u2014 contact before work near lines"
+    ],
+    "regulatory_notes": [
+      "WHS Reg 2017 Part 4.4 \u2014 fall prevention hierarchy applies to all fall risk",
+      "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
+      "Harness inspection \u2014 pre-use check logged before each shift",
+      "WHS Reg 2017 r.305 \u2014 rescue procedure required before commencing work at height",
+      "Suspension trauma \u2014 incapacitated worker must be lowered within 15 minutes; harness straps can cause positional asphyxia",
+      "Emergency contacts \u2014 on-site personnel trained in rescue procedure before elevated work begins",
+      "WHS Reg 2017 r.291-303 \u2014 fall prevention hierarchy: (1) eliminate, (2) passive edge protection/guardrail, (3) restraint system, (4) fall arrest, (5) administrative",
+      "Edge protection first \u2014 guardrails preferred over harness where work area permits fixed barriers",
+      "Control line \u2014 2m setback from edge, used only when guardrail not practicable",
+      "Exclusion zone required below WAH operations \u2014 size proportional to fall/drop zone; physical barrier where practicable, flagging/bunting as minimum",
+      "Emergency access must be maintained to all work zones including WAH exclusion zones",
+      "Strata schemes \u2014 notify strata manager and obtain by-law compliance",
+      "Noise curfew \u2014 residential: 8am\u20135pm weekdays, 8am\u20131pm Saturday, no Sunday",
+      "Dust \u2014 full hoarding required where public or occupant exposure possible",
+      "Falling objects \u2014 overhead protection mandatory where public below",
+      "Signage \u2014 worksite boundary clearly signed, pedestrian path maintained",
+      "Disability Discrimination Act 1992 \u2014 accessible alternative route mandatory",
+      "Tactile indicators \u2014 required at all kerb ramps on diversion route",
+      "School zones \u2014 no footpath closure during school hours without council approval",
+      "WHS Reg 2017 s.163 \u2014 overhead powerline exclusion distances",
+      "SafeWork NSW Code of Practice: Working Near Overhead Power Lines",
+      "De-energisation \u2014 request from network operator where practicable",
+      "Exclusion distance \u2014 3m to 11kV, 6m to 33kV, 8m to 132kV and above",
+      "WHS Reg 2017 r.163-165 \u2014 overhead powerline exclusion distances",
+      "Ausgrid contact \u2014 13 13 65 \u2014 to arrange de-energisation or insulated barriers for Zone A work",
+      "Essential Energy contact \u2014 13 23 91 \u2014 for regional NSW network operator notifications",
+      "Plant height check \u2014 all plant and loads (crane jibs, scaffold, tipping trucks) measured for clearance before entering approach zone",
+      "Insulated barriers \u2014 only approved by network operator; contractor cannot install their own barriers without network operator approval",
+      "Metal roofing \u2014 purlin-to-purlin fall risk even with harness if lanyard too long",
+      "Roof perimeter \u2014 edge protection or safety mesh mandatory before work begins",
+      "AS 4600 \u2014 Cold-formed steel structures \u2014 purlin capacity assessment",
+      "Anchor pull-out \u2014 test to 6kN minimum before use for fall arrest",
+      "Old roofs \u2014 purlins may be corroded, load capacity unknown without assessment",
+      "Zinc oxide fume \u2014 causes metal fume fever, symptoms within 4\u201312 hours",
+      "No open flame cutting \u2014 Zincalume and Colorbond must not be oxy-cut",
+      "Plasma or guillotine preferred \u2014 minimises fume generation",
+      "SDS \u2014 BlueScope Steel SDS for Zincalume and Colorbond available at bluescopesteel.com.au",
+      "AS/NZS 1892.1 \u2014 Portable ladders \u2014 aluminium",
+      "Fixed roof ladders \u2014 must comply with AS 1657 fixed platforms and walkways",
+      "SafeWork NSW Code of Practice: Managing Electrical Risks in the Workplace",
+      "Exclusion zone <6.4m from overhead powerlines \u2014 no work without DNSP approval",
+      "AS 5488 \u2014 Classification of subsurface utility information",
+      "Pre-start checklist \u2014 completed and signed before each shift",
+      "Exclusion zone below work area \u2014 barricaded",
+      "Wind limit \u2014 manufacturer specified, typically 45km/h for boom EWP",
+      "WHS Reg 2017 r.291-306 \u2014 Falls \u2014 hierarchy of controls applies to all roof work",
+      "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems \u2014 anchor point requirements",
+      "Hold point \u2014 roof structure and structural steel erection complete and approved for loading before any materials placed",
+      "Perimeter safety handrails to be installed as per manufacturer requirements before roof access",
+      "Roof anchors must be fixed to roof structure as specified \u2014 not to cladding or purlins alone",
+      "Roofing fixings at required spacing for wind load \u2014 per specification; not to be reduced on site",
+      "Bolts checked and torque verified 24 hours after erection",
+      "Sealant \u2014 correct grade, type, and colour; sealed guttering and downpipe joints",
+      "Wind conditions \u2014 work suspended in sustained winds exceeding safe limit for harness effectiveness",
+      "Skylights and penetrations \u2014 barricaded or covered before roof access to prevent fall-through",
+      "Sarking/insulation certificate of compliance required",
+      "Roofing material, roof anchor, and installation warranties required as project documentation",
+      "Pedestrian safety in live road corridor requires continuous management, not just initial setup",
+      "Temporary pedestrian detours must be DDA compliant and signed",
+      "Construction zone must be physically separated from occupied areas at all times",
+      "Maintain existing emergency egress routes \u2014 no blocking of fire stairs or exits",
+      "Dust, noise, and fume controls required where work may affect occupants"
+    ],
+    "plant": [
+      "Elevated Work Platform (EWP)"
+    ],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "new_build",
+      "building_context": "existing",
+      "occupancy_context": "occupied",
+      "scope_modifiers": [
+        "ewp_access",
+        "work_at_height",
+        "commercial",
+        "external_envelope",
+        "occupied_interface",
+        "high_rise",
+        "pedestrian_interface",
+        "ewp_transfer"
+      ]
+    }
+  }
+}

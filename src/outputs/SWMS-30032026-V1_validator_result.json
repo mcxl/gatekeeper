@@ -1,0 +1,16 @@
+{
+  "status": "ESCALATE_EXTERNAL",
+  "failing_checks": [
+    "wah_percentage: WAH: 1/2 (50%) \u2014 threshold 50%"
+  ],
+  "review_checks": [],
+  "suggested_action": "No fixable defects remaining \u2014 escalate to external review",
+  "retry_recommended": false,
+  "defect_classifications": [
+    {
+      "check": "wah_percentage",
+      "detail": "WAH: 1/2 (50%) \u2014 threshold 50%",
+      "type": "prompt_decomposer_fix"
+    }
+  ]
+}

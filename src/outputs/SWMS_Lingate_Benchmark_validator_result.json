@@ -1,0 +1,12 @@
+{
+  "status": "ESCALATE_EXTERNAL",
+  "failing_checks": [],
+  "review_checks": [
+    "latent_condition_packaging: Standalone latent-condition tasks (should be hold-points): ['1.3: Hold point: latent condition framework \u2014 toxi']",
+    "framework_control_misuse: 1.3: latent condition as standalone task",
+    "responsibility_field: Placeholder acceptable at benchmark stage: '[insert supervisor name here]'"
+  ],
+  "suggested_action": "3 review item(s) at benchmark stage \u2014 acceptable, escalate to external review",
+  "retry_recommended": false,
+  "defect_classifications": []
+}

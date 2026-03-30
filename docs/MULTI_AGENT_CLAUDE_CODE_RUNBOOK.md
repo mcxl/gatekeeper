@@ -48,6 +48,39 @@ This ensures Claude Code:
 - respects product boundaries
 - reports in governance format
 
+### Step 1A. Run Headless By Default
+
+For serious Safe Method work, the default mode should now be:
+- checkpoint-to-checkpoint
+- bounded phase
+- unattended until completion or real checkpoint
+
+That means Claude Code should:
+- own the phase end-to-end where feasible
+- verify the result
+- update governance artifacts if needed
+- make a local git commit if the phase is coherent
+- stop with the exact next prompt to paste
+
+Manual terminal use should now be the exception, not the default.
+Use the shell mainly for:
+- recovery
+- one-off inspection
+- explicit manual override
+
+This is a standing operating rule, not a temporary preference.
+When in doubt:
+- prefer Claude-owned phase execution
+- prefer local commit by Claude at coherent phase end
+- prefer a checkpoint handoff with the exact next prompt
+- avoid dropping into shell/Git micromanagement unless there is a real reason
+
+Do not fall back into routine shell micromanagement for:
+- normal benchmark cycles
+- normal automation phases
+- normal regression checks
+- normal cleanup passes
+
 ### Step 2. Launch One Stream
 
 Use the launch checklist before starting.
@@ -250,16 +283,71 @@ bleed into each other.
 
 For most Safe Method work, this is enough:
 
-1. paste the master governance prompt
+1. paste the master governance prompt with the headless wrapper
 2. run one benchmark stream
 3. use the writer role
 4. use the critic role
 5. use the classifier role if needed
 6. use the fixer/checker role
-7. update the decision log
-8. update the governance register if needed
+7. verify the phase result
+8. update the decision log if needed
+9. update the governance register if needed
+10. make a local git commit if the phase is coherent
+11. stop with the exact next prompt to paste
 
 That is usually enough.
+
+---
+
+## Standard Headless Wrapper
+
+Use this wrapper at the top of most serious Claude Code prompts:
+
+```text
+Run this in headless checkpoint-to-checkpoint mode.
+
+Operating style:
+- work unattended until the current bounded phase is genuinely complete
+- do not stop for minor questions or partial progress updates
+- make reasonable assumptions and keep moving
+- stop only at a real checkpoint:
+  - external review is required
+  - a material blocker is hit
+  - a decision has non-obvious consequences
+  - the current phase is complete and verified
+
+Default behaviour:
+1. understand the current phase objective
+2. do the work end-to-end within that phase
+3. verify the result
+4. update any relevant decision log or governance artifact if appropriate
+5. if the work is coherent and complete, make a local git commit
+6. stop with a clear handoff
+
+Rules:
+- keep scope narrow to the stated phase
+- do not broaden into adjacent product work unless explicitly required
+- preserve product-mode boundaries
+- preserve visible uncertainty where facts are not confirmed
+- do not keep iterating once the current phase has reached diminishing returns
+- if external consultant review is the next correct step, stop and prepare the exact handoff
+- if a local git commit is made, use a clear non-interactive commit message
+- do not push to GitHub unless explicitly instructed
+
+When you stop, always report:
+1. what was completed
+2. what was verified
+3. what decision was reached
+4. whether a decision log or governance register should be updated
+5. whether a local git commit was made
+6. the exact next prompt to paste for the next phase
+```
+
+Add this expectation unless there is a specific reason not to:
+
+```text
+Own the bounded phase end-to-end where feasible so manual terminal work is not required except for recovery, explicit manual inspection, or explicit operator override.
+```
 
 ---
 
@@ -270,4 +358,3 @@ That is usually enough.
 - [MULTI_AGENT_LAUNCH_CHECKLIST.md](C:\Users\AlanRichardson\gatekeeper\docs\MULTI_AGENT_LAUNCH_CHECKLIST.md)
 - [MULTI_AGENT_CLOSEOUT_CHECKLIST.md](C:\Users\AlanRichardson\gatekeeper\docs\MULTI_AGENT_CLOSEOUT_CHECKLIST.md)
 - [LBV_ONE_CYCLE_PLAYBOOK.md](C:\Users\AlanRichardson\gatekeeper\docs\LBV_ONE_CYCLE_PLAYBOOK.md)
-
