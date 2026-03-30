@@ -822,8 +822,8 @@ _UNSUPPORTED_CONTROL_PHRASES = [
     "shoring plan", "shoring and stability", "propping plan", "propping design",
     "council development consent", "council consent",
     "power isolation certificate",
-    "traffic controller", "traffic control plan", "traffic control",
-    "road opening permit", "traffic management plan", "traffic management",
+    "traffic control plan",
+    "road opening permit", "traffic management plan",
     "lane closure", "speed reduction",
     "as 1742",
     "after-hours work permit", "after-hours permit", "council after-hours",
@@ -1293,7 +1293,8 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise",
                                          "prop base", "prepare and level",
                                          "confirm crane", "confirm lift",
-                                         "remove temporary prop", "remove prop")):
+                                         "remove temporary prop", "remove prop",
+                                         "remove traffic", "remove exclusion")):
         correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good")):
         correct = "SYS-M3"
