@@ -758,6 +758,46 @@ def _validate_rendered_output(
             except Exception as rev_err:
                 logger.warning(f"Reviewer agent skipped: {rev_err}")
 
+        # Capture findings into the findings store
+        try:
+            from core.findings_store import FindingRecord, append_finding
+            stream = request.get("stream_name", request.get("project_meta", {}).get("project_name", ""))
+            jt = request.get("job_type", "")
+            for fc in result.failing_checks:
+                append_finding(FindingRecord(
+                    stream_name=stream, job_type=jt, task_name="",
+                    defect_type="deterministic_fix", check_name=fc.split(":")[0] if ":" in fc else fc,
+                    finding_text=fc, source="validator", severity="hard_fail",
+                ))
+            for rc in result.review_checks:
+                append_finding(FindingRecord(
+                    stream_name=stream, job_type=jt, task_name="",
+                    defect_type="flag_for_review", check_name=rc.split(":")[0] if ":" in rc else rc,
+                    finding_text=rc, source="validator", severity="review_flag",
+                ))
+            if result.status.value == "ESCALATE_EXTERNAL" and "reviewer_status" in summary:
+                try:
+                    for hf in reviewer_result.hard_fails:
+                        cat = hf.split("]")[0].strip("[") if "[" in hf else ""
+                        append_finding(FindingRecord(
+                            stream_name=stream, job_type=jt, task_name="",
+                            defect_type="expert_review_only", check_name="reviewer_hard_fail",
+                            finding_text=hf, source="reviewer_agent",
+                            reviewer_agent_category=cat, severity="hard_fail",
+                        ))
+                    for ri in reviewer_result.review_items:
+                        cat = ri.split("]")[0].strip("[") if "[" in ri else ""
+                        append_finding(FindingRecord(
+                            stream_name=stream, job_type=jt, task_name="",
+                            defect_type="flag_for_review", check_name="reviewer_review_item",
+                            finding_text=ri, source="reviewer_agent",
+                            reviewer_agent_category=cat, severity="review_flag",
+                        ))
+                except NameError:
+                    pass  # reviewer_result not available
+        except Exception as findings_err:
+            logger.warning(f"Findings capture skipped: {findings_err}")
+
         return summary
     except Exception as e:
         logger.warning(f"Post-render validation skipped: {e}")
