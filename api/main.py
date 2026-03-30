@@ -642,20 +642,88 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
     POST /render/docx
     Accepts {"tasks": [...], "project_meta": {...}, "inference": {...}, "filename": "optional"}
     Renders all tasks into a single Word document and returns as file download.
+    Runs post-render validation if validate=true (default).
     """
     try:
         jurisdiction = request.get("jurisdiction", "AU")
         docx_bytes, filename = _render_tasks_to_docx(request, jurisdiction=jurisdiction)
+
+        # Post-render validation (advisory — never blocks output)
+        validator_summary = None
+        if request.get("validate", True):
+            validator_summary = _validate_rendered_output(
+                docx_bytes, request.get("tasks", []), filename, request,
+            )
+
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+        if validator_summary:
+            headers["X-Validator-Status"] = validator_summary.get("status", "")
+            # HTTP headers must be ASCII — strip non-ASCII chars
+            action = validator_summary.get("suggested_action", "")[:200]
+            headers["X-Validator-Action"] = action.encode("ascii", errors="replace").decode("ascii")
+
         return Response(
             content=docx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            headers=headers,
         )
     except ValueError as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"Render DOCX failed:\n{traceback.format_exc()}")
         return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
+
+
+def _validate_rendered_output(
+    docx_bytes: bytes,
+    tasks_raw: list[dict],
+    filename: str,
+    request: dict,
+) -> dict | None:
+    """Run the internal validator on rendered SWMS output and log the result.
+
+    Returns the validator result as a dict (for response headers),
+    or None if validation is skipped/fails.
+    Writes _validator_result.json alongside output. Always advisory.
+    """
+    try:
+        from core.validator_runner import run_internal_validator, StreamConfig
+        from src.issue_gate import Stage
+
+        stage_str = request.get("validation_stage", "benchmark")
+        stage = Stage.ISSUE_READY if stage_str == "issue_ready" else Stage.BENCHMARK
+        wah_threshold = request.get("wah_threshold", 50)
+        allowed_kw = tuple(request.get("allowed_keywords", []))
+
+        config = StreamConfig(
+            stage=stage, wah_threshold=wah_threshold, allowed_keywords=allowed_kw,
+        )
+        result = run_internal_validator(tasks=tasks_raw, stream_config=config)
+
+        import json as _json
+        output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "outputs")
+        if os.path.isdir(output_dir):
+            base = filename.rsplit(".", 1)[0] if "." in filename else filename
+            result_path = os.path.join(output_dir, f"{base}_validator_result.json")
+            with open(result_path, "w", encoding="utf-8") as f:
+                _json.dump({
+                    "status": result.status.value,
+                    "failing_checks": result.failing_checks,
+                    "review_checks": result.review_checks,
+                    "suggested_action": result.suggested_action,
+                    "retry_recommended": result.retry_recommended,
+                    "defect_classifications": result.defect_classifications,
+                }, f, indent=2)
+
+        return {
+            "status": result.status.value,
+            "failing_count": len(result.failing_checks),
+            "review_count": len(result.review_checks),
+            "suggested_action": result.suggested_action,
+        }
+    except Exception as e:
+        logger.warning(f"Post-render validation skipped: {e}")
+        return None
 
 
 def _build_filename(project_meta: dict, ext: str) -> str:
