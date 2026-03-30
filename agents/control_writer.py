@@ -28,6 +28,9 @@ CONTROL WRITING NON-NEGOTIABLES:
 - Chemical tasks: SDS, ventilation, and substrate controls must appear before access controls
 - Structural tasks: engineer trigger, hold point, and sequence must appear before WAH controls
 - Controls must name the physical action — not "ensure compliance", not "maintain situational awareness"
+- Hold point controls must name the approval authority and the condition — not just "hold point required"
+  Wrong: "Hold point — inspector to approve"
+  Right: "Hold point — [named consultant] to inspect and sign off [specific condition] before [next task] commences"
 
 Your ONLY job is to write controls, hold points, stop work triggers, admin
 controls, PPE, and CCVS codes for a single construction task.
