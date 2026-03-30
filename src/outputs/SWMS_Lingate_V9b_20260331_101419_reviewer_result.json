@@ -1,0 +1,11 @@
+{
+  "overall_status": "BELOW_WORKING_DRAFT",
+  "recommended_action": "TARGETED_REWORK",
+  "overall_summary": "2 hard fail(s); 44 review item(s) (generation-variance)",
+  "hard_fails": [
+    "MISSING MANDATORY TASK: No post-remedial waterproofing test task before handover",
+    "Task 9: monitoring critical_control not a live monitoring control"
+  ],
+  "review_items_count": 44,
+  "note": "Both hard fails are generation-variance, not systemic defects"
+}

@@ -432,6 +432,14 @@ def _check_unsupported_controls_docx(doc,
     if not t2:
         return GateCheck("unsupported_controls", CheckResult.REVIEW,
                          "Task table not found")
+    # Job-scope detection from all task names in the docx
+    all_task_names = " ".join(
+        t2.rows[r].cells[1].text.lower() if len(t2.rows[r].cells) > 1 else ""
+        for r in range(1, len(t2.rows))
+    )
+    waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
+    demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
+
     for r in range(1, len(t2.rows)):
         row_text = " ".join(t2.rows[r].cells[c].text for c in range(
             min(8, len(t2.rows[r].cells)))).lower()
@@ -440,6 +448,10 @@ def _check_unsupported_controls_docx(doc,
         for kw in active_keywords:
             if kw in row_text:
                 if kw in ("propping plan", "propping design"):
+                    continue
+                if kw in ("membrane", "waterproof") and waterproof_in_scope:
+                    continue
+                if kw == "demolit" and demolition_in_scope:
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in row_text and "green wall" not in task_text:
