@@ -128,7 +128,7 @@ Run sequentially. Fix deterministic bugs between jobs. Do not accumulate.
 |-----|------|-----------|---------|----------|------|---------|-----------|----------|----------|-------|
 | 1 | remedial | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 2 | 69 | — | — | Not submitted | Rerun: hold point SYS-M3 fix applied. Sequence issues remain (scaffold late, expose after repair). |
 | 2 | fit_out | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 6 | 59 | — | — | Not submitted | Demolition N/A CCVS + disconnection cert drift. C24 caught monitoring copy-paste. 12 pattern candidates. |
-| 3 | demolition | — | — | — | — | — | — | — | — | — |
+| 3 | demolition | ESCALATE_EXTERNAL | 0 | BELOW_WORKING_DRAFT | 5 | 60 | 0 | 4 | Not submitted | Cleanest gate result (0 FAIL). Demolish CCVS fix worked. Disconnection allowed. Services sequence late. |
 | 4 | maintenance | — | — | — | — | — | — | — | — | — |
 | 5 | new_build | — | — | — | — | — | — | — | — | — |
 

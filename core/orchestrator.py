@@ -1444,7 +1444,7 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     # Determine the correct CCVS from task name keywords.
     # Removal/demolition context overrides CHM-dominant — removing a membrane
     # is a SIL task (dust/debris), not a CHM task (chemical application).
-    _REMOVAL_CONTEXT = ("remove", "strip", "demolit", "break out", "rip out")
+    _REMOVAL_CONTEXT = ("remove", "strip", "demolit", "demolish", "break out", "rip out")
     _CHM_DOMINANT = ("waterproof", "membrane", "epoxy", "primer")
     # Scaffold/EWP tasks with "remove" (e.g. "dismantle scaffold and remove from site")
     # are WAH, not SIL — exclude them from removal context

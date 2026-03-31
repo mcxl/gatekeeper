@@ -176,6 +176,15 @@ def test_p2_preserved_on_sil_task():
 
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
+def test_ccvs_demolish_gets_sil():
+    """Demolish tasks should get SIL-H6 (dust/debris)."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Demolish existing partition walls and ceiling grid", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SIL-H6"
+
+
 def test_ccvs_hold_point_gets_sys():
     """Hold point tasks are procedural — should get SYS-M3."""
     from core.orchestrator import _correct_ccvs_by_task_type
