@@ -302,6 +302,8 @@ async def generate_swms(
     # Post-generation normalisation (plain English, CCVS repair, risk labels, citation strip)
     hot_work_ok = _hot_work_legitimate(inference)
     task_blocks = [_normalise_task(tb, inference, jurisdiction, hot_work_ok) for tb in task_blocks]
+    _dedup_monitoring_across_tasks(task_blocks)
+    _fallback_ccvs_na(task_blocks)
     _suppress_false_ccvs(task_blocks, inference)
     task_blocks = _reorder_tasks(task_blocks)
 
@@ -483,6 +485,8 @@ async def generate_swms_stream(
     hot_work_ok = _hot_work_legitimate(inference)
     assembled = [_normalise_task(tb, inference, jurisdiction, hot_work_ok)
                  for tb in assembled if tb.get("task")]
+    _dedup_monitoring_across_tasks(assembled)
+    _fallback_ccvs_na(assembled)
     _suppress_false_ccvs(assembled, inference)
     assembled = _reorder_tasks(assembled)
     yield {
@@ -1425,6 +1429,76 @@ def _improve_monitoring(tb: dict) -> None:
         should_replace = False  # keep whatever the agent set for WAH tasks
     if should_replace:
         mon["critical_control"] = template["critical_control"]
+
+
+def _dedup_monitoring_across_tasks(task_blocks: list[dict]) -> None:
+    """Replace verbatim-duplicated monitoring across tasks with different CCVS families.
+
+    If two or more tasks share the exact same monitoring.critical_control text
+    but have different CCVS family prefixes, the monitoring is likely copy-pasted.
+    Replace with the correct family-specific template from _MONITORING_BY_HAZARD.
+    """
+    if len(task_blocks) < 2:
+        return
+
+    # Build map: critical_control text → list of (index, ccvs_prefix)
+    cc_map: dict[str, list[tuple[int, str]]] = {}
+    for i, tb in enumerate(task_blocks):
+        mon = tb.get("monitoring")
+        if not isinstance(mon, dict):
+            continue
+        cc = mon.get("critical_control", "").strip()
+        if not cc or len(cc) < 15:
+            continue
+        ccvs = tb.get("ccvs_code", "N/A")
+        prefix = ccvs.split("-")[0] if "-" in ccvs else ccvs
+        cc_map.setdefault(cc, []).append((i, prefix))
+
+    _CCVS_TO_PATTERN = {
+        "SIL": "dust", "CHM": "chemical", "WAH": "wah",
+        "SYS": "qa", "ELE": "scaffold",
+    }
+
+    for cc_text, entries in cc_map.items():
+        families = {prefix for _, prefix in entries}
+        if len(families) < 2:
+            continue  # same family across all — valid reuse
+        # Replace monitoring on tasks where the cc doesn't match their family
+        for idx, prefix in entries:
+            pattern = _CCVS_TO_PATTERN.get(prefix)
+            if not pattern:
+                continue
+            template = _MONITORING_BY_HAZARD.get(pattern)
+            if not template:
+                continue
+            # Only replace if the current cc doesn't match this task's family template
+            if template["critical_control"] != cc_text:
+                mon = task_blocks[idx].get("monitoring", {})
+                mon["critical_control"] = template["critical_control"]
+
+
+def _fallback_ccvs_na(task_blocks: list[dict]) -> None:
+    """Assign SYS-M3 to tasks that still have N/A CCVS but have hazards.
+
+    Only applies to clearly procedural/staging/delivery tasks.
+    Does not overwrite valid SIL/CHM/WAH classifications.
+    """
+    _PROCEDURAL_KW = ("deliver", "stage", "staging", "material", "logistics",
+                       "confirm", "obtain", "prepare site", "site readiness",
+                       "brief", "induction", "handover", "document",
+                       "hold point", "approval", "sign-off",
+                       "isolate", "barricade", "exclusion zone",
+                       "interface", "coordinate")
+    for tb in task_blocks:
+        ccvs = tb.get("ccvs_code", "N/A")
+        if ccvs != "N/A":
+            continue
+        hazards = tb.get("hazards", [])
+        if not hazards:
+            continue
+        task_name = tb.get("task", "").lower()
+        if any(kw in task_name for kw in _PROCEDURAL_KW):
+            tb["ccvs_code"] = "SYS-M3"
 
 
 def _correct_ccvs_by_task_type(tb: dict) -> None:

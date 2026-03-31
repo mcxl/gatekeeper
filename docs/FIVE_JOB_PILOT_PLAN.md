@@ -126,8 +126,8 @@ Run sequentially. Fix deterministic bugs between jobs. Do not accumulate.
 
 | Job | Type | Validator | V Fails | Reviewer | R HF | R Items | Gate FAIL | Gate REV | External | Notes |
 |-----|------|-----------|---------|----------|------|---------|-----------|----------|----------|-------|
-| 1 | remedial | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 2 | 69 | — | — | Not submitted | Rerun: hold point SYS-M3 fix applied. Sequence issues remain (scaffold late, expose after repair). |
-| 2 | fit_out | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 6 | 59 | — | — | Not submitted | Demolition N/A CCVS + disconnection cert drift. C24 caught monitoring copy-paste. 12 pattern candidates. |
+| 1 | remedial | ESCALATE_EXTERNAL | 1 | — | — | — | 1 | 1 | Not submitted | Hardened: monitoring dedup worked (CHM tasks clean). 1 remaining FAIL: late scaffold confirm. |
+| 2 | fit_out | RETRY_INTERNAL | 1 | — | — | — | 1 | 3 | Not submitted | Hardened: fails halved. 1 remaining FAIL: barricade N/A CCVS (fallback expanded). |
 | 3 | demolition | ESCALATE_EXTERNAL | 0 | BELOW_WORKING_DRAFT | 5 | 60 | 0 | 4 | Not submitted | Cleanest gate result (0 FAIL). Demolish CCVS fix worked. Disconnection allowed. Services sequence late. |
 | 4 | maintenance | ESCALATE_EXTERNAL | 0 | BELOW_WORKING_DRAFT | 3 | 38 | 0 | 4 | Not submitted | Scissor lift protected access. No unsupported WAH controls. Lowest review items (38). Task 1.2 early. |
 | 5 | new_build | RETRY_INTERNAL | 1 | BELOW_WORKING_DRAFT | 2 | 48 | 1 | 3 | Not submitted | Steel erection sequence correct. Crane/prop/bolt logic present. Staging N/A + prop removal SIL. |

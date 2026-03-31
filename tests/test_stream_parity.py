@@ -176,6 +176,63 @@ def test_p2_preserved_on_sil_task():
 
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
+def test_dedup_monitoring_replaces_cross_family_copy():
+    """Verbatim monitoring on unlike CCVS families gets replaced."""
+    from core.orchestrator import _dedup_monitoring_across_tasks
+    cc = "Dust extraction running and P2 respirator fitted before each grinding cycle"
+    tasks = [
+        {"task": "Remove membrane", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+        {"task": "Apply membrane", "ccvs_code": "CHM-H6", "monitoring": {"critical_control": cc}},
+    ]
+    _dedup_monitoring_across_tasks(tasks)
+    # SIL task keeps dust monitoring (it matches); CHM task gets chemical template
+    assert "dust" in tasks[0]["monitoring"]["critical_control"].lower() or "p2" in tasks[0]["monitoring"]["critical_control"].lower()
+    assert "sds" in tasks[1]["monitoring"]["critical_control"].lower() or "ventilation" in tasks[1]["monitoring"]["critical_control"].lower()
+
+
+def test_dedup_monitoring_preserves_same_family():
+    """Same family reuse is not disturbed."""
+    from core.orchestrator import _dedup_monitoring_across_tasks
+    cc = "Dust extraction running"
+    tasks = [
+        {"task": "Remove membrane", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+        {"task": "Repair cracks", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+    ]
+    _dedup_monitoring_across_tasks(tasks)
+    assert tasks[0]["monitoring"]["critical_control"] == cc
+    assert tasks[1]["monitoring"]["critical_control"] == cc
+
+
+def test_fallback_ccvs_na_staging_gets_sys():
+    """Staging/delivery task with N/A CCVS and hazards gets SYS-M3."""
+    from core.orchestrator import _fallback_ccvs_na
+    tasks = [
+        {"task": "Deliver and stage portal frame bays", "ccvs_code": "N/A", "hazards": ["Manual handling"]},
+    ]
+    _fallback_ccvs_na(tasks)
+    assert tasks[0]["ccvs_code"] == "SYS-M3"
+
+
+def test_fallback_ccvs_na_does_not_overwrite_sil():
+    """Valid SIL classification is not overwritten."""
+    from core.orchestrator import _fallback_ccvs_na
+    tasks = [
+        {"task": "Remove membrane", "ccvs_code": "SIL-H6", "hazards": ["Silica dust"]},
+    ]
+    _fallback_ccvs_na(tasks)
+    assert tasks[0]["ccvs_code"] == "SIL-H6"
+
+
+def test_fallback_ccvs_na_skips_no_hazards():
+    """N/A task without hazards stays N/A."""
+    from core.orchestrator import _fallback_ccvs_na
+    tasks = [
+        {"task": "Deliver materials to site", "ccvs_code": "N/A", "hazards": []},
+    ]
+    _fallback_ccvs_na(tasks)
+    assert tasks[0]["ccvs_code"] == "N/A"
+
+
 def test_ccvs_demolish_gets_sil():
     """Demolish tasks should get SIL-H6 (dust/debris)."""
     from core.orchestrator import _correct_ccvs_by_task_type

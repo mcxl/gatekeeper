@@ -1,0 +1,2311 @@
+{
+  "route": "full",
+  "tasks": [
+    {
+      "sequence": 1,
+      "task": "Confirm site readiness and interface controls",
+      "scope": "Site induction, utility strike map review, asbestos clearance validation, occupied-building interface plan confirmation with building management and adjacent tenancies.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6",
+      "hazards": [
+        "Asbestos disturbance \u2014 undetected ACM in partitions, ceiling, or fixings despite clearance validation",
+        "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+        "Interface failure \u2014 adjacent tenancies not notified or building management control measures not confirmed before work starts"
+      ],
+      "dominant_hazard": "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain and review utility strike map from water, gas, and electricity providers and telecommunications \u2014 mark location of all services, isolation points, and meter boxes on site plan before any work area access.",
+        "Brief building management and all adjacent tenancies in writing (email + notice on common areas) \u2014 confirm work dates, access routes, noise windows, and emergency contact details.",
+        "Conduct site induction with all workers \u2014 cover utility locations, asbestos no-go zones, building evacuation procedure, and occupied-building traffic controls.",
+        "Establish communication protocol with building management \u2014 designate single contact point, confirm 24-hour emergency line, and verify emergency stop authority.",
+        "Check that all trades have reviewed utility strike map and signed acknowledgment before entering work area \u2014 document on site log."
+      ],
+      "hold_points": [],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: utility strike map is incomplete, mislabelled, or does not match physical service locations identified on site.",
+        "\ud83d\uded1 STOP WORK if: building management or adjacent tenancies report notification not received, or interface control measures not confirmed in writing before work area access granted."
+      ],
+      "admin": [
+        "Collect signed site induction records from all workers before work area access \u2014 retain on site log.",
+        "Maintain utility strike map on site and post in visible location \u2014 mark each isolation point with flagging tape.",
+        "Obtain written interface confirmation from building management and store on file \u2014 include emergency contact details and evacuation procedure.",
+        "Document all trades' acknowledgment of utility strike map review on sign-in log."
+      ],
+      "ppe": [
+        "High-visibility vest or Class D2 (during site induction and interface meetings)",
+        "Safety helmet (on site)",
+        "steel-capped footwear"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Project Manager / Demolition Supervisor",
+        "frequency": "Before site induction commences; before any worker entry to work area; daily site check-in first task",
+        "evidence": "Signed utility isolation certificates on file; utility strike map marked and posted on site; site induction records dated and signed; building management written confirmation dated and stored; asbestos clearance letter retained on site"
+      },
+      "responsibility": {
+        "SUP": "Supervise Confirm site readiness and interface",
+        "WKR": "Perform Confirm site readiness and interface per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 2,
+      "task": "Isolate and barricade Level 3 work area",
+      "scope": "Establish hard barriers around demolition zone, exclusion perimeter for falling objects (full height plus 5 m below), signage and warning tape on stairwell and lift access.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 worker or building user falls through unguarded stairwell or lift access during barricade erection",
+        "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+        "Inadequate signage \u2014 warning or exclusion signage fades, is damaged, or is ignored by building users unaware of work scope"
+      ],
+      "dominant_hazard": "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Extend barriers minimum 5 m below Level 3 footprint on all sides to contain falling debris and tools.",
+        "Barricade stairwell and lift access points with lockable gates or barriers; post exclusion signage on each barricade.",
+        "Fix warning tape and 'Do Not Enter' signs at all pedestrian approaches to work zone at eye level.",
+        "Brief all building occupants and adjacent tenancy workers on exclusion perimeter location and no-entry rule before barricade installation.",
+        "Maintain clear sightlines around barricades; remove debris, stored materials, or obstructions that could hide the exclusion zone.",
+        "Install high-visibility marker tape along top edge of barriers to aid visibility from below and from adjacent levels."
+      ],
+      "hold_points": [],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any hard barrier section is loose, damaged, or displaced and cannot be repaired within 30 minutes.",
+        "\ud83d\uded1 STOP WORK if: stairwell or lift access barricade is breached, removed, or found unlocked during any shift.",
+        "\ud83d\uded1 STOP WORK if: exclusion perimeter is found inadequate or falling debris has escaped the 5 m containment zone."
+      ],
+      "admin": [
+        "Record barrier installation date, materials type, and completion sign-off in site diary.",
+        "Brief building occupants in writing on exclusion zone location, no-entry rule, and emergency contact for breaches.",
+        "Conduct toolbox talk on falling object risk and exclusion perimeter non-negotiability before barricade erection starts."
+      ],
+      "ppe": [
+        "High-visibility vest (Class D or higher) during barricade erection.",
+        "Safety helmet during installation of barriers on stairwell or at height.",
+        "steel-capped footwear",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "N/A",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check all barrier fixing points, gate locks, and perimeter integrity daily before demolition work.",
+        "who": "Supervisor / Site Manager",
+        "frequency": "Daily before demolition work commences; after any barrier impact or weather event.",
+        "evidence": "Daily barrier inspection checklist signed by Supervisor; photograph of barrier perimeter; incident log if breach detected."
+      },
+      "responsibility": {
+        "SUP": "Supervise Isolate and barricade Level 3",
+        "WKR": "Perform Isolate and barricade Level 3 per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 4,
+      "task": "Demolish existing partitions and ceiling grid",
+      "scope": "Remove non-load-bearing partition walls, suspended ceiling grid, and associated fixings. Segregate waste by type (plasterboard, timber, metal). No asbestos risk confirmed.",
+      "trade_type": "Demolition",
+      "hrcw": true,
+      "hrcw_category": "cl.4",
+      "hazards": [
+        "Inhalation of dust and airborne particles \u2014 plasterboard, timber, or metal dust generated during cutting and dismantling without dust suppression or respiratory protection",
+        "Laceration or puncture \u2014 sharp metal fixings, cut edges, or nails encountered during partition removal or ceiling grid dismantling",
+        "Strain or sprain \u2014 manual handling of heavy partition sections, ceiling panels, or grid components without mechanical aids or team lift procedures",
+        "Collapse of partition or ceiling section \u2014 structural instability if load-bearing elements are misidentified and removed, or temporary propping fails",
+        "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating"
+      ],
+      "dominant_hazard": "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "If ACM or suspected ACM identified in survey, stop work and tell licensed asbestos removalist \u2014 do not proceed with partition or ceiling removal.",
+        "Confirm structural engineer has certified partitions are non-load-bearing and ceiling grid is not structural before cutting or dismantling starts.",
+        "Wet-suppress all partition cutting and ceiling grid dismantling \u2014 use spray bottle or mist hose to dampen dust generation at cutting point.",
+        "Use dust extractor with HEPA filter connected to power tools (reciprocating saw, angle grinder) during cutting \u2014 continuous extraction required, no dry breakout.",
+        "Wear organic vapour half-mask respirator (AS/NZS 1716 P2) when suppression fails or dust generation exceeds visual containment; upgrade to P3 if mist opacity increases.",
+        "Segregate all sharp fixings (nails, fasteners, screws) into rigid containers immediately on removal \u2014 do not leave loose on surfaces or in debris piles."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove ceiling grid until: temporary propping (if required) is installed, inspected, and engineer-approved in writing."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: wet suppression system fails, dust extraction is disconnected, or visible airborne dust exceeds containment during cutting.",
+        "\ud83d\uded1 STOP WORK if: suspected ACM, undocumented coating, or unknown material is encountered during cutting or dismantling.",
+        "\ud83d\uded1 STOP WORK if: partition or grid section cannot be supported safely, temporary propping base shifts, or structural instability is observed."
+      ],
+      "admin": [
+        "Obtain structural engineer certification that partitions are non-load-bearing and ceiling grid is not structural.",
+        "tell SafeWork NSW if any structure exceeds 6 m height or load-bearing status is uncertain.",
+        "Brief all crew on ACM risk, suppression method, and stop-work triggers before work commences."
+      ],
+      "ppe": [
+        "Organic vapour half-mask respirator (AS/NZS 1716 P2) \u2014 continuous wear during cutting and suppression; upgrade to P3 if dust opacity increases.",
+        "eye protection\u2014 protection from flying debris, metal fragments, sharp fixings.",
+        "cut-resistant gloves",
+        "steel-capped footwear\u2014 protection from nails, fasteners, glass.",
+        "hi-viz shirt or vest\u2014 skin protection from dust, splinters, sharp metal.",
+        "Hard hat \u2014 protection from falling fixings, grid components, or suspended debris."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Verify wet suppression active and dust extraction connected before each cutting session.",
+        "who": "Supervisor / Demolition crew lead",
+        "frequency": "Before each shift start and before each new cutting session",
+        "evidence": "Visual observation of mist at cutting point, HEPA filter status, exclusion zone signage in place, ACM clearance letter on site"
+      },
+      "responsibility": {
+        "SUP": "Supervise Demolish existing partitions and ceiling",
+        "WKR": "Perform Demolish existing partitions and ceiling per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 5,
+      "task": "Remove demolition debris and clean substrate",
+      "scope": "Clear and remove all demolished material from site. Clean structural soffit, walls, and floor to receive new systems. Dust suppression during removal.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+        "Manual handling injury \u2014 repetitive bending, lifting, or carrying of debris loads without mechanical equipment or rest breaks",
+        "Fall hazard \u2014 slippery floors during wet cleaning; debris piles or uneven surfaces creating trip hazards in work area",
+        "Exposure to chemical residues \u2014 cleaning agents, sealants, or adhesives on substrate not identified or properly neutralised before cleaning"
+      ],
+      "dominant_hazard": "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Use HEPA-filtered vacuum or wet collection method to remove all debris; do not dry sweep or use compressed air.",
+        "Wear organic vapour respirator (P3) during debris removal and substrate cleaning; keep mask on-site and on point of use.",
+        "Damp-wipe all structural surfaces (soffit, walls, floor) with water or damp cloth after debris removal; allow to dry before next task.",
+        "Establish wet dust suppression \u2014 spray debris piles with water before removal; maintain damp conditions throughout clearance.",
+        "Segregate waste into separate containers: debris, chemical residue (if present), recyclable materials; do not mix loads.",
+        "Bag and label all cleaned material residues; store in designated waste area outside occupied zones.",
+        "Conduct substrate visual check for chemical residues, sealants, adhesives, or unknown coatings before cleaning commences; stop work if unidentified material found.",
+        "Limit debris removal to no more than 4 hours continuous work; rotate workers to prevent repetitive strain; provide 15-minute rest breaks each hour."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not proceed to next task until: substrate visually clean, damp-wiped, and structural surface condition accepted by Project Manager or site supervisor."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: HEPA vacuum filter clogs, wet suppression fails, or dry sweeping or compressed air is used.",
+        "\ud83d\uded1 STOP WORK if: unidentified chemical residue, sealant, adhesive, or unknown coating found on substrate.",
+        "\ud83d\uded1 STOP WORK if: worker respiratory fit-check fails or mask is damaged, removed, or not worn during debris removal or cleaning."
+      ],
+      "admin": [
+        "Confirm all utilities isolated and safe before debris removal in occupied building.",
+        "Establish exclusion zone around debris removal area; restrict access to authorised personnel only.",
+        "Record debris removal start and end times; note any chemical residues or hazardous materials encountered.",
+        "Obtain site supervisor sign-off on substrate acceptance before moving to next trade or task."
+      ],
+      "ppe": [
+        "Organic vapour respirator (P3) \u2014 fitted and checked before each use.",
+        "eye protection",
+        "cut-resistant gloves",
+        "Steel-capped boots with slip-resistant sole.",
+        "High-visibility vest or shirt.",
+        "Hearing protection if compressed air or power tools used during cleaning."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Workers and Supervisor",
+        "frequency": "Continuous during debris removal; filter checked daily.",
+        "evidence": "Vacuum on-site, filter visible and dry; damp conditions maintained on debris piles; respiratory fit-check log signed by each worker."
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove demolition debris and clean",
+        "WKR": "Perform Remove demolition debris and clean per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 6,
+      "task": "Install new plasterboard partitions",
+      "scope": "Frame and erect new non-load-bearing partition walls per design drawings. Fix plasterboard and complete jointing and sanding. Coordinate with services trades for routing.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+        "Struck by falling sheet \u2014 plasterboard sheet drops during handling, installation, or support failure, striking worker or adjacent area below",
+        "Manual handling injury \u2014 repetitive lifting, positioning, or carrying of plasterboard sheets (13\u201315 kg each) without mechanical aids or team lift procedure",
+        "Dust and particulate inhalation \u2014 plasterboard cutting, sanding, and jointing generates silica and gypsum dust without local exhaust ventilation or respiratory protection",
+        "Tool contact injury \u2014 power tools (drill, saw, sander) contact skin, eye, or face during use in confined partition spaces or at height"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Install edge protection (handrail or balustrading) to partition frame before plasterboard fixings start, minimum 1100 mm high.",
+        "Use mechanical lifter or two-person team lift for all plasterboard sheets over 10 kg; prohibit solo lifting above shoulder height.",
+        "Erect and tag scaffold or work platform for all plasterboard fixing work above 2 m; do not use ladders as sole access for fixings.",
+        "Brief all workers on partition frame stability and load path before erection; confirm no unauthorised bracing removal during work.",
+        "Suppress dust at source using local exhaust ventilation (LEV) during cutting and sanding; use hand-held vacuum extraction or water-dampened sanding where LEV unavailable.",
+        "Provide respiratory protection (P2 mask/respirator (fit-tested) minimum, or P3 if high dust generation) for all cutting, sanding, and jointing work; fit-test not required for disposable masks but fit must be checked each use.",
+        "Guard all power tools (drill, saw, sander) with trip switch and blade/bit guards; keep leads clear of work area and wet floor.",
+        "Barricade partition work area to exclude public and other trades; post 'No Entry' signage and restrict access to trained workers only."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not fix plasterboard until: partition frame is square, plumb, and braced per design drawing, and edge protection is installed and tagged.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start sanding and jointing until: all dust suppression equipment is functional, LEV or vacuum extraction is running, and respiratory protection is fitted and checked."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: plasterboard sheet drops, frame shifts, or bracing is removed or loosened during fixing.",
+        "\ud83d\uded1 STOP WORK if: dust suppression equipment fails, LEV stops, or respiratory protection is removed during cutting or sanding work.",
+        "\ud83d\uded1 STOP WORK if: services cables or pipes are located in partition zone without prior coordination and protection confirmation.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain site induction and building-occupancy briefing before work starts.",
+        "Coordinate daily work schedule with building management to minimise occupied-area disruption.",
+        "Record dust suppression equipment function and respiratory fit-check in site log each shift.",
+        "tell adjacent spaces of dust generation and restrict work to scheduled windows.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "eye protection",
+        "cut-resistant gloves",
+        "steel-capped footwear, closed toe)",
+        "P2 or P3 mask (depending on dust generation) \u2014 fit-checked each use",
+        "High-visibility shirt or vest",
+        "Hearing protection (if power tools exceed 85 dB)"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Edge protection complete and handrail secure before plasterboard fixing starts.",
+        "who": "Supervisor + Worker",
+        "frequency": "Before work commences and continuous during high-risk tasks",
+        "evidence": "Visual check of handrail rigidity and height; tag and date edge protection installation; dust suppression equipment running log; respiratory fit-check record each shift"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install new plasterboard partitions",
+        "WKR": "Perform Install new plasterboard partitions per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 7,
+      "task": "Install suspended ceiling system",
+      "scope": "Erect new suspended ceiling framework, install hangers, grid, and ceiling panels to engineer and design specifications. Coordinate access for services trades.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+        "Dropped object hazard \u2014 hanger, bracket, panel, or tool falls from ceiling onto worker, building occupant, or completed works below",
+        "Manual handling of long grid sections \u2014 repetitive lifting and positioning of ceiling grid elements at arm's reach or above shoulder height without mechanical support",
+        "Crush injury \u2014 fingers, hands, or head crushed during assembly or connection of grid components or hanger adjustment",
+        "Instability of temporary platform \u2014 work platform, step ladder, or access equipment becomes unstable due to uneven floor, load concentration, or poor positioning"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Use only ladders compliant with AS/NZS 1892.1 \u2014 check rungs are not damaged, feet are secure, and angle is 70\u201375\u00b0 before climbing.",
+        "Position ladder on firm, level ground \u2014 do not place on unstable surfaces, boxes, or lean it against grid framework or temporary supports.",
+        "Erect mobile work platform (MWP) with wheels locked and guardrails installed \u2014 do not use ladder for tasks exceeding 30 minutes or repeated repositioning.",
+        "Install edge protection (guardrail or toe-board) around work platform \u2014 maintain 1.2 m clearance from platform edge to prevent falls.",
+        "Barricade or exclude building occupants from work zone \u2014 use signage and physical barriers to prevent contact with overhead work.",
+        "Brief all workers on load path and hanger sequence before work starts \u2014 identify anchor points and confirm no services run through ceiling void.",
+        "Wear hard hat always in ceiling void \u2014 protect against dropped tools, hanger brackets, or panel edges.",
+        "Secure or net tools and materials on work platform \u2014 prevent dropped objects falling to floor below."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start ceiling panel installation until: work platform is installed, guardrails are complete, edge protection is verified, and access for occupants below is confirmed clear."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: ladder becomes damaged, work platform guardrail is incomplete, or building occupants enter the exclusion zone below.",
+        "\ud83d\uded1 STOP WORK if: wind exceeds 35 km/h or platform becomes unstable due to floor settlement or load shift.",
+        "\ud83d\uded1 STOP WORK if: unknown services are encountered in ceiling void or hanger anchor points differ from design drawings.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Provide design drawings and engineer-signed ceiling specification on site before work starts.",
+        "Confirm access routes for occupants do not cross exclusion zone below ceiling work.",
+        "Record platform inspection and guardrail completion in site log before work commences.",
+        "tell building manager of work schedule and exclusion zone boundaries.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "eye protection",
+        "cut-resistant gloves",
+        "Steel-capped steel-capped footwear",
+        "High-visibility vest"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check ladder angle is 70\u201375\u00b0 and feet secure before each use.",
+        "who": "Workers and Supervisor",
+        "frequency": "Before each ladder use and each shift start",
+        "evidence": "Visual check of ladder position; platform inspection log signed daily"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install suspended ceiling system",
+        "WKR": "Perform Install suspended ceiling system per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 8,
+      "task": "Coordinate services trades \u2014 electrical, data, HVAC installation",
+      "scope": "Support and coordinate installation of power outlets, data points, and HVAC distribution within new partition and ceiling voids. Confirm clearances and fit-outs.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6",
+      "hazards": [
+        "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+        "Service line damage \u2014 HVAC ductwork, data cable, or water line cut or pierced during drilling, routing, or fastening by uncoordinated trades",
+        "Entanglement or crushing \u2014 worker hand or clothing caught in rotating HVAC fan or ductwork manipulation without isolation",
+        "Dropped object \u2014 tools, fixtures, or components fall from ceiling void onto worker or completed fit-out below during installation"
+      ],
+      "dominant_hazard": "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain written isolation certificate from licensed electrician confirming power OFF at switchboard and lock applied before any work on power outlets or testing commences.",
+        "Check isolation using a calibrated electrical test pen \u2014 not a multimeter \u2014 immediately before each electrical task to confirm zero volts.",
+        "Coordinate all three trades (electrical, data, HVAC) together via site meeting one shift before work \u2014 confirm route paths, drill points, and no-go zones on marked drawings.",
+        "Barricade ceiling void entry point with rope, warning tape, and 'Authorized Entry Only' sign \u2014 only named trades to enter.",
+        "Confirm HVAC fan and ductwork isolation \u2014 power OFF, lock applied, and tag \u2014 before any worker enters distribution area.",
+        "Prohibit dry drilling through ceilings or walls \u2014 use wet drill or consult live drawing to confirm no pipe, cable, or duct at each point before boring.",
+        "Establish a dropped-object box (or containment tray) within void below active installation zone \u2014 remove from site when zone is clear.",
+        "Station a spotter outside ceiling void during installation \u2014 spotter confirms isolation remains in place, watches for dropped objects, and communicates hazards."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not energise any outlet until: isolation certificate reviewed, all outlet connections photographed, and electrician has verified continuity and correctness.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not permit workers into ceiling void until: all three trades confirm their route paths, drill points, and safe work method on marked site plan with supervisor sign-off."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: power cannot be isolated at switchboard, test pen shows voltage present, or live service energised without written authority.",
+        "\ud83d\uded1 STOP WORK if: unplanned service (water, gas, cable, duct) is struck, pierced, or damaged during drilling or routing.",
+        "\ud83d\uded1 STOP WORK if: worker attempts to work in ceiling void without spotter outside or without confirmed isolation of all mechanical equipment."
+      ],
+      "admin": [
+        "Obtain written isolation certificate from licensed electrician \u2014 post at switchboard and on SWMS before work.",
+        "Record all three trade routes and no-drill zones on site plan \u2014 sign and date by each trade supervisor.",
+        "Photograph all outlet connections and cabling before closure \u2014 upload to project file for defect traceability.",
+        "Brief all workers on electrical contact hazard, isolation lock location, and test pen use during pre-shift toolbox talk.",
+        "Confirm occupied-building co-tenancy rules \u2014 tell building manager of void entry, noise, and isolations affecting other floors or suites.",
+        "Daily spotter briefing \u2014 confirm isolation status, dropped-object zone, and emergency contact for each shift."
+      ],
+      "ppe": [
+        "eye protection",
+        "cut-resistant gloves",
+        "Steel-capped boots",
+        "High-visibility shirt or vest",
+        "Hard hat (when working below or near ceiling void opening)"
+      ],
+      "ccvs_code": "ELE-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+        "who": "Supervisor + electrician",
+        "frequency": "Before each electrical work step",
+        "evidence": "Test pen reading recorded (photograph); isolation certificate on site; lock tag visible at switchboard."
+      },
+      "responsibility": {
+        "SUP": "Supervise Coordinate services trades \u2014 electrical,",
+        "WKR": "Perform Coordinate services trades \u2014 electrical, per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 9,
+      "task": "Install carpet tile flooring",
+      "scope": "Prepare floor substrate, apply adhesive and lay carpet tiles to design layout. Complete edge trims and transition thresholds.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+        "Skin or eye contact with adhesive \u2014 spill or splash of adhesive product during application or cleanup without gloves or eye protection",
+        "Manual handling injury \u2014 repetitive bending, kneeling, or carrying of carpet tile packs (10\u201315 kg) without mechanical aids or regular breaks",
+        "Trip hazard \u2014 loose or incompletely adhered tiles, adhesive spills, or uneven substrate create trip risks during installation and subsequent building use",
+        "Slip on adhesive residue \u2014 wet or tacky floor surface during application and cure time without slip protection or exclusion of other building users"
+      ],
+      "dominant_hazard": "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Obtain Safety Data Sheet (SDS) for adhesive product and post on site before application starts.",
+        "Open all windows and doors to space. Operate mechanical ventilation continuously during application and for 4 hours after final tile placement.",
+        "Check substrate is clean, dry, sound, and free of dust, oil, or contamination before adhesive application.",
+        "Apply adhesive in thin, even beads along tile edges or substrate as per product SDS. Do not overapply or puddle.",
+        "Wear chemical-resistant gloves throughout adhesive handling and application. Change gloves if torn or contaminated.",
+        "Wear organic vapour respirator (per SDS Section 8) when applying adhesive in enclosed space with limited mechanical ventilation.",
+        "Wear eye protection",
+        "Keep adhesive container closed when not in active use. Store in cool, well-ventilated area away from heat sources."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply adhesive until: SDS is on site, ventilation is operational, and substrate has been checked and approved clean and dry by supervisor."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: mechanical ventilation fails or cannot be maintained, or headspace odour indicates inadequate airflow.",
+        "\ud83d\uded1 STOP WORK if: adhesive is spilled over >0.5 m\u00b2 or skin/eye contact occurs \u2014 isolate area, decontaminate, and obtain SDS medical emergency contact before resuming.",
+        "\ud83d\uded1 STOP WORK if: substrate is found to be wet, oily, contaminated, or uneven \u2014 tell supervisor before proceeding to adhesive application."
+      ],
+      "admin": [
+        "Brief all workers on SDS contents (hazard symbols, first aid, ventilation requirements) before work starts.",
+        "tell building occupants that flooring area will be closed and wet until cure is complete (state cure time per SDS).",
+        "Record SDS location, adhesive product name, batch number, and application date on site log.",
+        "make sure emergency eyewash station or first aid kit is accessible if SDS does not specify nearby facility.",
+        "Do not allow other building users or trades into wet floor area until adhesive has cured fully and floor is dry."
+      ],
+      "ppe": [
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Organic vapour respirator (per SDS Section 8) \u2014 if mechanical ventilation is insufficient",
+        "eye protection",
+        "Long trousers and closed-toe footwear"
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Supervisor / Workers",
+        "frequency": "Continuous during adhesive application and for 4 hours post-application",
+        "evidence": "Ventilation system running (audible/visible), no strong solvent smell detectable at worker breathing zone, SDS and product batch number recorded in site log"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install carpet tile flooring",
+        "WKR": "Perform Install carpet tile flooring per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 10,
+      "task": "Paint and finish interior surfaces",
+      "scope": "Apply finish coats to plasterboard walls and ceilings. Complete sealant and trim finishes. Protect other completed works during application.",
+      "trade_type": "Painting",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+        "Skin or eye contact with paint or sealant \u2014 splash or spill during application or cleanup without gloves, apron, or eye protection",
+        "Slip hazard \u2014 paint spills, wet surface, or drips on floor create slip risks during application in occupied building with other building users present",
+        "Fall from height \u2014 worker falls from ladder or work platform whilst painting high walls or ceilings above 2 m without fall arrest or safe access",
+        "Off-gassing in occupied space \u2014 sealant or paint cure creates hazardous air quality in occupied adjacent spaces if ventilation is inadequate or extraction systems are not operational"
+      ],
+      "dominant_hazard": "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Obtain Safety Data Sheet (SDS) for all paint, primer, and sealant products on point of use before application starts.",
+        "Establish continuous mechanical ventilation \u2014 extract air from work area at source, maintain negative pressure, verify extraction operational before starting.",
+        "Prohibit application of isocyanate-based primer or paint unless organic vapour respirator (AS/NZS 1716 Type A1-B1-E1K minimum) is worn continuously during and for 60 minutes after application.",
+        "Cover all floor surfaces within 2 m of work area with drop sheets secured at edges to contain spills and prevent slip hazard.",
+        "Brief all building occupants in adjacent spaces before work starts \u2014 confirm doors closed, windows open where possible, and vacate if respiratory discomfort occurs.",
+        "Stop application immediately if occupant reports respiratory irritation, dizziness, or nausea \u2014 improve ventilation and reassess before restart.",
+        "Wear chemical-resistant gloves, apron, and eye protection",
+        "Do not allow sealant cure in occupied adjacent space unless SDS cure time does not exceed 2 hours and ventilation remains active throughout cure period."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply paint until: SDS reviewed, ventilation system tested operational, and all occupants in adjacent spaces briefed on work and precautions."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: mechanical ventilation fails, extraction volume drops below design, or odour cannot be contained within work area.",
+        "\ud83d\uded1 STOP WORK if: occupant or worker reports respiratory irritation, eye irritation, or neurological symptoms during or immediately post-application.",
+        "\ud83d\uded1 STOP WORK if: sealant cure window cannot be met (weather, humidity, temperature outside SDS limits) or occupied building ventilation cannot be maintained for required cure duration."
+      ],
+      "admin": [
+        "Confirm SDS Section 8 (exposure controls) requirements are met before each product application.",
+        "Record ventilation system status (on/off, extraction rate if measurable) at start and completion of each paint/sealant task.",
+        "Brief all site personnel and building occupants on paint/sealant work schedule, precautions, and evacuation triggers before work commences.",
+        "Prohibit building occupants from entry to work area during application; restrict adjacent space entry if vapour odour detected.",
+        "Do not remove respirator until 60 minutes after application and ventilation has operated for minimum 30 minutes post-work."
+      ],
+      "ppe": [
+        "Organic vapour respirator (AS/NZS 1716 Type A1-B1-E1K minimum) for isocyanate primer or paint application",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "Apron (chemical-resistant material, full-length preferred)",
+        "eye protection",
+        "Work clothing (hi-viz shirt or vest"
+      ],
+      "ccvs_code": "CHM-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Confirm mechanical ventilation operating continuously and odour not detectable in adjacent occupied space.",
+        "who": "Supervisor or worker on site",
+        "frequency": "Before work starts, hourly during application, at completion",
+        "evidence": "Ventilation system running (visual/audible check); occupant comfort confirmed; no odour migrating to adjacent spaces; SDS on point of use"
+      },
+      "responsibility": {
+        "SUP": "Verify scaffold and fall arrest systems, enforce exclusion zone, check SDS",
+        "WKR": "Use harness and lanyard, wear respiratory protection, report faults"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 3,
+      "task": "Coordinate services isolation with trades",
+      "scope": "Confirm safe isolation of power, data lines, and HVAC ductwork. Obtain written sign-off from each trade before demolition starts.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6",
+      "hazards": [
+        "Unintended re-energisation \u2014 isolation point switched back on during work by another trade or operator",
+        "Data or HVAC system damage \u2014 isolation points not clearly marked; services cut or disconnected unsafely",
+        "Missing sign-off documentation \u2014 verbal confirmation from trades not recorded; dispute about isolation status"
+      ],
+      "dominant_hazard": "Electrical shock or arc flash \u2014 power supply not safely isolated; live circuits present during demolition",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Site manager obtains written isolation sign-off from electrical contractor confirming power supply isolated, tested de-energised, and labelled at source and switchboard",
+        "Site manager obtains written isolation sign-off from data contractor confirming all data lines isolated, capped, and marked",
+        "Site manager obtains written isolation sign-off from HVAC contractor confirming all ductwork isolated at source and capped",
+        "Electrical contractor locks out and tags out isolation switches with warning tags stating 'Do Not Energise \u2014 Fit-Out in Progress'"
+      ],
+      "hold_points": [],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any isolation point is not clearly labelled or marked",
+        "\ud83d\uded1 STOP WORK if: written sign-off is missing or unsigned for any service",
+        "\ud83d\uded1 STOP WORK if: power supply has not been tested de-energised by a qualified electrician"
+      ],
+      "admin": [
+        "Signed isolation sign-off forms from all three trades",
+        "Site isolation register maintained and updated"
+      ],
+      "ppe": [
+        "eye protection",
+        "steel-capped footwear",
+        "High-visibility vest"
+      ],
+      "ccvs_code": "ELE-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+        "who": "Site Manager",
+        "frequency": "before demolition start each day",
+        "evidence": "Signed isolation register and trade sign-off forms filed on site"
+      },
+      "responsibility": {
+        "SUP": "Obtain and verify all trade isolation sign-offs, maintain register, confirm before demolition starts",
+        "WKR": "Report any unmarked or unclear isolation points before touching any service"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    },
+    {
+      "sequence": 11,
+      "task": "Conduct final inspection and defect rectification",
+      "scope": "check all completed works against design and specification. fix defects. Obtain sign-off from building management and project team.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+        "Struck by falling object \u2014 removed defect item or tool falls during rectification work in ceiling or high partition area onto person or completed works below",
+        "Entanglement or crush \u2014 worker caught during machinery isolation check, hanger adjustment, or ductwork inspection without lockout or safe isolation verification",
+        "Exposure to uncured materials \u2014 contact with freshly sanded surfaces, uncured sealant, or curing paint during inspection without protective equipment"
+      ],
+      "dominant_hazard": "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Use mobile elevated work platform (MEWP) or approved scissor lift to check high-level works above 2 m \u2014 no ladders for ceiling or high partition inspection.",
+        "check ladder angle is 75\u00b0, feet are secure, and ladder is tied off at top before use for low-level defect checks below 2 m.",
+        "Brief all inspectors and rectification workers on defect location, access method, and no-work zones before starting inspection.",
+        "Remove or isolate tools and materials from work zone before elevated inspection to prevent dropped object strikes.",
+        "Barricade and exclude building occupants from work area during high-level rectification or removal of defective items.",
+        "Check harness, lanyard, and anchor point are present and certified before any inspector works at height above 2 m without MEWP.",
+        "Confirm all machinery, ducting, and electrical services are isolated and tagged before any worker accesses ceiling or service void for inspection.",
+        "Allow uncured sealant, paint, or sanded surfaces to cure or dry per product SDS before contact or final walkthrough inspection."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start elevated inspection until: MEWP or scissor lift is on site, inspected by competent person, and access permit is issued.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not obtain final sign-off until: all documented defects have been rectified, materials are fully cured or dry, and building management has walked the completed works with project team."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: ladder is used for inspection above 2 m or MEWP cannot be safely positioned due to floor loading, ceiling height, or structural obstacles.",
+        "\ud83d\uded1 STOP WORK if: machinery, electrical, or HVAC services in ceiling void cannot be confirmed isolated before inspection access begins.",
+        "\ud83d\uded1 STOP WORK if: building occupants enter rectification work zone during high-level work or if exclusion zone is breached.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Brief all workers and inspectors on defect register and rectification scope before work starts.",
+        "Confirm MEWP operator holds current ticket (TLILIC303D or equivalent) and site ticket is validated before use.",
+        "Obtain written confirmation from building management that area is clear of occupants before high-level work begins.",
+        "Record all defect inspections, rectifications, and sign-off dates in project log.",
+        "tell project supervisor if defect scope exceeds specification or rectification method differs from planned approach.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat (all workers on site during inspection and rectification).",
+        "High-visibility shirt or vest (all workers visible to MEWP operator and other trades).",
+        "eye protection",
+        "cut-resistant gloves",
+        "Full-body harness and 2 m lanyard with shock absorber (elevated work above 2 m without MEWP \u2014 certified anchor point required).",
+        "Organic vapour respirator (if inspection involves uncured paint or sealant vapour \u2014 per product SDS Section 8)."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor",
+        "frequency": "Before each elevated inspection task and at shift start",
+        "evidence": "MEWP ticket sighted, operator ID recorded, and visual confirmation that ladder was not used for ceiling-level work"
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "Inspect per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.11"
+    },
+    {
+      "sequence": 12,
+      "task": "Demobilise site and remove barriers",
+      "scope": "Remove all temporary barriers, warning signage, and excess material. Clean Level 3 and common areas. Hand over completed fit-out to building management.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2",
+      "hazards": [
+        "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+        "Struck by falling object \u2014 barrier, sign, or temporary structure falls during removal, striking worker or building occupant below",
+        "Manual handling injury \u2014 repetitive carrying, dismantling, and removal of heavy barrier sections, frames, and accumulated waste without mechanical aids",
+        "Communication breakdown \u2014 barrier removal exposes stairwell or lift access before building management confirms area is safe for re-occupation by other tenancy workers"
+      ],
+      "dominant_hazard": "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Use EWP or mobile elevated work platform to access and remove signage and barriers above 2 m \u2014 no free climbing or unsecured ladder work.",
+        "Barricade area directly below barrier removal work \u2014 restrict building occupants and other workers until removal complete and debris cleared.",
+        "Secure each barrier section or sign to removal EWP basket using rope or webbing sling before lifting \u2014 prevent dropping during transfer.",
+        "Dismantle barrier frames section by section, lowering each piece into skip or temporary debris container \u2014 no throwing or dropping.",
+        "Remove and stack barrier components in designated demob zone \u2014 do not leave stacked materials above 1.5 m unbraced.",
+        "Confirm with building management in writing that Level 3 and common areas are clean and safe for re-occupation before handing over area access.",
+        "Two-person minimum for carrying barrier frames and heavy components \u2014 assess each component weight before lifting; use trolley or cart for components over 15 kg.",
+        "Sweep and vacuum floor surfaces on Level 3 and common areas \u2014 wet mop if dust generation expected during removal."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start barrier removal above 2 m until: EWP is on site, inspected, and signed off by supervisor.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not hand over area to building management until: Level 3 and common areas are fully cleared, swept, and building manager confirms receipt in writing."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: EWP becomes unavailable or faulty during removal \u2014 do not use ladder or unsecured climbing.",
+        "\ud83d\uded1 STOP WORK if: building occupants enter barricaded removal zone \u2014 re-establish exclusion zone before resuming.",
+        "\ud83d\uded1 STOP WORK if: debris accumulates below removal work area beyond safe clearance \u2014 clear and reset barricade before continuing."
+      ],
+      "admin": [
+        "tell building management 24 hours before demob start \u2014 confirm Level 3 access restrictions and occupancy in adjacent areas.",
+        "Obtain written sign-off from building manager on completion of demob and area hand-over \u2014 record date, time, and manager name.",
+        "Schedule demob work outside standard tenant hours where possible \u2014 coordinate with building management to minimise disruption."
+      ],
+      "ppe": [
+        "High-visibility vest or shirt",
+        "steel-capped footwear",
+        "Hard hat (when working below or near elevated work)",
+        "cut-resistant gloves",
+        "Dust mask (P2) if sweeping generates visible dust"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Supervisor",
+        "frequency": "Before each removal task above 2 m; continuous during elevated work",
+        "evidence": "EWP pre-operation checklist signed; harness tag current; supervisor on-site observation log; photographic record of barricade placement and area clearance"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.12"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.10 \u2014 Demolition of load-bearing structure",
+    "hrcw_license_class": "Demolition Licence \u2014 Class B (up to 15m) or Class C (unrestricted)",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "tiltup_precast": false,
+      "mobile_plant": false,
+      "demolition": true,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": true,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": true,
+    "epa_license_required": false,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "P2 dust respirator \u2014 mandatory during demolition dust generation",
+      "Cut-resistant gloves \u2014 Level D minimum",
+      "Steel-capped boots \u2014 crush-resistant",
+      "Hard hat \u2014 mandatory on demolition sites",
+      "Arc flash PPE \u2014 Class 2 minimum for HV work",
+      "Insulated gloves \u2014 voltage-rated",
+      "Flame-resistant clothing",
+      "Full-body harness \u2014 AS/NZS 1891.1 compliant",
+      "Energy-absorbing lanyard \u2014 double lanyard where continuous attachment required",
+      "Helmet with chin strap \u2014 AS/NZS 1801",
+      "P2 respirator \u2014 enclosed space dust accumulation",
+      "Hearing protection \u2014 mechanical plant rooms",
+      "Hi-vis vest \u2014 all workers in shared-access areas"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Demolition Licence \u2014 Class B or C (SafeWork NSW)",
+      "CPCCDE3016 \u2014 Demolition (restricted)",
+      "Asbestos Removal Licence \u2014 if ACM identified in pre-demolition survey",
+      "Electrician Licence \u2014 NSW Fair Trading (not SafeWork NSW)",
+      "High Voltage Switching authority \u2014 where HV work involved",
+      "Working at heights \u2014 verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
+      "EWP operator licence \u2014 WP class where boom exceeds 11m",
+      "Refrigerant handling licence \u2014 ARC licence for refrigerant work"
+    ],
+    "permits": [
+      "Council development consent \u2014 where required",
+      "SafeWork NSW demolition notification \u2014 structures over 6m",
+      "Pre-demolition hazardous materials survey \u2014 by licensed assessor, completed and reviewed before any work",
+      "Utility isolation certificates \u2014 electricity, gas, water, and telecommunications confirmed disconnected before demolition",
+      "Electrical isolation permit \u2014 lock-out tag-out before work",
+      "Live work permit \u2014 where de-energisation not reasonably practicable",
+      "Working at heights permit \u2014 signed before each elevated task",
+      "Ventilation plan \u2014 documented before work in enclosed space",
+      "Noise management plan \u2014 required where work affects occupants",
+      "Dust containment plan \u2014 hoarding or plastic sheeting before work starts",
+      "After-hours work permit \u2014 council consent where applicable",
+      "Hot work permit \u2014 where brazing or welding refrigerant lines",
+      "Crane/hoist permit \u2014 where lifting plant to roof or mezzanine",
+      "Access management plan \u2014 define work zones vs occupied zones"
+    ],
+    "qualifications": [
+      "Licensed demolition supervisor \u2014 on site at all times",
+      "Structural engineer sign-off \u2014 pre-demolition engineering assessment",
+      "Structural monitoring \u2014 where adjacent structures at risk, engineer-specified monitoring regime in place before demolition",
+      "Falling object exclusion zone \u2014 established and maintained for full height of demolition face plus 5m",
+      "Demolition sequence \u2014 engineer-approved order of operations; no deviation without engineer sign-off",
+      "Verification of isolation \u2014 two-person check before commencing",
+      "Competent person \u2014 pre-use inspection of fall arrest equipment",
+      "Rescue plan \u2014 documented before work above 2m begins",
+      "Rescue equipment \u2014 on site and ready for immediate deployment before any elevated work starts",
+      "Atmospheric test \u2014 O2 and contaminant levels checked before entry",
+      "Occupant notification \u2014 48 hours minimum before noisy or dusty work",
+      "Refrigerant leak detection \u2014 before and after commissioning",
+      "Crane lift plan \u2014 if rooftop plant placement required",
+      "Hoarding / physical separation \u2014 between construction zone and occupied area",
+      "Communication plan \u2014 notify building occupants of work schedule, access restrictions, and emergency procedures"
+    ],
+    "notifications": [
+      "SafeWork NSW \u2014 5 business days notice for structures over 6m",
+      "Utility services disconnection confirmation before start",
+      "Energy provider \u2014 notification before work on supply authority assets",
+      "Building manager \u2014 written notification before work commences",
+      "Occupants \u2014 letterbox drop 48 hours before disruptive work"
+    ],
+    "regulatory_notes": [
+      "WHS Reg 2017 s.292 \u2014 demolition SWMS required before work",
+      "Pre-demolition hazardous materials survey mandatory",
+      "Structural engineer \u2014 signed shoring plan required",
+      "WHS Reg 2017 r.291-297 \u2014 structural alterations and temporary support obligations",
+      "SafeWork NSW Code of Practice: Demolition Work",
+      "Pre-demolition survey \u2014 must identify ACM, lead paint, PCB, synthetic mineral fibre, and structural hazards",
+      "Robotic demolition \u2014 where space confined or structural collapse risk elevated; operator remains outside exclusion zone",
+      "Progressive demolition \u2014 top-down sequence unless engineer specifies otherwise",
+      "Overhead powerlines \u2014 request de-energisation before demolition plant operates within exclusion zone",
+      "Dust suppression \u2014 water suppression mandatory during demolition; not optional for urban sites",
+      "Waste management \u2014 hazardous demolition waste (ACM, lead, PCB) must be segregated and disposed per EPA license requirements",
+      "WHS Reg 2017 s.164 \u2014 electrical risk management",
+      "AS/NZS 3000 \u2014 Wiring Rules",
+      "Live work \u2014 must be last resort, requires specific permit and PPE",
+      "WHS Reg 2017 Part 4.4 \u2014 fall prevention hierarchy applies to all fall risk",
+      "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
+      "Harness inspection \u2014 pre-use check logged before each shift",
+      "WHS Reg 2017 r.305 \u2014 rescue procedure required before commencing work at height",
+      "Suspension trauma \u2014 incapacitated worker must be lowered within 15 minutes; harness straps can cause positional asphyxia",
+      "Emergency contacts \u2014 on-site personnel trained in rescue procedure before elevated work begins",
+      "WHS Reg 2017 r.291-303 \u2014 fall prevention hierarchy: (1) eliminate, (2) passive edge protection/guardrail, (3) restraint system, (4) fall arrest, (5) administrative",
+      "Edge protection first \u2014 guardrails preferred over harness where work area permits fixed barriers",
+      "Control line \u2014 2m setback from edge, used only when guardrail not practicable",
+      "Exclusion zone required below WAH operations \u2014 size proportional to fall/drop zone; physical barrier where practicable, flagging/bunting as minimum",
+      "Emergency access must be maintained to all work zones including WAH exclusion zones",
+      "Enclosed spaces \u2014 ventilation mandatory, cross-ventilation preferred",
+      "Dust \u2014 accumulates faster indoors, respiratory protection mandatory",
+      "Noise \u2014 reverberant environments may exceed 85dB even at low source levels",
+      "Strata schemes \u2014 notify strata manager and obtain by-law compliance",
+      "Noise curfew \u2014 residential: 8am\u20135pm weekdays, 8am\u20131pm Saturday, no Sunday",
+      "Refrigerant handling restricted to ARC-licensed technicians",
+      "Rooftop plant placement may require crane \u2014 separate lift plan and SWMS",
+      "Coordinate HVAC commissioning with electrical energisation sequence",
+      "Construction zone must be physically separated from occupied areas at all times",
+      "Maintain existing emergency egress routes \u2014 no blocking of fire stairs or exits",
+      "Dust, noise, and fume controls required where work may affect occupants"
+    ],
+    "plant": [],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "demolition",
+      "building_context": "existing",
+      "occupancy_context": "occupied",
+      "scope_modifiers": [
+        "commercial",
+        "occupied_interface",
+        "high_rise"
+      ]
+    }
+  },
+  "agent_outputs": {
+    "task_manifest": {
+      "tasks": [
+        {
+          "sequence": 1,
+          "task": "Confirm site readiness and interface controls",
+          "scope": "Site induction, utility strike map review, asbestos clearance validation, occupied-building interface plan confirmation with building management and adjacent tenancies.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 2,
+          "task": "Isolate and barricade Level 3 work area",
+          "scope": "Establish hard barriers around demolition zone, exclusion perimeter for falling objects (full height plus 5 m below), signage and warning tape on stairwell and lift access.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 3,
+          "task": "Coordinate services isolation with electrical, data, and HVAC trades",
+          "scope": "Confirm safe isolation of power, data lines, and HVAC ductwork feeding the fit-out zone. Obtain written sign-off from each trade before demolition commences.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 4,
+          "task": "Demolish existing partitions and ceiling grid",
+          "scope": "Remove non-load-bearing partition walls, suspended ceiling grid, and associated fixings. Segregate waste by type (plasterboard, timber, metal). No asbestos risk confirmed.",
+          "trade_type": "Demolition",
+          "environment": [
+            "occupied building",
+            "at height"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "WHS Reg 2017 Sch 3 cl.10"
+          ],
+          "complexity": "high"
+        },
+        {
+          "sequence": 5,
+          "task": "Remove demolition debris and clean substrate",
+          "scope": "Clear and remove all demolished material from site. Clean structural soffit, walls, and floor to receive new systems. Dust suppression during removal.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 6,
+          "task": "Install new plasterboard partitions",
+          "scope": "Frame and erect new non-load-bearing partition walls per design drawings. Fix plasterboard and complete jointing and sanding. Coordinate with services trades for routing.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 7,
+          "task": "Install suspended ceiling system",
+          "scope": "Erect new suspended ceiling framework, install hangers, grid, and ceiling panels to engineer and design specifications. Coordinate access for services trades.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 8,
+          "task": "Coordinate services trades \u2014 electrical, data, HVAC installation",
+          "scope": "Support and coordinate installation of power outlets, data points, and HVAC distribution within new partition and ceiling voids. Confirm clearances and fit-outs.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 9,
+          "task": "Install carpet tile flooring",
+          "scope": "Prepare floor substrate, apply adhesive and lay carpet tiles to design layout. Complete edge trims and transition thresholds.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 10,
+          "task": "Paint and finish interior surfaces",
+          "scope": "Apply finish coats to plasterboard walls and ceilings. Complete sealant and trim finishes. Protect other completed works during application.",
+          "trade_type": "Painting",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 11,
+          "task": "Conduct final inspection and defect rectification",
+          "scope": "Inspect all completed works against design and specification. Rectify defects. Obtain sign-off from building management and project team.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 12,
+          "task": "Demobilise site and remove barriers",
+          "scope": "Remove all temporary barriers, warning signage, and excess material. Clean Level 3 and common areas. Hand over completed fit-out to building management.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        }
+      ],
+      "total_tasks": 12,
+      "primary_trade": "General",
+      "environment_summary": [
+        "occupied building",
+        "at height"
+      ],
+      "hrcw_present": true
+    },
+    "risk_manifest": {
+      "risks": [
+        {
+          "sequence": 1,
+          "task": "Confirm site readiness and interface controls",
+          "hazards": [
+            "Asbestos disturbance \u2014 undetected ACM in partitions, ceiling, or fixings despite clearance validation",
+            "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+            "Interface failure \u2014 adjacent tenancies not notified or building management control measures not confirmed before work starts",
+            "Communication breakdown \u2014 verbal confirmation from trades not documented, leading to energised circuits or active services during demolition"
+          ],
+          "dominant_hazard": "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6"
+        },
+        {
+          "sequence": 2,
+          "task": "Isolate and barricade Level 3 work area",
+          "hazards": [
+            "Fall from height \u2014 worker or building user falls through unguarded stairwell or lift access during barricade erection",
+            "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+            "Barrier failure \u2014 hard barriers collapse or are displaced, allowing access to demolition zone by unauthorised persons or adjacent tenancy workers",
+            "Inadequate signage \u2014 warning or exclusion signage fades, is damaged, or is ignored by building users unaware of work scope"
+          ],
+          "dominant_hazard": "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 3,
+          "task": "Coordinate services isolation with electrical, data, and HVAC trades",
+          "hazards": [
+            "Electrical shock or arc flash \u2014 power supply not safely isolated; live circuits present during demolition due to incorrect isolation or labelling",
+            "Unintended re-energisation \u2014 isolation point switched back on during work by another trade or building operator unaware of work",
+            "Data or HVAC system damage \u2014 isolation points not clearly marked; services cut or disconnected unsafely, affecting other building systems or tenancies",
+            "Missing sign-off documentation \u2014 verbal confirmation from trades not recorded in writing; dispute about isolation status at demolition start"
+          ],
+          "dominant_hazard": "Electrical shock or arc flash \u2014 power supply not safely isolated; live circuits present during demolition due to incorrect isolation or labelling",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6"
+        },
+        {
+          "sequence": 4,
+          "task": "Demolish existing partitions and ceiling grid",
+          "hazards": [
+            "Inhalation of dust and airborne particles \u2014 plasterboard, timber, or metal dust generated during cutting and dismantling without dust suppression or respiratory protection",
+            "Laceration or puncture \u2014 sharp metal fixings, cut edges, or nails encountered during partition removal or ceiling grid dismantling",
+            "Strain or sprain \u2014 manual handling of heavy partition sections, ceiling panels, or grid components without mechanical aids or team lift procedures",
+            "Collapse of partition or ceiling section \u2014 structural instability if load-bearing elements are misidentified and removed, or temporary propping fails",
+            "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating"
+          ],
+          "dominant_hazard": "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.4"
+        },
+        {
+          "sequence": 5,
+          "task": "Remove demolition debris and clean substrate",
+          "hazards": [
+            "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+            "Manual handling injury \u2014 repetitive bending, lifting, or carrying of debris loads without mechanical equipment or rest breaks",
+            "Fall hazard \u2014 slippery floors during wet cleaning; debris piles or uneven surfaces creating trip hazards in work area",
+            "Exposure to chemical residues \u2014 cleaning agents, sealants, or adhesives on substrate not identified or properly neutralised before cleaning"
+          ],
+          "dominant_hazard": "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 6,
+          "task": "Install new plasterboard partitions",
+          "hazards": [
+            "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+            "Struck by falling sheet \u2014 plasterboard sheet drops during handling, installation, or support failure, striking worker or adjacent area below",
+            "Manual handling injury \u2014 repetitive lifting, positioning, or carrying of plasterboard sheets (13\u201315 kg each) without mechanical aids or team lift procedure",
+            "Dust and particulate inhalation \u2014 plasterboard cutting, sanding, and jointing generates silica and gypsum dust without local exhaust ventilation or respiratory protection",
+            "Tool contact injury \u2014 power tools (drill, saw, sander) contact skin, eye, or face during use in confined partition spaces or at height"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 7,
+          "task": "Install suspended ceiling system",
+          "hazards": [
+            "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+            "Dropped object hazard \u2014 hanger, bracket, panel, or tool falls from ceiling onto worker, building occupant, or completed works below",
+            "Manual handling of long grid sections \u2014 repetitive lifting and positioning of ceiling grid elements at arm's reach or above shoulder height without mechanical support",
+            "Crush injury \u2014 fingers, hands, or head crushed during assembly or connection of grid components or hanger adjustment",
+            "Instability of temporary platform \u2014 work platform, step ladder, or access equipment becomes unstable due to uneven floor, load concentration, or poor positioning"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 8,
+          "task": "Coordinate services trades \u2014 electrical, data, HVAC installation",
+          "hazards": [
+            "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+            "Service line damage \u2014 HVAC ductwork, data cable, or water line cut or pierced during drilling, routing, or fastening by uncoordinated trades",
+            "Entanglement or crushing \u2014 worker hand or clothing caught in rotating HVAC fan or ductwork manipulation without isolation",
+            "Dropped object \u2014 tools, fixtures, or components fall from ceiling void onto worker or completed fit-out below during installation"
+          ],
+          "dominant_hazard": "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6"
+        },
+        {
+          "sequence": 9,
+          "task": "Install carpet tile flooring",
+          "hazards": [
+            "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+            "Skin or eye contact with adhesive \u2014 spill or splash of adhesive product during application or cleanup without gloves or eye protection",
+            "Manual handling injury \u2014 repetitive bending, kneeling, or carrying of carpet tile packs (10\u201315 kg) without mechanical aids or regular breaks",
+            "Trip hazard \u2014 loose or incompletely adhered tiles, adhesive spills, or uneven substrate create trip risks during installation and subsequent building use",
+            "Slip on adhesive residue \u2014 wet or tacky floor surface during application and cure time without slip protection or exclusion of other building users"
+          ],
+          "dominant_hazard": "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 10,
+          "task": "Paint and finish interior surfaces",
+          "hazards": [
+            "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+            "Skin or eye contact with paint or sealant \u2014 splash or spill during application or cleanup without gloves, apron, or eye protection",
+            "Slip hazard \u2014 paint spills, wet surface, or drips on floor create slip risks during application in occupied building with other building users present",
+            "Fall from height \u2014 worker falls from ladder or work platform whilst painting high walls or ceilings above 2 m without fall arrest or safe access",
+            "Off-gassing in occupied space \u2014 sealant or paint cure creates hazardous air quality in occupied adjacent spaces if ventilation is inadequate or extraction systems are not operational"
+          ],
+          "dominant_hazard": "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 11,
+          "task": "Conduct final inspection and defect rectification",
+          "hazards": [
+            "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+            "Struck by falling object \u2014 removed defect item or tool falls during rectification work in ceiling or high partition area onto person or completed works below",
+            "Entanglement or crush \u2014 worker caught during machinery isolation check, hanger adjustment, or ductwork inspection without lockout or safe isolation verification",
+            "Exposure to uncured materials \u2014 contact with freshly sanded surfaces, uncured sealant, or curing paint during inspection without protective equipment"
+          ],
+          "dominant_hazard": "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        },
+        {
+          "sequence": 12,
+          "task": "Demobilise site and remove barriers",
+          "hazards": [
+            "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+            "Struck by falling object \u2014 barrier, sign, or temporary structure falls during removal, striking worker or building occupant below",
+            "Manual handling injury \u2014 repetitive carrying, dismantling, and removal of heavy barrier sections, frames, and accumulated waste without mechanical aids",
+            "Communication breakdown \u2014 barrier removal exposes stairwell or lift access before building management confirms area is safe for re-occupation by other tenancy workers"
+          ],
+          "dominant_hazard": "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2"
+        }
+      ]
+    },
+    "task_blocks_raw": [
+      {
+        "sequence": 1,
+        "task": "Confirm site readiness and interface controls",
+        "scope": "Site induction, utility strike map review, asbestos clearance validation, occupied-building interface plan confirmation with building management and adjacent tenancies.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6",
+        "hazards": [
+          "Asbestos disturbance \u2014 undetected ACM in partitions, ceiling, or fixings despite clearance validation",
+          "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+          "Interface failure \u2014 adjacent tenancies not notified or building management control measures not confirmed before work starts"
+        ],
+        "dominant_hazard": "Utility strike \u2014 water, gas, or electrical services not marked on utility strike map or mislabelled",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain and review utility strike map from water, gas, and electricity providers and telecommunications \u2014 mark location of all services, isolation points, and meter boxes on site plan before any work area access.",
+          "Brief building management and all adjacent tenancies in writing (email + notice on common areas) \u2014 confirm work dates, access routes, noise windows, and emergency contact details.",
+          "Conduct site induction with all workers \u2014 cover utility locations, asbestos no-go zones, building evacuation procedure, and occupied-building traffic controls.",
+          "Establish communication protocol with building management \u2014 designate single contact point, confirm 24-hour emergency line, and verify emergency stop authority.",
+          "Check that all trades have reviewed utility strike map and signed acknowledgment before entering work area \u2014 document on site log."
+        ],
+        "hold_points": [],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: utility strike map is incomplete, mislabelled, or does not match physical service locations identified on site.",
+          "\ud83d\uded1 STOP WORK if: building management or adjacent tenancies report notification not received, or interface control measures not confirmed in writing before work area access granted."
+        ],
+        "admin": [
+          "Collect signed site induction records from all workers before work area access \u2014 retain on site log.",
+          "Maintain utility strike map on site and post in visible location \u2014 mark each isolation point with flagging tape.",
+          "Obtain written interface confirmation from building management and store on file \u2014 include emergency contact details and evacuation procedure.",
+          "Document all trades' acknowledgment of utility strike map review on sign-in log."
+        ],
+        "ppe": [
+          "High-visibility vest or Class D2 (during site induction and interface meetings)",
+          "Safety helmet (on site)",
+          "steel-capped footwear"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Project Manager / Demolition Supervisor",
+          "frequency": "Before site induction commences; before any worker entry to work area; daily site check-in first task",
+          "evidence": "Signed utility isolation certificates on file; utility strike map marked and posted on site; site induction records dated and signed; building management written confirmation dated and stored; asbestos clearance letter retained on site"
+        },
+        "responsibility": {
+          "SUP": "Supervise Confirm site readiness and interface",
+          "WKR": "Perform Confirm site readiness and interface per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.1"
+      },
+      {
+        "sequence": 2,
+        "task": "Isolate and barricade Level 3 work area",
+        "scope": "Establish hard barriers around demolition zone, exclusion perimeter for falling objects (full height plus 5 m below), signage and warning tape on stairwell and lift access.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 worker or building user falls through unguarded stairwell or lift access during barricade erection",
+          "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+          "Inadequate signage \u2014 warning or exclusion signage fades, is damaged, or is ignored by building users unaware of work scope"
+        ],
+        "dominant_hazard": "Falling objects \u2014 debris or tools fall from Level 3 onto occupied areas below due to inadequate exclusion perimeter",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Extend barriers minimum 5 m below Level 3 footprint on all sides to contain falling debris and tools.",
+          "Barricade stairwell and lift access points with lockable gates or barriers; post exclusion signage on each barricade.",
+          "Fix warning tape and 'Do Not Enter' signs at all pedestrian approaches to work zone at eye level.",
+          "Brief all building occupants and adjacent tenancy workers on exclusion perimeter location and no-entry rule before barricade installation.",
+          "Maintain clear sightlines around barricades; remove debris, stored materials, or obstructions that could hide the exclusion zone.",
+          "Install high-visibility marker tape along top edge of barriers to aid visibility from below and from adjacent levels."
+        ],
+        "hold_points": [],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: any hard barrier section is loose, damaged, or displaced and cannot be repaired within 30 minutes.",
+          "\ud83d\uded1 STOP WORK if: stairwell or lift access barricade is breached, removed, or found unlocked during any shift.",
+          "\ud83d\uded1 STOP WORK if: exclusion perimeter is found inadequate or falling debris has escaped the 5 m containment zone."
+        ],
+        "admin": [
+          "Record barrier installation date, materials type, and completion sign-off in site diary.",
+          "Brief building occupants in writing on exclusion zone location, no-entry rule, and emergency contact for breaches.",
+          "Conduct toolbox talk on falling object risk and exclusion perimeter non-negotiability before barricade erection starts."
+        ],
+        "ppe": [
+          "High-visibility vest (Class D or higher) during barricade erection.",
+          "Safety helmet during installation of barriers on stairwell or at height.",
+          "steel-capped footwear",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "N/A",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Check all barrier fixing points, gate locks, and perimeter integrity daily before demolition work.",
+          "who": "Supervisor / Site Manager",
+          "frequency": "Daily before demolition work commences; after any barrier impact or weather event.",
+          "evidence": "Daily barrier inspection checklist signed by Supervisor; photograph of barrier perimeter; incident log if breach detected."
+        },
+        "responsibility": {
+          "SUP": "Supervise Isolate and barricade Level 3",
+          "WKR": "Perform Isolate and barricade Level 3 per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.2"
+      },
+      {
+        "sequence": 3,
+        "task": "Coordinate services isolation with trades",
+        "scope": "Confirm safe isolation of power, data lines, and HVAC ductwork. Obtain written sign-off from each trade before demolition starts.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6",
+        "hazards": [
+          "Unintended re-energisation \u2014 isolation point switched back on during work by another trade or operator",
+          "Data or HVAC system damage \u2014 isolation points not clearly marked; services cut or disconnected unsafely",
+          "Missing sign-off documentation \u2014 verbal confirmation from trades not recorded; dispute about isolation status"
+        ],
+        "dominant_hazard": "Electrical shock or arc flash \u2014 power supply not safely isolated; live circuits present during demolition",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Site manager obtains written isolation sign-off from electrical contractor confirming power supply isolated, tested de-energised, and labelled at source and switchboard",
+          "Site manager obtains written isolation sign-off from data contractor confirming all data lines isolated, capped, and marked",
+          "Site manager obtains written isolation sign-off from HVAC contractor confirming all ductwork isolated at source and capped",
+          "Electrical contractor locks out and tags out isolation switches with warning tags stating 'Do Not Energise \u2014 Fit-Out in Progress'"
+        ],
+        "hold_points": [],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: any isolation point is not clearly labelled or marked",
+          "\ud83d\uded1 STOP WORK if: written sign-off is missing or unsigned for any service",
+          "\ud83d\uded1 STOP WORK if: power supply has not been tested de-energised by a qualified electrician"
+        ],
+        "admin": [
+          "Signed isolation sign-off forms from all three trades",
+          "Site isolation register maintained and updated"
+        ],
+        "ppe": [
+          "eye protection",
+          "steel-capped footwear",
+          "High-visibility vest"
+        ],
+        "ccvs_code": "ELE-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+          "who": "Site Manager",
+          "frequency": "before demolition start each day",
+          "evidence": "Signed isolation register and trade sign-off forms filed on site"
+        },
+        "responsibility": {
+          "SUP": "Obtain and verify all trade isolation sign-offs, maintain register, confirm before demolition starts",
+          "WKR": "Report any unmarked or unclear isolation points before touching any service"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.10"
+      },
+      {
+        "sequence": 4,
+        "task": "Demolish existing partitions and ceiling grid",
+        "scope": "Remove non-load-bearing partition walls, suspended ceiling grid, and associated fixings. Segregate waste by type (plasterboard, timber, metal). No asbestos risk confirmed.",
+        "trade_type": "Demolition",
+        "hrcw": true,
+        "hrcw_category": "cl.4",
+        "hazards": [
+          "Inhalation of dust and airborne particles \u2014 plasterboard, timber, or metal dust generated during cutting and dismantling without dust suppression or respiratory protection",
+          "Laceration or puncture \u2014 sharp metal fixings, cut edges, or nails encountered during partition removal or ceiling grid dismantling",
+          "Strain or sprain \u2014 manual handling of heavy partition sections, ceiling panels, or grid components without mechanical aids or team lift procedures",
+          "Collapse of partition or ceiling section \u2014 structural instability if load-bearing elements are misidentified and removed, or temporary propping fails",
+          "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating"
+        ],
+        "dominant_hazard": "Asbestos disturbance \u2014 residual ACM fibres released despite clearance validation, from old fixings, sealant, or undocumented sprayed coating",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "If ACM or suspected ACM identified in survey, stop work and tell licensed asbestos removalist \u2014 do not proceed with partition or ceiling removal.",
+          "Confirm structural engineer has certified partitions are non-load-bearing and ceiling grid is not structural before cutting or dismantling starts.",
+          "Wet-suppress all partition cutting and ceiling grid dismantling \u2014 use spray bottle or mist hose to dampen dust generation at cutting point.",
+          "Use dust extractor with HEPA filter connected to power tools (reciprocating saw, angle grinder) during cutting \u2014 continuous extraction required, no dry breakout.",
+          "Wear organic vapour half-mask respirator (AS/NZS 1716 P2) when suppression fails or dust generation exceeds visual containment; upgrade to P3 if mist opacity increases.",
+          "Segregate all sharp fixings (nails, fasteners, screws) into rigid containers immediately on removal \u2014 do not leave loose on surfaces or in debris piles."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not remove ceiling grid until: temporary propping (if required) is installed, inspected, and engineer-approved in writing."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: wet suppression system fails, dust extraction is disconnected, or visible airborne dust exceeds containment during cutting.",
+          "\ud83d\uded1 STOP WORK if: suspected ACM, undocumented coating, or unknown material is encountered during cutting or dismantling.",
+          "\ud83d\uded1 STOP WORK if: partition or grid section cannot be supported safely, temporary propping base shifts, or structural instability is observed."
+        ],
+        "admin": [
+          "Obtain structural engineer certification that partitions are non-load-bearing and ceiling grid is not structural.",
+          "tell SafeWork NSW if any structure exceeds 6 m height or load-bearing status is uncertain.",
+          "Brief all crew on ACM risk, suppression method, and stop-work triggers before work commences."
+        ],
+        "ppe": [
+          "Organic vapour half-mask respirator (AS/NZS 1716 P2) \u2014 continuous wear during cutting and suppression; upgrade to P3 if dust opacity increases.",
+          "eye protection\u2014 protection from flying debris, metal fragments, sharp fixings.",
+          "cut-resistant gloves",
+          "steel-capped footwear\u2014 protection from nails, fasteners, glass.",
+          "hi-viz shirt or vest\u2014 skin protection from dust, splinters, sharp metal.",
+          "Hard hat \u2014 protection from falling fixings, grid components, or suspended debris."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Verify wet suppression active and dust extraction connected before each cutting session.",
+          "who": "Supervisor / Demolition crew lead",
+          "frequency": "Before each shift start and before each new cutting session",
+          "evidence": "Visual observation of mist at cutting point, HEPA filter status, exclusion zone signage in place, ACM clearance letter on site"
+        },
+        "responsibility": {
+          "SUP": "Supervise Demolish existing partitions and ceiling",
+          "WKR": "Perform Demolish existing partitions and ceiling per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.3"
+      },
+      {
+        "sequence": 5,
+        "task": "Remove demolition debris and clean substrate",
+        "scope": "Clear and remove all demolished material from site. Clean structural soffit, walls, and floor to receive new systems. Dust suppression during removal.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+          "Manual handling injury \u2014 repetitive bending, lifting, or carrying of debris loads without mechanical equipment or rest breaks",
+          "Fall hazard \u2014 slippery floors during wet cleaning; debris piles or uneven surfaces creating trip hazards in work area",
+          "Exposure to chemical residues \u2014 cleaning agents, sealants, or adhesives on substrate not identified or properly neutralised before cleaning"
+        ],
+        "dominant_hazard": "Dust inhalation \u2014 airborne particles and fibres from swept or vacuumed debris without capture systems or respiratory protection",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Use HEPA-filtered vacuum or wet collection method to remove all debris; do not dry sweep or use compressed air.",
+          "Wear organic vapour respirator (P3) during debris removal and substrate cleaning; keep mask on-site and on point of use.",
+          "Damp-wipe all structural surfaces (soffit, walls, floor) with water or damp cloth after debris removal; allow to dry before next task.",
+          "Establish wet dust suppression \u2014 spray debris piles with water before removal; maintain damp conditions throughout clearance.",
+          "Segregate waste into separate containers: debris, chemical residue (if present), recyclable materials; do not mix loads.",
+          "Bag and label all cleaned material residues; store in designated waste area outside occupied zones.",
+          "Conduct substrate visual check for chemical residues, sealants, adhesives, or unknown coatings before cleaning commences; stop work if unidentified material found.",
+          "Limit debris removal to no more than 4 hours continuous work; rotate workers to prevent repetitive strain; provide 15-minute rest breaks each hour."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not proceed to next task until: substrate visually clean, damp-wiped, and structural surface condition accepted by Project Manager or site supervisor."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: HEPA vacuum filter clogs, wet suppression fails, or dry sweeping or compressed air is used.",
+          "\ud83d\uded1 STOP WORK if: unidentified chemical residue, sealant, adhesive, or unknown coating found on substrate.",
+          "\ud83d\uded1 STOP WORK if: worker respiratory fit-check fails or mask is damaged, removed, or not worn during debris removal or cleaning."
+        ],
+        "admin": [
+          "Confirm all utilities isolated and safe before debris removal in occupied building.",
+          "Establish exclusion zone around debris removal area; restrict access to authorised personnel only.",
+          "Record debris removal start and end times; note any chemical residues or hazardous materials encountered.",
+          "Obtain site supervisor sign-off on substrate acceptance before moving to next trade or task."
+        ],
+        "ppe": [
+          "Organic vapour respirator (P3) \u2014 fitted and checked before each use.",
+          "eye protection",
+          "cut-resistant gloves",
+          "Steel-capped boots with slip-resistant sole.",
+          "High-visibility vest or shirt.",
+          "Hearing protection if compressed air or power tools used during cleaning."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Workers and Supervisor",
+          "frequency": "Continuous during debris removal; filter checked daily.",
+          "evidence": "Vacuum on-site, filter visible and dry; damp conditions maintained on debris piles; respiratory fit-check log signed by each worker."
+        },
+        "responsibility": {
+          "SUP": "Supervise Remove demolition debris and clean",
+          "WKR": "Perform Remove demolition debris and clean per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.4"
+      },
+      {
+        "sequence": 6,
+        "task": "Install new plasterboard partitions",
+        "scope": "Frame and erect new non-load-bearing partition walls per design drawings. Fix plasterboard and complete jointing and sanding. Coordinate with services trades for routing.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+          "Struck by falling sheet \u2014 plasterboard sheet drops during handling, installation, or support failure, striking worker or adjacent area below",
+          "Manual handling injury \u2014 repetitive lifting, positioning, or carrying of plasterboard sheets (13\u201315 kg each) without mechanical aids or team lift procedure",
+          "Dust and particulate inhalation \u2014 plasterboard cutting, sanding, and jointing generates silica and gypsum dust without local exhaust ventilation or respiratory protection",
+          "Tool contact injury \u2014 power tools (drill, saw, sander) contact skin, eye, or face during use in confined partition spaces or at height"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker falls from ladder, scaffold, or partition frame whilst fixing high plasterboard sheets or top rails above 2 m",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Install edge protection (handrail or balustrading) to partition frame before plasterboard fixings start, minimum 1100 mm high.",
+          "Use mechanical lifter or two-person team lift for all plasterboard sheets over 10 kg; prohibit solo lifting above shoulder height.",
+          "Erect and tag scaffold or work platform for all plasterboard fixing work above 2 m; do not use ladders as sole access for fixings.",
+          "Brief all workers on partition frame stability and load path before erection; confirm no unauthorised bracing removal during work.",
+          "Suppress dust at source using local exhaust ventilation (LEV) during cutting and sanding; use hand-held vacuum extraction or water-dampened sanding where LEV unavailable.",
+          "Provide respiratory protection (P2 mask/respirator (fit-tested) minimum, or P3 if high dust generation) for all cutting, sanding, and jointing work; fit-test not required for disposable masks but fit must be checked each use.",
+          "Guard all power tools (drill, saw, sander) with trip switch and blade/bit guards; keep leads clear of work area and wet floor.",
+          "Barricade partition work area to exclude public and other trades; post 'No Entry' signage and restrict access to trained workers only."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not fix plasterboard until: partition frame is square, plumb, and braced per design drawing, and edge protection is installed and tagged.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start sanding and jointing until: all dust suppression equipment is functional, LEV or vacuum extraction is running, and respiratory protection is fitted and checked."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: plasterboard sheet drops, frame shifts, or bracing is removed or loosened during fixing.",
+          "\ud83d\uded1 STOP WORK if: dust suppression equipment fails, LEV stops, or respiratory protection is removed during cutting or sanding work.",
+          "\ud83d\uded1 STOP WORK if: services cables or pipes are located in partition zone without prior coordination and protection confirmation.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain site induction and building-occupancy briefing before work starts.",
+          "Coordinate daily work schedule with building management to minimise occupied-area disruption.",
+          "Record dust suppression equipment function and respiratory fit-check in site log each shift.",
+          "tell adjacent spaces of dust generation and restrict work to scheduled windows.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat",
+          "eye protection",
+          "cut-resistant gloves",
+          "steel-capped footwear, closed toe)",
+          "P2 or P3 mask (depending on dust generation) \u2014 fit-checked each use",
+          "High-visibility shirt or vest",
+          "Hearing protection (if power tools exceed 85 dB)"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Edge protection complete and handrail secure before plasterboard fixing starts.",
+          "who": "Supervisor + Worker",
+          "frequency": "Before work commences and continuous during high-risk tasks",
+          "evidence": "Visual check of handrail rigidity and height; tag and date edge protection installation; dust suppression equipment running log; respiratory fit-check record each shift"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install new plasterboard partitions",
+          "WKR": "Perform Install new plasterboard partitions per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.5"
+      },
+      {
+        "sequence": 7,
+        "task": "Install suspended ceiling system",
+        "scope": "Erect new suspended ceiling framework, install hangers, grid, and ceiling panels to engineer and design specifications. Coordinate access for services trades.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+          "Dropped object hazard \u2014 hanger, bracket, panel, or tool falls from ceiling onto worker, building occupant, or completed works below",
+          "Manual handling of long grid sections \u2014 repetitive lifting and positioning of ceiling grid elements at arm's reach or above shoulder height without mechanical support",
+          "Crush injury \u2014 fingers, hands, or head crushed during assembly or connection of grid components or hanger adjustment",
+          "Instability of temporary platform \u2014 work platform, step ladder, or access equipment becomes unstable due to uneven floor, load concentration, or poor positioning"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker falls from ladder or work platform during installation of hangers, grid, or panels above 2 m",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Use only ladders compliant with AS/NZS 1892.1 \u2014 check rungs are not damaged, feet are secure, and angle is 70\u201375\u00b0 before climbing.",
+          "Position ladder on firm, level ground \u2014 do not place on unstable surfaces, boxes, or lean it against grid framework or temporary supports.",
+          "Erect mobile work platform (MWP) with wheels locked and guardrails installed \u2014 do not use ladder for tasks exceeding 30 minutes or repeated repositioning.",
+          "Install edge protection (guardrail or toe-board) around work platform \u2014 maintain 1.2 m clearance from platform edge to prevent falls.",
+          "Barricade or exclude building occupants from work zone \u2014 use signage and physical barriers to prevent contact with overhead work.",
+          "Brief all workers on load path and hanger sequence before work starts \u2014 identify anchor points and confirm no services run through ceiling void.",
+          "Wear hard hat always in ceiling void \u2014 protect against dropped tools, hanger brackets, or panel edges.",
+          "Secure or net tools and materials on work platform \u2014 prevent dropped objects falling to floor below."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start ceiling panel installation until: work platform is installed, guardrails are complete, edge protection is verified, and access for occupants below is confirmed clear."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: ladder becomes damaged, work platform guardrail is incomplete, or building occupants enter the exclusion zone below.",
+          "\ud83d\uded1 STOP WORK if: wind exceeds 35 km/h or platform becomes unstable due to floor settlement or load shift.",
+          "\ud83d\uded1 STOP WORK if: unknown services are encountered in ceiling void or hanger anchor points differ from design drawings.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Provide design drawings and engineer-signed ceiling specification on site before work starts.",
+          "Confirm access routes for occupants do not cross exclusion zone below ceiling work.",
+          "Record platform inspection and guardrail completion in site log before work commences.",
+          "tell building manager of work schedule and exclusion zone boundaries.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat",
+          "eye protection",
+          "cut-resistant gloves",
+          "Steel-capped steel-capped footwear",
+          "High-visibility vest"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Check ladder angle is 70\u201375\u00b0 and feet secure before each use.",
+          "who": "Workers and Supervisor",
+          "frequency": "Before each ladder use and each shift start",
+          "evidence": "Visual check of ladder position; platform inspection log signed daily"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install suspended ceiling system",
+          "WKR": "Perform Install suspended ceiling system per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.6"
+      },
+      {
+        "sequence": 8,
+        "task": "Coordinate services trades \u2014 electrical, data, HVAC installation",
+        "scope": "Support and coordinate installation of power outlets, data points, and HVAC distribution within new partition and ceiling voids. Confirm clearances and fit-outs.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6",
+        "hazards": [
+          "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+          "Service line damage \u2014 HVAC ductwork, data cable, or water line cut or pierced during drilling, routing, or fastening by uncoordinated trades",
+          "Entanglement or crushing \u2014 worker hand or clothing caught in rotating HVAC fan or ductwork manipulation without isolation",
+          "Dropped object \u2014 tools, fixtures, or components fall from ceiling void onto worker or completed fit-out below during installation"
+        ],
+        "dominant_hazard": "Electrical contact or arc flash \u2014 electrician or other worker contacts live circuit or equipment during installation of outlets or testing without isolation verification",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain written isolation certificate from licensed electrician confirming power OFF at switchboard and lock applied before any work on power outlets or testing commences.",
+          "Check isolation using a calibrated electrical test pen \u2014 not a multimeter \u2014 immediately before each electrical task to confirm zero volts.",
+          "Coordinate all three trades (electrical, data, HVAC) together via site meeting one shift before work \u2014 confirm route paths, drill points, and no-go zones on marked drawings.",
+          "Barricade ceiling void entry point with rope, warning tape, and 'Authorized Entry Only' sign \u2014 only named trades to enter.",
+          "Confirm HVAC fan and ductwork isolation \u2014 power OFF, lock applied, and tag \u2014 before any worker enters distribution area.",
+          "Prohibit dry drilling through ceilings or walls \u2014 use wet drill or consult live drawing to confirm no pipe, cable, or duct at each point before boring.",
+          "Establish a dropped-object box (or containment tray) within void below active installation zone \u2014 remove from site when zone is clear.",
+          "Station a spotter outside ceiling void during installation \u2014 spotter confirms isolation remains in place, watches for dropped objects, and communicates hazards."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not energise any outlet until: isolation certificate reviewed, all outlet connections photographed, and electrician has verified continuity and correctness.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not permit workers into ceiling void until: all three trades confirm their route paths, drill points, and safe work method on marked site plan with supervisor sign-off."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: power cannot be isolated at switchboard, test pen shows voltage present, or live service energised without written authority.",
+          "\ud83d\uded1 STOP WORK if: unplanned service (water, gas, cable, duct) is struck, pierced, or damaged during drilling or routing.",
+          "\ud83d\uded1 STOP WORK if: worker attempts to work in ceiling void without spotter outside or without confirmed isolation of all mechanical equipment."
+        ],
+        "admin": [
+          "Obtain written isolation certificate from licensed electrician \u2014 post at switchboard and on SWMS before work.",
+          "Record all three trade routes and no-drill zones on site plan \u2014 sign and date by each trade supervisor.",
+          "Photograph all outlet connections and cabling before closure \u2014 upload to project file for defect traceability.",
+          "Brief all workers on electrical contact hazard, isolation lock location, and test pen use during pre-shift toolbox talk.",
+          "Confirm occupied-building co-tenancy rules \u2014 tell building manager of void entry, noise, and isolations affecting other floors or suites.",
+          "Daily spotter briefing \u2014 confirm isolation status, dropped-object zone, and emergency contact for each shift."
+        ],
+        "ppe": [
+          "eye protection",
+          "cut-resistant gloves",
+          "Steel-capped boots",
+          "High-visibility shirt or vest",
+          "Hard hat (when working below or near ceiling void opening)"
+        ],
+        "ccvs_code": "ELE-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+          "who": "Supervisor + electrician",
+          "frequency": "Before each electrical work step",
+          "evidence": "Test pen reading recorded (photograph); isolation certificate on site; lock tag visible at switchboard."
+        },
+        "responsibility": {
+          "SUP": "Supervise Coordinate services trades \u2014 electrical,",
+          "WKR": "Perform Coordinate services trades \u2014 electrical, per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.7"
+      },
+      {
+        "sequence": 9,
+        "task": "Install carpet tile flooring",
+        "scope": "Prepare floor substrate, apply adhesive and lay carpet tiles to design layout. Complete edge trims and transition thresholds.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+          "Skin or eye contact with adhesive \u2014 spill or splash of adhesive product during application or cleanup without gloves or eye protection",
+          "Manual handling injury \u2014 repetitive bending, kneeling, or carrying of carpet tile packs (10\u201315 kg) without mechanical aids or regular breaks",
+          "Trip hazard \u2014 loose or incompletely adhered tiles, adhesive spills, or uneven substrate create trip risks during installation and subsequent building use",
+          "Slip on adhesive residue \u2014 wet or tacky floor surface during application and cure time without slip protection or exclusion of other building users"
+        ],
+        "dominant_hazard": "Inhalation of adhesive fumes \u2014 volatile organic compounds (VOC) or solvent vapours released during application of flooring adhesive in partially ventilated enclosed space",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Obtain Safety Data Sheet (SDS) for adhesive product and post on site before application starts.",
+          "Open all windows and doors to space. Operate mechanical ventilation continuously during application and for 4 hours after final tile placement.",
+          "Check substrate is clean, dry, sound, and free of dust, oil, or contamination before adhesive application.",
+          "Apply adhesive in thin, even beads along tile edges or substrate as per product SDS. Do not overapply or puddle.",
+          "Wear chemical-resistant gloves throughout adhesive handling and application. Change gloves if torn or contaminated.",
+          "Wear organic vapour respirator (per SDS Section 8) when applying adhesive in enclosed space with limited mechanical ventilation.",
+          "Wear eye protection",
+          "Keep adhesive container closed when not in active use. Store in cool, well-ventilated area away from heat sources."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply adhesive until: SDS is on site, ventilation is operational, and substrate has been checked and approved clean and dry by supervisor."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: mechanical ventilation fails or cannot be maintained, or headspace odour indicates inadequate airflow.",
+          "\ud83d\uded1 STOP WORK if: adhesive is spilled over >0.5 m\u00b2 or skin/eye contact occurs \u2014 isolate area, decontaminate, and obtain SDS medical emergency contact before resuming.",
+          "\ud83d\uded1 STOP WORK if: substrate is found to be wet, oily, contaminated, or uneven \u2014 tell supervisor before proceeding to adhesive application."
+        ],
+        "admin": [
+          "Brief all workers on SDS contents (hazard symbols, first aid, ventilation requirements) before work starts.",
+          "tell building occupants that flooring area will be closed and wet until cure is complete (state cure time per SDS).",
+          "Record SDS location, adhesive product name, batch number, and application date on site log.",
+          "make sure emergency eyewash station or first aid kit is accessible if SDS does not specify nearby facility.",
+          "Do not allow other building users or trades into wet floor area until adhesive has cured fully and floor is dry."
+        ],
+        "ppe": [
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "Organic vapour respirator (per SDS Section 8) \u2014 if mechanical ventilation is insufficient",
+          "eye protection",
+          "Long trousers and closed-toe footwear"
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Supervisor / Workers",
+          "frequency": "Continuous during adhesive application and for 4 hours post-application",
+          "evidence": "Ventilation system running (audible/visible), no strong solvent smell detectable at worker breathing zone, SDS and product batch number recorded in site log"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install carpet tile flooring",
+          "WKR": "Perform Install carpet tile flooring per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.8"
+      },
+      {
+        "sequence": 10,
+        "task": "Paint and finish interior surfaces",
+        "scope": "Apply finish coats to plasterboard walls and ceilings. Complete sealant and trim finishes. Protect other completed works during application.",
+        "trade_type": "Painting",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+          "Skin or eye contact with paint or sealant \u2014 splash or spill during application or cleanup without gloves, apron, or eye protection",
+          "Slip hazard \u2014 paint spills, wet surface, or drips on floor create slip risks during application in occupied building with other building users present",
+          "Fall from height \u2014 worker falls from ladder or work platform whilst painting high walls or ceilings above 2 m without fall arrest or safe access",
+          "Off-gassing in occupied space \u2014 sealant or paint cure creates hazardous air quality in occupied adjacent spaces if ventilation is inadequate or extraction systems are not operational"
+        ],
+        "dominant_hazard": "Inhalation of paint vapours and solvents \u2014 volatile organic compounds and isocyanates from paint or primer without adequate ventilation or respiratory protection",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Obtain Safety Data Sheet (SDS) for all paint, primer, and sealant products on point of use before application starts.",
+          "Establish continuous mechanical ventilation \u2014 extract air from work area at source, maintain negative pressure, verify extraction operational before starting.",
+          "Prohibit application of isocyanate-based primer or paint unless organic vapour respirator (AS/NZS 1716 Type A1-B1-E1K minimum) is worn continuously during and for 60 minutes after application.",
+          "Cover all floor surfaces within 2 m of work area with drop sheets secured at edges to contain spills and prevent slip hazard.",
+          "Brief all building occupants in adjacent spaces before work starts \u2014 confirm doors closed, windows open where possible, and vacate if respiratory discomfort occurs.",
+          "Stop application immediately if occupant reports respiratory irritation, dizziness, or nausea \u2014 improve ventilation and reassess before restart.",
+          "Wear chemical-resistant gloves, apron, and eye protection",
+          "Do not allow sealant cure in occupied adjacent space unless SDS cure time does not exceed 2 hours and ventilation remains active throughout cure period."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply paint until: SDS reviewed, ventilation system tested operational, and all occupants in adjacent spaces briefed on work and precautions."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: mechanical ventilation fails, extraction volume drops below design, or odour cannot be contained within work area.",
+          "\ud83d\uded1 STOP WORK if: occupant or worker reports respiratory irritation, eye irritation, or neurological symptoms during or immediately post-application.",
+          "\ud83d\uded1 STOP WORK if: sealant cure window cannot be met (weather, humidity, temperature outside SDS limits) or occupied building ventilation cannot be maintained for required cure duration."
+        ],
+        "admin": [
+          "Confirm SDS Section 8 (exposure controls) requirements are met before each product application.",
+          "Record ventilation system status (on/off, extraction rate if measurable) at start and completion of each paint/sealant task.",
+          "Brief all site personnel and building occupants on paint/sealant work schedule, precautions, and evacuation triggers before work commences.",
+          "Prohibit building occupants from entry to work area during application; restrict adjacent space entry if vapour odour detected.",
+          "Do not remove respirator until 60 minutes after application and ventilation has operated for minimum 30 minutes post-work."
+        ],
+        "ppe": [
+          "Organic vapour respirator (AS/NZS 1716 Type A1-B1-E1K minimum) for isocyanate primer or paint application",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "Apron (chemical-resistant material, full-length preferred)",
+          "eye protection",
+          "Work clothing (hi-viz shirt or vest"
+        ],
+        "ccvs_code": "CHM-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Confirm mechanical ventilation operating continuously and odour not detectable in adjacent occupied space.",
+          "who": "Supervisor or worker on site",
+          "frequency": "Before work starts, hourly during application, at completion",
+          "evidence": "Ventilation system running (visual/audible check); occupant comfort confirmed; no odour migrating to adjacent spaces; SDS on point of use"
+        },
+        "responsibility": {
+          "SUP": "Verify scaffold and fall arrest systems, enforce exclusion zone, check SDS",
+          "WKR": "Use harness and lanyard, wear respiratory protection, report faults"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.9"
+      },
+      {
+        "sequence": 11,
+        "task": "Conduct final inspection and defect rectification",
+        "scope": "check all completed works against design and specification. fix defects. Obtain sign-off from building management and project team.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+          "Struck by falling object \u2014 removed defect item or tool falls during rectification work in ceiling or high partition area onto person or completed works below",
+          "Entanglement or crush \u2014 worker caught during machinery isolation check, hanger adjustment, or ductwork inspection without lockout or safe isolation verification",
+          "Exposure to uncured materials \u2014 contact with freshly sanded surfaces, uncured sealant, or curing paint during inspection without protective equipment"
+        ],
+        "dominant_hazard": "Fall from height \u2014 inspector or worker falls from ladder whilst checking high-level finishes, services, or ceiling panels above 2 m",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Use mobile elevated work platform (MEWP) or approved scissor lift to check high-level works above 2 m \u2014 no ladders for ceiling or high partition inspection.",
+          "check ladder angle is 75\u00b0, feet are secure, and ladder is tied off at top before use for low-level defect checks below 2 m.",
+          "Brief all inspectors and rectification workers on defect location, access method, and no-work zones before starting inspection.",
+          "Remove or isolate tools and materials from work zone before elevated inspection to prevent dropped object strikes.",
+          "Barricade and exclude building occupants from work area during high-level rectification or removal of defective items.",
+          "Check harness, lanyard, and anchor point are present and certified before any inspector works at height above 2 m without MEWP.",
+          "Confirm all machinery, ducting, and electrical services are isolated and tagged before any worker accesses ceiling or service void for inspection.",
+          "Allow uncured sealant, paint, or sanded surfaces to cure or dry per product SDS before contact or final walkthrough inspection."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start elevated inspection until: MEWP or scissor lift is on site, inspected by competent person, and access permit is issued.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not obtain final sign-off until: all documented defects have been rectified, materials are fully cured or dry, and building management has walked the completed works with project team."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: ladder is used for inspection above 2 m or MEWP cannot be safely positioned due to floor loading, ceiling height, or structural obstacles.",
+          "\ud83d\uded1 STOP WORK if: machinery, electrical, or HVAC services in ceiling void cannot be confirmed isolated before inspection access begins.",
+          "\ud83d\uded1 STOP WORK if: building occupants enter rectification work zone during high-level work or if exclusion zone is breached.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Brief all workers and inspectors on defect register and rectification scope before work starts.",
+          "Confirm MEWP operator holds current ticket (TLILIC303D or equivalent) and site ticket is validated before use.",
+          "Obtain written confirmation from building management that area is clear of occupants before high-level work begins.",
+          "Record all defect inspections, rectifications, and sign-off dates in project log.",
+          "tell project supervisor if defect scope exceeds specification or rectification method differs from planned approach.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat (all workers on site during inspection and rectification).",
+          "High-visibility shirt or vest (all workers visible to MEWP operator and other trades).",
+          "eye protection",
+          "cut-resistant gloves",
+          "Full-body harness and 2 m lanyard with shock absorber (elevated work above 2 m without MEWP \u2014 certified anchor point required).",
+          "Organic vapour respirator (if inspection involves uncured paint or sealant vapour \u2014 per product SDS Section 8)."
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Supervisor",
+          "frequency": "Before each elevated inspection task and at shift start",
+          "evidence": "MEWP ticket sighted, operator ID recorded, and visual confirmation that ladder was not used for ceiling-level work"
+        },
+        "responsibility": {
+          "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+          "WKR": "Inspect per specification, photograph defects, report issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.11"
+      },
+      {
+        "sequence": 12,
+        "task": "Demobilise site and remove barriers",
+        "scope": "Remove all temporary barriers, warning signage, and excess material. Clean Level 3 and common areas. Hand over completed fit-out to building management.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2",
+        "hazards": [
+          "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+          "Struck by falling object \u2014 barrier, sign, or temporary structure falls during removal, striking worker or building occupant below",
+          "Manual handling injury \u2014 repetitive carrying, dismantling, and removal of heavy barrier sections, frames, and accumulated waste without mechanical aids",
+          "Communication breakdown \u2014 barrier removal exposes stairwell or lift access before building management confirms area is safe for re-occupation by other tenancy workers"
+        ],
+        "dominant_hazard": "Fall hazard \u2014 worker falls whilst removing high-level signage, barriers, or temporary structures above 2 m without fall protection",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Use EWP or mobile elevated work platform to access and remove signage and barriers above 2 m \u2014 no free climbing or unsecured ladder work.",
+          "Barricade area directly below barrier removal work \u2014 restrict building occupants and other workers until removal complete and debris cleared.",
+          "Secure each barrier section or sign to removal EWP basket using rope or webbing sling before lifting \u2014 prevent dropping during transfer.",
+          "Dismantle barrier frames section by section, lowering each piece into skip or temporary debris container \u2014 no throwing or dropping.",
+          "Remove and stack barrier components in designated demob zone \u2014 do not leave stacked materials above 1.5 m unbraced.",
+          "Confirm with building management in writing that Level 3 and common areas are clean and safe for re-occupation before handing over area access.",
+          "Two-person minimum for carrying barrier frames and heavy components \u2014 assess each component weight before lifting; use trolley or cart for components over 15 kg.",
+          "Sweep and vacuum floor surfaces on Level 3 and common areas \u2014 wet mop if dust generation expected during removal."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start barrier removal above 2 m until: EWP is on site, inspected, and signed off by supervisor.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not hand over area to building management until: Level 3 and common areas are fully cleared, swept, and building manager confirms receipt in writing."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: EWP becomes unavailable or faulty during removal \u2014 do not use ladder or unsecured climbing.",
+          "\ud83d\uded1 STOP WORK if: building occupants enter barricaded removal zone \u2014 re-establish exclusion zone before resuming.",
+          "\ud83d\uded1 STOP WORK if: debris accumulates below removal work area beyond safe clearance \u2014 clear and reset barricade before continuing."
+        ],
+        "admin": [
+          "tell building management 24 hours before demob start \u2014 confirm Level 3 access restrictions and occupancy in adjacent areas.",
+          "Obtain written sign-off from building manager on completion of demob and area hand-over \u2014 record date, time, and manager name.",
+          "Schedule demob work outside standard tenant hours where possible \u2014 coordinate with building management to minimise disruption."
+        ],
+        "ppe": [
+          "High-visibility vest or shirt",
+          "steel-capped footwear",
+          "Hard hat (when working below or near elevated work)",
+          "cut-resistant gloves",
+          "Dust mask (P2) if sweeping generates visible dust"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+          "who": "Supervisor",
+          "frequency": "Before each removal task above 2 m; continuous during elevated work",
+          "evidence": "EWP pre-operation checklist signed; harness tag current; supervisor on-site observation log; photographic record of barricade placement and area clearance"
+        },
+        "responsibility": {
+          "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+          "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.12"
+      }
+    ],
+    "validation_errors": [
+      "Missing or empty field: 'controls'",
+      "Missing or empty field: 'ppe'",
+      "Only 0 controls \u2014 minimum 3 required",
+      "High pre-risk task must have a CCVS code \u2014 N/A not permitted"
+    ]
+  },
+  "task_count": 12
+}
