@@ -46,7 +46,7 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 513
+Passing: 516
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
@@ -65,7 +65,7 @@ Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           ACTIVE — V11 (2 HF monitoring copy-paste, sequence correct, HRCW cl.4 fixed, deterministic limit)
+Lingate remedial:           ACTIVE — V12 (monitoring copy-paste resolved, scaffold WAH override, 2 HF gen-variance, recommend external resubmission)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
@@ -95,6 +95,33 @@ ALWAYS
 - Commit after each phase with a non-interactive message
 - End every session by updating this file
 - Report the exact next prompt to paste
+
+## Build / No-Build Filter
+
+Before starting any new feature, phase, or subsystem, ask:
+
+**Does this get Safe Method to trusted pilot use faster, or does it mainly make the system more elaborate?**
+
+Build now only if most of these are true:
+- real user benefit
+- recurring proven problem
+- narrow safe fix
+- helps the five-job pilot
+- customer/reviewer would notice
+- low permanent complexity
+- moves toward proof, trust, or revenue
+
+Scoring:
+- 6-7 = build now
+- 4-5 = maybe, only if cheap and bounded
+- 0-3 = defer
+
+Default bias until the five-job pilot is complete:
+- prefer benchmark closure over new architecture
+- prefer narrow deterministic fixes over new subsystems
+- prefer pilot workflow improvements over platform abstractions
+- prefer proof over elegance
+- prefer customer-visible gains over internal sophistication
 
 ## Terminology — use exactly
 - job_type not "job family"
@@ -131,3 +158,4 @@ PASS_TO_CLIENT | TARGETED_REWORK | FULL_REWORK
 3. Update stream statuses in this file
 4. Update CLAUDE.md if any new assets were added
 5. Report the exact next prompt to paste
+
