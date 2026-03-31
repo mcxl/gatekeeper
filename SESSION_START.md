@@ -46,11 +46,11 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 516
+Passing: 521
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
-Checks: 21
+Checks: 22
 
 ## Pipeline summary — one line each
 Decomposer:       task architecture + job_type detection
@@ -65,7 +65,7 @@ Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           AWAITING_EXTERNAL_REVIEW — V12 submitted 2026-03-31 (fourth submission)
+Lingate remedial:           ACTIVE — V13 sequence backbone resolved, recommend fifth external submission
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
