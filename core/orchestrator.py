@@ -820,6 +820,11 @@ def _task_phase_score(tb: dict) -> int:
     # Check reinstatement by task name — before coating check (avoids "finishing" matching coat)
     if any(kw in task_name for kw in ("reinstate", "reinstall")):
         return 6
+    # Check waterproofing membrane by TASK NAME — must be before coating check
+    # so "Apply primer and waterproofing membrane" gets phase 4, not phase 5 via "primer"
+    if any(kw in task_name for kw in ("waterproof", "membrane")) and not any(
+            kw in task_name for kw in ("remove", "strip", "demolit")):
+        return 4
     # Check coating by TASK NAME only — avoids scope keywords (surface prep) overriding
     if any(kw in task_name for kw in _COATING_TASK_KEYWORDS):
         return 5
