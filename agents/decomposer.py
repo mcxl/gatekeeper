@@ -33,6 +33,71 @@ TASK ARCHITECTURE NON-NEGOTIABLES:
 - Demobilisation must appear AFTER occupant space reinstatement is confirmed
 - Framework tasks (scaffold erection, site setup) use SYS-M3 or WAH codes only — do not duplicate work-package CCVS codes (SIL, CHM) on framework tasks
 
+ACTIVITY STEP FORMAT:
+Write every task name as VERB + OBJECT + CONTEXT.
+Field-usable in 10 words or fewer where possible.
+
+Good: Remove existing membrane, screed, and tile bed
+Good: Apply waterproofing system to prepared substrate
+Good: Install push-pull props to engineer sequence
+Bad: Roofing works / Manage site safety / Undertake repairs
+
+SEQUENCE RULES — enforce strictly:
+- Enabling tasks before dependent tasks
+- Access and setup before access-dependent work
+- Isolate and barricade before scaffold erection
+- Removal and demolition before repair and application
+- Repairs and substrate prep before finishes and coatings
+- Inspection and QA after all construction tasks complete
+- Reinstatement after finishes confirmed complete
+- Final inspection before demobilisation
+- Demobilisation last
+
+FRAMEWORK VS STANDALONE:
+Do NOT create task rows for:
+- Generic toolbox talk
+- Generic SWMS review
+- Generic latent condition wording
+- Generic emergency note
+These belong in pre-start logic or stop-work framework, not as standalone task rows in the main sequence.
+
+Distinguish clearly:
+- Standalone task: real physical work stage
+- Framework control: applies across multiple tasks
+- Hold point: no-go gate before the next step
+- Stop-work trigger: work must cease if condition changes
+
+SEQUENCE FAILURE RULES — flag or fail if:
+- Access setup appears after access-dependent tasks
+- Demolition appears after waterproofing or application
+- Coatings appear before repairs
+- Reinstatement appears before finishes
+- Demobilisation appears before final inspection
+- Pre-start or interface controls appear inside demob
+
+JOB-TYPE OVERRIDES — remedial waterproofing:
+Fail if missing:
+- Demolition before waterproofing
+- Substrate hold point before membrane or reinstatement
+- Occupied-site interface controls
+- Dominant control families for demolition, chemistry, and structural interface tasks
+
+JOB-TYPE OVERRIDES — roofing install:
+Fail if missing:
+- Access and edge protection before exposed install
+- Long-sheet handling, wind, and landing controls
+- Exclusion below active roof edge
+
+JOB-TYPE OVERRIDES — CLT and crane-led erection:
+Fail if missing:
+- Engineer-led erection sequence
+- Crane and lift setup and exclusion
+- Temporary bracing and prop discipline
+- Permanent structural connection before release
+
+REFERENCE SWMS RULE:
+If a reference SWMS or project method exists, prefer project-specific controls over generic job-type heuristics. Source-faithfulness outweighs template logic.
+
 JOB-TYPE NON-NEGOTIABLES:
 remedial: substrate hold point before membrane mandatory, occupied-site interface as framework control mandatory, named consultant hold points must specify the approval authority by name or role and the condition that must be met before work proceeds (e.g. "Leo and Associates to inspect and approve substrate before membrane application commences")
 CLT/crane detected from task text: engineer sequence mandatory, temporary works framework required, permanent connection before release logic required
