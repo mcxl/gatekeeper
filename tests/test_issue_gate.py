@@ -27,6 +27,10 @@ from src.issue_gate import (
     _check_orphan_reinstatement,
     _check_late_protection_or_exposure,
     _check_sequence_rule_pack_violations,
+    _check_monitoring_copy_paste,
+    _check_p2_on_chm_task,
+    _check_prerequisite_contradiction,
+    _check_generic_responsibility,
     run_issue_gate,
 )
 
@@ -293,7 +297,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 19  # C1-C6 + C5b + C7-json + C10 + C14-C22 + sequence rule pack check
+        assert len(result.checks) == 23  # C1-C6 + C5b + C7-json + C10 + C14-C27 + seq-rule-pack
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -354,7 +358,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 22  # C1-C6 + C5b + C7-json + C10 + C14-C22 + seq-rule-pack + C7-docx + C8 + C9
+        assert len(result.checks) == 26  # C1-C6 + C5b + C7-json + C10 + C14-C27 + seq-rule-pack + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -562,6 +566,103 @@ class TestLateProtectionOrExposure:
             {"step": "1.2", "task": "Repair slab cracks"},
         ]
         assert _check_late_protection_or_exposure(tasks).result == CheckResult.PASS
+
+
+class TestMonitoringCopyPaste:
+    def test_pass_different_monitoring(self):
+        tasks = [
+            {"task": "Remove membrane", "ccvs_code": "SIL-H6",
+             "monitoring": {"critical_control": "Dust extraction running"}},
+            {"task": "Apply membrane", "ccvs_code": "CHM-H6",
+             "monitoring": {"critical_control": "SDS on site, ventilation confirmed"}},
+        ]
+        assert _check_monitoring_copy_paste(tasks).result == CheckResult.PASS
+
+    def test_review_same_monitoring_different_families(self):
+        cc = "Dust extraction running and P2 respirator fitted before each grinding cycle"
+        tasks = [
+            {"task": "Remove membrane", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+            {"task": "Apply membrane", "ccvs_code": "CHM-H6", "monitoring": {"critical_control": cc}},
+            {"task": "Reinstate tiles", "ccvs_code": "WAH-H6", "monitoring": {"critical_control": cc}},
+        ]
+        assert _check_monitoring_copy_paste(tasks).result == CheckResult.REVIEW
+
+    def test_pass_same_monitoring_same_family(self):
+        cc = "Dust extraction running and P2 respirator fitted"
+        tasks = [
+            {"task": "Remove membrane", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+            {"task": "Repair substrate", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+            {"task": "Install tiles", "ccvs_code": "SIL-H6", "monitoring": {"critical_control": cc}},
+        ]
+        assert _check_monitoring_copy_paste(tasks).result == CheckResult.PASS
+
+
+class TestP2OnChmTask:
+    def test_review_p2_on_chm(self):
+        tasks = [{"step": "1.1", "task": "Apply membrane", "ccvs_code": "CHM-H6",
+                  "controls": ["Wear P2 mask during application"], "ppe": [], "monitoring": {}}]
+        assert _check_p2_on_chm_task(tasks).result == CheckResult.REVIEW
+
+    def test_pass_organic_vapour_on_chm(self):
+        tasks = [{"step": "1.1", "task": "Apply membrane", "ccvs_code": "CHM-H6",
+                  "controls": ["Wear organic vapour respirator per SDS"], "ppe": [], "monitoring": {}}]
+        assert _check_p2_on_chm_task(tasks).result == CheckResult.PASS
+
+    def test_pass_p2_on_sil(self):
+        tasks = [{"step": "1.1", "task": "Grind concrete", "ccvs_code": "SIL-H6",
+                  "controls": ["Wear P2 respirator during grinding"], "ppe": [], "monitoring": {}}]
+        assert _check_p2_on_chm_task(tasks).result == CheckResult.PASS
+
+
+class TestPrerequisiteContradiction:
+    def test_review_no_hazardous_with_chm(self):
+        tasks = [
+            {"step": "1.1", "task": "Site setup", "ccvs_code": "SYS-M3",
+             "admin": ["No hazardous substances identified"], "controls": []},
+            {"step": "1.2", "task": "Apply membrane", "ccvs_code": "CHM-H6",
+             "admin": [], "controls": []},
+        ]
+        assert _check_prerequisite_contradiction(tasks).result == CheckResult.REVIEW
+
+    def test_pass_no_hazardous_without_chm(self):
+        tasks = [
+            {"step": "1.1", "task": "Site setup", "ccvs_code": "SYS-M3",
+             "admin": ["No hazardous substances identified"], "controls": []},
+            {"step": "1.2", "task": "Erect scaffold", "ccvs_code": "WAH-H6",
+             "admin": [], "controls": []},
+        ]
+        assert _check_prerequisite_contradiction(tasks).result == CheckResult.PASS
+
+    def test_pass_clean_admin(self):
+        tasks = [
+            {"step": "1.1", "task": "Site setup", "ccvs_code": "SYS-M3",
+             "admin": ["Site induction complete"], "controls": []},
+            {"step": "1.2", "task": "Apply membrane", "ccvs_code": "CHM-H6",
+             "admin": [], "controls": []},
+        ]
+        assert _check_prerequisite_contradiction(tasks).result == CheckResult.PASS
+
+
+class TestGenericResponsibility:
+    def test_review_generic_short(self):
+        tasks = [{"step": "1.1", "task": "Paint wall",
+                  "responsibility": {"SUP": "Supervise painting", "WKR": "Perform painting"}}]
+        assert _check_generic_responsibility(tasks).result == CheckResult.REVIEW
+
+    def test_pass_specific_long(self):
+        tasks = [{"step": "1.1", "task": "Paint wall",
+                  "responsibility": {"SUP": "Verify scaffold and fall arrest, enforce exclusion zone, check SDS",
+                                     "WKR": "Use harness and lanyard, wear respiratory protection, report faults"}}]
+        assert _check_generic_responsibility(tasks).result == CheckResult.PASS
+
+    def test_pass_no_responsibility(self):
+        tasks = [{"step": "1.1", "task": "Paint wall"}]
+        assert _check_generic_responsibility(tasks).result == CheckResult.PASS
+
+    def test_review_truncated(self):
+        tasks = [{"step": "1.1", "task": "Paint wall",
+                  "responsibility": {"SUP": "Sup", "WKR": "Work"}}]
+        assert _check_generic_responsibility(tasks).result == CheckResult.REVIEW
 
 
 import json

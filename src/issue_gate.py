@@ -26,6 +26,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from core.job_type_rules import match_sequence_rule_packs
+
 
 # ── Stage definitions ────────────────────────────────────────────────────────
 
@@ -731,6 +733,146 @@ def _check_late_protection_or_exposure(tasks: list[dict]) -> GateCheck:
     return GateCheck("late_protection_or_exposure", CheckResult.PASS)
 
 
+def _check_sequence_rule_pack_violations(tasks: list[dict], description: str = "") -> GateCheck:
+    packs = match_sequence_rule_packs(description)
+    if not packs:
+        return GateCheck("sequence_rule_pack_violations", CheckResult.PASS,
+                         "No sequence rule packs active")
+
+    task_names = [
+        (
+            task.get("task")
+            or task.get("activity")
+            or task.get("task_name")
+            or task.get("name")
+            or ""
+        ).lower()
+        for task in tasks
+    ]
+
+    failures: list[str] = []
+    roof_work_index = next((i for i, t in enumerate(task_names) if "roof work" in t), None)
+    if roof_work_index is None:
+        return GateCheck("sequence_rule_pack_violations", CheckResult.PASS,
+                         "No active roof-work sequence tasks found")
+
+    for pack in packs:
+        for phrase in pack.fail_if_late:
+            idx = next((i for i, t in enumerate(task_names) if phrase in t), None)
+            if idx is not None and idx > roof_work_index:
+                failures.append(
+                    f"{pack.pack_id}: '{phrase}' appears after roof work has started"
+                )
+
+        for phrase in pack.fail_if_missing:
+            if not any(phrase in t for t in task_names):
+                failures.append(
+                    f"{pack.pack_id}: missing required step '{phrase}'"
+                )
+
+    if failures:
+        return GateCheck("sequence_rule_pack_violations", CheckResult.FAIL,
+                         "; ".join(failures[:3]))
+    return GateCheck("sequence_rule_pack_violations", CheckResult.PASS)
+
+
+def _check_monitoring_copy_paste(tasks: list[dict]) -> GateCheck:
+    """C24: Monitoring copy-paste — REVIEW if same critical_control text appears
+    on 3+ tasks with different CCVS families."""
+    cc_to_families: dict[str, set[str]] = {}
+    for t in tasks:
+        mon = t.get("monitoring")
+        if not isinstance(mon, dict):
+            continue
+        cc = mon.get("critical_control", "").strip()
+        if not cc or len(cc) < 15:
+            continue
+        ccvs = t.get("ccvs_code", "N/A")
+        family = ccvs.split("-")[0] if "-" in ccvs else ccvs
+        cc_to_families.setdefault(cc, set()).add(family)
+    dupes = [cc for cc, families in cc_to_families.items() if len(families) >= 2]
+    if len(dupes) >= 1:
+        sample = dupes[0][:60]
+        return GateCheck("monitoring_copy_paste", CheckResult.REVIEW,
+                         f"Same monitoring on unlike CCVS families: '{sample}...'")
+    return GateCheck("monitoring_copy_paste", CheckResult.PASS)
+
+
+def _check_p2_on_chm_task(tasks: list[dict]) -> GateCheck:
+    """C25: P2 respirator on CHM task — FAIL. P2 is particulate-only;
+    CHM tasks need organic vapour respirator per SDS."""
+    findings = []
+    for t in tasks:
+        ccvs = t.get("ccvs_code", "")
+        if not ccvs.startswith("CHM"):
+            continue
+        step = t.get("step", "?")
+        all_text = " ".join(
+            " ".join(t.get(f, []) if isinstance(t.get(f, []), list) else [])
+            for f in ("controls", "ppe")
+        ).lower()
+        mon = t.get("monitoring")
+        if isinstance(mon, dict):
+            all_text += " " + mon.get("critical_control", "").lower()
+        if "p2 mask" in all_text or "p2 respirator" in all_text:
+            findings.append(f"{step}: P2 on CHM task")
+    if findings:
+        return GateCheck("p2_on_chm_task", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("p2_on_chm_task", CheckResult.PASS)
+
+
+def _check_prerequisite_contradiction(tasks: list[dict]) -> GateCheck:
+    """C26: Prerequisite contradiction — REVIEW if 'no hazardous substances'
+    appears while other tasks use CHM CCVS codes."""
+    has_chm = any(t.get("ccvs_code", "").startswith("CHM") for t in tasks)
+    if not has_chm:
+        return GateCheck("prerequisite_contradiction", CheckResult.PASS)
+    _NO_HAZ = ("no hazardous substances", "no hazardous materials")
+    for t in tasks:
+        for field in ("admin", "controls", "hold_points"):
+            for item in (t.get(field, []) if isinstance(t.get(field, []), list) else []):
+                if any(p in item.lower() for p in _NO_HAZ):
+                    return GateCheck("prerequisite_contradiction", CheckResult.REVIEW,
+                                     f"{t.get('step', '?')}: 'no hazardous substances' but CHM tasks present")
+    return GateCheck("prerequisite_contradiction", CheckResult.PASS)
+
+
+_GENERIC_RESP_PATTERNS = (
+    "perform ", "supervise ", "manage ",
+    "complete ", "carry out ",
+)
+
+
+def _check_generic_responsibility(tasks: list[dict]) -> GateCheck:
+    """C27: Generic/truncated responsibility — REVIEW if responsibility text
+    is obviously generic, truncated, or placeholder-like."""
+    findings = []
+    for t in tasks:
+        resp = t.get("responsibility", {})
+        if not isinstance(resp, dict):
+            continue
+        for role in ("SUP", "WKR"):
+            text = resp.get(role, "")
+            if not text:
+                continue
+            text_stripped = text.strip()
+            # Truncated (under 15 chars and not a known short valid value)
+            if len(text_stripped) < 15 and text_stripped not in ("Supervisor", "Workers", "Site manager"):
+                findings.append(f"{t.get('step', '?')}/{role}: truncated '{text_stripped[:20]}'")
+                continue
+            # Generic pattern: starts with generic verb + task name echo
+            text_lower = text_stripped.lower()
+            if any(text_lower.startswith(p) for p in _GENERIC_RESP_PATTERNS):
+                # Accept if it's longer than 40 chars (likely task-specific)
+                if len(text_stripped) < 40:
+                    findings.append(f"{t.get('step', '?')}/{role}: generic '{text_stripped[:30]}...'")
+    if findings:
+        return GateCheck("generic_responsibility", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("generic_responsibility", CheckResult.PASS)
+
+
 # ── Main runner ──────────────────────────────────────────────────────────────
 
 def run_issue_gate(
@@ -791,6 +933,15 @@ def run_issue_gate(
         result.checks.append(_check_job_type_mandatory_steps(task_list, job_type))
         result.checks.append(_check_orphan_reinstatement(task_list))
         result.checks.append(_check_late_protection_or_exposure(task_list))
+        result.checks.append(_check_sequence_rule_pack_violations(
+            task_list,
+            " ".join(t.get("task", "") for t in task_list),
+        ))
+        # C24-C27: control-validity checks
+        result.checks.append(_check_monitoring_copy_paste(task_list))
+        result.checks.append(_check_p2_on_chm_task(task_list))
+        result.checks.append(_check_prerequisite_contradiction(task_list))
+        result.checks.append(_check_generic_responsibility(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:

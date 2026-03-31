@@ -47,11 +47,11 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 532
+Passing: 545
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
-Checks: 22
+Checks: 27
 
 ## Pipeline summary — one line each
 Decomposer:       task architecture + job_type detection
