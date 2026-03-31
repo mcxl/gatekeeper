@@ -65,7 +65,7 @@ Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           ACTIVE — V12 (monitoring copy-paste resolved, scaffold WAH override, 2 HF gen-variance, recommend external resubmission)
+Lingate remedial:           AWAITING_EXTERNAL_REVIEW — V12 submitted 2026-03-31 (fourth submission)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY

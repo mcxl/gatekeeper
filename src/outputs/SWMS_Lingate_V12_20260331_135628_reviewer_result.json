@@ -1,0 +1,11 @@
+{
+  "overall_status": "BELOW_WORKING_DRAFT",
+  "recommended_action": "TARGETED_REWORK",
+  "overall_summary": "2 hard fail(s); 71 review item(s) (generation-variance)",
+  "hard_fails": [
+    "Task 6: monitoring supervisor mismatch on engineer inspection",
+    "Task 9: dust monitoring on adhesive application task"
+  ],
+  "review_items_count": 71,
+  "note": "Both HFs are generation-variance, not structural"
+}
