@@ -10,6 +10,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from core.job_type_rules import match_sequence_rule_packs
 from src.issue_gate import (
     CheckResult, Classification, GateResult, Stage,
     _check_access_before_dependents,
@@ -25,6 +26,7 @@ from src.issue_gate import (
     _check_latent_condition_packaging,
     _check_orphan_reinstatement,
     _check_late_protection_or_exposure,
+    _check_sequence_rule_pack_violations,
     run_issue_gate,
 )
 
@@ -99,6 +101,65 @@ class TestNoPrestartInDemob:
         t = _tasks("Establish site")
         t[0]["admin"] = ["Notify resident of work start"]
         assert _check_no_prestart_in_demob(t).result == CheckResult.PASS
+
+
+class TestSequenceRulePacks:
+    def test_match_sequence_rule_pack_for_scissor_lift_roof_access(self):
+        packs = match_sequence_rule_packs(
+            "Access roof via scissor lift through gate into fully guardrailed roof area"
+        )
+        assert any(pack.pack_id == "protected_roof_access_scissor" for pack in packs)
+
+    def test_excluded_roofing_install_does_not_match_sequence_rule_pack(self):
+        packs = match_sequence_rule_packs(
+            "Scissor lift access for metal roofing installation at leading edge"
+        )
+        assert not any(pack.pack_id == "protected_roof_access_scissor" for pack in packs)
+
+    def test_sequence_rule_pack_valid_order_passes(self):
+        tasks = [
+            {"task": "Verify protected access arrangement"},
+            {"task": "Establish exclusion zone and set up scissor lift"},
+            {"task": "Raise and align platform at transfer point"},
+            {"task": "Conduct controlled transfer into protected roof zone"},
+            {"task": "Perform roof work within passive edge protection"},
+            {"task": "Conduct controlled return transfer"},
+            {"task": "Lower plant and demobilise"},
+        ]
+        result = _check_sequence_rule_pack_violations(
+            tasks,
+            "Access roof via scissor lift through gate into fully guardrailed roof area",
+        )
+        assert result.result == CheckResult.PASS
+
+    def test_sequence_rule_pack_late_exclusion_zone_fails(self):
+        tasks = [
+            {"task": "Raise and align platform at transfer point"},
+            {"task": "Conduct controlled transfer into protected roof zone"},
+            {"task": "Perform roof work within passive edge protection"},
+            {"task": "Establish exclusion zone and set up scissor lift"},
+        ]
+        result = _check_sequence_rule_pack_violations(
+            tasks,
+            "Access roof via scissor lift through gate into fully guardrailed roof area",
+        )
+        assert result.result == CheckResult.FAIL
+        assert "exclusion zone" in result.detail
+
+    def test_sequence_rule_pack_missing_transfer_fails(self):
+        tasks = [
+            {"task": "Verify protected access arrangement"},
+            {"task": "Establish exclusion zone and set up scissor lift"},
+            {"task": "Raise and align platform at transfer point"},
+            {"task": "Perform roof work within passive edge protection"},
+            {"task": "Lower plant and demobilise"},
+        ]
+        result = _check_sequence_rule_pack_violations(
+            tasks,
+            "Access roof via scissor lift through gate into fully guardrailed roof area",
+        )
+        assert result.result == CheckResult.FAIL
+        assert "missing required step" in result.detail
 
 
 # ── C4: CCVS coverage ───────────────────────────────────────────────────────
@@ -232,7 +293,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 18  # C1-C6 + C5b + C7-json + C10 + C14-C22
+        assert len(result.checks) == 19  # C1-C6 + C5b + C7-json + C10 + C14-C22 + sequence rule pack check
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -293,7 +354,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 21  # C1-C6 + C5b + C7-json + C10 + C14-C22 + C7-docx + C8 + C9
+        assert len(result.checks) == 22  # C1-C6 + C5b + C7-json + C10 + C14-C22 + seq-rule-pack + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
