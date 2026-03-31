@@ -122,6 +122,18 @@ Run sequentially. Fix deterministic bugs between jobs. Do not accumulate.
 
 ---
 
+## Pilot Tracking Table
+
+| Job | Type | Validator | V Fails | Reviewer | R HF | R Items | Gate FAIL | Gate REV | External | Notes |
+|-----|------|-----------|---------|----------|------|---------|-----------|----------|----------|-------|
+| 1 | remedial | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 2 | 65 | 3 | 3 | Not submitted | Sequence correct. Hold point N/A + membrane drift. C24/C25 caught monitoring/P2. Internally reviewable only. |
+| 2 | fit_out | — | — | — | — | — | — | — | — | — |
+| 3 | demolition | — | — | — | — | — | — | — | — | — |
+| 4 | maintenance | — | — | — | — | — | — | — | — | — |
+| 5 | new_build | — | — | — | — | — | — | — | — | — |
+
+---
+
 ## After the pilot
 
 If pass: define consultant-assisted workflow, begin production-readiness planning.
