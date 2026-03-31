@@ -1,0 +1,2188 @@
+{
+  "route": "full",
+  "tasks": [
+    {
+      "sequence": 2,
+      "task": "Establish exclusion zone and position scissor lift at ground level",
+      "scope": "Set exclusion barriers below roof edge, confirm car park access is clear, position scissor lift under transfer gate, verify platform stability and base bearing.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+        "Struck by moving vehicle \u2014 car park access not fully cleared",
+        "Entrapment \u2014 worker contact with scissor lift mechanism during positioning",
+        "Loss of stability \u2014 uneven or contaminated car park floor bearing scissor lift load"
+      ],
+      "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Check car park floor for oil, water, debris, or soft spots within scissor lift footprint and 1 m radius before positioning.",
+        "Position scissor lift only on level, solid, dry concrete. Do not place on gravel, asphalt, or suspect areas.",
+        "Establish exclusion zone: erect barriers (Class A fencing or tape) minimum 5 m perimeter below roof edge transfer point. Display warning signs.",
+        "Confirm car park access closed to all vehicles. Place 'Do Not Enter' signs at entry points. Verify no vehicle movement before lift operation.",
+        "Check scissor lift base for hydraulic leaks, visible damage, or loose fasteners before positioning. Do not use if defective.",
+        "Operate scissor lift controls only from ground controls while positioning. Confirm platform is fully lowered and locked before workers approach.",
+        "Brief all workers on exclusion zone boundaries and scissor lift hazards. No entry within exclusion zone during lift positioning or raising.",
+        "Position lift personnel only \u2014 maximum two workers spotting. All others remain outside exclusion zone."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise scissor lift until: ground floor base bearing is confirmed stable (checked and signed by supervisor), exclusion zone is fully established and car park access is clear."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: hydraulic leak, torn seals, or visible damage detected on scissor lift base or cylinders.",
+        "\ud83d\uded1 STOP WORK if: car park floor shows settlement, collapse, or soft spots within scissor lift footprint.",
+        "\ud83d\uded1 STOP WORK if: vehicle access cannot be confirmed closed or vehicle enters exclusion zone."
+      ],
+      "admin": [
+        "Supervisor to confirm vehicle access closure and briefing completion before lift positioning starts.",
+        "Record floor bearing condition check (signed by supervisor) before lift platform is raised."
+      ],
+      "ppe": [
+        "Safety helmet",
+        "High-visibility shirt or vest",
+        "Steel-capped boots",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Scissor lift base on stable, dry floor; exclusion zone unbreached; no vehicles in car park.",
+        "who": "Supervisor",
+        "frequency": "Before positioning commences and continuous during lift operation",
+        "evidence": "Visual inspection (signed floor condition form); photographic record of exclusion zone; vehicle access log"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 5,
+      "task": "Replace HVAC filters on four rooftop AHUs",
+      "scope": "Access each AHU in sequence, remove spent filters, check filter housings for debris and damage, install replacement filters, confirm filter seals and frame fit.",
+      "trade_type": "Mechanical",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+        "Crush injury \u2014 rotating fan blade contact during filter removal",
+        "Laceration or abrasion \u2014 sharp filter frame edges or metal louvers",
+        "Inhalation of dust or contamination \u2014 aged filter material disturbance"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Do not access roof or approach AHU until EWP is positioned, stabilised, and anchor point confirmed by supervisor.",
+        "Before filter removal, switch HVAC system to OFF and lock isolation switch in place \u2014 verify no fan rotation for 30 seconds.",
+        "Wear disposable chemical-resistant gloves and dust mask (P2) when handling aged filter material.",
+        "Remove spent filter slowly into closed bag \u2014 do not shake or release dust into air.",
+        "Check filter housing interior for loose debris, corrosion, or damage before installing new filter \u2014 photograph defects if visible.",
+        "Install replacement filter with gasket seal fully seated in frame \u2014 confirm frame clip engagement on all corners.",
+        "Attach safety harness to EWP anchor point before accessing any AHU edge \u2014 maintain harness tension during the entire task.",
+        "Position EWP to maintain 1.2 m minimum clearance from unprotected roof perimeter edge \u2014 do not overreach beyond platform edge."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start filter replacement until: EWP is positioned, anchor point is confirmed by supervisor, and HVAC system is isolated with lock-off in place",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not leave roof until: all four filters are installed, sealed, and frames are checked for correct fit; AHU housings are visually clear of loose debris"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: EWP anchor point fails, becomes loose, or cannot be confirmed before work starts",
+        "\ud83d\uded1 STOP WORK if: HVAC system cannot be isolated or fan rotation is still present after isolation",
+        "\ud83d\uded1 STOP WORK if: worker loses balance, harness becomes detached, or edge protection is breached"
+      ],
+      "admin": [
+        "Obtain current method statement or permit-to-work from facilities or site supervisor before starting work.",
+        "Verify EWP operator holds current licence and has completed safety briefing on roof hazards.",
+        "Record filter replacement completion \u2014 photograph each AHU post-installation to confirm filter type and seal fit.",
+        "Confirm HVAC system is restored to operational status \u2014 no restart until all workers have left roof."
+      ],
+      "ppe": [
+        "Safety harness with shock absorber and anchorage strap \u2014 tested within 12 months",
+        "Hard hat \u2014 secured to prevent wind loss on exposed roof",
+        "High-visibility vest \u2014 required for all roof work",
+        "cut-resistant gloves",
+        "P2 dust mask or respirator \u2014 for aged filter material disturbance",
+        "Steel-capped boots with anti-slip sole"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Confirm HVAC isolation switch is locked OFF and no fan rotation is present.",
+        "who": "Supervisor \u2014 before filter removal commences",
+        "frequency": "Before each AHU filter removal",
+        "evidence": "Isolation lock in place; no audible or visible fan movement for 30 seconds; supervisor sign-off on work permit"
+      },
+      "responsibility": {
+        "SUP": "Supervise Replace HVAC filters on four",
+        "WKR": "Perform Replace HVAC filters on four per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 1,
+      "task": "Verify scissor lift access arrangement and roof entry conditions",
+      "scope": "Confirm guardrailed gate opening exists, scissor lift platform alignment at transfer point, roof edge protection integrity, and occupant exclusion below work zone.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 unguarded or degraded roof edge protection",
+        "Fall from height \u2014 platform misalignment at transfer point",
+        "Entrapment or crush injury \u2014 guardrailed gate malfunction or obstruction",
+        "Struck by falling object \u2014 unsecured tools or materials on roof during inspection"
+      ],
+      "dominant_hazard": "Fall from height \u2014 unguarded or degraded roof edge protection",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Check roof edge protection is continuous, secure, and undamaged along entire transfer zone before lift platform positioning starts.",
+        "Verify scissor lift platform aligns flush with roof threshold \u2014 no gap or step \u2014 and test gate opening and closing freely without obstruction.",
+        "Confirm guardrail height 1.0\u20131.2 m and load capacity 1.2 kN/m at transfer point; do not proceed if integrity is compromised or non-compliant.",
+        "Barricade and exclude all personnel below work zone using signage, tape, and verbal brief until roof entry task is complete.",
+        "Brief occupant exclusion authority and confirm building occupants are not in exclusion zone before lift deployment.",
+        "Check all loose tools and materials are secured or removed from scissor lift platform before raising to transfer height.",
+        "Lower scissor lift platform and confirm gate closes fully after final occupant exits roof; do not leave platform elevated unattended."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise scissor lift platform until: roof edge protection is checked and documented as compliant, and platform-to-roof alignment is verified by supervisor.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not allow occupant transfer until: gate mechanism is tested open and closed, exclusion zone is confirmed clear, and occupant briefed on transfer point layout."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: roof edge protection shows cracks, gaps, or separation from structure.",
+        "\ud83d\uded1 STOP WORK if: scissor lift platform gap exceeds 50 mm or guard height falls below 1.0 m.",
+        "\ud83d\uded1 STOP WORK if: gate sticks, binds, or cannot close fully, or exclusion zone is breached by personnel."
+      ],
+      "admin": [
+        "Site supervisor to conduct pre-use briefing with all occupants on transfer point hazards and emergency procedures.",
+        "Document roof edge condition and platform alignment check in site diary before lift deployment.",
+        "tell building manager of exclusion zone extent and duration; maintain records of occupant briefing."
+      ],
+      "ppe": [
+        "Safety helmet \u2014 worn during all roof access activities.",
+        "High-visibility vest \u2014 worn at transfer point.",
+        "steel-capped footwear\u2014 worn during roof inspection."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Supervisor visually confirms roof edge protection continuous, undamaged, and correct height before each lift deployment.",
+        "who": "Supervisor",
+        "frequency": "Before each scissor lift deployment and before occupant transfer",
+        "evidence": "Site diary entry; photographic record of edge protection condition; gate operation test performed and signed"
+      },
+      "responsibility": {
+        "SUP": "Supervise Verify scissor lift access arrangement",
+        "WKR": "Perform Verify scissor lift access arrangement per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 3,
+      "task": "Raise scissor lift and align platform at roof transfer point",
+      "scope": "Raise platform to roof transfer height, align squarely with guardrailed gate opening, confirm platform stability, test transfer gate operation.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 platform misalignment or instability at elevation",
+        "Crush injury \u2014 scissor lift hydraulic failure during ascent",
+        "Shear or entrapment \u2014 platform contact with roof edge or obstruction during raising",
+        "Struck by falling object \u2014 tools or materials dislodged during platform movement"
+      ],
+      "dominant_hazard": "Fall from height \u2014 platform misalignment or instability at elevation",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+        "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+        "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+        "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+        "Confirm scissor lift base is level and on firm, stable ground before raising platform.",
+        "Check all scissor lift hydraulic hoses and connections for leaks or damage before starting.",
+        "Raise platform slowly to roof transfer height \u2014 stop and check alignment at 50% height.",
+        "Position platform squarely with guardrailed gate opening \u2014 use laser level or theodolite to confirm alignment.",
+        "Test platform stability at full height \u2014 rock platform gently side-to-side and confirm no movement or sway.",
+        "Operate transfer gate fully open and fully closed \u2014 confirm smooth operation and no binding.",
+        "Prohibit workers from stepping on or near platform edge until alignment and stability confirmed.",
+        "Station spotter on ground \u2014 confirm line of sight to platform always during raising."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not proceed to roof transfer until: platform is level, stable, and aligned squarely with gate opening, confirmed by spotter and written on checklist.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not raise platform to full roof height until: scissor lift base is confirmed level, stable, and on firm ground."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: scissor lift shows any hydraulic fluid leak, loss of pressure, or uneven raise rate during ascent.",
+        "\ud83d\uded1 STOP WORK if: platform rocks, sways, or shows instability at any height during raising or at roof transfer point.",
+        "\ud83d\uded1 STOP WORK if: platform misaligns with gate opening or cannot be positioned squarely without force or contact with roof edge.",
+        "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+        "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+      ],
+      "admin": [
+        "Verify operator holds current scissor lift competency card (RII or equivalent) before starting.",
+        "Confirm roof structure engineer assessment is available \u2014 state load capacity at transfer point.",
+        "Brief all workers on exclusion zone and spotter communication protocol before raising platform.",
+        "Record platform alignment check and stability test result on site checklist before transfer work starts.",
+        "Confirm building occupancy status \u2014 unoccupied \u2014 before platform raising.",
+        "Establish two-way radio communication between operator and spotter before ascent."
+      ],
+      "ppe": [
+        "Hard hat \u2014 worn always on platform.",
+        "High-visibility vest \u2014 worn by all workers on and around platform.",
+        "Safety harness with lanyard \u2014 worn by any worker leaning or working near platform edge.",
+        "Steel-capped boots \u2014 worn during all platform operations."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check platform alignment with gate opening at full height using laser level \u2014 spotter confirms alignment visually.",
+        "who": "Scissor lift operator and ground spotter",
+        "frequency": "Before each raising cycle and before transfer gate test",
+        "evidence": "Platform alignment checklist signed by operator and spotter; photographic record of platform position relative to gate opening"
+      },
+      "responsibility": {
+        "SUP": "Supervise Raise scissor lift and align",
+        "WKR": "Perform Raise scissor lift and align per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 4,
+      "task": "Conduct controlled worker transfer into protected roof zone",
+      "scope": "Open guardrailed gate, transfer workers one at a time from platform into roof zone, confirm gate closure and roof edge guardrails intact, brief workers on roof layout and AHU locations.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+        "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+        "Fall from height \u2014 worker loss of balance on roof edge during entry briefing area",
+        "Entrapment \u2014 worker caught between platform and roof edge or gate"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+        "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+        "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+        "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+        "Before gate opening, supervisor checks gate hinges, latch mechanism, and full closure seal \u2014 confirm no damage or corrosion.",
+        "Establish exclusion zone on platform and roof perimeter \u2014 minimum 2m from open gate during transfer \u2014 barricade with tape and warning signs.",
+        "Open gate slowly by hand \u2014 supervisor maintains hand contact throughout opening \u2014 stop immediately if resistance or binding detected.",
+        "Worker approaches gate in upright posture \u2014 feet shoulder-width apart \u2014 no running, jumping, or sideways movement.",
+        "Transfer one worker at a time \u2014 second worker waits on platform behind exclusion line \u2014 no concurrent movement.",
+        "Worker crosses threshold with both hands free \u2014 step deliberately onto roof edge guardrail base \u2014 pause and confirm balance before moving.",
+        "Supervisor visually confirms worker clear of gate threshold \u2014 only then signal next worker to approach gate line.",
+        "After each transfer, supervisor closes gate by hand \u2014 maintain contact throughout closure \u2014 confirm full latch engagement and lock engagement."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not open gate until: supervisor confirms gate mechanism operates freely, latch is intact, and exclusion zone is established and clear of unauthorised personnel.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not brief workers or begin work on roof until: all workers have been transferred safely, gate is fully closed and locked, and roof edge guardrails have been walked and confirmed intact."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: gate binds, sticks, or does not close fully \u2014 do not force gate.",
+        "\ud83d\uded1 STOP WORK if: worker stumbles, loses balance, or shows hesitation during transfer \u2014 retreat to platform and reset.",
+        "\ud83d\uded1 STOP WORK if: guardrail damage, loose uprights, or missing components are found during perimeter walk \u2014 confirm repair before any roof work starts.",
+        "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+        "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+      ],
+      "admin": [
+        "Verify each worker holds current White Card (CPCCWHS1001) and current Working at Heights competency (RIIOHS204E or equivalent) before transfer begins.",
+        "Obtain signed engineer confirmation that roof structure is adequate at platform-to-roof transfer point \u2014 attach to site file.",
+        "Brief supervisor on gate closure procedure and guardrail inspection routine before first transfer.",
+        "Record transfer completion, guardrail condition, and worker briefing on site safety log."
+      ],
+      "ppe": [
+        "Safety helmet (hard hat) \u2014 worn throughout transfer and roof zone entry.",
+        "hi-viz shirt or vest\u2014 worn always on platform and roof.",
+        "steel-capped footwear\u2014 closed-toe, good grip sole \u2014 no loose laces.",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Supervisor confirms gate closure latch engagement and roof edge guardrails intact before work commences.",
+        "who": "Supervisor",
+        "frequency": "Before each worker transfer and before briefing commencement",
+        "evidence": "Visual inspection record on site safety log \u2014 gate latch status, guardrail uprights intact, no visible damage, exclusion zone cleared."
+      },
+      "responsibility": {
+        "SUP": "Supervise Conduct controlled worker transfer into",
+        "WKR": "Perform Conduct controlled worker transfer into per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 6,
+      "task": "Clean condenser coils on four rooftop AHUs",
+      "scope": "Apply approved coil cleaner to condenser fins and tubes on each unit, allow contact time per product instructions, rinse with low-pressure water or compressed air, check for debris accumulation and airflow blockage.",
+      "trade_type": "Mechanical",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+        "Chemical burn \u2014 contact with approved coil cleaner product",
+        "Eye injury \u2014 cleaner spray or rinse water splash during cleaning",
+        "Electrical shock \u2014 water contact with energised electrical components if unit powered"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Confirm roof edge protection (barriers, guardrails, or netting) installed and compliant before accessing roof.",
+        "Establish exclusion zone minimum 2 m from unprotected edges; prohibit worker movement beyond zone boundary.",
+        "Wear fall arrest harness with lanyard secured to fixed anchor point rated \u226515 kN before starting cleaning.",
+        "Obtain SDS for coil cleaner on point of use; verify dilution ratio and contact time before application.",
+        "Apply coil cleaner only to fins and tubes; prevent spray contact with adjacent electrical components or energised surfaces.",
+        "Wear chemical-resistant gloves (nitrile minimum) and eye protection",
+        "Use low-pressure water rinse (\u226420 bar) or compressed air; direct spray away from worker face and body.",
+        "Power down AHU unit at isolation switch before starting cleaning; verify de-energised with voltage tester."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not access roof until: edge protection verified complete and fall arrest anchor point tested and signed off by site supervisor."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: worker proximity to roof edge exceeds 2 m or edge protection is breached or damaged.",
+        "\ud83d\uded1 STOP WORK if: cleaner contacts energised electrical surfaces, water ingress into electrical enclosures, or voltage tester shows energised components.",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds 40 km/h or worker harness/lanyard damage is observed."
+      ],
+      "admin": [
+        "Verify worker holds current White Card (CPCCWHS1001) and working at heights competency (RIIOHS204E or equivalent) before roof access.",
+        "Brief all workers on roof edge location, exclusion zone boundary, and harness anchor points before starting.",
+        "Record SDS location and product dilution ratio on site induction or work card.",
+        "Document fall arrest system pre-use inspection and isolation confirmation before work commences."
+      ],
+      "ppe": [
+        "Fall arrest harness with lanyard",
+        "Hard hat",
+        "eye protection",
+        "cut-resistant gloves",
+        "High-visibility clothing",
+        "steel-capped footwear"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Verify fall arrest lanyard secured to tested anchor point before and during cleaning.",
+        "who": "Site supervisor and worker (buddy check)",
+        "frequency": "Before roof access and continuously during work",
+        "evidence": "Visual confirmation of harness attachment; signed anchor point inspection record; worker verbal acknowledgement"
+      },
+      "responsibility": {
+        "SUP": "Supervise Clean condenser coils on four",
+        "WKR": "Perform Clean condenser coils on four per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 7,
+      "task": "check belts and bearings on four rooftop AHUs",
+      "scope": "Check belt tension and surface condition on each unit, listen for bearing noise or vibration, record any wear, damage, or misalignment, note any units requiring follow-up service.",
+      "trade_type": "Mechanical",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+        "Crush or laceration injury \u2014 rotating belt or pulley contact during contact check",
+        "Noise-induced hearing damage \u2014 prolonged exposure to bearing noise during assessment",
+        "Struck by moving component \u2014 unexpected unit restart during inspection"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Confirm roof edge protection installed and secured before worker transfers to roof \u2014 fall arrest harness fitted and tethered to fixed roof anchor point during entire inspection.",
+        "Isolate each AHU electrically before opening belt guards or accessing rotating components \u2014 use lockout tag on disconnect switch; verify isolation with multimeter before contact.",
+        "Check belt tension using belt tension gauge; do not hand-test while unit is de-energised \u2014 record tension reading and visual wear (cracks, fraying, glazing) for each belt.",
+        "Listen for bearing noise and vibration using stethoscope or vibration meter at bearing housing only \u2014 do not place hand or fingers on rotating or moving parts.",
+        "Wear organic vapour respirator and hearing protection (foam plugs, minimum NRR 20 dB) during noise assessment \u2014 remove respiratory protection immediately after bearing assessment.",
+        "Brief worker on no-start rule: do not restart any AHU during inspection \u2014 post 'DO NOT START' sign on disconnect during work.",
+        "Record condition, wear, misalignment, and units requiring follow-up service in inspection log \u2014 photograph belt surface condition and bearing location if defect identified.",
+        "Confirm all belt guards reinstalled and secured; all AHU isolation tags removed; roof area cleared of tools and equipment before worker transfers off roof."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not access roof or begin inspection until: roof edge protection (guardrail or certified fall arrest system) is installed and inspected by site supervisor, and fall rescue plan is confirmed available on site.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not open belt guards or access rotating components until: AHU is electrically isolated, lockout tag is applied, and isolation is verified by multimeter or equivalent test."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: roof edge protection is damaged, incomplete, or absent during inspection.",
+        "\ud83d\uded1 STOP WORK if: AHU cannot be safely isolated or isolation cannot be verified before opening guards.",
+        "\ud83d\uded1 STOP WORK if: bearing noise assessment indicates vibration or noise consistent with imminent bearing failure \u2014 isolate unit and escalate to maintenance supervisor."
+      ],
+      "admin": [
+        "Verify worker holds current Working at Heights competency (RIIOHS204E or equivalent) before task starts.",
+        "Confirm roof structure and anchor points assessed and approved by site engineer before EWP access or rope access method is used.",
+        "Brief worker on location of four AHUs, roof hazards (edge location, fragile areas, obstructions), and roof emergency procedures before work starts.",
+        "make sure fall rescue plan (response time, rescue equipment, trained responder) is documented and available on site before elevated work commences."
+      ],
+      "ppe": [
+        "Fall arrest harness (rated to AS/NZS 1891.1) \u2014 fitted, tethered to fixed roof anchor point, inspected for cuts or damage before use.",
+        "Lanyard or retractable fall arrest device \u2014 tether length limited to prevent worker reaching unprotected edge.",
+        "Safety helmet (hard hat) \u2014 worn always on roof.",
+        "High-visibility clothing \u2014 visible from ground level.",
+        "steel-capped footwear\u2014 slip-resistant sole, ankle support.",
+        "Hearing protection \u2014 foam plugs minimum NRR 20 dB or equivalent \u2014 inserted correctly during bearing noise assessment only.",
+        "Organic vapour respirator (not P2 dust mask) \u2014 if bearing assessment includes sniffing for oil degradation or bearing odour \u2014 fitted per SDS guidance."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Site supervisor",
+        "frequency": "before worker transfers to roof; continuous during inspection",
+        "evidence": "visual confirmation of harness attachment and tether length; supervisor observation log; worker position maintained minimum 1 m from roof edge"
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "Inspect per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 8,
+      "task": "Document maintenance completion and prepare for return transfer",
+      "scope": "Record filter replacement, coil cleaning, and bearing inspection findings on job sheet, confirm all tools and materials collected, tell ground-level supervisor work is complete.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+        "Struck by falling object \u2014 unsecured tools or materials falling during collection",
+        "Loss of situational awareness \u2014 fatigue or distraction during close-out documentation"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+        "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+        "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+        "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+        "Before collecting tools or materials, move to centre of roof platform \u2014 minimum 2 m from all edges.",
+        "Place all tools and materials in a closed container or bag \u2014 do not carry loose items near edge.",
+        "Brief second worker (if present) on collection sequence \u2014 confirm handover of each item before movement.",
+        "Complete job sheet at workstation away from edge \u2014 do not document while standing near perimeter.",
+        "Conduct tool count against pre-work inventory \u2014 mark discrepancies on job sheet before leaving platform.",
+        "Attach lanyard to harness and anchor point \u2014 keep harness on until fully inside EWP bucket or return to ground.",
+        "Signal ground supervisor on radio \u2014 confirm ready for platform descent before moving to transfer point.",
+        "Do not collect or move tools after radio signal sent \u2014 load is frozen until ground supervisor confirms descent."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not transfer from roof to EWP bucket until: job sheet completed, all tools accounted for, lanyard attached to anchor, and ground supervisor confirms bucket is stable and ready to receive."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any tool or material is found loose near roof edge during collection.",
+        "\ud83d\uded1 STOP WORK if: job sheet cannot be completed due to missing filter, coil, or bearing inspection data \u2014 do not leave platform until findings are recorded.",
+        "\ud83d\uded1 STOP WORK if: worker feels fatigued or unbalanced \u2014 return to EWP bucket immediately and tell ground supervisor.",
+        "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+        "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+      ],
+      "admin": [
+        "Maintain job sheet on clipboard \u2014 do not set down near edge or allow to blow away.",
+        "Record filter make, serial, and replacement date on job sheet.",
+        "Record coil condition (clean / debris / damage) and cleaning method on job sheet.",
+        "Record bearing inspection result (smooth / noise / resistance) on job sheet.",
+        "Sign and date job sheet \u2014 hand to ground supervisor at handover.",
+        "tell ground supervisor by radio: 'Work complete, tools collected, returning to ground level.'"
+      ],
+      "ppe": [
+        "Full-body harness \u2014 fitted and adjusted to wearer.",
+        "steel-capped footwear\u2014 grip and stability on metal platform.",
+        "High-visibility vest \u2014 visible to ground crew during descent.",
+        "cut-resistant gloves",
+        "Hard hat \u2014 worn always until inside vehicle or secured area."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Worker remains minimum 2 m from all roof edges during collection and documentation.",
+        "who": "Second worker (if assigned) and ground supervisor via radio observation.",
+        "frequency": "Continuous during tool collection and documentation phase.",
+        "evidence": "Visual confirmation from ground supervisor; job sheet signed with timestamp; tool count reconciled against pre-work inventory on job sheet."
+      },
+      "responsibility": {
+        "SUP": "Supervise Document maintenance completion and prepare",
+        "WKR": "Perform Document maintenance completion and prepare per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 9,
+      "task": "Conduct controlled worker return transfer from roof to scissor lift",
+      "scope": "Open guardrailed gate, transfer workers one at a time from roof zone onto platform, confirm gate closure, verify all workers and equipment clear of roof area.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+        "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+        "Fall from height \u2014 worker loss of balance exiting roof during descent",
+        "Entrapment \u2014 worker caught between roof edge and descending platform"
+      ],
+      "dominant_hazard": "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+        "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+        "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+        "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+        "Verify scissor lift platform is level, stable, and positioned flush against roof edge before gate opening.",
+        "Confirm guardrailed gate operates freely and closes fully \u2014 test open-close cycle once before transfer commences.",
+        "Brief each worker on transfer sequence: walk straight, step down onto platform, remain on platform until gate fully closes.",
+        "Open guardrailed gate slowly and hold in open position throughout worker transfer \u2014 do not release until worker is on platform.",
+        "Transfer one worker at a time \u2014 no multiple workers on transition at once.",
+        "Direct worker to step down deliberately onto platform \u2014 no jumping or rushing.",
+        "Confirm worker is fully on platform and in safe position before closing gate.",
+        "Close guardrailed gate fully and verify closure is secure before lift descends."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start worker transfer until: scissor lift platform is level, flush against roof edge, and guardrailed gate is confirmed operational and tested open-close.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not lower scissor lift until: guardrailed gate is fully closed, locked, all workers and equipment are accounted for on platform, and roof area is visually confirmed clear."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: scissor lift platform is not level or has shifted from roof edge contact.",
+        "\ud83d\uded1 STOP WORK if: guardrailed gate is damaged, stuck, or does not close fully.",
+        "\ud83d\uded1 STOP WORK if: worker loses balance, falls, or requires emergency assistance during transfer.",
+        "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+        "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+        "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+      ],
+      "admin": [
+        "Appoint one competent supervisor to direct transfer \u2014 supervisor remains visible throughout sequence.",
+        "Record worker count before transfer and confirm count on platform after final gate closure.",
+        "If transfer is delayed or interrupted, re-brief all workers on sequence before restarting.",
+        "Document any equipment failure or near-miss during transfer and report to site manager."
+      ],
+      "ppe": [
+        "Hard hat \u2014 worn by all workers during transfer.",
+        "High-visibility vest \u2014 worn by all workers on roof and platform.",
+        "Steel-capped boots \u2014 worn by all workers to reduce slip risk."
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Scissor lift platform remains level and flush against roof edge throughout transfer.",
+        "who": "Supervisor",
+        "frequency": "continuous during transfer sequence",
+        "evidence": "Visual confirmation before each worker transfer; supervisor signs off platform position and gate status on transfer log."
+      },
+      "responsibility": {
+        "SUP": "Supervise Conduct controlled worker return transfer",
+        "WKR": "Perform Conduct controlled worker return transfer per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 10,
+      "task": "Lower scissor lift and secure at ground level",
+      "scope": "Lower platform slowly to ground level, confirm stable contact with car park floor, retract and lock platform, remove exclusion barriers.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+        "Struck by moving platform \u2014 worker contact during lowering",
+        "Loss of stability \u2014 platform contact with obstacle or uneven floor",
+        "Entrapment \u2014 worker hand or foot contact with scissor mechanism during descent"
+      ],
+      "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Lower platform slowly using control button \u2014 do not exceed 0.5 m/s descent rate.",
+        "Position spotter at ground level with clear line of sight to platform and floor contact point.",
+        "Stop lowering immediately if platform tilts, jerks, or contacts obstacle \u2014 do not resume until cause is identified.",
+        "Confirm platform fully contact with car park floor and weight transferred \u2014 platform must not rock or shift.",
+        "Retract and lock scissor mechanism fully \u2014 engage all lock pins and confirm visual lock engagement before releasing controls.",
+        "Remove all exclusion barriers and signage \u2014 confirm area is clear of warning tape and traffic cones.",
+        "Verify all personnel are clear of platform and scissor mechanism \u2014 no hand or foot contact permitted during retraction."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not retract scissor mechanism until: platform is confirmed stable and fully seated on floor by spotter sign-off.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove exclusion barriers until: platform is fully retracted, locked, and all personnel cleared from work area."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: platform descends faster than controlled rate or jerks during lowering.",
+        "\ud83d\uded1 STOP WORK if: platform rocks, tilts, or does not fully contact floor at any point.",
+        "\ud83d\uded1 STOP WORK if: scissor mechanism lock pins do not engage fully or lock pins are visibly damaged or missing."
+      ],
+      "admin": [
+        "Brief all personnel on ground control procedures before lowering commences.",
+        "Confirm EWP operator competency current \u2014 Working at Heights (RIIOHS204E or equivalent).",
+        "Record completion of lowering and ground-level securing in site log."
+      ],
+      "ppe": [
+        "Hard hat",
+        "Visibility vest",
+        "Steel-capped boots"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Spotter confirms platform stable contact and full floor weight transfer before retraction.",
+        "who": "EWP operator + ground spotter",
+        "frequency": "Continuous during lowering and retraction; final confirmation before barrier removal.",
+        "evidence": "Spotter visual sign-off; platform stable without rocking or tilting; all lock pins visibly engaged; work log entry."
+      },
+      "responsibility": {
+        "SUP": "Supervise Lower scissor lift and secure",
+        "WKR": "Perform Lower scissor lift and secure per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    },
+    {
+      "sequence": 11,
+      "task": "Remove scissor lift from site and confirm roof zone clear",
+      "scope": "Return scissor lift to supplier or storage, confirm no equipment or materials remain on roof, confirm roof access gate is secured, hand over completed job sheet to building contact.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+        "Struck by falling object \u2014 unsecured roof equipment or materials during final check",
+        "Loss of communication \u2014 unclear hand-over procedures with building contact"
+      ],
+      "dominant_hazard": "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+      "risk_pre": "Medium(4)",
+      "risk_post": "Low(2)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 2
+      },
+      "controls": [
+        "Verify scissor lift is empty, stable, and fully lowered before towing. Check wheel brakes are locked and no load is suspended.",
+        "Establish exclusion zone (minimum 10 m radius) around scissor lift in car park. Barricade or cone-delineate entire tow path. No pedestrian or vehicle crossing permitted.",
+        "Assign dedicated spotter. Spotter to remain visible to tow vehicle driver always. Use radio or hand signals (agreed beforehand) \u2014 never rely on shouting.",
+        "Tow scissor lift at walking speed only. Driver to sound horn before moving. Stop immediately if spotter signals stop or communication is lost.",
+        "Conduct final roof walk with building contact present. Check all equipment, materials, tools, and debris have been removed. Photograph bare roof and document in job sheet.",
+        "Check roof access gate. Confirm it closes fully, locks engage properly, and is secured. Test lock function twice.",
+        "Confirm with building contact in writing (signed job sheet and hand-over checklist) that roof zone is clear and safe. Retain copy for site records."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not tow scissor lift until: exclusion zone is established, spotter is briefed and positioned, and tow path is clear of all pedestrians and vehicles",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not hand over to building contact until: final roof walk is complete, all equipment removed is documented, roof access gate is tested and secured, and job sheet is signed by both parties"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: spotter loses visual contact with tow vehicle or communication fails during transport",
+        "\ud83d\uded1 STOP WORK if: any equipment, material, or debris is found on roof during final walk or roof access gate fails to lock",
+        "\ud83d\uded1 STOP WORK if: building contact refuses to sign hand-over sheet or raises unresolved safety concern"
+      ],
+      "admin": [
+        "Obtain written confirmation from scissor lift supplier or storage facility that equipment has been received and is in acceptable condition.",
+        "Complete and sign job sheet with building contact. Document: scissor lift removal date and time, final roof condition (clear/not clear), roof access gate status (secured/not secured), and any defects or items left on roof.",
+        "Provide copy of signed job sheet and hand-over checklist to building contact and retain copy in site file."
+      ],
+      "ppe": [
+        "High-visibility vest (reflective, AS/NZS 1906.4) \u2014 worn by spotter and tow vehicle occupants during car park transport",
+        "Safety helmet \u2014 worn by all personnel on roof during final walk and gate check",
+        "steel-capped footwear\u2014 worn during roof walk and equipment inspection"
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Site Supervisor",
+        "frequency": "Continuous during tow operation",
+        "evidence": "Spotter positioned and radio check performed before tow starts; photographic record of empty roof and secured gate; signed job sheet with building contact"
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove scissor lift from site",
+        "WKR": "Perform Remove scissor lift from site per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.11"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.3 \u2014 Work at height with risk of fall >2m",
+    "hrcw_license_class": "EWP Licence \u2014 WP class (boom over 11m)",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "tiltup_precast": false,
+      "mobile_plant": true,
+      "demolition": false,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": false,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": false,
+    "epa_license_required": false,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "Welding helmet or face shield \u2014 AS/NZS 1337.1",
+      "Leather welding gloves",
+      "Flame-resistant clothing \u2014 no synthetic fabrics",
+      "P2 fume respirator \u2014 where ventilation inadequate",
+      "Full-body harness \u2014 AS/NZS 1891.1 compliant",
+      "Energy-absorbing lanyard \u2014 double lanyard where continuous attachment required",
+      "Helmet with chin strap \u2014 AS/NZS 1801",
+      "Three points of contact \u2014 mandatory on all ladder access",
+      "Hard hat \u2014 mandatory",
+      "Full body harness + double lanyard \u2014 mandatory for EWP-to-roof transfer",
+      "Full body harness with double lanyard \u2014 all workers on roof surface",
+      "Non-slip safety boots \u2014 mandatory on roof",
+      "Hi-vis vest",
+      "UV protection \u2014 long sleeves, sunscreen, wide-brim hat where harness permits",
+      "Hearing protection \u2014 mechanical plant rooms"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Hot Work Permit \u2014 issued by site supervisor before each job",
+      "Welding qualification \u2014 relevant if structural welding",
+      "Working at heights \u2014 verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
+      "EWP operator licence \u2014 WP class where boom exceeds 11m",
+      "Ladder safety training \u2014 pre-use inspection and safe use training",
+      "EWP competency \u2014 EWPA Yellow Card or equivalent documented competency for scissor lift class",
+      "Refrigerant handling licence \u2014 ARC licence for refrigerant work"
+    ],
+    "permits": [
+      "Hot Work Permit \u2014 mandatory before welding or cutting in any building",
+      "Fire watch \u2014 30 minutes minimum after hot work ceases",
+      "Working at heights permit \u2014 signed before each elevated task",
+      "Engineer confirmation \u2014 roof structure adequate at transfer point where EWP-to-roof transfer is planned",
+      "Roof access permit \u2014 before any worker accesses roof",
+      "Crane/hoist permit \u2014 where lifting plant to roof or mezzanine"
+    ],
+    "qualifications": [
+      "Fire warden designation \u2014 person assigned before work starts",
+      "Fire extinguisher \u2014 9L water or 9kg CO2 within 3m of work",
+      "Competent person \u2014 pre-use inspection of fall arrest equipment",
+      "Rescue plan \u2014 documented before work above 2m begins",
+      "Rescue equipment \u2014 on site and ready for immediate deployment before any elevated work starts",
+      "Ladder secured \u2014 tied or footed at base before use",
+      "Ladder angle \u2014 1:4 ratio (75 degrees) for lean-to ladders",
+      "Ladder overhang \u2014 minimum 1m above landing point at top",
+      "Tools and materials \u2014 use tool belt or hoist, never carry on ladder",
+      "Pre-use inspection \u2014 check rungs, feet and stiles before every use",
+      "EWP pre-start inspection \u2014 completed and signed by operator before each shift per AS 2550",
+      "OEM operator manual \u2014 on site and available to operator at all times",
+      "EWP specifications confirmed: [INSERT MAKE/MODEL/SERIAL], platform rated capacity [INSERT kg], max working height [INSERT m], max wind speed [INSERT km/h per OEM]",
+      "Current inspection certificate \u2014 AS 2550 major inspection within date",
+      "Anchor point inspection \u2014 roof anchors inspected and certified per AS/NZS 1891.4 before use",
+      "Perimeter edge protection \u2014 installed before workers access roof, maintained throughout",
+      "Refrigerant leak detection \u2014 before and after commissioning",
+      "Crane lift plan \u2014 if rooftop plant placement required"
+    ],
+    "notifications": [],
+    "regulatory_notes": [
+      "SafeWork NSW \u2014 Hot Work Code of Practice",
+      "Fire watch mandatory \u2014 30 minutes minimum after work stops",
+      "Flammable materials \u2014 remove or shield within 5m of hot work",
+      "WHS Reg 2017 Part 4.4 \u2014 fall prevention hierarchy applies to all fall risk",
+      "Harness inspection \u2014 pre-use check logged before each shift",
+      "WHS Reg 2017 r.305 \u2014 rescue procedure required before commencing work at height",
+      "Suspension trauma \u2014 incapacitated worker must be lowered within 15 minutes; harness straps can cause positional asphyxia",
+      "Emergency contacts \u2014 on-site personnel trained in rescue procedure before elevated work begins",
+      "WHS Reg 2017 r.291-303 \u2014 fall prevention hierarchy: (1) eliminate, (2) passive edge protection/guardrail, (3) restraint system, (4) fall arrest, (5) administrative",
+      "Edge protection first \u2014 guardrails preferred over harness where work area permits fixed barriers",
+      "Control line \u2014 2m setback from edge, used only when guardrail not practicable",
+      "Exclusion zone required below WAH operations \u2014 size proportional to fall/drop zone; physical barrier where practicable, flagging/bunting as minimum",
+      "Emergency access must be maintained to all work zones including WAH exclusion zones",
+      "AS/NZS 1892.1 \u2014 Portable ladders \u2014 aluminium",
+      "Fixed roof ladders \u2014 must comply with AS 1657 fixed platforms and walkways",
+      "Pre-start checklist \u2014 completed and signed before each shift",
+      "Scissor lifts \u2014 guardrails provide primary fall protection, harness not typically required",
+      "Level ground required \u2014 check manufacturer slope limit",
+      "WHS Reg 2017 r.291-306 \u2014 Falls \u2014 hierarchy of controls applies to all roof work",
+      "AS/NZS 1891.4 \u2014 Industrial fall-arrest systems \u2014 anchor point requirements",
+      "Hold point \u2014 roof structure and structural steel erection complete and approved for loading before any materials placed",
+      "Perimeter safety handrails to be installed as per manufacturer requirements before roof access",
+      "Roof anchors must be fixed to roof structure as specified \u2014 not to cladding or purlins alone",
+      "Roofing fixings at required spacing for wind load \u2014 per specification; not to be reduced on site",
+      "Bolts checked and torque verified 24 hours after erection",
+      "Sealant \u2014 correct grade, type, and colour; sealed guttering and downpipe joints",
+      "Wind conditions \u2014 work suspended in sustained winds exceeding safe limit for harness effectiveness",
+      "Skylights and penetrations \u2014 barricaded or covered before roof access to prevent fall-through",
+      "Sarking/insulation certificate of compliance required",
+      "Roofing material, roof anchor, and installation warranties required as project documentation",
+      "Refrigerant handling restricted to ARC-licensed technicians",
+      "Rooftop plant placement may require crane \u2014 separate lift plan and SWMS",
+      "Coordinate HVAC commissioning with electrical energisation sequence"
+    ],
+    "plant": [
+      "Elevated Work Platform (EWP)"
+    ],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "maintenance",
+      "building_context": "new",
+      "occupancy_context": "unoccupied",
+      "scope_modifiers": [
+        "ewp_access",
+        "commercial",
+        "external_envelope",
+        "high_rise",
+        "ewp_transfer"
+      ]
+    }
+  },
+  "agent_outputs": {
+    "task_manifest": {
+      "tasks": [
+        {
+          "sequence": 1,
+          "task": "Verify scissor lift access arrangement and roof entry conditions",
+          "scope": "Confirm guardrailed gate opening exists, scissor lift platform alignment at transfer point, roof edge protection integrity, and occupant exclusion below work zone.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "work at height >2m fall risk"
+          ],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 2,
+          "task": "Establish exclusion zone and position scissor lift at ground level",
+          "scope": "Set exclusion barriers below roof edge, confirm car park access is clear, position scissor lift under transfer gate, verify platform stability and base bearing.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 3,
+          "task": "Raise scissor lift and align platform at roof transfer point",
+          "scope": "Raise platform to roof transfer height, align squarely with guardrailed gate opening, confirm platform stability, test transfer gate operation.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "work at height >2m fall risk"
+          ],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 4,
+          "task": "Conduct controlled worker transfer into protected roof zone",
+          "scope": "Open guardrailed gate, transfer workers one at a time from platform into roof zone, confirm gate closure and roof edge guardrails intact, brief workers on roof layout and AHU locations.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "work at height >2m fall risk"
+          ],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 5,
+          "task": "Replace HVAC filters on four rooftop AHUs",
+          "scope": "Access each AHU in sequence, remove spent filters, inspect filter housings for debris and damage, install replacement filters, confirm filter seals and frame fit.",
+          "trade_type": "Mechanical",
+          "environment": [
+            "at height",
+            "occupied building",
+            "outdoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 6,
+          "task": "Clean condenser coils on four rooftop AHUs",
+          "scope": "Apply approved coil cleaner to condenser fins and tubes on each unit, allow contact time per product instructions, rinse with low-pressure water or compressed air, inspect for debris accumulation and airflow blockage.",
+          "trade_type": "Mechanical",
+          "environment": [
+            "at height",
+            "occupied building",
+            "outdoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 7,
+          "task": "Inspect belts and bearings on four rooftop AHUs",
+          "scope": "Check belt tension and surface condition on each unit, listen for bearing noise or vibration, record any wear, damage, or misalignment, note any units requiring follow-up service.",
+          "trade_type": "Mechanical",
+          "environment": [
+            "at height",
+            "occupied building",
+            "outdoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 8,
+          "task": "Document maintenance completion and prepare for return transfer",
+          "scope": "Record filter replacement, coil cleaning, and bearing inspection findings on job sheet, confirm all tools and materials collected, notify ground-level supervisor work is complete.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 9,
+          "task": "Conduct controlled worker return transfer from roof to scissor lift",
+          "scope": "Open guardrailed gate, transfer workers one at a time from roof zone onto platform, confirm gate closure, verify all workers and equipment clear of roof area.",
+          "trade_type": "General",
+          "environment": [
+            "at height",
+            "occupied building"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "work at height >2m fall risk"
+          ],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 10,
+          "task": "Lower scissor lift and secure at ground level",
+          "scope": "Lower platform slowly to ground level, confirm stable contact with car park floor, retract and lock platform, remove exclusion barriers.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 11,
+          "task": "Remove scissor lift from site and confirm roof zone clear",
+          "scope": "Return scissor lift to supplier or storage, confirm no equipment or materials remain on roof, confirm roof access gate is secured, hand over completed job sheet to building contact.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        }
+      ],
+      "total_tasks": 11,
+      "primary_trade": "Mechanical",
+      "environment_summary": [
+        "at height",
+        "occupied building",
+        "outdoor"
+      ],
+      "hrcw_present": true
+    },
+    "risk_manifest": {
+      "risks": [
+        {
+          "sequence": 1,
+          "task": "Verify scissor lift access arrangement and roof entry conditions",
+          "hazards": [
+            "Fall from height \u2014 unguarded or degraded roof edge protection",
+            "Fall from height \u2014 platform misalignment at transfer point",
+            "Entrapment or crush injury \u2014 guardrailed gate malfunction or obstruction",
+            "Struck by falling object \u2014 unsecured tools or materials on roof during inspection"
+          ],
+          "dominant_hazard": "Fall from height \u2014 unguarded or degraded roof edge protection",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 2,
+          "task": "Establish exclusion zone and position scissor lift at ground level",
+          "hazards": [
+            "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+            "Struck by moving vehicle \u2014 car park access not fully cleared",
+            "Entrapment \u2014 worker contact with scissor lift mechanism during positioning",
+            "Loss of stability \u2014 uneven or contaminated car park floor bearing scissor lift load"
+          ],
+          "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 3,
+          "task": "Raise scissor lift and align platform at roof transfer point",
+          "hazards": [
+            "Fall from height \u2014 platform misalignment or instability at elevation",
+            "Crush injury \u2014 scissor lift hydraulic failure during ascent",
+            "Shear or entrapment \u2014 platform contact with roof edge or obstruction during raising",
+            "Struck by falling object \u2014 tools or materials dislodged during platform movement"
+          ],
+          "dominant_hazard": "Fall from height \u2014 platform misalignment or instability at elevation",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 4,
+          "task": "Conduct controlled worker transfer into protected roof zone",
+          "hazards": [
+            "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+            "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+            "Fall from height \u2014 worker loss of balance on roof edge during entry briefing area",
+            "Entrapment \u2014 worker caught between platform and roof edge or gate"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 5,
+          "task": "Replace HVAC filters on four rooftop AHUs",
+          "hazards": [
+            "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+            "Crush injury \u2014 rotating fan blade contact during filter removal",
+            "Laceration or abrasion \u2014 sharp filter frame edges or metal louvers",
+            "Inhalation of dust or contamination \u2014 aged filter material disturbance"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 6,
+          "task": "Clean condenser coils on four rooftop AHUs",
+          "hazards": [
+            "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+            "Chemical burn \u2014 contact with approved coil cleaner product",
+            "Eye injury \u2014 cleaner spray or rinse water splash during cleaning",
+            "Electrical shock \u2014 water contact with energised electrical components if unit powered"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 7,
+          "task": "Inspect belts and bearings on four rooftop AHUs",
+          "hazards": [
+            "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+            "Crush or laceration injury \u2014 rotating belt or pulley contact during contact check",
+            "Noise-induced hearing damage \u2014 prolonged exposure to bearing noise during assessment",
+            "Struck by moving component \u2014 unexpected unit restart during inspection"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 8,
+          "task": "Document maintenance completion and prepare for return transfer",
+          "hazards": [
+            "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+            "Struck by falling object \u2014 unsecured tools or materials falling during collection",
+            "Loss of situational awareness \u2014 fatigue or distraction during close-out documentation"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 9,
+          "task": "Conduct controlled worker return transfer from roof to scissor lift",
+          "hazards": [
+            "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+            "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+            "Fall from height \u2014 worker loss of balance exiting roof during descent",
+            "Entrapment \u2014 worker caught between roof edge and descending platform"
+          ],
+          "dominant_hazard": "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 10,
+          "task": "Lower scissor lift and secure at ground level",
+          "hazards": [
+            "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+            "Struck by moving platform \u2014 worker contact during lowering",
+            "Loss of stability \u2014 platform contact with obstacle or uneven floor",
+            "Entrapment \u2014 worker hand or foot contact with scissor mechanism during descent"
+          ],
+          "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 11,
+          "task": "Remove scissor lift from site and confirm roof zone clear",
+          "hazards": [
+            "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+            "Struck by falling object \u2014 unsecured roof equipment or materials during final check",
+            "Loss of communication \u2014 unclear hand-over procedures with building contact"
+          ],
+          "dominant_hazard": "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        }
+      ]
+    },
+    "task_blocks_raw": [
+      {
+        "sequence": 1,
+        "task": "Verify scissor lift access arrangement and roof entry conditions",
+        "scope": "Confirm guardrailed gate opening exists, scissor lift platform alignment at transfer point, roof edge protection integrity, and occupant exclusion below work zone.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 unguarded or degraded roof edge protection",
+          "Fall from height \u2014 platform misalignment at transfer point",
+          "Entrapment or crush injury \u2014 guardrailed gate malfunction or obstruction",
+          "Struck by falling object \u2014 unsecured tools or materials on roof during inspection"
+        ],
+        "dominant_hazard": "Fall from height \u2014 unguarded or degraded roof edge protection",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Check roof edge protection is continuous, secure, and undamaged along entire transfer zone before lift platform positioning starts.",
+          "Verify scissor lift platform aligns flush with roof threshold \u2014 no gap or step \u2014 and test gate opening and closing freely without obstruction.",
+          "Confirm guardrail height 1.0\u20131.2 m and load capacity 1.2 kN/m at transfer point; do not proceed if integrity is compromised or non-compliant.",
+          "Barricade and exclude all personnel below work zone using signage, tape, and verbal brief until roof entry task is complete.",
+          "Brief occupant exclusion authority and confirm building occupants are not in exclusion zone before lift deployment.",
+          "Check all loose tools and materials are secured or removed from scissor lift platform before raising to transfer height.",
+          "Lower scissor lift platform and confirm gate closes fully after final occupant exits roof; do not leave platform elevated unattended."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not raise scissor lift platform until: roof edge protection is checked and documented as compliant, and platform-to-roof alignment is verified by supervisor.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not allow occupant transfer until: gate mechanism is tested open and closed, exclusion zone is confirmed clear, and occupant briefed on transfer point layout."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: roof edge protection shows cracks, gaps, or separation from structure.",
+          "\ud83d\uded1 STOP WORK if: scissor lift platform gap exceeds 50 mm or guard height falls below 1.0 m.",
+          "\ud83d\uded1 STOP WORK if: gate sticks, binds, or cannot close fully, or exclusion zone is breached by personnel."
+        ],
+        "admin": [
+          "Site supervisor to conduct pre-use briefing with all occupants on transfer point hazards and emergency procedures.",
+          "Document roof edge condition and platform alignment check in site diary before lift deployment.",
+          "tell building manager of exclusion zone extent and duration; maintain records of occupant briefing."
+        ],
+        "ppe": [
+          "Safety helmet \u2014 worn during all roof access activities.",
+          "High-visibility vest \u2014 worn at transfer point.",
+          "steel-capped footwear\u2014 worn during roof inspection."
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Supervisor visually confirms roof edge protection continuous, undamaged, and correct height before each lift deployment.",
+          "who": "Supervisor",
+          "frequency": "Before each scissor lift deployment and before occupant transfer",
+          "evidence": "Site diary entry; photographic record of edge protection condition; gate operation test performed and signed"
+        },
+        "responsibility": {
+          "SUP": "Supervise Verify scissor lift access arrangement",
+          "WKR": "Perform Verify scissor lift access arrangement per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.3"
+      },
+      {
+        "sequence": 2,
+        "task": "Establish exclusion zone and position scissor lift at ground level",
+        "scope": "Set exclusion barriers below roof edge, confirm car park access is clear, position scissor lift under transfer gate, verify platform stability and base bearing.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+          "Struck by moving vehicle \u2014 car park access not fully cleared",
+          "Entrapment \u2014 worker contact with scissor lift mechanism during positioning",
+          "Loss of stability \u2014 uneven or contaminated car park floor bearing scissor lift load"
+        ],
+        "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Check car park floor for oil, water, debris, or soft spots within scissor lift footprint and 1 m radius before positioning.",
+          "Position scissor lift only on level, solid, dry concrete. Do not place on gravel, asphalt, or suspect areas.",
+          "Establish exclusion zone: erect barriers (Class A fencing or tape) minimum 5 m perimeter below roof edge transfer point. Display warning signs.",
+          "Confirm car park access closed to all vehicles. Place 'Do Not Enter' signs at entry points. Verify no vehicle movement before lift operation.",
+          "Check scissor lift base for hydraulic leaks, visible damage, or loose fasteners before positioning. Do not use if defective.",
+          "Operate scissor lift controls only from ground controls while positioning. Confirm platform is fully lowered and locked before workers approach.",
+          "Brief all workers on exclusion zone boundaries and scissor lift hazards. No entry within exclusion zone during lift positioning or raising.",
+          "Position lift personnel only \u2014 maximum two workers spotting. All others remain outside exclusion zone."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not raise scissor lift until: ground floor base bearing is confirmed stable (checked and signed by supervisor), exclusion zone is fully established and car park access is clear."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: hydraulic leak, torn seals, or visible damage detected on scissor lift base or cylinders.",
+          "\ud83d\uded1 STOP WORK if: car park floor shows settlement, collapse, or soft spots within scissor lift footprint.",
+          "\ud83d\uded1 STOP WORK if: vehicle access cannot be confirmed closed or vehicle enters exclusion zone."
+        ],
+        "admin": [
+          "Supervisor to confirm vehicle access closure and briefing completion before lift positioning starts.",
+          "Record floor bearing condition check (signed by supervisor) before lift platform is raised."
+        ],
+        "ppe": [
+          "Safety helmet",
+          "High-visibility shirt or vest",
+          "Steel-capped boots",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Scissor lift base on stable, dry floor; exclusion zone unbreached; no vehicles in car park.",
+          "who": "Supervisor",
+          "frequency": "Before positioning commences and continuous during lift operation",
+          "evidence": "Visual inspection (signed floor condition form); photographic record of exclusion zone; vehicle access log"
+        },
+        "responsibility": {
+          "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+          "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.1"
+      },
+      {
+        "sequence": 3,
+        "task": "Raise scissor lift and align platform at roof transfer point",
+        "scope": "Raise platform to roof transfer height, align squarely with guardrailed gate opening, confirm platform stability, test transfer gate operation.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 platform misalignment or instability at elevation",
+          "Crush injury \u2014 scissor lift hydraulic failure during ascent",
+          "Shear or entrapment \u2014 platform contact with roof edge or obstruction during raising",
+          "Struck by falling object \u2014 tools or materials dislodged during platform movement"
+        ],
+        "dominant_hazard": "Fall from height \u2014 platform misalignment or instability at elevation",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+          "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+          "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+          "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+          "Confirm scissor lift base is level and on firm, stable ground before raising platform.",
+          "Check all scissor lift hydraulic hoses and connections for leaks or damage before starting.",
+          "Raise platform slowly to roof transfer height \u2014 stop and check alignment at 50% height.",
+          "Position platform squarely with guardrailed gate opening \u2014 use laser level or theodolite to confirm alignment.",
+          "Test platform stability at full height \u2014 rock platform gently side-to-side and confirm no movement or sway.",
+          "Operate transfer gate fully open and fully closed \u2014 confirm smooth operation and no binding.",
+          "Prohibit workers from stepping on or near platform edge until alignment and stability confirmed.",
+          "Station spotter on ground \u2014 confirm line of sight to platform always during raising."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not proceed to roof transfer until: platform is level, stable, and aligned squarely with gate opening, confirmed by spotter and written on checklist.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not raise platform to full roof height until: scissor lift base is confirmed level, stable, and on firm ground."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: scissor lift shows any hydraulic fluid leak, loss of pressure, or uneven raise rate during ascent.",
+          "\ud83d\uded1 STOP WORK if: platform rocks, sways, or shows instability at any height during raising or at roof transfer point.",
+          "\ud83d\uded1 STOP WORK if: platform misaligns with gate opening or cannot be positioned squarely without force or contact with roof edge.",
+          "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+          "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+          "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+        ],
+        "admin": [
+          "Verify operator holds current scissor lift competency card (RII or equivalent) before starting.",
+          "Confirm roof structure engineer assessment is available \u2014 state load capacity at transfer point.",
+          "Brief all workers on exclusion zone and spotter communication protocol before raising platform.",
+          "Record platform alignment check and stability test result on site checklist before transfer work starts.",
+          "Confirm building occupancy status \u2014 unoccupied \u2014 before platform raising.",
+          "Establish two-way radio communication between operator and spotter before ascent."
+        ],
+        "ppe": [
+          "Hard hat \u2014 worn always on platform.",
+          "High-visibility vest \u2014 worn by all workers on and around platform.",
+          "Safety harness with lanyard \u2014 worn by any worker leaning or working near platform edge.",
+          "Steel-capped boots \u2014 worn during all platform operations."
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Check platform alignment with gate opening at full height using laser level \u2014 spotter confirms alignment visually.",
+          "who": "Scissor lift operator and ground spotter",
+          "frequency": "Before each raising cycle and before transfer gate test",
+          "evidence": "Platform alignment checklist signed by operator and spotter; photographic record of platform position relative to gate opening"
+        },
+        "responsibility": {
+          "SUP": "Supervise Raise scissor lift and align",
+          "WKR": "Perform Raise scissor lift and align per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.4"
+      },
+      {
+        "sequence": 4,
+        "task": "Conduct controlled worker transfer into protected roof zone",
+        "scope": "Open guardrailed gate, transfer workers one at a time from platform into roof zone, confirm gate closure and roof edge guardrails intact, brief workers on roof layout and AHU locations.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+          "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+          "Fall from height \u2014 worker loss of balance on roof edge during entry briefing area",
+          "Entrapment \u2014 worker caught between platform and roof edge or gate"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker slip or trip during platform-to-roof transition",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+          "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+          "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+          "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+          "Before gate opening, supervisor checks gate hinges, latch mechanism, and full closure seal \u2014 confirm no damage or corrosion.",
+          "Establish exclusion zone on platform and roof perimeter \u2014 minimum 2m from open gate during transfer \u2014 barricade with tape and warning signs.",
+          "Open gate slowly by hand \u2014 supervisor maintains hand contact throughout opening \u2014 stop immediately if resistance or binding detected.",
+          "Worker approaches gate in upright posture \u2014 feet shoulder-width apart \u2014 no running, jumping, or sideways movement.",
+          "Transfer one worker at a time \u2014 second worker waits on platform behind exclusion line \u2014 no concurrent movement.",
+          "Worker crosses threshold with both hands free \u2014 step deliberately onto roof edge guardrail base \u2014 pause and confirm balance before moving.",
+          "Supervisor visually confirms worker clear of gate threshold \u2014 only then signal next worker to approach gate line.",
+          "After each transfer, supervisor closes gate by hand \u2014 maintain contact throughout closure \u2014 confirm full latch engagement and lock engagement."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not open gate until: supervisor confirms gate mechanism operates freely, latch is intact, and exclusion zone is established and clear of unauthorised personnel.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not brief workers or begin work on roof until: all workers have been transferred safely, gate is fully closed and locked, and roof edge guardrails have been walked and confirmed intact."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: gate binds, sticks, or does not close fully \u2014 do not force gate.",
+          "\ud83d\uded1 STOP WORK if: worker stumbles, loses balance, or shows hesitation during transfer \u2014 retreat to platform and reset.",
+          "\ud83d\uded1 STOP WORK if: guardrail damage, loose uprights, or missing components are found during perimeter walk \u2014 confirm repair before any roof work starts.",
+          "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+          "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+          "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+        ],
+        "admin": [
+          "Verify each worker holds current White Card (CPCCWHS1001) and current Working at Heights competency (RIIOHS204E or equivalent) before transfer begins.",
+          "Obtain signed engineer confirmation that roof structure is adequate at platform-to-roof transfer point \u2014 attach to site file.",
+          "Brief supervisor on gate closure procedure and guardrail inspection routine before first transfer.",
+          "Record transfer completion, guardrail condition, and worker briefing on site safety log."
+        ],
+        "ppe": [
+          "Safety helmet (hard hat) \u2014 worn throughout transfer and roof zone entry.",
+          "hi-viz shirt or vest\u2014 worn always on platform and roof.",
+          "steel-capped footwear\u2014 closed-toe, good grip sole \u2014 no loose laces.",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Supervisor confirms gate closure latch engagement and roof edge guardrails intact before work commences.",
+          "who": "Supervisor",
+          "frequency": "Before each worker transfer and before briefing commencement",
+          "evidence": "Visual inspection record on site safety log \u2014 gate latch status, guardrail uprights intact, no visible damage, exclusion zone cleared."
+        },
+        "responsibility": {
+          "SUP": "Supervise Conduct controlled worker transfer into",
+          "WKR": "Perform Conduct controlled worker transfer into per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.5"
+      },
+      {
+        "sequence": 5,
+        "task": "Replace HVAC filters on four rooftop AHUs",
+        "scope": "Access each AHU in sequence, remove spent filters, check filter housings for debris and damage, install replacement filters, confirm filter seals and frame fit.",
+        "trade_type": "Mechanical",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+          "Crush injury \u2014 rotating fan blade contact during filter removal",
+          "Laceration or abrasion \u2014 sharp filter frame edges or metal louvers",
+          "Inhalation of dust or contamination \u2014 aged filter material disturbance"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during AHU access",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Do not access roof or approach AHU until EWP is positioned, stabilised, and anchor point confirmed by supervisor.",
+          "Before filter removal, switch HVAC system to OFF and lock isolation switch in place \u2014 verify no fan rotation for 30 seconds.",
+          "Wear disposable chemical-resistant gloves and dust mask (P2) when handling aged filter material.",
+          "Remove spent filter slowly into closed bag \u2014 do not shake or release dust into air.",
+          "Check filter housing interior for loose debris, corrosion, or damage before installing new filter \u2014 photograph defects if visible.",
+          "Install replacement filter with gasket seal fully seated in frame \u2014 confirm frame clip engagement on all corners.",
+          "Attach safety harness to EWP anchor point before accessing any AHU edge \u2014 maintain harness tension during the entire task.",
+          "Position EWP to maintain 1.2 m minimum clearance from unprotected roof perimeter edge \u2014 do not overreach beyond platform edge."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start filter replacement until: EWP is positioned, anchor point is confirmed by supervisor, and HVAC system is isolated with lock-off in place",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not leave roof until: all four filters are installed, sealed, and frames are checked for correct fit; AHU housings are visually clear of loose debris"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: EWP anchor point fails, becomes loose, or cannot be confirmed before work starts",
+          "\ud83d\uded1 STOP WORK if: HVAC system cannot be isolated or fan rotation is still present after isolation",
+          "\ud83d\uded1 STOP WORK if: worker loses balance, harness becomes detached, or edge protection is breached"
+        ],
+        "admin": [
+          "Obtain current method statement or permit-to-work from facilities or site supervisor before starting work.",
+          "Verify EWP operator holds current licence and has completed safety briefing on roof hazards.",
+          "Record filter replacement completion \u2014 photograph each AHU post-installation to confirm filter type and seal fit.",
+          "Confirm HVAC system is restored to operational status \u2014 no restart until all workers have left roof."
+        ],
+        "ppe": [
+          "Safety harness with shock absorber and anchorage strap \u2014 tested within 12 months",
+          "Hard hat \u2014 secured to prevent wind loss on exposed roof",
+          "High-visibility vest \u2014 required for all roof work",
+          "cut-resistant gloves",
+          "P2 dust mask or respirator \u2014 for aged filter material disturbance",
+          "Steel-capped boots with anti-slip sole"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Confirm HVAC isolation switch is locked OFF and no fan rotation is present.",
+          "who": "Supervisor \u2014 before filter removal commences",
+          "frequency": "Before each AHU filter removal",
+          "evidence": "Isolation lock in place; no audible or visible fan movement for 30 seconds; supervisor sign-off on work permit"
+        },
+        "responsibility": {
+          "SUP": "Supervise Replace HVAC filters on four",
+          "WKR": "Perform Replace HVAC filters on four per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.2"
+      },
+      {
+        "sequence": 6,
+        "task": "Clean condenser coils on four rooftop AHUs",
+        "scope": "Apply approved coil cleaner to condenser fins and tubes on each unit, allow contact time per product instructions, rinse with low-pressure water or compressed air, check for debris accumulation and airflow blockage.",
+        "trade_type": "Mechanical",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+          "Chemical burn \u2014 contact with approved coil cleaner product",
+          "Eye injury \u2014 cleaner spray or rinse water splash during cleaning",
+          "Electrical shock \u2014 water contact with energised electrical components if unit powered"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during coil cleaning",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Confirm roof edge protection (barriers, guardrails, or netting) installed and compliant before accessing roof.",
+          "Establish exclusion zone minimum 2 m from unprotected edges; prohibit worker movement beyond zone boundary.",
+          "Wear fall arrest harness with lanyard secured to fixed anchor point rated \u226515 kN before starting cleaning.",
+          "Obtain SDS for coil cleaner on point of use; verify dilution ratio and contact time before application.",
+          "Apply coil cleaner only to fins and tubes; prevent spray contact with adjacent electrical components or energised surfaces.",
+          "Wear chemical-resistant gloves (nitrile minimum) and eye protection",
+          "Use low-pressure water rinse (\u226420 bar) or compressed air; direct spray away from worker face and body.",
+          "Power down AHU unit at isolation switch before starting cleaning; verify de-energised with voltage tester."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not access roof until: edge protection verified complete and fall arrest anchor point tested and signed off by site supervisor."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: worker proximity to roof edge exceeds 2 m or edge protection is breached or damaged.",
+          "\ud83d\uded1 STOP WORK if: cleaner contacts energised electrical surfaces, water ingress into electrical enclosures, or voltage tester shows energised components.",
+          "\ud83d\uded1 STOP WORK if: wind speed exceeds 40 km/h or worker harness/lanyard damage is observed."
+        ],
+        "admin": [
+          "Verify worker holds current White Card (CPCCWHS1001) and working at heights competency (RIIOHS204E or equivalent) before roof access.",
+          "Brief all workers on roof edge location, exclusion zone boundary, and harness anchor points before starting.",
+          "Record SDS location and product dilution ratio on site induction or work card.",
+          "Document fall arrest system pre-use inspection and isolation confirmation before work commences."
+        ],
+        "ppe": [
+          "Fall arrest harness with lanyard",
+          "Hard hat",
+          "eye protection",
+          "cut-resistant gloves",
+          "High-visibility clothing",
+          "steel-capped footwear"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Verify fall arrest lanyard secured to tested anchor point before and during cleaning.",
+          "who": "Site supervisor and worker (buddy check)",
+          "frequency": "Before roof access and continuously during work",
+          "evidence": "Visual confirmation of harness attachment; signed anchor point inspection record; worker verbal acknowledgement"
+        },
+        "responsibility": {
+          "SUP": "Supervise Clean condenser coils on four",
+          "WKR": "Perform Clean condenser coils on four per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.6"
+      },
+      {
+        "sequence": 7,
+        "task": "check belts and bearings on four rooftop AHUs",
+        "scope": "Check belt tension and surface condition on each unit, listen for bearing noise or vibration, record any wear, damage, or misalignment, note any units requiring follow-up service.",
+        "trade_type": "Mechanical",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+          "Crush or laceration injury \u2014 rotating belt or pulley contact during contact check",
+          "Noise-induced hearing damage \u2014 prolonged exposure to bearing noise during assessment",
+          "Struck by moving component \u2014 unexpected unit restart during inspection"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker proximity to unprotected roof edge during inspection",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Confirm roof edge protection installed and secured before worker transfers to roof \u2014 fall arrest harness fitted and tethered to fixed roof anchor point during entire inspection.",
+          "Isolate each AHU electrically before opening belt guards or accessing rotating components \u2014 use lockout tag on disconnect switch; verify isolation with multimeter before contact.",
+          "Check belt tension using belt tension gauge; do not hand-test while unit is de-energised \u2014 record tension reading and visual wear (cracks, fraying, glazing) for each belt.",
+          "Listen for bearing noise and vibration using stethoscope or vibration meter at bearing housing only \u2014 do not place hand or fingers on rotating or moving parts.",
+          "Wear organic vapour respirator and hearing protection (foam plugs, minimum NRR 20 dB) during noise assessment \u2014 remove respiratory protection immediately after bearing assessment.",
+          "Brief worker on no-start rule: do not restart any AHU during inspection \u2014 post 'DO NOT START' sign on disconnect during work.",
+          "Record condition, wear, misalignment, and units requiring follow-up service in inspection log \u2014 photograph belt surface condition and bearing location if defect identified.",
+          "Confirm all belt guards reinstalled and secured; all AHU isolation tags removed; roof area cleared of tools and equipment before worker transfers off roof."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not access roof or begin inspection until: roof edge protection (guardrail or certified fall arrest system) is installed and inspected by site supervisor, and fall rescue plan is confirmed available on site.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not open belt guards or access rotating components until: AHU is electrically isolated, lockout tag is applied, and isolation is verified by multimeter or equivalent test."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: roof edge protection is damaged, incomplete, or absent during inspection.",
+          "\ud83d\uded1 STOP WORK if: AHU cannot be safely isolated or isolation cannot be verified before opening guards.",
+          "\ud83d\uded1 STOP WORK if: bearing noise assessment indicates vibration or noise consistent with imminent bearing failure \u2014 isolate unit and escalate to maintenance supervisor."
+        ],
+        "admin": [
+          "Verify worker holds current Working at Heights competency (RIIOHS204E or equivalent) before task starts.",
+          "Confirm roof structure and anchor points assessed and approved by site engineer before EWP access or rope access method is used.",
+          "Brief worker on location of four AHUs, roof hazards (edge location, fragile areas, obstructions), and roof emergency procedures before work starts.",
+          "make sure fall rescue plan (response time, rescue equipment, trained responder) is documented and available on site before elevated work commences."
+        ],
+        "ppe": [
+          "Fall arrest harness (rated to AS/NZS 1891.1) \u2014 fitted, tethered to fixed roof anchor point, inspected for cuts or damage before use.",
+          "Lanyard or retractable fall arrest device \u2014 tether length limited to prevent worker reaching unprotected edge.",
+          "Safety helmet (hard hat) \u2014 worn always on roof.",
+          "High-visibility clothing \u2014 visible from ground level.",
+          "steel-capped footwear\u2014 slip-resistant sole, ankle support.",
+          "Hearing protection \u2014 foam plugs minimum NRR 20 dB or equivalent \u2014 inserted correctly during bearing noise assessment only.",
+          "Organic vapour respirator (not P2 dust mask) \u2014 if bearing assessment includes sniffing for oil degradation or bearing odour \u2014 fitted per SDS guidance."
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Site supervisor",
+          "frequency": "before worker transfers to roof; continuous during inspection",
+          "evidence": "visual confirmation of harness attachment and tether length; supervisor observation log; worker position maintained minimum 1 m from roof edge"
+        },
+        "responsibility": {
+          "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+          "WKR": "Inspect per specification, photograph defects, report issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.7"
+      },
+      {
+        "sequence": 8,
+        "task": "Document maintenance completion and prepare for return transfer",
+        "scope": "Record filter replacement, coil cleaning, and bearing inspection findings on job sheet, confirm all tools and materials collected, tell ground-level supervisor work is complete.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+          "Struck by falling object \u2014 unsecured tools or materials falling during collection",
+          "Loss of situational awareness \u2014 fatigue or distraction during close-out documentation"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker inattention during equipment collection near roof edge",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+          "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+          "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+          "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+          "Before collecting tools or materials, move to centre of roof platform \u2014 minimum 2 m from all edges.",
+          "Place all tools and materials in a closed container or bag \u2014 do not carry loose items near edge.",
+          "Brief second worker (if present) on collection sequence \u2014 confirm handover of each item before movement.",
+          "Complete job sheet at workstation away from edge \u2014 do not document while standing near perimeter.",
+          "Conduct tool count against pre-work inventory \u2014 mark discrepancies on job sheet before leaving platform.",
+          "Attach lanyard to harness and anchor point \u2014 keep harness on until fully inside EWP bucket or return to ground.",
+          "Signal ground supervisor on radio \u2014 confirm ready for platform descent before moving to transfer point.",
+          "Do not collect or move tools after radio signal sent \u2014 load is frozen until ground supervisor confirms descent."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not transfer from roof to EWP bucket until: job sheet completed, all tools accounted for, lanyard attached to anchor, and ground supervisor confirms bucket is stable and ready to receive."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: any tool or material is found loose near roof edge during collection.",
+          "\ud83d\uded1 STOP WORK if: job sheet cannot be completed due to missing filter, coil, or bearing inspection data \u2014 do not leave platform until findings are recorded.",
+          "\ud83d\uded1 STOP WORK if: worker feels fatigued or unbalanced \u2014 return to EWP bucket immediately and tell ground supervisor.",
+          "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+          "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+          "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+        ],
+        "admin": [
+          "Maintain job sheet on clipboard \u2014 do not set down near edge or allow to blow away.",
+          "Record filter make, serial, and replacement date on job sheet.",
+          "Record coil condition (clean / debris / damage) and cleaning method on job sheet.",
+          "Record bearing inspection result (smooth / noise / resistance) on job sheet.",
+          "Sign and date job sheet \u2014 hand to ground supervisor at handover.",
+          "tell ground supervisor by radio: 'Work complete, tools collected, returning to ground level.'"
+        ],
+        "ppe": [
+          "Full-body harness \u2014 fitted and adjusted to wearer.",
+          "steel-capped footwear\u2014 grip and stability on metal platform.",
+          "High-visibility vest \u2014 visible to ground crew during descent.",
+          "cut-resistant gloves",
+          "Hard hat \u2014 worn always until inside vehicle or secured area."
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Worker remains minimum 2 m from all roof edges during collection and documentation.",
+          "who": "Second worker (if assigned) and ground supervisor via radio observation.",
+          "frequency": "Continuous during tool collection and documentation phase.",
+          "evidence": "Visual confirmation from ground supervisor; job sheet signed with timestamp; tool count reconciled against pre-work inventory on job sheet."
+        },
+        "responsibility": {
+          "SUP": "Supervise Document maintenance completion and prepare",
+          "WKR": "Perform Document maintenance completion and prepare per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.8"
+      },
+      {
+        "sequence": 9,
+        "task": "Conduct controlled worker return transfer from roof to scissor lift",
+        "scope": "Open guardrailed gate, transfer workers one at a time from roof zone onto platform, confirm gate closure, verify all workers and equipment clear of roof area.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+          "Struck by guardrailed gate \u2014 gate malfunction or premature closure",
+          "Fall from height \u2014 worker loss of balance exiting roof during descent",
+          "Entrapment \u2014 worker caught between roof edge and descending platform"
+        ],
+        "dominant_hazard": "Fall from height \u2014 worker slip or trip during roof-to-platform transition",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "BASE CONTROLS TAGGED OUT before any worker initiates transfer step \u2014 non-negotiable. Ground spotter confirms tag-out complete and calls 'TRANSFER CLEAR' before worker moves",
+          "Confirm horizontal gap between EWP platform and roof landing does not exceed 300mm and vertical step does not exceed 100mm \u2014 re-measure if EWP has repositioned",
+          "Worker attaches lanyard to certified structural roof anchor before disconnecting from EWP anchor \u2014 worker must not be unattached at any point during transfer",
+          "Ground spotter maintains visual contact with transferring worker throughout and confirms safe landing before clearing next worker",
+          "Verify scissor lift platform is level, stable, and positioned flush against roof edge before gate opening.",
+          "Confirm guardrailed gate operates freely and closes fully \u2014 test open-close cycle once before transfer commences.",
+          "Brief each worker on transfer sequence: walk straight, step down onto platform, remain on platform until gate fully closes.",
+          "Open guardrailed gate slowly and hold in open position throughout worker transfer \u2014 do not release until worker is on platform.",
+          "Transfer one worker at a time \u2014 no multiple workers on transition at once.",
+          "Direct worker to step down deliberately onto platform \u2014 no jumping or rushing.",
+          "Confirm worker is fully on platform and in safe position before closing gate.",
+          "Close guardrailed gate fully and verify closure is secure before lift descends."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not initiate transfer until: EWP base controls are tagged out, ground spotter is in position, and gap/step dimensions are confirmed within limits (300mm horizontal / 100mm vertical)",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start worker transfer until: scissor lift platform is level, flush against roof edge, and guardrailed gate is confirmed operational and tested open-close.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not lower scissor lift until: guardrailed gate is fully closed, locked, all workers and equipment are accounted for on platform, and roof area is visually confirmed clear."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: scissor lift platform is not level or has shifted from roof edge contact.",
+          "\ud83d\uded1 STOP WORK if: guardrailed gate is damaged, stuck, or does not close fully.",
+          "\ud83d\uded1 STOP WORK if: worker loses balance, falls, or requires emergency assistance during transfer.",
+          "\ud83d\uded1 STOP WORK if: EWP base controls are not tagged out or spotter is not in position before transfer",
+          "\ud83d\uded1 STOP WORK if: gap between EWP platform and roof exceeds 300mm horizontal or 100mm vertical step",
+          "\ud83d\uded1 STOP WORK if: wind speed exceeds EWP manufacturer OEM limit \u2014 do not transfer in high wind"
+        ],
+        "admin": [
+          "Appoint one competent supervisor to direct transfer \u2014 supervisor remains visible throughout sequence.",
+          "Record worker count before transfer and confirm count on platform after final gate closure.",
+          "If transfer is delayed or interrupted, re-brief all workers on sequence before restarting.",
+          "Document any equipment failure or near-miss during transfer and report to site manager."
+        ],
+        "ppe": [
+          "Hard hat \u2014 worn by all workers during transfer.",
+          "High-visibility vest \u2014 worn by all workers on roof and platform.",
+          "Steel-capped boots \u2014 worn by all workers to reduce slip risk."
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Scissor lift platform remains level and flush against roof edge throughout transfer.",
+          "who": "Supervisor",
+          "frequency": "continuous during transfer sequence",
+          "evidence": "Visual confirmation before each worker transfer; supervisor signs off platform position and gate status on transfer log."
+        },
+        "responsibility": {
+          "SUP": "Supervise Conduct controlled worker return transfer",
+          "WKR": "Perform Conduct controlled worker return transfer per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.9"
+      },
+      {
+        "sequence": 10,
+        "task": "Lower scissor lift and secure at ground level",
+        "scope": "Lower platform slowly to ground level, confirm stable contact with car park floor, retract and lock platform, remove exclusion barriers.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+          "Struck by moving platform \u2014 worker contact during lowering",
+          "Loss of stability \u2014 platform contact with obstacle or uneven floor",
+          "Entrapment \u2014 worker hand or foot contact with scissor mechanism during descent"
+        ],
+        "dominant_hazard": "Crush injury \u2014 scissor lift hydraulic failure or uncontrolled descent",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Lower platform slowly using control button \u2014 do not exceed 0.5 m/s descent rate.",
+          "Position spotter at ground level with clear line of sight to platform and floor contact point.",
+          "Stop lowering immediately if platform tilts, jerks, or contacts obstacle \u2014 do not resume until cause is identified.",
+          "Confirm platform fully contact with car park floor and weight transferred \u2014 platform must not rock or shift.",
+          "Retract and lock scissor mechanism fully \u2014 engage all lock pins and confirm visual lock engagement before releasing controls.",
+          "Remove all exclusion barriers and signage \u2014 confirm area is clear of warning tape and traffic cones.",
+          "Verify all personnel are clear of platform and scissor mechanism \u2014 no hand or foot contact permitted during retraction."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not retract scissor mechanism until: platform is confirmed stable and fully seated on floor by spotter sign-off.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not remove exclusion barriers until: platform is fully retracted, locked, and all personnel cleared from work area."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: platform descends faster than controlled rate or jerks during lowering.",
+          "\ud83d\uded1 STOP WORK if: platform rocks, tilts, or does not fully contact floor at any point.",
+          "\ud83d\uded1 STOP WORK if: scissor mechanism lock pins do not engage fully or lock pins are visibly damaged or missing."
+        ],
+        "admin": [
+          "Brief all personnel on ground control procedures before lowering commences.",
+          "Confirm EWP operator competency current \u2014 Working at Heights (RIIOHS204E or equivalent).",
+          "Record completion of lowering and ground-level securing in site log."
+        ],
+        "ppe": [
+          "Hard hat",
+          "Visibility vest",
+          "Steel-capped boots"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Spotter confirms platform stable contact and full floor weight transfer before retraction.",
+          "who": "EWP operator + ground spotter",
+          "frequency": "Continuous during lowering and retraction; final confirmation before barrier removal.",
+          "evidence": "Spotter visual sign-off; platform stable without rocking or tilting; all lock pins visibly engaged; work log entry."
+        },
+        "responsibility": {
+          "SUP": "Supervise Lower scissor lift and secure",
+          "WKR": "Perform Lower scissor lift and secure per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.10"
+      },
+      {
+        "sequence": 11,
+        "task": "Remove scissor lift from site and confirm roof zone clear",
+        "scope": "Return scissor lift to supplier or storage, confirm no equipment or materials remain on roof, confirm roof access gate is secured, hand over completed job sheet to building contact.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+          "Struck by falling object \u2014 unsecured roof equipment or materials during final check",
+          "Loss of communication \u2014 unclear hand-over procedures with building contact"
+        ],
+        "dominant_hazard": "Struck by moving vehicle \u2014 scissor lift towing or transport in car park",
+        "risk_pre": "Medium(4)",
+        "risk_post": "Low(2)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 2
+        },
+        "controls": [
+          "Verify scissor lift is empty, stable, and fully lowered before towing. Check wheel brakes are locked and no load is suspended.",
+          "Establish exclusion zone (minimum 10 m radius) around scissor lift in car park. Barricade or cone-delineate entire tow path. No pedestrian or vehicle crossing permitted.",
+          "Assign dedicated spotter. Spotter to remain visible to tow vehicle driver always. Use radio or hand signals (agreed beforehand) \u2014 never rely on shouting.",
+          "Tow scissor lift at walking speed only. Driver to sound horn before moving. Stop immediately if spotter signals stop or communication is lost.",
+          "Conduct final roof walk with building contact present. Check all equipment, materials, tools, and debris have been removed. Photograph bare roof and document in job sheet.",
+          "Check roof access gate. Confirm it closes fully, locks engage properly, and is secured. Test lock function twice.",
+          "Confirm with building contact in writing (signed job sheet and hand-over checklist) that roof zone is clear and safe. Retain copy for site records."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not tow scissor lift until: exclusion zone is established, spotter is briefed and positioned, and tow path is clear of all pedestrians and vehicles",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not hand over to building contact until: final roof walk is complete, all equipment removed is documented, roof access gate is tested and secured, and job sheet is signed by both parties"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: spotter loses visual contact with tow vehicle or communication fails during transport",
+          "\ud83d\uded1 STOP WORK if: any equipment, material, or debris is found on roof during final walk or roof access gate fails to lock",
+          "\ud83d\uded1 STOP WORK if: building contact refuses to sign hand-over sheet or raises unresolved safety concern"
+        ],
+        "admin": [
+          "Obtain written confirmation from scissor lift supplier or storage facility that equipment has been received and is in acceptable condition.",
+          "Complete and sign job sheet with building contact. Document: scissor lift removal date and time, final roof condition (clear/not clear), roof access gate status (secured/not secured), and any defects or items left on roof.",
+          "Provide copy of signed job sheet and hand-over checklist to building contact and retain copy in site file."
+        ],
+        "ppe": [
+          "High-visibility vest (reflective, AS/NZS 1906.4) \u2014 worn by spotter and tow vehicle occupants during car park transport",
+          "Safety helmet \u2014 worn by all personnel on roof during final walk and gate check",
+          "steel-capped footwear\u2014 worn during roof walk and equipment inspection"
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Site Supervisor",
+          "frequency": "Continuous during tow operation",
+          "evidence": "Spotter positioned and radio check performed before tow starts; photographic record of empty roof and secured gate; signed job sheet with building contact"
+        },
+        "responsibility": {
+          "SUP": "Supervise Remove scissor lift from site",
+          "WKR": "Perform Remove scissor lift from site per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.11"
+      }
+    ]
+  },
+  "task_count": 11
+}
