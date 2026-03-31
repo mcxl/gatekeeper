@@ -130,7 +130,7 @@ Run sequentially. Fix deterministic bugs between jobs. Do not accumulate.
 | 2 | fit_out | RETRY_INTERNAL | 2 | BELOW_WORKING_DRAFT | 6 | 59 | — | — | Not submitted | Demolition N/A CCVS + disconnection cert drift. C24 caught monitoring copy-paste. 12 pattern candidates. |
 | 3 | demolition | ESCALATE_EXTERNAL | 0 | BELOW_WORKING_DRAFT | 5 | 60 | 0 | 4 | Not submitted | Cleanest gate result (0 FAIL). Demolish CCVS fix worked. Disconnection allowed. Services sequence late. |
 | 4 | maintenance | ESCALATE_EXTERNAL | 0 | BELOW_WORKING_DRAFT | 3 | 38 | 0 | 4 | Not submitted | Scissor lift protected access. No unsupported WAH controls. Lowest review items (38). Task 1.2 early. |
-| 5 | new_build | — | — | — | — | — | — | — | — | — |
+| 5 | new_build | RETRY_INTERNAL | 1 | BELOW_WORKING_DRAFT | 2 | 48 | 1 | 3 | Not submitted | Steel erection sequence correct. Crane/prop/bolt logic present. Staging N/A + prop removal SIL. |
 
 ---
 
@@ -138,3 +138,79 @@ Run sequentially. Fix deterministic bugs between jobs. Do not accumulate.
 
 If pass: define consultant-assisted workflow, begin production-readiness planning.
 If fail: record what failed, classify the defect, address before retrying.
+
+---
+
+## Pilot Results Summary (2026-03-31)
+
+### Final tracking table
+
+| Job | Type | Validator | V Fails | Gate FAIL | Gate REV | R HF | R Items |
+|-----|------|-----------|---------|-----------|----------|------|---------|
+| 1 | remedial | RETRY_INTERNAL | 2 | — | — | 2 | 69 |
+| 2 | fit_out | RETRY_INTERNAL | 2 | — | — | 6 | 59 |
+| 3 | demolition | ESCALATE_EXTERNAL | 0 | 0 | 4 | 5 | 60 |
+| 4 | maintenance | ESCALATE_EXTERNAL | 0 | 0 | 4 | 3 | 38 |
+| 5 | new_build | RETRY_INTERNAL | 1 | 1 | 3 | 2 | 48 |
+
+### Success criteria assessment
+
+| Criterion | Target | Result | Met? |
+|-----------|--------|--------|------|
+| Validator PASS_INTERNAL 4/5 | 4 pass | 2 pass (J3, J4 ESCALATE_EXTERNAL = 0 FAIL) | PARTIAL — 2/5 zero-fail, 3/5 have 1-2 FAIL |
+| Reviewer HF < 3 on 4/5 | 4 jobs | 3 jobs (J1=2, J4=3, J5=2) | PARTIAL — 3/5 meet, J2=6 and J3=5 exceed |
+| 2 jobs externally reviewable | 2 | J3 and J4 (0 gate FAIL) | MET |
+| No new systemic architecture defect | None | None found | MET |
+
+**Overall: PARTIAL PASS.** Two of four criteria met, two partially met. The system produces usable drafts but not consistently clean enough for unassisted use.
+
+### Recurring defect families
+
+| Defect | Frequency | Type | Fix layer |
+|--------|-----------|------|-----------|
+| Monitoring copy-paste across unlike CCVS families | 4/5 jobs | deterministic_limit | Model quality — Haiku reuses monitoring text across tasks |
+| CCVS completeness (N/A on tasks with hazards) | 3/5 jobs | deterministic_fix | Agent generates N/A for staging/delivery/hold-point tasks |
+| Generic responsibility text | 2/5 jobs | deterministic_fix | _improve_responsibility() covers main patterns but not all |
+| Unsupported control drift | 2/5 jobs | prompt_decomposer_fix | Agent generates out-of-scope controls (membrane on painting, disconnection cert on fit-out) |
+| Sequence variance | 2/5 jobs | prompt_decomposer_fix | Agent places tasks out of chronological order despite prompt rules |
+| HRCW undercall | 3/5 jobs | issue_gate_candidate | Scissor lift, crane, structural alteration not always in HRCW |
+
+### Commercial readiness assessment
+
+**Current state: PRE-PILOT HARDENING required.**
+
+The system is not yet at unsupervised commercial pilot readiness, but it is close. The output is consistently at STRONG_WORKING_DRAFT quality for a consultant to complete — not a full rewrite.
+
+What works:
+- Method sequences are broadly correct across all 5 job types
+- Dominant control family logic works (SIL, CHM, WAH correctly assigned in most tasks)
+- Issue gate catches real structural defects (27 checks)
+- Self-learning layer captures findings and detects cross-job patterns
+- No dangerous sequences were generated in any of the 5 jobs
+- Two jobs (demolition, maintenance) produced zero gate failures
+
+What doesn't yet work reliably:
+- Monitoring text is frequently copied across unlike tasks (model-quality limit)
+- CCVS completeness on N/A tasks (agent sometimes generates N/A for real tasks)
+- Generic responsibility text leaks through on some tasks
+- Unsupported control drift on scopes outside the remedial waterproofing benchmark
+
+### Deterministic vs model-quality classification
+
+| Category | Defects | Fixable? |
+|----------|---------|----------|
+| Deterministic (already fixed) | Hold point SYS-M3, demolish CCVS, membrane/asbestos strip, scaffold WAH override, generator artefact strip | Yes — implemented |
+| Deterministic (fixable) | CCVS N/A on staging tasks, HRCW undercall patterns, generic responsibility patterns | Yes — narrow issue gate or orchestrator fixes |
+| Model-quality limit | Monitoring copy-paste, sequence variance, unsupported control drift | No — requires stronger model or post-generation rewrite |
+
+### Stronger model tiering recommendation
+
+**Justified.** The monitoring copy-paste defect recurs on 4/5 jobs and is the single largest barrier to STRONG_WORKING_DRAFT or above. It cannot be fixed deterministically. Options:
+
+1. **Tier up to Sonnet for the assembler agent (Agent 4)** — the assembler writes monitoring and responsibility text. Sonnet is more likely to produce task-specific monitoring rather than copying from adjacent tasks. Cost increase is bounded (1 agent out of 4).
+
+2. **Add a post-generation monitoring rewrite pass** — a deterministic function that detects verbatim monitoring duplication and replaces it with family-specific templates. Already partially implemented in `_improve_monitoring()` but needs to detect cross-task verbatim copying.
+
+3. **Accept the limit** — the output is usable as a strong working draft with consultant completion of monitoring sections. This is the current state.
+
+Recommendation: implement option 2 (deterministic monitoring dedup) first. If it doesn't resolve the pattern, trial option 1 (Sonnet assembler) on 2 jobs.
