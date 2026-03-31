@@ -67,8 +67,21 @@ Distinguish clearly:
 - Hold point: no-go gate before the next step
 - Stop-work trigger: work must cease if condition changes
 
+CHRONOLOGICAL METHOD RULE — CRITICAL:
+Build the SWMS as ONE real, site-executable sequence from pre-start to demobilisation.
+Each task must occur before the next task can safely happen.
+Do NOT place investigative, protective, inspection, or preparatory tasks
+after demolition, repair, waterproofing, tiling, or reinstatement.
+If a control applies across multiple later stages, express it as a
+precondition at the first exposure point or a continuing control
+within the relevant work rows — not as a late standalone task.
+Reject any sequence where a task reads like it should obviously have happened earlier.
+
 SEQUENCE FAILURE RULES — flag or fail if:
 - Access setup appears after access-dependent tasks
+- Occupant protection or exclusion-below appears after overhead work has started
+- Exposure or investigation appears after repair, membrane, or tiling
+- Hold-point or inspection appears after the work it was meant to gate
 - Demolition appears after waterproofing or application
 - Coatings appear before repairs
 - Reinstatement appears before finishes
@@ -76,7 +89,24 @@ SEQUENCE FAILURE RULES — flag or fail if:
 - Pre-start or interface controls appear inside demob
 
 JOB-TYPE OVERRIDES — remedial waterproofing:
-Fail if missing:
+Method backbone (mandatory order):
+1. Pre-start planning and site readiness
+2. Access / scaffold setup
+3. Isolate occupants and protect areas below balconies
+4. Remove fittings, fixtures, and failed finishes
+5. Expose and prepare substrate
+6. Consultant inspection / hold point
+7. Substrate repairs
+8. Primer / membrane application
+9. Cure / test / QA release
+10. Screed / tile / finishes
+11. Reinstate balustrades, fittings, joinery interfaces
+12. Final inspection, clean, and demobilisation
+
+Fail or rewrite any draft that departs from this backbone unless the
+source explicitly requires a different order.
+
+Additional fail conditions:
 - Demolition before waterproofing
 - Substrate hold point before membrane or reinstatement
 - Occupied-site interface controls

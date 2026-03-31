@@ -24,6 +24,7 @@ from src.issue_gate import (
     _check_footer,
     _check_latent_condition_packaging,
     _check_orphan_reinstatement,
+    _check_late_protection_or_exposure,
     run_issue_gate,
 )
 
@@ -231,7 +232,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 17  # C1-C6 + C5b + C7-json + C10 + C14-C21
+        assert len(result.checks) == 18  # C1-C6 + C5b + C7-json + C10 + C14-C22
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -292,7 +293,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 20  # C1-C6 + C5b + C7-json + C10 + C14-C21 + C7-docx + C8 + C9
+        assert len(result.checks) == 21  # C1-C6 + C5b + C7-json + C10 + C14-C22 + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -453,6 +454,53 @@ class TestOrphanReinstatement:
             {"step": "1.2", "task": "Demobilise site"},
         ]
         assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
+
+
+class TestLateProtectionOrExposure:
+    def test_valid_remedial_sequence_passes(self):
+        tasks = [
+            {"step": "1.1", "task": "Site setup"},
+            {"step": "1.2", "task": "Erect scaffold"},
+            {"step": "1.3", "task": "Isolate occupants and protect below"},
+            {"step": "1.4", "task": "Remove existing membrane"},
+            {"step": "1.5", "task": "Investigate slab cracks"},
+            {"step": "1.6", "task": "Repair substrate"},
+            {"step": "1.7", "task": "Apply waterproofing membrane"},
+            {"step": "1.8", "task": "Reinstate tiles"},
+        ]
+        assert _check_late_protection_or_exposure(tasks).result == CheckResult.PASS
+
+    def test_late_protection_after_repair_fails(self):
+        tasks = [
+            {"step": "1.1", "task": "Remove existing membrane"},
+            {"step": "1.2", "task": "Repair substrate"},
+            {"step": "1.3", "task": "Apply waterproofing membrane"},
+            {"step": "1.4", "task": "Isolate and protect occupant spaces"},
+        ]
+        assert _check_late_protection_or_exposure(tasks).result == CheckResult.FAIL
+
+    def test_late_investigation_after_membrane_fails(self):
+        tasks = [
+            {"step": "1.1", "task": "Apply waterproofing membrane"},
+            {"step": "1.2", "task": "Investigate and expose slab surface"},
+        ]
+        assert _check_late_protection_or_exposure(tasks).result == CheckResult.FAIL
+
+    def test_final_inspection_after_work_passes(self):
+        """Final inspection is expected after work — not flagged."""
+        tasks = [
+            {"step": "1.1", "task": "Repair substrate"},
+            {"step": "1.2", "task": "Apply membrane"},
+            {"step": "1.3", "task": "Final inspection and defect check"},
+        ]
+        assert _check_late_protection_or_exposure(tasks).result == CheckResult.PASS
+
+    def test_expose_before_repair_passes(self):
+        tasks = [
+            {"step": "1.1", "task": "Expose and prepare substrate"},
+            {"step": "1.2", "task": "Repair slab cracks"},
+        ]
+        assert _check_late_protection_or_exposure(tasks).result == CheckResult.PASS
 
 
 import json

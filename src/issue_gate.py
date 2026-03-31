@@ -704,6 +704,33 @@ def _check_orphan_reinstatement(tasks: list[dict]) -> GateCheck:
     return GateCheck("orphan_reinstatement", CheckResult.PASS)
 
 
+def _check_late_protection_or_exposure(tasks: list[dict]) -> GateCheck:
+    """C22: Protection-below, exposure, or investigation tasks must not appear after
+    repair, membrane, tiling, or reinstatement tasks. FAIL if late."""
+    _EARLY_KW = ("isolate", "protect", "expose", "investigate", "inspection hold")
+    _LATE_KW = ("repair", "membrane", "waterproof", "screed", "tile", "reinstate",
+                "reinstall", "balustrade", "fitting")
+    _REMOVAL_KW = ("remove", "strip", "demolit", "rip out", "break out")
+    late_phase_started = False
+    late_findings = []
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        # Removal/demolition tasks are early-phase — do not trigger late_phase_started
+        is_removal = any(kw in tn for kw in _REMOVAL_KW)
+        # Once we see a late-phase task (not removal), flag any subsequent early-phase task
+        if any(kw in tn for kw in _LATE_KW) and not is_removal:
+            late_phase_started = True
+        if late_phase_started and any(kw in tn for kw in _EARLY_KW):
+            # Skip if it's a "final inspection" or demob context
+            if any(kw in tn for kw in ("final", "defect", "demob", "dismantle", "check completed")):
+                continue
+            late_findings.append(f"{t.get('step', '?')}: '{tn[:50]}'")
+    if late_findings:
+        return GateCheck("late_protection_or_exposure", CheckResult.FAIL,
+                         f"Late protection/exposure after work phase: {'; '.join(late_findings[:3])}")
+    return GateCheck("late_protection_or_exposure", CheckResult.PASS)
+
+
 # ── Main runner ──────────────────────────────────────────────────────────────
 
 def run_issue_gate(
@@ -763,6 +790,7 @@ def run_issue_gate(
         result.checks.append(_check_filler_controls(task_list))
         result.checks.append(_check_job_type_mandatory_steps(task_list, job_type))
         result.checks.append(_check_orphan_reinstatement(task_list))
+        result.checks.append(_check_late_protection_or_exposure(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:

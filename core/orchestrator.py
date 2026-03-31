@@ -743,7 +743,9 @@ _PHASE_ORDER = [
          "inspect facade", "check and expose", "check and isolate",
          "crack inspection", "inspect crack",
          "expose substrate", "expose and prepare", "substrate inspection",
-         "substrate for inspection"]),
+         "substrate for inspection",
+         "investigate slab", "investigate substrate", "investigate and document",
+         "investigate and map", "investigate and expose", "expose slab"]),
     # Phase 3: Structural repairs
     (3, ["crack stitch", "spalling", "concrete repair", "reconstruct",
          "repoint", "brickwork", "structural"]),
@@ -795,10 +797,13 @@ def _task_phase_score(tb: dict) -> int:
     # Check repair before QA
     if any(kw in text for kw in _REPAIR_KEYWORDS):
         return 3
-    # Check isolate/barricade by TASK NAME only — avoid matching "isolate" in scope text
+    # Check isolate/barricade/protect-below by TASK NAME only
     if any(kw in task_name for kw in ("isolate and barricade", "barricade and isolate",
                                        "isolate work", "barricade work", "barricade ",
-                                       "exclusion zone", "hoarding", "site isolation")) and "demob" not in task_name:
+                                       "exclusion zone", "hoarding", "site isolation",
+                                       "isolate occupant", "protect occupant",
+                                       "protect area", "protect space",
+                                       "isolate and protect")) and "demob" not in task_name:
         return 0
     # Check removal/demolition by TASK NAME — must be before _PHASE_ORDER loop
     # to prevent "remove existing waterproofing" matching "waterproof" at phase 4
