@@ -233,6 +233,24 @@ def test_fallback_ccvs_na_skips_no_hazards():
     assert tasks[0]["ccvs_code"] == "N/A"
 
 
+def test_ccvs_crane_lift_gets_wah():
+    """Crane-lift tasks should get WAH-H6."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Crane-lift and distribute roof packs onto precast panels", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_scissor_lift_transfer_gets_wah():
+    """Scissor lift transfer tasks should get WAH-H6."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Transfer workers onto roof via scissor lift", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
 def test_ccvs_demolish_gets_sil():
     """Demolish tasks should get SIL-H6 (dust/debris)."""
     from core.orchestrator import _correct_ccvs_by_task_type

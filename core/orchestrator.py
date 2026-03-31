@@ -1540,7 +1540,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                     "rope access", "abseil", "ladder", "remove green",
                     "reinstate green", "reinstall green", "reinstate wall",
                     "roof access", "roof perimeter", "on roof",
-                    "gutter", "flashing", "mobilise boom", "lower waste")
+                    "gutter", "flashing", "mobilise boom", "lower waste",
+                    "crane-lift", "crane lift", "crane-assisted",
+                    "scissor lift", "transfer onto roof", "transfer from roof")
     # Demob / site demobilisation tasks are procedural (SYS), not WAH
     _DEMOB_SYS = ("demob", "demobilise", "demobilize", "site demobil",
                    "building reinstate", "site reinstate", "handover",

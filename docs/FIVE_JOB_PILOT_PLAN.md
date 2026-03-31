@@ -214,3 +214,11 @@ What doesn't yet work reliably:
 3. **Accept the limit** — the output is usable as a strong working draft with consultant completion of monitoring sections. This is the current state.
 
 Recommendation: implement option 2 (deterministic monitoring dedup) first. If it doesn't resolve the pattern, trial option 1 (Sonnet assembler) on 2 jobs.
+
+---
+
+## Commercial Pilot Tracking
+
+| # | Customer | Job | Type | Time | Validator | Gate FAIL | Gate REV | Edits | Would issue |
+|---|----------|-----|------|------|-----------|-----------|----------|-------|-------------|
+| C1 | mcxi.co | Unitas warehouse metal roofing | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 4 | CCVS N/A on crane-lift, HRCW, supervisor names, lifeline control | Yes with edits |
