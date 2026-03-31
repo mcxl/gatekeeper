@@ -223,3 +223,4 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 |---|----------|-----|------|------|-----------|-----------|----------|-------|-------------|
 | C1 | mcxi.co | Unitas warehouse metal roofing | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 4 | CCVS N/A on crane-lift, HRCW, supervisor names, lifeline control | Yes with edits |
 | C2 | mcxi.co | Tilt-up panel erection with crane | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 3 | Sequence: permanent connections before lift, lift plan after brace removal. CCVS N/A on 4 tasks. HRCW. Names. | Yes with edits |
+| C3 | mcxi.co | Withers Road civil upgrade | civil | ~20 min | RETRY_INTERNAL 2F | 3 | 4 | CCVS N/A on 3 civil tasks. Commissioning false positive. Signal sequencing. Sydney Water hold points. Names. | Yes with edits |
