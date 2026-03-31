@@ -36,6 +36,7 @@ Shared prompts:      prompts/system.py, prompts/swms.py
 Governance register: docs/BENCHMARK_GOVERNANCE_REGISTER.md
 Reviewer rubric:     docs/reviewer_rubric.md
 Generation rubric:   docs/SWMS_GENERATION_RUBRIC.md
+Expert review spec:  docs/SWMS_EXPERT_REVIEW_SPEC.md
 Regression runner:   src/regression_runner.py
 Findings store:      core/findings_store.py
 Pattern detector:    core/pattern_detector.py
