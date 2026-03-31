@@ -230,6 +230,25 @@ def test_hrcw_corrected_when_category_cl2():
     assert result["hrcw"] is True
 
 
+def test_hrcw_corrected_when_category_cl4():
+    """hrcw_category containing cl.4 (asbestos) forces hrcw=true."""
+    from core.orchestrator import _normalise_task
+
+    tb = {
+        "task": "Remove existing membrane",
+        "scope": "Balcony waterproofing removal",
+        "risk_pre": "H", "risk_post": "M",
+        "ccvs_code": "SIL-H6",
+        "hrcw": False,
+        "hrcw_category": "cl.4 — Disturbance of asbestos",
+        "controls": ["Wet suppression"], "admin": [],
+        "hold_points": [], "stop_work": [],
+        "ppe": ["P2 mask"], "hazards": ["Silica dust"],
+    }
+    result = _normalise_task(tb, inference={}, jurisdiction="AU", hot_work_ok=False)
+    assert result["hrcw"] is True
+
+
 def test_hrcw_unchanged_when_category_no_class():
     """hrcw_category without cl.1/cl.2 does not force hrcw=true."""
     from core.orchestrator import _normalise_task

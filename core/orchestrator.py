@@ -1473,9 +1473,9 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
                     deduped.append(item)
             tb[field] = deduped
 
-    # hrcw boolean correction: if hrcw_category indicates cl.1 or cl.2, force hrcw=true
+    # hrcw boolean correction: if hrcw_category indicates any HRCW class, force hrcw=true
     hrcw_cat = str(tb.get("hrcw_category", "")).lower()
-    if "cl.1" in hrcw_cat or "cl.2" in hrcw_cat:
+    if any(f"cl.{n}" in hrcw_cat for n in range(1, 10)):
         tb["hrcw"] = True
 
     # wah_applicable: True if CCVS is WAH OR hrcw_category indicates fall >2m
