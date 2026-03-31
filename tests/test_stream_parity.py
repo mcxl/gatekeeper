@@ -233,6 +233,41 @@ def test_fallback_ccvs_na_skips_no_hazards():
     assert tasks[0]["ccvs_code"] == "N/A"
 
 
+def test_ccvs_earthworks_gets_sil():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Undertake bulk earthworks and establish formation", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SIL-H6"
+
+
+def test_ccvs_stormwater_drainage_gets_sil():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Construct stormwater drainage infrastructure", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SIL-H6"
+
+
+def test_ccvs_traffic_signal_gets_ele():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Install traffic signal infrastructure and commission", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "ELE-H6"
+
+
+def test_ccvs_line_marking_gets_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Install line marking, pavement markers, signage", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
+def test_ccvs_locate_services_gets_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Locate, expose, and protect Sydney Water assets", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_crane_lift_gets_wah():
     """Crane-lift tasks should get WAH-H6."""
     from core.orchestrator import _correct_ccvs_by_task_type

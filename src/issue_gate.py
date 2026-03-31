@@ -394,6 +394,8 @@ def _check_unsupported_controls_json(tasks: list[dict],
     all_task_names = " ".join(t.get("task", "").lower() for t in tasks)
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
+    commissioning_in_scope = any(kw in all_task_names for kw in (
+        "signal", "lighting", "commission", "energis", "energiz"))
 
     found = []
     for t in tasks:
@@ -413,6 +415,9 @@ def _check_unsupported_controls_json(tasks: list[dict],
                     continue
                 # Skip demolition terms when demolition/removal is in job scope
                 if kw == "demolit" and demolition_in_scope:
+                    continue
+                # Skip commissioning when signal/lighting/electrical work is in scope
+                if kw == "commissioning" and commissioning_in_scope:
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in all_text and "green wall" not in tn:
@@ -441,6 +446,8 @@ def _check_unsupported_controls_docx(doc,
     )
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
+    commissioning_in_scope = any(kw in all_task_names for kw in (
+        "signal", "lighting", "commission", "energis", "energiz"))
 
     for r in range(1, len(t2.rows)):
         row_text = " ".join(t2.rows[r].cells[c].text for c in range(

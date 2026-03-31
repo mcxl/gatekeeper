@@ -1568,17 +1568,28 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     elif any(kw in task_name for kw in ("grind", "cut", "repoint", "crack stitch",
                                          "stitch", "spalling", "mortar", "reconstruct",
                                          "demolition", "slab crack", "tile",
-                                         "repair concrete", "repair substrate", "patch")):
+                                         "repair concrete", "repair substrate", "patch",
+                                         # Civil — dust/excavation/compaction
+                                         "earthwork", "excavat", "compact", "trench",
+                                         "sub-base", "subbase", "road base", "basecourse",
+                                         "base course", "construct pavement", "lay pavement",
+                                         "pavement surfac", "asphalt", "surfacing",
+                                         "sawcut", "saw cut", "drainage", "stormwater",
+                                         "pit and pipe")):
         correct = "SIL-H6"
     elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
                                          "treat", "primer", "timber",
                                          "waterproof", "render", "epoxy", "membrane")):
         correct = "CHM-H6"
+    elif any(kw in task_name for kw in ("signal", "lighting", "commission",
+                                         "energis", "energiz")):
+        correct = "ELE-H6"
     elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise",
                                          "prop base", "panel base", "prop location",
                                          "prepare and level", "prepare panel",
                                          "confirm crane", "confirm lift", "confirm engineer",
-                                         "remove traffic", "remove exclusion")):
+                                         "remove traffic", "remove exclusion",
+                                         "locate", "line marking", "signage", "road furniture")):
         correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good",
                                          "hold point", "approval gate", "sign-off",
