@@ -1,0 +1,8 @@
+{
+  "overall_status": "BELOW_WORKING_DRAFT",
+  "recommended_action": "TARGETED_REWORK",
+  "overall_summary": "4 hard fail(s); 59 review item(s) (generation-variance)",
+  "hard_fails_count": 4,
+  "review_items_count": 59,
+  "note": "All HFs are generation-variance HRCW/monitoring \u2014 sequence backbone is correct"
+}
