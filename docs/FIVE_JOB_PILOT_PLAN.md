@@ -225,3 +225,69 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | C2 | mcxi.co | Tilt-up panel erection with crane | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 3 | Sequence: permanent connections before lift, lift plan after brace removal. CCVS N/A on 4 tasks. HRCW. Names. | Yes with edits |
 | C3 | mcxi.co | Withers Road civil upgrade | civil | ~20 min | RETRY_INTERNAL 2F | 3 | 4 | CCVS N/A on 3 civil tasks. Commissioning false positive. Signal sequencing. Sydney Water hold points. Names. | Yes with edits |
 | C4 | mcxi.co | Gabion cage / rail corridor | civil | ~15 min | RETRY_INTERNAL 3F | 4 | 4 | Excellent sequence. Rail corridor controls missing (critical). 3 N/A CCVS. Waterproof false positive. HRCW excavation. | Yes with edits (rail controls needed) |
+
+---
+
+## Commercial Pilot Assessment (2026-04-01)
+
+### Is the system ready for consultant-assisted commercial use?
+
+**Yes.** All four commercial pilot jobs produced SWMS that a consultant would issue with edits. No dangerous sequences were generated. Average time from scope to reviewed docx was 16 minutes — materially faster than writing from scratch (typically 2-4 hours for comparable scope complexity).
+
+The system is not ready for unsupervised use. Every output requires consultant review and completion. But as a draft-generation tool that saves the consultant 80-90% of the initial writing time, it is commercially usable now.
+
+### Recurring consultant edits (system defects)
+
+These edits recurred across multiple jobs and represent real system improvements still needed:
+
+| Edit | Frequency | Classification |
+|------|-----------|----------------|
+| Fill in supervisor/worker names (placeholder) | 4/4 | Expected — system cannot know site-specific names |
+| CCVS N/A on specialist tasks | 3/4 | Deterministic fix — keyword coverage expanding each job |
+| Generic responsibility text on some tasks | 3/4 | Deterministic fix — _improve_responsibility() needs more patterns |
+| HRCW undercall (crane, excavation, plant) | 3/4 | Issue gate candidate — flags correctly but agent under-calls |
+
+### Expected specialist additions (not system defects)
+
+These edits are specialist-environment additions that the system correctly does not invent. The anti-drift logic is working as intended — the consultant adds these based on their knowledge of the specific site:
+
+| Addition | Jobs | Why it's expected |
+|----------|------|-------------------|
+| Rail corridor protection controls (track isolation, protection officer, overhead clearance) | C4 | Specialist environment — system correctly avoids inventing rail controls without source support |
+| Named authority on hold points (specific engineer, inspector, utility company) | C3, C4 | Site-specific — system cannot know which consultant or authority applies |
+| Lifeline/safety wire enabling sequencing (specific to roofing method) | C1 | Method-specific — system generates controls but consultant verifies enabling sequence |
+| Sydney Water hold point authority | C3 | Utility-specific — system references the hold point but cannot name the inspector |
+
+### Time saving vs writing from scratch
+
+| Metric | Safe Method | Manual writing |
+|--------|-------------|---------------|
+| Scope to first draft | 5 min (automated) | 60-120 min |
+| Consultant review and completion | 10-15 min | N/A (part of writing) |
+| Total to issued document | 15-20 min | 120-240 min |
+| **Estimated saving** | **~85%** | baseline |
+
+### Scope types that work best
+
+| Scope type | Quality | Notes |
+|-----------|---------|-------|
+| Remedial / facade / painting | High | Strongest benchmark coverage (Lingate, 18 Danks) |
+| Civil road / drainage | Good | Sequence excellent, CCVS coverage improving |
+| Structural erection (tilt-up, steel) | Good | Crane/bracing logic present, sequence needs minor reorder |
+| Maintenance / HVAC | Good | Lightweight scope, clean output |
+
+### Scope types that need more hardening
+
+| Scope type | Gap | Effort |
+|-----------|-----|--------|
+| Rail corridor interface | No rail-specific controls generated | Scenario rule pack candidate |
+| Complex multi-trade fit-out | HRCW undercall on services coordination | Prompt improvement |
+| Demolition with active asbestos | Latent vs active logic sensitive | Tested but needs more edge cases |
+
+### Recommended next commercial action
+
+1. **Continue using the system for real customer jobs** — each job improves the keyword coverage and surfaces new CCVS edge cases that get fixed in 5-10 minutes
+2. **Focus on remedial, civil, and maintenance scopes first** — these have the strongest coverage
+3. **For specialist environments (rail, confined space, live electrical)** — use the system for the base method and add specialist controls manually per the consultant workflow
+4. **Track consultant edit time and type** — when a recurring edit appears on 3+ jobs, implement as a deterministic fix
+5. **Do not invest in model tiering (Sonnet) yet** — the monitoring copy-paste issue is real but manageable at the consultant-review stage, and the deterministic CCVS/keyword fixes are delivering more value per hour
