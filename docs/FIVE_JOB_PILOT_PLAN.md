@@ -222,3 +222,4 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | # | Customer | Job | Type | Time | Validator | Gate FAIL | Gate REV | Edits | Would issue |
 |---|----------|-----|------|------|-----------|-----------|----------|-------|-------------|
 | C1 | mcxi.co | Unitas warehouse metal roofing | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 4 | CCVS N/A on crane-lift, HRCW, supervisor names, lifeline control | Yes with edits |
+| C2 | mcxi.co | Tilt-up panel erection with crane | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 3 | Sequence: permanent connections before lift, lift plan after brace removal. CCVS N/A on 4 tasks. HRCW. Names. | Yes with edits |
