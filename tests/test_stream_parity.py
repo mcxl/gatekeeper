@@ -176,6 +176,15 @@ def test_p2_preserved_on_sil_task():
 
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
+def test_ccvs_hold_point_gets_sys():
+    """Hold point tasks are procedural — should get SYS-M3."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Hold point: obtain supervisor sign-off on repairs", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_dismantle_scaffold_stays_wah():
     """Dismantle scaffold should get WAH, not SIL — 'remove' in task name must not trigger SIL."""
     from core.orchestrator import _correct_ccvs_by_task_type

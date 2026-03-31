@@ -1497,7 +1497,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                                          "remove temporary prop", "remove prop",
                                          "remove traffic", "remove exclusion")):
         correct = "SYS-M3"
-    elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good")):
+    elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good",
+                                         "hold point", "approval gate", "sign-off",
+                                         "consultant release")):
         correct = "SYS-M3"
     else:
         return  # no confident match — keep whatever the agent set

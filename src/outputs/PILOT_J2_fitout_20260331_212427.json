@@ -1,0 +1,2312 @@
+{
+  "route": "full",
+  "tasks": [
+    {
+      "sequence": 1,
+      "task": "Establish site, confirm services isolation plan",
+      "scope": "Set up site boundaries, confirm electrical and HVAC isolation strategy with services coordinator, establish exclusion zones for demolition face and occupied floors below, erect hoarding and barricades to separate work area from adjacent operational tenancies.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+      "hazards": [
+        "Uncontrolled electrical supply to HVAC or other building services \u2014 risk of electrocution during isolation work or accidental re-energisation",
+        "Unconfirmed service isolation strategy \u2014 risk of inadvertent disruption to occupied floors or building utilities"
+      ],
+      "dominant_hazard": "Uncontrolled electrical supply \u2014 risk of electrocution",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove any hoardings or permit unauthorised access until: exclusion zone boundaries are confirmed in writing by PM and all personnel briefed on access restrictions",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: electrical mains disconnection certificate cannot be obtained before site setup, or if building services cannot be isolated as per written strategy",
+        "\ud83d\uded1 STOP WORK if: building management advises that HVAC or other services serving occupied floors cannot be isolated without disruption \u2014 refer to structural engineer and project manager for revised isolation sequence"
+      ],
+      "admin": [
+        "Verify all site personnel hold current White Card (CPCCWHS1001) \u2014 maintain register on site.",
+        "tell building management and adjacent tenants 48 hours before site setup \u2014 confirm occupation schedule and emergency contact details.",
+        "Establish daily communication protocol with building management about isolation status and access restrictions.",
+        "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase \u2014 area left/excluded if not cleared",
+        "Temporary access to neighbouring properties required \u2014 confirm access arrangements before commencing",
+        "Vegetation trimmed away from surfaces designated for painting or remedial works prior to commencement \u2014 area excluded if vegetation impedes access",
+        "On-site parking or provision of parking permits required for duration of works",
+        "Final inspection and agreed scope of works to be confirmed before commencement"
+      ],
+      "ppe": [
+        "Safety helmet and chin strap",
+        "High-visibility vest (AS/NZS 1906.1)",
+        "steel-capped footwear, slip resistant)",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Project Manager / Supervisor",
+        "frequency": "Before site setup commences, daily check of isolation tags and hoarding integrity",
+        "evidence": "Disconnection certificate retained on file; isolation tag register updated daily; photographic record of hoarding installation and exclusion zone signage"
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.1"
+    },
+    {
+      "sequence": 3,
+      "task": "Demolish existing partition walls and ceiling grid",
+      "scope": "Remove gyprock partitions, timber/metal frames, suspended ceiling grid, and panels. Confirm absence of asbestos via provided clearance certificate. Manage dust and debris within hoarding. Load and remove debris to skip bin. Establish falling-object exclusion zone for full height of demolition face plus 5m below.",
+      "trade_type": "Demolition",
+      "hrcw": true,
+      "hrcw_category": "cl.3 \u2014 Demolition of load-bearing structure",
+      "hazards": [
+        "Collapse or uncontrolled fall of partition wall or ceiling grid section \u2014 risk of crush injury to personnel",
+        "Asbestos fibre release if clearance certificate is not valid or if disturbed material is not confirmed asbestos-free \u2014 risk of mesothelioma or lung disease",
+        "Struck-by injury from power tools or hand tools during wall and grid dismantling \u2014 risk of laceration or fracture"
+      ],
+      "dominant_hazard": "Falling debris \u2014 risk of serious head injury or death",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Wet-suppress gyprock and ceiling panels during removal to suppress dust \u2014 do not allow dry breakout or dust generation above containment.",
+        "Install temporary propping or bracing on load-bearing partition frames before removal commences \u2014 no unauthorised cutting or sudden load release.",
+        "Use dust extraction or on-tool dust capture during any grinding, cutting, or power-tool use \u2014 maintain RPE if dust cannot be suppressed.",
+        "Load debris directly into skip bin from containment hoarding \u2014 do not throw or drop debris from height."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not remove load-bearing partition frame until: engineer-approved temporary propping is installed, inspected, and signed off."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: debris escapes containment hoarding or personnel breach falling-object exclusion zone.",
+        "\ud83d\uded1 STOP WORK if: unplanned structural movement, cracking, or load instability is observed in remaining building elements or temporary props."
+      ],
+      "admin": [
+        "Provide engineer-approved temporary propping or bracing plan before load-bearing partition removal.",
+        "Brief workers on exclusion zone, falling-object risk, asbestos trigger, and stop-work conditions."
+      ],
+      "ppe": [
+        "Hard hat (mandatory \u2014 full shift in demolition zone and exclusion zone below).",
+        "High-visibility vest (Class D).",
+        "Steel-capped boots.",
+        "Organic vapour + particulate respirator (P2 equivalent or higher) \u2014 mandatory if dust suppression fails or dry breakout occurs.",
+        "eye protection",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone maintained \u2014 no unauthorised personnel entry; debris contained within hoarding.",
+        "who": "Supervisor / Demolition contractor",
+        "frequency": "Continuous during demolition; pre-shift check of hoarding and signage.",
+        "evidence": "Zone barricades intact and visible; no debris outside containment; exclusion zone log maintained; asbestos certificate sighted and dated."
+      },
+      "responsibility": {
+        "SUP": "Supervise Demolish existing partition walls and",
+        "WKR": "Perform Demolish existing partition walls and per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.2"
+    },
+    {
+      "sequence": 4,
+      "task": "Expose and prepare structural ceiling substrate",
+      "scope": "Remove loose material, dust, and debris from exposed slab soffit. Check for cracks, spalling, or surface damage. Report any structural concerns to project manager before proceeding. Brush clean and allow substrate to settle before installing new ceiling system.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Dust and debris exposure during cleaning and loose-material removal \u2014 risk of respiratory irritation or inhalation of fine particles",
+        "Falling debris or loose material from slab soffit during cleaning \u2014 risk of head or eye injury",
+        "Structural damage not identified \u2014 risk of collapse or sudden failure during subsequent ceiling installation if cracks or spalling are not correctly reported"
+      ],
+      "dominant_hazard": "Unidentified structural damage leading to collapse during installation",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Obtain structural engineer's written approval before starting work \u2014 confirm slab soffit can safely support temporary ceiling load and inspection activity.",
+        "Wet all loose material and dust on slab soffit using spray bottle or damp cloth \u2014 do not dry sweep or brush.",
+        "Remove loose debris by hand into labelled waste bag \u2014 do not force material; stop if material will not separate cleanly.",
+        "Check entire slab soffit surface for cracks wider than 2 mm, spalling deeper than 10 mm, rust staining, or water damage \u2014 mark each defect with tape and photograph.",
+        "Brief all workers on hazard: structural defects must be reported before ceiling work proceeds \u2014 do not assume defects are minor.",
+        "Do not cover or hide any structural defect with new material \u2014 all defects must be visible to project manager and engineer.",
+        "Allow substrate to air dry for minimum 24 hours after cleaning \u2014 verify no active moisture or seepage before signing off.",
+        "Provide report to project manager listing all defects found, location, size, and photographs \u2014 obtain PM sign-off before proceeding to ceiling installation."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install ceiling system until: structural engineer has inspected and approved all identified defects in writing and PM has authorized method to proceed."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: slab soffit shows signs of active structural movement, settlement, or failure during cleaning.",
+        "\ud83d\uded1 STOP WORK if: cracks wider than 5 mm or spalling deeper than 25 mm are found \u2014 engineer re-assessment required.",
+        "\ud83d\uded1 STOP WORK if: water seepage, active moisture, or structural decay is present \u2014 substrate cannot be certified as safe for load."
+      ],
+      "admin": [
+        "Complete structural defect register with photographs and measurements before submission to PM.",
+        "Brief all site personnel that this is a structural-critical task \u2014 defect reporting is a no-fault safety hold."
+      ],
+      "ppe": [
+        "eye protection",
+        "cut-resistant gloves",
+        "P2 or P3 respirator (organic vapour if mould present \u2014 confirm with SDS before use)",
+        "Hard hat (falling debris risk)",
+        "Steel-capped boots"
+      ],
+      "ccvs_code": "N/A",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Project Manager / Structural Engineer",
+        "frequency": "Before task start; before ceiling installation",
+        "evidence": "Signed engineer approval letter or inspection certificate; defect register with photographs and PM sign-off"
+      },
+      "responsibility": {
+        "SUP": "Supervise Expose and prepare structural ceiling",
+        "WKR": "Perform Expose and prepare structural ceiling per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.3"
+    },
+    {
+      "sequence": 5,
+      "task": "Install new suspended ceiling grid and hangers",
+      "scope": "Locate and confirm ceiling anchor points in structural slab. Install hanger wires or spring anchors at spacing per design drawings. Erect perimeter and main runners at correct height and alignment. Confirm grid is level and stable before panel installation.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker loses balance or slips while working at ceiling height on ladders or scaffolding \u2014 risk of serious injury or death",
+        "Hanger wire failure or incorrect installation \u2014 risk of ceiling grid collapse during or after installation",
+        "Struck-by injury from ceiling components, tools, or equipment during installation \u2014 risk of laceration or fracture",
+        "Entanglement hazard from hanger wire or spring anchor components \u2014 risk of trapped hand or arm during handling"
+      ],
+      "dominant_hazard": "Fall from height during ceiling installation",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Install and secure ladder or mobile elevated work platform (MEWP) on level ground before ascending to ceiling height.",
+        "Confirm all anchor points in structural slab are sound and rated for design load before installing first hanger wire.",
+        "Install hanger wires or spring anchors at spacing and load rating per design drawings; do not deviate from spacing or anchor type.",
+        "Wear safety harness with lanyard anchored to independent fixed point if working above 2 m and fall protection cannot be guaranteed by platform edge.",
+        "Install edge protection or guardrail around elevated work platform; maintain clear 1.2 m exclusion zone below ceiling work.",
+        "Check hanger wire and spring anchor components for damage, corrosion, or defect before installation; do not use damaged items.",
+        "Level and align perimeter and main runners using spirit level and laser alignment tool before fixing secondary hangers.",
+        "Barricade floor area below work; post warning sign 'Ceiling Installation in Progress \u2014 Do Not Enter'."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install hanger wires until: structural engineer or supervisor confirms all anchor points are located, exposed, and rated for design load on site.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install ceiling panels until: grid alignment and levelling is confirmed by supervisor and documented (written sign-off or photo record)."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: hanger wire is cracked, corroded, kinked, or shows visible defect before or during installation.",
+        "\ud83d\uded1 STOP WORK if: any anchor point is crumbling, loose, or does not support test load without movement.",
+        "\ud83d\uded1 STOP WORK if: grid is not level (tolerance >10 mm over 3 m) or shows visible sag or misalignment after installation.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain site induction (White Card CPCCWHS1001) and confirm understanding of fall prevention and suspended load hazards.",
+        "Confirm occupied building protocols: liaison with building manager, restriction of work hours, and exclusion of building occupants from work area.",
+        "Keep design drawings and hanger spacing schedule on site and visible during installation.",
+        "Record hanger installation locations and load test results in site log or photo record for final inspection.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Safety harness and shock-absorber lanyard (if working above 2 m without edge protection guardrail)",
+        "Safety helmet (hard hat)",
+        "Non-slip steel-capped footwear",
+        "High-visibility vest or shirt",
+        "cut-resistant gloves"
+      ],
+      "ccvs_code": "WAH-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Check all hanger wires and anchor points for damage or loose components before and during installation.",
+        "who": "Supervisor / Leading hand",
+        "frequency": "Before each work shift; continuous during installation; before moving to next grid section",
+        "evidence": "Visual check recorded in site diary or photo log; hanger installation schedule ticked off per location; final grid level sign-off by supervisor"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install new suspended ceiling grid",
+        "WKR": "Perform Install new suspended ceiling grid per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.4"
+    },
+    {
+      "sequence": 8,
+      "task": "Install ceiling panels, gyprock facing, and seals",
+      "scope": "Install suspended ceiling tiles or panels into grid framework. Install gyprock sheets to partition frames. Seal all partition-to-soffit gaps and service penetrations with fire-rated sealant. Joint tape and finish gyprock seams per specification. Allow compound to cure",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker loses balance on ladder or platform while lifting ceiling panels or gyprock sheets \u2014 risk of serious injury or death",
+        "Gyprock sheet or panel falls from height or during handling \u2014 risk of crush injury or head injury to personnel below",
+        "Chemical burn from fire-rated sealant contact with skin \u2014 risk of dermatitis or respiratory irritation if fumes are inhaled",
+        "Muscle strain or back injury during manual handling and installation of heavy gyprock panels \u2014 risk of soft-tissue injury or acute strain"
+      ],
+      "dominant_hazard": "Fall from height during panel or gyprock installation",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Install and secure work platform or scaffolding to grid height before starting. Platform must be stable, level, and rated for full crew weight plus material loads.",
+        "Erect exclusion zone below work area. Barricade 2 m radius around all panel and gyprock handling. Post spotter to control access and watch for dropped objects.",
+        "check ladder or step stool for damage or defects before use. Secure ladder base with feet on level ground. Only single-person access allowed on ladders.",
+        "Wear harness and lanyard clipped to overhead anchor point rated for work load during elevated work above 2 m height.",
+        "Check fire-rated sealant SDS on point of use before opening. Confirm ventilation in area is adequate \u2014 open windows or activate local exhaust fan.",
+        "Wear chemical-resistant gloves and hi-viz shirt or vest",
+        "Use two-person team for gyprock sheet handling. Use lifting frame or mechanical hoist to raise sheets to height. Never manually lift gyprock above shoulder height.",
+        "Secure ceiling panels and gyprock sheets to grid or frame immediately after installation. Do not leave unsupported material at height."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install panels or gyprock until: work platform is installed, level, secured, and tagged as safe by supervisor",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not apply fire-rated sealant until: substrate is clean and dry, SDS Section 8 ventilation requirements are confirmed on site, and chemical PPE is available and worn"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: worker loses footing on platform or ladder, or harness anchor point fails",
+        "\ud83d\uded1 STOP WORK if: gyprock sheet or panel becomes unstable, drops, or shows signs of falling",
+        "\ud83d\uded1 STOP WORK if: sealant fumes cannot be controlled by ventilation or worker reports respiratory irritation or skin contact occurs",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Brief all crew on hazards, control method, and exclusion zone boundaries before work starts.",
+        "Confirm building occupants are notified of ceiling work, exclusion zone, and sealant cure time before starting.",
+        "Record work completion, cure time start, and re-entry approval date on site log.",
+        "White Card (CPCCWHS1001) verification \u2014 general construction induction completed by all workers on site.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat \u2014 mandatory for all personnel on site during elevated work",
+        "Safety harness and lanyard \u2014 mandatory for workers above 2 m height",
+        "chemical-resistant gloves (nitrile or task-appropriate)",
+        "hi-viz shirt or vest\u2014 mandatory when handling gyprock or applying sealant",
+        "Organic vapour respirator (cartridge-type, per SDS Section 8) \u2014 mandatory if sealant ventilation is inadequate or fumes are detected",
+        "steel-capped footwear\u2014 steel-capped boots with slip-resistant sole"
+      ],
+      "ccvs_code": "CHM-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "SDS reviewed for product hazards, RPE matched to SDS requirements (organic vapour cartridge for solvents, not P2 dust mask), ventilation confirmed operational",
+        "who": "Supervisor",
+        "frequency": "Before each work shift starts, continuous visual monitoring during work",
+        "evidence": "Supervisor sign-off on platform inspection checklist; harness and lanyard visual check; exclusion zone maintained and clear of unauthorised entry"
+      },
+      "responsibility": {
+        "SUP": "Verify SDS on site, check ventilation, sign off hold points",
+        "WKR": "Apply sealant per specification, wear PPE, report chemical exposure"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.5"
+    },
+    {
+      "sequence": 2,
+      "task": "Remove fixtures, fittings, and mechanical plant from Level 3",
+      "scope": "Disconnect and remove light fittings, outlet boxes, grilles, HVAC diffusers, and terminal units before partition and ceiling demolition. Coordinate with services trades. Cap or plug all service openings. Tag and store reusable components.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+      "hazards": [
+        "Exposure to remaining electrical supply in outlet boxes or light fittings \u2014 risk of shock or electrocution if not isolated before disconnect",
+        "Uncontrolled release of HVAC refrigerant or compressed gas during disconnection \u2014 risk of chemical burn or inhalation injury",
+        "Falling light fittings or terminal units from height \u2014 risk of head injury to personnel below"
+      ],
+      "dominant_hazard": "Electrical shock during disconnection of energised fittings",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Isolate HVAC terminal units and diffusers from supply air and return air ducts; cap or plug all openings immediately after disconnection to prevent dust and debris entry.",
+        "Obtain HVAC disconnection certificate from services trade confirming refrigerant and compressed gas systems are depressurised and safely vented before terminal unit removal.",
+        "Secure light fittings with rope or strap before loosening final fixings; lower fittings hand-over-hand to ground level \u2014 do not drop or swing fittings over occupied areas.",
+        "Barricade and delineate the removal zone below all elevated work on Level 3 to prevent unauthorised entry; post 'Removal in Progress' signs at all access points.",
+        "Brief all site personnel on Level 3 that fixture and plant removal is in progress; confirm no unauthorised entry to the removal zone and coordinate with concurrent occupied-building activities.",
+        "Tag all reusable components with project ID and storage location before removal; store safely in designated area away from pedestrian and vehicle traffic.",
+        "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: voltage is detected on any outlet box or fitting during verification testing \u2014 do not proceed until electrical coordinator re-isolates and re-certifies.",
+        "\ud83d\uded1 STOP WORK if: HVAC refrigerant or gas disconnection certificate cannot be obtained before terminal unit removal \u2014 contact services coordinator immediately.",
+        "\ud83d\uded1 STOP WORK if: barricade or exclusion zone is breached or removal zone is entered by unauthorised personnel during active removal work."
+      ],
+      "admin": [
+        "Obtain HVAC disconnection certificate from services trade confirming safe venting and depressurisation.",
+        "Coordinate removal schedule with building services and facilities teams; confirm no concurrent electrical or mechanical work is in progress on Level 3."
+      ],
+      "ppe": [
+        "Safety helmet (hard hat) \u2014 mandatory when working below or adjacent to elevated removals.",
+        "eye protection\u2014 mandatory when disconnecting electrical outlets or HVAC ducts.",
+        "High-visibility vest \u2014 mandatory in the removal zone.",
+        "cut-resistant gloves",
+        "steel-capped footwear\u2014 mandatory on Level 3 during removal operations."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Supervisor + appointed electrician",
+        "frequency": "Before each fixture/fitting disconnection",
+        "evidence": "Electrical isolation certificate on-site; multi-meter test log; photograph of de-energised outlet and fitting tags"
+      },
+      "responsibility": {
+        "SUP": "Supervise Remove fixtures, fittings, and mechanical",
+        "WKR": "Perform Remove fixtures, fittings, and mechanical per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.6"
+    },
+    {
+      "sequence": 6,
+      "task": "Install new partition walls and timber frames",
+      "scope": "Erect floor-to-ceiling gyprock partitions along marked lines. Install top and bottom plates, studs, and noggins per design drawings. Confirm vertical and horizontal alignment. Install service access holes as marked. Do not install gyprock facing until frames are inspected and approved.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker loses balance on ladder or scaffold while installing top plates or upper studs \u2014 risk of serious injury or death",
+        "Partition frame collapse during installation if not adequately braced \u2014 risk of crush injury to personnel",
+        "Struck-by injury from falling timber or studs during frame erection \u2014 risk of head or upper-body injury",
+        "Muscle strain or back injury during manual handling of heavy timber frames or stud lengths \u2014 risk of soft-tissue injury"
+      ],
+      "dominant_hazard": "Fall from height during partition frame installation",
+      "risk_pre": "High(9)",
+      "risk_post": "Medium(6)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "controls": [
+        "Erect mobile elevated work platform (MEWP) or secure ladder to stable base before installing top plates above 2m height.",
+        "Install temporary horizontal bracing between studs at mid-height and top during frame erection to prevent collapse or sideways movement.",
+        "Wear safety harness with lanyard attached to fixed anchor point when working above 2m on scaffold or MEWP.",
+        "Brief all workers on partition layout and marked service access holes before timber delivery and frame start.",
+        "Confirm vertical and horizontal alignment with laser level or spirit level after every second stud is secured.",
+        "Use mechanical handling aid (trolley, dolly) to move stud lengths and frame assemblies; carry only short timber lengths by hand.",
+        "Barricade and delineate partition work area to exclude site personnel not involved in frame erection.",
+        "Position timber stacks flat and stable, no higher than 1.5m, away from edge of work platform or scaffold."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install top plates above 2m height until: ladder or MEWP is installed, secured, and tagged.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install gyprock facing until: project supervisor or structural engineer confirms vertical and horizontal alignment, bracing is complete, and service holes are cut and clear."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: frame shows visible lateral movement, temporary bracing loosens or shifts, or unauthorised removal of bracing occurs.",
+        "\ud83d\uded1 STOP WORK if: worker loses footing or stability on ladder or MEWP, or harness becomes detached or slack.",
+        "\ud83d\uded1 STOP WORK if: building occupants or site personnel enter barricaded work area or partition layout differs materially from marked design.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Obtain design drawings and confirm marked partition lines and service hole locations on site before frame material delivery.",
+        "Confirm manual handling loads; if any single stud or frame section exceeds 20 kg, assign two workers or use mechanical aid.",
+        "Record frame installation progress and alignment confirmation (date, worker name, level) in site diary before moving to next partition.",
+        "Coordinate with building occupants; advise of work area boundaries and restrict access during frame erection.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Hard hat",
+        "steel-capped footwear",
+        "High-visibility vest",
+        "Safety harness and lanyard (when working above 2m)",
+        "cut-resistant gloves",
+        "eye protection",
+        "Dust mask (P2) when drilling service access holes"
+      ],
+      "ccvs_code": "CHM-H6",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "SDS reviewed for product hazards, RPE matched to SDS requirements (organic vapour cartridge for solvents, not P2 dust mask), ventilation confirmed operational",
+        "who": "Site supervisor or nominated worker induction authority",
+        "frequency": "Before each shift and each time worker enters MEWP or climbs ladder above 2m",
+        "evidence": "Harness tag and lanyard visual check; worker acknowledgment in toolbox talk record"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install new partition walls and",
+        "WKR": "Perform Install new partition walls and per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.7"
+    },
+    {
+      "sequence": 7,
+      "task": "Coordinate and install services routes and terminations",
+      "scope": "Work with electrical, data, and HVAC trades to route cables, conduits, and ductwork through partition cavities and above ceiling grid. Install outlet boxes, data points, and grille supports as per services design. Complete all service rough-ins before gyprock facing commences.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+      "hazards": [
+        "Electrocution \u2014 contact with energised electrical cable or conduit during routing or termination \u2014 risk of shock or death if cable is not isolated or identified",
+        "Struck-by injury from suspended cable or ductwork during installation \u2014 risk of head or facial injury",
+        "Pinch-point or crush injury to fingers and hands during ductwork or cable-tray assembly \u2014 risk of fracture or crush injury",
+        "Coordination failure between trades \u2014 risk of rework, delay, and repeat exposure to hazards if electrical, data, and HVAC routes conflict"
+      ],
+      "dominant_hazard": "Electrocution during energised cable routing",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Verify all electrical, data, and HVAC trade routes on marked-up floor plan and 3D model before any installation starts. Resolve conflicts on site with all trades present and document agreement in writing.",
+        "Use cable identification tape (colour-coded per AS/NZS 3000) at all cable entry and exit points. Do not route unmarked cable.",
+        "Install electrical conduit or cable tray before pulling cable. Do not lay exposed cable in partition cavities or ceiling voids.",
+        "Secure all suspended ductwork and cable trays with approved hangers every 1.2 m. Check that hangers are anchored to structural members, not partition frames or services.",
+        "Wear cut-resistant gloves (Level 5) and eye protection, conduit, and ductwork edges. Change gloves if cut or torn.",
+        "Establish exclusion zone (2 m radius) below all overhead service installation work. Restrict access to authorised workers and alert occupants before work starts.",
+        "Brief all trades on pinch-point and crush hazards during ductwork assembly. Demonstrate safe hand position and clearance zone around bending and joining operations."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not route any electrical cable until: licensed electrician has issued isolation certificate confirming cable de-energised and locked-off at source, and plan conflicts have been resolved and documented",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start gyprock facing until: all service rough-ins complete, tested, and signed off in writing by electrical, data, and HVAC trade leads"
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: any unmarked, unidentified, or suspected energised cable is encountered during routing or termination",
+        "\ud83d\uded1 STOP WORK if: trade routes conflict on site and cannot be resolved immediately with all trades present",
+        "\ud83d\uded1 STOP WORK if: any suspended ductwork or cable tray anchor point shifts, loosens, or shows visible damage during or after installation"
+      ],
+      "admin": [
+        "Obtain marked-up floor plans and 3D services model from design engineer before work starts.",
+        "Schedule pre-installation coordination meeting with electrical, data, and HVAC trade leads. Document agreed routes and sequence.",
+        "Maintain cable identification record (location, colour, route, de-energised date, electrician sign-off) on site.",
+        "Record all trade sign-offs on service rough-in completion checklist before gyprock commences.",
+        "Brief all occupants in building areas where overhead service work is occurring. Display exclusion zone signage.",
+        "Report any hazmat discovery (asbestos-containing insulation, lead paint on cable conduit) to project manager immediately."
+      ],
+      "ppe": [
+        "cut-resistant gloves",
+        "eye protection",
+        "High-visibility vest (occupied building, near occupant movement)",
+        "Hard hat (ceiling cavity work, suspended load risk)"
+      ],
+      "ccvs_code": "ELE-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+        "who": "Site supervisor and electrical trade lead",
+        "frequency": "Before each service routing task and each cable termination",
+        "evidence": "Signed isolation certificate on site, visual inspection of cable de-energisation tester reading, trade sign-off log"
+      },
+      "responsibility": {
+        "SUP": "Supervise Coordinate and install services routes",
+        "WKR": "Perform Coordinate and install services routes per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.8"
+    },
+    {
+      "sequence": 9,
+      "task": "Install carpet tiles and floor finishes",
+      "scope": "Prepare floor substrate \u2014 vacuum, remove all dust and debris. Install underlay if required. Lay carpet tiles in specified pattern from centre point outward. Trim edge tiles to suit perimeter and service penetrations. Secure tiles as per manufacturer specification.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Trip hazard from debris, underlay folds, or uneven floor substrate \u2014 risk of slip and fall causing minor injury or fracture",
+        "Muscle strain or back injury during kneeling, bending, and manual laying of carpet tiles \u2014 risk of soft-tissue injury or acute strain",
+        "Exposure to adhesive or bonding-agent fumes during tile installation \u2014 risk of respiratory irritation or chemical sensitivity"
+      ],
+      "dominant_hazard": "Muscle strain or back injury during repetitive installation work",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(4)",
+      "risk_pre_score": {
+        "likelihood": 3,
+        "consequence": 2
+      },
+      "risk_post_score": {
+        "likelihood": 2,
+        "consequence": 2
+      },
+      "controls": [
+        "Clear and vacuum floor substrate thoroughly before underlay or tile placement \u2014 remove all dust, debris, and loose material.",
+        "check floor surface for levelness, cracks, or damage \u2014 tell supervisor if substrate varies >3 mm over 3 m or is unsuitable for tile installation.",
+        "Lay underlay smoothly without folds or wrinkles \u2014 secure edges and seams to prevent trip hazards during tile installation.",
+        "Start tile layout from marked centre point \u2014 establish grid pattern and confirm alignment before securing any tiles.",
+        "Kneel on tile-laying board or kneeling pad \u2014 do not work on bare concrete or hard surfaces for extended periods.",
+        "Limit repetitive bending and kneeling \u2014 rotate task every 30 minutes with posture-neutral task (e.g., measuring, trimming, material staging).",
+        "Use handheld tile cutter for edge trims \u2014 cut tiles over debris tray to contain dust and fragments; never bend or force tiles by hand.",
+        "Apply adhesive or bonding agent per manufacturer SDS \u2014 make sure room is ventilated, SDS on point of use, and application limits adhered to."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not install underlay or start tiling until: floor substrate is clean, dry, inspected, and levelness confirmed as suitable for installation."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: floor substrate is uneven (>3 mm variation over 3 m), cracked, contaminated, or wet \u2014 do not proceed until rectified and approved.",
+        "\ud83d\uded1 STOP WORK if: ventilation fails during adhesive application or room becomes unoccupiable due to fume buildup \u2014 resume only when air quality is restored.",
+        "\ud83d\uded1 STOP WORK if: worker reports back pain, muscle strain, or repetitive-strain symptoms \u2014 assign alternative task and review work pace and posture."
+      ],
+      "admin": [
+        "Confirm building occupancy and public access \u2014 brief occupants on restricted floor areas and cure time before re-entry.",
+        "Obtain SDS for tile adhesive or bonding agent \u2014 review Section 8 (exposure control) and Section 16 (health hazard) before tile installation starts.",
+        "Document tile layout pattern and centre-point mark \u2014 photograph and brief all workers before installation commences.",
+        "Record cure times and re-entry restrictions on site signage \u2014 post 'Do Not Walk \u2014 Curing Tiles' notices until manufacturer cure period is met."
+      ],
+      "ppe": [
+        "cut-resistant gloves",
+        "Organic vapour respirator (per SDS Section 8) \u2014 if adhesive vapour levels exceed manufacturer threshold or room ventilation is limited.",
+        "Safety shoes with good grip \u2014 for wet or adhesive-contaminated floor areas.",
+        "Knee pads \u2014 for kneeling work on hard floors and underlay."
+      ],
+      "ccvs_code": "SIL-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+        "who": "Supervisor",
+        "who_checks": "Supervisor",
+        "frequency": "before each use",
+        "evidence": "Worker confirmation and visual check of extraction hose and respirator seal",
+        "what_to_look_for": "Worker confirmation and visual check of extraction hose and respirator seal"
+      },
+      "responsibility": {
+        "SUP": "Supervise Install carpet tiles and floor",
+        "WKR": "Perform Install carpet tiles and floor per SWMS"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.9"
+    },
+    {
+      "sequence": 10,
+      "task": "Reinstall light fittings, grilles, and access panels",
+      "scope": "Install and connect light fittings and outlets to completed electrical rough-in. Fit HVAC diffusers and grilles to completed ductwork. Install access panels to ceiling grid. Test all fittings for secure mounting and functionality.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+      "hazards": [
+        "Electrocution \u2014 contact with energised electrical connections or incorrectly isolated supply during light fitting installation \u2014 risk of shock or death",
+        "Fall from height \u2014 worker loses balance on ladder while installing ceiling fittings \u2014 risk of serious injury or death",
+        "Falling light fitting or grille during installation \u2014 risk of head or upper-body injury to personnel below"
+      ],
+      "dominant_hazard": "Electrocution during connection of light fittings to energised supply",
+      "risk_pre": "High(6)",
+      "risk_post": "Medium(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Verify electrical supply to light circuit is isolated at switchboard and padlocked before opening any fitting or connection point.",
+        "Confirm isolation using a two-point voltage tester on the circuit before touching any conductor or terminal.",
+        "Install light fittings and connect to isolated rough-in only. Do not work on energised circuits.",
+        "Check each light fitting for secure mounting to ceiling structure before energising circuit.",
+        "Test fitting functionality after energisation only when all personnel have vacated the area directly below.",
+        "Install HVAC grilles and diffusers to completed ductwork using specified fixing method \u2014 verify no loose components before leaving work area.",
+        "Position ladder on stable, level ground. Keep ladder at 75\u00b0 angle. Do not overreach \u2014 move ladder instead.",
+        "Barricade area directly below ceiling work to prevent unauthorised entry during fitting installation and testing."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not energise any light circuit until: electrical rough-in has been checked for continuity and earth integrity by the electrician, and isolation and two-point test have been verified and recorded by supervisor on site."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: voltage tester shows supply is not fully isolated before any connection work begins.",
+        "\ud83d\uded1 STOP WORK if: ladder becomes unstable, unsecured, or personnel attempt to work from ladder at angle less than 70\u00b0 or greater than 80\u00b0.",
+        "\ud83d\uded1 STOP WORK if: occupied building personnel enter the barricaded area below ceiling work."
+      ],
+      "admin": [
+        "Obtain site isolation permit confirming electrical supply isolation and padlock placement before work starts.",
+        "Brief all personnel on barricade location and entry prohibition during fitting installation and testing phase.",
+        "Record circuit isolation, two-point test result, and fitting functionality test in site logbook with date, time, and tester name.",
+        "tell building manager and occupants of temporary supply isolation and expected duration."
+      ],
+      "ppe": [
+        "Safety helmet (AS/NZS 1801)",
+        "steel-capped footwear",
+        "High-visibility shirt or vest (AS/NZS 1906.4)"
+      ],
+      "ccvs_code": "ELE-H6",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Two-point voltage test on isolated circuit \u2014 negative result on both test points before any conductor contact.",
+        "who": "Electrician and supervisor",
+        "frequency": "Before opening any fitting connection point; before energising each circuit after installation",
+        "evidence": "Site logbook entry: date, time, circuit identification, tester name, test result (pass/fail), supervisor sign-off"
+      },
+      "responsibility": {
+        "SUP": "Verify fall protection, check module weights, sign off hold points",
+        "WKR": "Wear fall harness, check lanyard attachment, report equipment damage"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.10"
+    },
+    {
+      "sequence": 11,
+      "task": "Conduct final inspection and defect rectification",
+      "scope": "check partitions, ceiling, flooring, and all fittings for compliance with design and specifications. Identify and fix defects \u2014 loose panels, gaps, damaged tiles, misaligned fittings. Obtain written sign-off from project manager. Clean all work areas and remove temporary protection.",
+      "trade_type": "General",
+      "hrcw": true,
+      "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+      "hazards": [
+        "Fall from height \u2014 worker loses balance on ladder while inspecting or accessing ceiling defects \u2014 risk of serious injury or death",
+        "Struck-by injury during defect rectification \u2014 risk of minor injury from tools or hand tools",
+        "Incomplete rectification of defects \u2014 risk of latent safety failure if structural or safety-critical defects are not identified or properly repaired"
+      ],
+      "dominant_hazard": "Fall from height during inspection and rectification work",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Use stable step ladder (max 2 m) or mobile work platform rated for load before accessing ceiling or elevated defects \u2014 do not climb on partition edges or unstable bases.",
+        "Check ladder for damage, loose rungs, or defects before each use \u2014 do not use damaged ladder.",
+        "Position ladder on flat, level, clear ground with feet locked or braced \u2014 do not use ladder on uneven surfaces or carpet.",
+        "Brief all workers on defect types before inspection starts \u2014 use defect schedule or photographic reference to identify scope-critical defects.",
+        "check partitions, ceiling, flooring, and fittings against original design drawings and specification \u2014 record all defects in writing with location and type.",
+        "Prioritise safety-critical defects (loose fixings, structural misalignment, fall hazards) before cosmetic defects \u2014 stop work and report to PM if structural defect found.",
+        "fix defects using hand tools or approved power tools \u2014 do not use power tools in wet areas without RCD protection.",
+        "After rectification, re-check defect location to confirm repair meets specification \u2014 do not sign off without visual confirmation."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not fix defects until: defect schedule inspected and approved by project manager and any structural defects referred to structural engineer for assessment.",
+        "\u26a0\ufe0f HOLD POINT \u2014 do not obtain final sign-off until: all scope defects have been inspected, documented in defect schedule, and either rectified or formally deferred by project manager in writing."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: structural defect, loose load-bearing fixing, or misalignment affecting occupant safety is identified \u2014 report immediately to project manager and structural engineer before proceeding.",
+        "\ud83d\uded1 STOP WORK if: worker loses balance, slips, or near-miss on ladder or elevated access \u2014 re-assess access method and revise controls.",
+        "\ud83d\uded1 STOP WORK if: defect cannot be rectified within scope (requires specialist trade, engineer redesign, or material replacement) \u2014 refer to project manager before deferring.",
+        "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+      ],
+      "admin": [
+        "Verify white card (CPCCWHS1001) held by all workers before work starts.",
+        "Confirm all temporary protection installed during fit-out (edge protection, fall arrest systems, exclusion zones) remains in place and functional during inspection and rectification.",
+        "Brief workers on occupied building protocol \u2014 do not block exits, maintain fire-rated doors, avoid noise during quiet hours, report damage to building manager immediately.",
+        "Keep defect schedule, inspection notes, and PM sign-off on file for handover and warranty.",
+        "Photograph defects before and after rectification \u2014 attach to defect schedule for evidence.",
+        "Close and barricade balconies directly below active work zone before elevated work starts each day",
+        "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+      ],
+      "ppe": [
+        "Safety helmet (when working near elevated areas or under ceiling work)",
+        "eye protection, small particles during rectification)",
+        "cut-resistant gloves",
+        "steel-capped footwear, slip resistance on various floor types)",
+        "High-visibility vest (required in occupied building common areas)"
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": true,
+      "monitoring": {
+        "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+        "who": "Supervisor / Site induction lead",
+        "frequency": "Before each inspection shift; each time ladder relocated",
+        "evidence": "Supervisor sight check; defect schedule signed by PM; photographic record of defects and repairs."
+      },
+      "responsibility": {
+        "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+        "WKR": "Inspect per specification, photograph defects, report issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.11"
+    },
+    {
+      "sequence": 12,
+      "task": "Remove hoarding, demobilise site, and hand over",
+      "scope": "Dismantle hoarding and barricades. Remove all temporary protection, signage, and exclusion-zone markers. Sweep and vacuum Level 3 and common areas of dust and debris. Remove site bins and tools. Confirm area is safe and ready for occupancy. Provide keys and documentation to building manager.",
+      "trade_type": "General",
+      "hrcw": false,
+      "hrcw_category": null,
+      "hazards": [
+        "Struck-by injury from falling hoarding or barricade sections during dismantling \u2014 risk of head or upper-body injury",
+        "Trip hazard from debris, tools, or temporary protection materials during site cleanup \u2014 risk of slip and fall causing minor or moderate injury",
+        "Exposure to residual dust and fine particles during final sweeping and cleanup \u2014 risk of respiratory irritation or inhalation exposure"
+      ],
+      "dominant_hazard": "Struck-by injury from falling hoarding sections",
+      "risk_pre": "Medium(6)",
+      "risk_post": "Low(3)",
+      "risk_pre_score": {
+        "likelihood": 2,
+        "consequence": 3
+      },
+      "risk_post_score": {
+        "likelihood": 1,
+        "consequence": 3
+      },
+      "controls": [
+        "Wet-sweep or vacuum all Level 3 and common-area surfaces before hoarding removal to capture residual dust and prevent airborne release during dismantling.",
+        "Barricade hoarding dismantling zone with caution tape and 'Do Not Enter' signs; prohibit occupants and workers from entering 2 m radius during removal.",
+        "Remove hoarding panels systematically from top to bottom; secure each panel as it is loosened to prevent sudden drop or swing onto workers or occupants below.",
+        "check each hoarding section and barricade frame for stability, bent fixings, or damage before and during removal; do not force stuck components\u2014obtain supervisor approval to modify or cut fixings.",
+        "Place removed hoarding, barricade frames, and temporary bracing in designated waste bin or secure stack away from walkways and occupied zones.",
+        "Vacuum common-area floors and Level 3 using HEPA-filtered equipment to remove fine dust and debris; bag and label all waste as construction dust.",
+        "Remove all temporary signage, exclusion-zone markers, and caution tape; verify no tripping hazards remain on stairs, doorways, or floor level changes.",
+        "Sweep and check final work area for loose nails, screws, or metal fixings; remove or flag any debris before occupant re-entry."
+      ],
+      "hold_points": [
+        "\u26a0\ufe0f HOLD POINT \u2014 do not start occupant re-entry until: all hoarding removed, floors swept and vacuumed with HEPA extraction, final dust clearance inspected and approved by site supervisor, and building manager briefed on any outstanding remedial works."
+      ],
+      "stop_work": [
+        "\ud83d\uded1 STOP WORK if: hoarding or barricade section is unstable, bent, or at risk of falling during removal.",
+        "\ud83d\uded1 STOP WORK if: occupants or unauthorised workers enter hoarding dismantling zone.",
+        "\ud83d\uded1 STOP WORK if: HEPA vacuum fails during final dust clearance or dust extraction cannot be confirmed."
+      ],
+      "admin": [
+        "Obtain supervisor approval before modifying or cutting hoarding fixings.",
+        "Record final site photographic evidence of cleaned and demobilised areas.",
+        "Brief building manager on any outstanding remedial works, cleaning, or post-handover obligations.",
+        "Confirm all keys, access cards, and documentation transferred to building manager; obtain signed handover record."
+      ],
+      "ppe": [
+        "Hard hat (during hoarding removal only).",
+        "High-visibility vest.",
+        "cut-resistant gloves",
+        "Organic vapour respirator or P2 mask/respirator (fit-tested) if dust levels cannot be controlled (post-vacuum inspection determines fit).",
+        "steel-capped footwear, sole-puncture resistant)."
+      ],
+      "ccvs_code": "SYS-M3",
+      "wah_applicable": false,
+      "monitoring": {
+        "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+        "who": "Site Supervisor",
+        "frequency": "Continuous during removal phase; final inspection before occupant re-entry",
+        "evidence": "Supervisor sign-off on hoarding removal log; photographic record of cleaned floors; building manager handover signature on keys and documentation transfer."
+      },
+      "responsibility": {
+        "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+        "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+      },
+      "source": "ai-generated",
+      "approved": false,
+      "version": "1.0",
+      "step": "1.12"
+    }
+  ],
+  "inference": {
+    "hrcw": true,
+    "hrcw_category": "WHS Reg 2017 Sch 3 cl.10 \u2014 Demolition of load-bearing structure",
+    "hrcw_license_class": "Demolition Licence \u2014 Class B (up to 15m) or Class C (unrestricted)",
+    "hrcw_flags": {
+      "falling_2m": true,
+      "tiltup_precast": false,
+      "mobile_plant": false,
+      "demolition": true,
+      "asbestos": false,
+      "confined_space": false,
+      "electrical": true,
+      "shaft_trench": false,
+      "chemical_fuel": false,
+      "traffic_corridor": false,
+      "temp_support": false
+    },
+    "safework_notification_required": true,
+    "epa_license_required": false,
+    "ppe": [
+      "Safety glasses or goggles",
+      "High-visibility vest or shirt",
+      "Steel-capped safety boots",
+      "Hard hat where overhead risk present",
+      "P2 dust respirator \u2014 mandatory during demolition dust generation",
+      "Cut-resistant gloves \u2014 Level D minimum",
+      "Steel-capped boots \u2014 crush-resistant",
+      "Hard hat \u2014 mandatory on demolition sites",
+      "Arc flash PPE \u2014 Class 2 minimum for HV work",
+      "Insulated gloves \u2014 voltage-rated",
+      "Flame-resistant clothing",
+      "Full-body harness \u2014 AS/NZS 1891.1 compliant",
+      "Energy-absorbing lanyard \u2014 double lanyard where continuous attachment required",
+      "Helmet with chin strap \u2014 AS/NZS 1801",
+      "P2 respirator \u2014 enclosed space dust accumulation",
+      "Hearing protection \u2014 mechanical plant rooms",
+      "Hi-vis vest \u2014 all workers in shared-access areas"
+    ],
+    "certifications": [
+      "White Card (CPCCWHS1001) \u2014 general construction induction",
+      "Demolition Licence \u2014 Class B or C (SafeWork NSW)",
+      "CPCCDE3016 \u2014 Demolition (restricted)",
+      "Asbestos Removal Licence \u2014 if ACM identified in pre-demolition survey",
+      "Electrician Licence \u2014 NSW Fair Trading (not SafeWork NSW)",
+      "High Voltage Switching authority \u2014 where HV work involved",
+      "Working at heights \u2014 verified current competency (RIIOHS204E or equivalent per current RII Training Package)",
+      "EWP operator licence \u2014 WP class where boom exceeds 11m",
+      "Refrigerant handling licence \u2014 ARC licence for refrigerant work"
+    ],
+    "permits": [
+      "Council development consent \u2014 where required",
+      "SafeWork NSW demolition notification \u2014 structures over 6m",
+      "Pre-demolition hazardous materials survey \u2014 by licensed assessor, completed and reviewed before any work",
+      "Utility isolation certificates \u2014 electricity, gas, water, and telecommunications confirmed disconnected before demolition",
+      "Electrical isolation permit \u2014 lock-out tag-out before work",
+      "Live work permit \u2014 where de-energisation not reasonably practicable",
+      "Working at heights permit \u2014 signed before each elevated task",
+      "Ventilation plan \u2014 documented before work in enclosed space",
+      "Noise management plan \u2014 required where work affects occupants",
+      "Dust containment plan \u2014 hoarding or plastic sheeting before work starts",
+      "After-hours work permit \u2014 council consent where applicable",
+      "Hot work permit \u2014 where brazing or welding refrigerant lines",
+      "Crane/hoist permit \u2014 where lifting plant to roof or mezzanine",
+      "Access management plan \u2014 define work zones vs occupied zones"
+    ],
+    "qualifications": [
+      "Licensed demolition supervisor \u2014 on site at all times",
+      "Structural engineer sign-off \u2014 pre-demolition engineering assessment",
+      "Structural monitoring \u2014 where adjacent structures at risk, engineer-specified monitoring regime in place before demolition",
+      "Falling object exclusion zone \u2014 established and maintained for full height of demolition face plus 5m",
+      "Demolition sequence \u2014 engineer-approved order of operations; no deviation without engineer sign-off",
+      "Verification of isolation \u2014 two-person check before commencing",
+      "Competent person \u2014 pre-use inspection of fall arrest equipment",
+      "Rescue plan \u2014 documented before work above 2m begins",
+      "Rescue equipment \u2014 on site and ready for immediate deployment before any elevated work starts",
+      "Atmospheric test \u2014 O2 and contaminant levels checked before entry",
+      "Occupant notification \u2014 48 hours minimum before noisy or dusty work",
+      "Refrigerant leak detection \u2014 before and after commissioning",
+      "Crane lift plan \u2014 if rooftop plant placement required",
+      "Hoarding / physical separation \u2014 between construction zone and occupied area",
+      "Communication plan \u2014 notify building occupants of work schedule, access restrictions, and emergency procedures"
+    ],
+    "notifications": [
+      "SafeWork NSW \u2014 5 business days notice for structures over 6m",
+      "Utility services disconnection confirmation before start",
+      "Energy provider \u2014 notification before work on supply authority assets",
+      "Building manager \u2014 written notification before work commences",
+      "Occupants \u2014 letterbox drop 48 hours before disruptive work"
+    ],
+    "regulatory_notes": [
+      "WHS Reg 2017 s.292 \u2014 demolition SWMS required before work",
+      "Pre-demolition hazardous materials survey mandatory",
+      "Structural engineer \u2014 signed shoring plan required",
+      "WHS Reg 2017 r.291-297 \u2014 structural alterations and temporary support obligations",
+      "SafeWork NSW Code of Practice: Demolition Work",
+      "Pre-demolition survey \u2014 must identify ACM, lead paint, PCB, synthetic mineral fibre, and structural hazards",
+      "Robotic demolition \u2014 where space confined or structural collapse risk elevated; operator remains outside exclusion zone",
+      "Progressive demolition \u2014 top-down sequence unless engineer specifies otherwise",
+      "Overhead powerlines \u2014 request de-energisation before demolition plant operates within exclusion zone",
+      "Dust suppression \u2014 water suppression mandatory during demolition; not optional for urban sites",
+      "Waste management \u2014 hazardous demolition waste (ACM, lead, PCB) must be segregated and disposed per EPA license requirements",
+      "WHS Reg 2017 s.164 \u2014 electrical risk management",
+      "AS/NZS 3000 \u2014 Wiring Rules",
+      "Live work \u2014 must be last resort, requires specific permit and PPE",
+      "WHS Reg 2017 Part 4.4 \u2014 fall prevention hierarchy applies to all fall risk",
+      "SafeWork NSW Code of Practice: Managing the Risk of Falls at Workplaces",
+      "Harness inspection \u2014 pre-use check logged before each shift",
+      "WHS Reg 2017 r.305 \u2014 rescue procedure required before commencing work at height",
+      "Suspension trauma \u2014 incapacitated worker must be lowered within 15 minutes; harness straps can cause positional asphyxia",
+      "Emergency contacts \u2014 on-site personnel trained in rescue procedure before elevated work begins",
+      "WHS Reg 2017 r.291-303 \u2014 fall prevention hierarchy: (1) eliminate, (2) passive edge protection/guardrail, (3) restraint system, (4) fall arrest, (5) administrative",
+      "Edge protection first \u2014 guardrails preferred over harness where work area permits fixed barriers",
+      "Control line \u2014 2m setback from edge, used only when guardrail not practicable",
+      "Exclusion zone required below WAH operations \u2014 size proportional to fall/drop zone; physical barrier where practicable, flagging/bunting as minimum",
+      "Emergency access must be maintained to all work zones including WAH exclusion zones",
+      "Enclosed spaces \u2014 ventilation mandatory, cross-ventilation preferred",
+      "Dust \u2014 accumulates faster indoors, respiratory protection mandatory",
+      "Noise \u2014 reverberant environments may exceed 85dB even at low source levels",
+      "Strata schemes \u2014 notify strata manager and obtain by-law compliance",
+      "Noise curfew \u2014 residential: 8am\u20135pm weekdays, 8am\u20131pm Saturday, no Sunday",
+      "Refrigerant handling restricted to ARC-licensed technicians",
+      "Rooftop plant placement may require crane \u2014 separate lift plan and SWMS",
+      "Coordinate HVAC commissioning with electrical energisation sequence",
+      "Construction zone must be physically separated from occupied areas at all times",
+      "Maintain existing emergency egress routes \u2014 no blocking of fire stairs or exits",
+      "Dust, noise, and fume controls required where work may affect occupants"
+    ],
+    "plant": [],
+    "jurisdiction": "AU",
+    "jurisdiction_notes": [],
+    "swms_classification": {
+      "job_type": "demolition",
+      "building_context": "existing",
+      "occupancy_context": "occupied",
+      "scope_modifiers": [
+        "commercial",
+        "occupied_interface",
+        "high_rise"
+      ]
+    }
+  },
+  "agent_outputs": {
+    "task_manifest": {
+      "tasks": [
+        {
+          "sequence": 1,
+          "task": "Establish site, confirm services isolation plan",
+          "scope": "Set up site boundaries, confirm electrical and HVAC isolation strategy with services coordinator, establish exclusion zones for demolition face and occupied floors below, erect hoarding and barricades to separate work area from adjacent operational tenancies.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "near services"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 2,
+          "task": "Remove fixtures, fittings, and mechanical plant from Level 3",
+          "scope": "Disconnect and remove light fittings, outlet boxes, grilles, HVAC diffusers, and terminal units before partition and ceiling demolition. Coordinate with services trades. Cap or plug all service openings. Tag and store reusable components.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "near services"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 3,
+          "task": "Demolish existing partition walls and ceiling grid",
+          "scope": "Remove gyprock partitions, timber/metal frames, suspended ceiling grid, and panels. Confirm absence of asbestos via provided clearance certificate. Manage dust and debris within hoarding. Load and remove debris to skip bin. Establish falling-object exclusion zone for full height of demolition face plus 5m below.",
+          "trade_type": "Demolition",
+          "environment": [
+            "occupied building",
+            "at height",
+            "indoor"
+          ],
+          "hrcw": true,
+          "hrcw_flags": [
+            "WHS Reg 2017 Sch 3 cl.10 \u2014 Demolition of load-bearing structure"
+          ],
+          "complexity": "high"
+        },
+        {
+          "sequence": 4,
+          "task": "Expose and prepare structural ceiling substrate",
+          "scope": "Remove loose material, dust, and debris from exposed slab soffit. Check for cracks, spalling, or surface damage. Report any structural concerns to project manager before proceeding. Brush clean and allow substrate to settle before installing new ceiling system.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 5,
+          "task": "Install new suspended ceiling grid and hangers",
+          "scope": "Locate and confirm ceiling anchor points in structural slab. Install hanger wires or spring anchors at spacing per design drawings. Erect perimeter and main runners at correct height and alignment. Confirm grid is level and stable before panel installation.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 6,
+          "task": "Install new partition walls and timber frames",
+          "scope": "Erect floor-to-ceiling gyprock partitions along marked lines. Install top and bottom plates, studs, and noggins per design drawings. Confirm vertical and horizontal alignment. Install service access holes as marked. Do not install gyprock facing until frames are inspected and approved.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 7,
+          "task": "Coordinate and install services routes and terminations",
+          "scope": "Work with electrical, data, and HVAC trades to route cables, conduits, and ductwork through partition cavities and above ceiling grid. Install outlet boxes, data points, and grille supports as per services design. Complete all service rough-ins before gyprock facing commences.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "near services",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 8,
+          "task": "Install ceiling panels, gyprock facing, and seals",
+          "scope": "Install suspended ceiling tiles or panels into grid framework. Install gyprock sheets to partition frames. Seal all partition-to-soffit gaps and service penetrations with fire-rated sealant. Joint tape and finish gyprock seams per specification. Allow compound to cure.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "medium"
+        },
+        {
+          "sequence": 9,
+          "task": "Install carpet tiles and floor finishes",
+          "scope": "Prepare floor substrate \u2014 vacuum, remove all dust and debris. Install underlay if required. Lay carpet tiles in specified pattern from centre point outward. Trim edge tiles to suit perimeter and service penetrations. Secure tiles as per manufacturer specification.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 10,
+          "task": "Reinstall light fittings, grilles, and access panels",
+          "scope": "Install and connect light fittings and outlets to completed electrical rough-in. Fit HVAC diffusers and grilles to completed ductwork. Install access panels to ceiling grid. Test all fittings for secure mounting and functionality.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "at height",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 11,
+          "task": "Conduct final inspection and defect rectification",
+          "scope": "Inspect partitions, ceiling, flooring, and all fittings for compliance with design and specifications. Identify and rectify defects \u2014 loose panels, gaps, damaged tiles, misaligned fittings. Obtain written sign-off from project manager. Clean all work areas and remove temporary protection.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        },
+        {
+          "sequence": 12,
+          "task": "Remove hoarding, demobilise site, and hand over",
+          "scope": "Dismantle hoarding and barricades. Remove all temporary protection, signage, and exclusion-zone markers. Sweep and vacuum Level 3 and common areas of dust and debris. Remove site bins and tools. Confirm area is safe and ready for occupancy. Provide keys and documentation to building manager.",
+          "trade_type": "General",
+          "environment": [
+            "occupied building",
+            "indoor"
+          ],
+          "hrcw": false,
+          "hrcw_flags": [],
+          "complexity": "low"
+        }
+      ],
+      "total_tasks": 12,
+      "primary_trade": "General",
+      "environment_summary": [
+        "occupied building",
+        "at height",
+        "near services",
+        "indoor"
+      ],
+      "hrcw_present": true
+    },
+    "risk_manifest": {
+      "risks": [
+        {
+          "sequence": 1,
+          "task": "Establish site, confirm services isolation plan",
+          "hazards": [
+            "Uncontrolled electrical supply to HVAC or other building services \u2014 risk of electrocution during isolation work or accidental re-energisation",
+            "Unconfirmed service isolation strategy \u2014 risk of inadvertent disruption to occupied floors or building utilities",
+            "Inadequate hoarding or barricade design \u2014 risk of unauthorised entry to demolition zone or falling debris striking adjacent occupants"
+          ],
+          "dominant_hazard": "Uncontrolled electrical supply \u2014 risk of electrocution",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation"
+        },
+        {
+          "sequence": 2,
+          "task": "Remove fixtures, fittings, and mechanical plant from Level 3",
+          "hazards": [
+            "Exposure to remaining electrical supply in outlet boxes or light fittings \u2014 risk of shock or electrocution if not isolated before disconnect",
+            "Uncontrolled release of HVAC refrigerant or compressed gas during disconnection \u2014 risk of chemical burn or inhalation injury",
+            "Falling light fittings or terminal units from height \u2014 risk of head injury to personnel below"
+          ],
+          "dominant_hazard": "Electrical shock during disconnection of energised fittings",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation"
+        },
+        {
+          "sequence": 3,
+          "task": "Demolish existing partition walls and ceiling grid",
+          "hazards": [
+            "Collapse or uncontrolled fall of partition wall or ceiling grid section \u2014 risk of crush injury to personnel",
+            "Falling debris from demolition face striking personnel on Level 3 or floors below \u2014 risk of serious head injury or death",
+            "Asbestos fibre release if clearance certificate is not valid or if disturbed material is not confirmed asbestos-free \u2014 risk of mesothelioma or lung disease",
+            "High dust generation during gyprock and ceiling demolition \u2014 risk of respiratory irritation and inhalation of unknown particulates",
+            "Struck-by injury from power tools or hand tools during wall and grid dismantling \u2014 risk of laceration or fracture"
+          ],
+          "dominant_hazard": "Falling debris \u2014 risk of serious head injury or death",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.3 \u2014 Demolition of load-bearing structure"
+        },
+        {
+          "sequence": 4,
+          "task": "Expose and prepare structural ceiling substrate",
+          "hazards": [
+            "Dust and debris exposure during cleaning and loose-material removal \u2014 risk of respiratory irritation or inhalation of fine particles",
+            "Falling debris or loose material from slab soffit during cleaning \u2014 risk of head or eye injury",
+            "Structural damage not identified \u2014 risk of collapse or sudden failure during subsequent ceiling installation if cracks or spalling are not correctly reported"
+          ],
+          "dominant_hazard": "Unidentified structural damage leading to collapse during installation",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 5,
+          "task": "Install new suspended ceiling grid and hangers",
+          "hazards": [
+            "Fall from height \u2014 worker loses balance or slips while working at ceiling height on ladders or scaffolding \u2014 risk of serious injury or death",
+            "Hanger wire failure or incorrect installation \u2014 risk of ceiling grid collapse during or after installation",
+            "Struck-by injury from ceiling components, tools, or equipment during installation \u2014 risk of laceration or fracture",
+            "Entanglement hazard from hanger wire or spring anchor components \u2014 risk of trapped hand or arm during handling"
+          ],
+          "dominant_hazard": "Fall from height during ceiling installation",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 6,
+          "task": "Install new partition walls and timber frames",
+          "hazards": [
+            "Fall from height \u2014 worker loses balance on ladder or scaffold while installing top plates or upper studs \u2014 risk of serious injury or death",
+            "Partition frame collapse during installation if not adequately braced \u2014 risk of crush injury to personnel",
+            "Struck-by injury from falling timber or studs during frame erection \u2014 risk of head or upper-body injury",
+            "Muscle strain or back injury during manual handling of heavy timber frames or stud lengths \u2014 risk of soft-tissue injury"
+          ],
+          "dominant_hazard": "Fall from height during partition frame installation",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 7,
+          "task": "Coordinate and install services routes and terminations",
+          "hazards": [
+            "Electrocution \u2014 contact with energised electrical cable or conduit during routing or termination \u2014 risk of shock or death if cable is not isolated or identified",
+            "Struck-by injury from suspended cable or ductwork during installation \u2014 risk of head or facial injury",
+            "Pinch-point or crush injury to fingers and hands during ductwork or cable-tray assembly \u2014 risk of fracture or crush injury",
+            "Coordination failure between trades \u2014 risk of rework, delay, and repeat exposure to hazards if electrical, data, and HVAC routes conflict"
+          ],
+          "dominant_hazard": "Electrocution during energised cable routing",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation"
+        },
+        {
+          "sequence": 8,
+          "task": "Install ceiling panels, gyprock facing, and seals",
+          "hazards": [
+            "Fall from height \u2014 worker loses balance on ladder or platform while lifting ceiling panels or gyprock sheets \u2014 risk of serious injury or death",
+            "Gyprock sheet or panel falls from height or during handling \u2014 risk of crush injury or head injury to personnel below",
+            "Chemical burn from fire-rated sealant contact with skin \u2014 risk of dermatitis or respiratory irritation if fumes are inhaled",
+            "Muscle strain or back injury during manual handling and installation of heavy gyprock panels \u2014 risk of soft-tissue injury or acute strain"
+          ],
+          "dominant_hazard": "Fall from height during panel or gyprock installation",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 9,
+          "task": "Install carpet tiles and floor finishes",
+          "hazards": [
+            "Trip hazard from debris, underlay folds, or uneven floor substrate \u2014 risk of slip and fall causing minor injury or fracture",
+            "Muscle strain or back injury during kneeling, bending, and manual laying of carpet tiles \u2014 risk of soft-tissue injury or acute strain",
+            "Exposure to adhesive or bonding-agent fumes during tile installation \u2014 risk of respiratory irritation or chemical sensitivity"
+          ],
+          "dominant_hazard": "Muscle strain or back injury during repetitive installation work",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 3,
+            "consequence": 2
+          },
+          "risk_post_score": {
+            "likelihood": 2,
+            "consequence": 2
+          },
+          "hrcw_category": null
+        },
+        {
+          "sequence": 10,
+          "task": "Reinstall light fittings, grilles, and access panels",
+          "hazards": [
+            "Electrocution \u2014 contact with energised electrical connections or incorrectly isolated supply during light fitting installation \u2014 risk of shock or death",
+            "Fall from height \u2014 worker loses balance on ladder while installing ceiling fittings \u2014 risk of serious injury or death",
+            "Falling light fitting or grille during installation \u2014 risk of head or upper-body injury to personnel below"
+          ],
+          "dominant_hazard": "Electrocution during connection of light fittings to energised supply",
+          "risk_pre": "H",
+          "risk_post": "M",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation"
+        },
+        {
+          "sequence": 11,
+          "task": "Conduct final inspection and defect rectification",
+          "hazards": [
+            "Fall from height \u2014 worker loses balance on ladder while inspecting or accessing ceiling defects \u2014 risk of serious injury or death",
+            "Struck-by injury during defect rectification \u2014 risk of minor injury from tools or hand tools",
+            "Incomplete rectification of defects \u2014 risk of latent safety failure if structural or safety-critical defects are not identified or properly repaired"
+          ],
+          "dominant_hazard": "Fall from height during inspection and rectification work",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m"
+        },
+        {
+          "sequence": 12,
+          "task": "Remove hoarding, demobilise site, and hand over",
+          "hazards": [
+            "Struck-by injury from falling hoarding or barricade sections during dismantling \u2014 risk of head or upper-body injury",
+            "Trip hazard from debris, tools, or temporary protection materials during site cleanup \u2014 risk of slip and fall causing minor or moderate injury",
+            "Exposure to residual dust and fine particles during final sweeping and cleanup \u2014 risk of respiratory irritation or inhalation exposure"
+          ],
+          "dominant_hazard": "Struck-by injury from falling hoarding sections",
+          "risk_pre": "M",
+          "risk_post": "L",
+          "risk_pre_score": {
+            "likelihood": 2,
+            "consequence": 3
+          },
+          "risk_post_score": {
+            "likelihood": 1,
+            "consequence": 3
+          },
+          "hrcw_category": null
+        }
+      ]
+    },
+    "task_blocks_raw": [
+      {
+        "sequence": 1,
+        "task": "Establish site, confirm services isolation plan",
+        "scope": "Set up site boundaries, confirm electrical and HVAC isolation strategy with services coordinator, establish exclusion zones for demolition face and occupied floors below, erect hoarding and barricades to separate work area from adjacent operational tenancies.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+        "hazards": [
+          "Uncontrolled electrical supply to HVAC or other building services \u2014 risk of electrocution during isolation work or accidental re-energisation",
+          "Unconfirmed service isolation strategy \u2014 risk of inadvertent disruption to occupied floors or building utilities"
+        ],
+        "dominant_hazard": "Uncontrolled electrical supply \u2014 risk of electrocution",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not remove any hoardings or permit unauthorised access until: exclusion zone boundaries are confirmed in writing by PM and all personnel briefed on access restrictions",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: electrical mains disconnection certificate cannot be obtained before site setup, or if building services cannot be isolated as per written strategy",
+          "\ud83d\uded1 STOP WORK if: building management advises that HVAC or other services serving occupied floors cannot be isolated without disruption \u2014 refer to structural engineer and project manager for revised isolation sequence"
+        ],
+        "admin": [
+          "Verify all site personnel hold current White Card (CPCCWHS1001) \u2014 maintain register on site.",
+          "tell building management and adjacent tenants 48 hours before site setup \u2014 confirm occupation schedule and emergency contact details.",
+          "Establish daily communication protocol with building management about isolation status and access restrictions.",
+          "Residents responsible for clearing personal items, furniture, potted plants, and non-common fixtures from balcony and work areas before each phase \u2014 area left/excluded if not cleared",
+          "Temporary access to neighbouring properties required \u2014 confirm access arrangements before commencing",
+          "Vegetation trimmed away from surfaces designated for painting or remedial works prior to commencement \u2014 area excluded if vegetation impedes access",
+          "On-site parking or provision of parking permits required for duration of works",
+          "Final inspection and agreed scope of works to be confirmed before commencement"
+        ],
+        "ppe": [
+          "Safety helmet and chin strap",
+          "High-visibility vest (AS/NZS 1906.1)",
+          "steel-capped footwear, slip resistant)",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+          "who": "Project Manager / Supervisor",
+          "frequency": "Before site setup commences, daily check of isolation tags and hoarding integrity",
+          "evidence": "Disconnection certificate retained on file; isolation tag register updated daily; photographic record of hoarding installation and exclusion zone signage"
+        },
+        "responsibility": {
+          "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+          "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.1"
+      },
+      {
+        "sequence": 2,
+        "task": "Remove fixtures, fittings, and mechanical plant from Level 3",
+        "scope": "Disconnect and remove light fittings, outlet boxes, grilles, HVAC diffusers, and terminal units before partition and ceiling demolition. Coordinate with services trades. Cap or plug all service openings. Tag and store reusable components.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+        "hazards": [
+          "Exposure to remaining electrical supply in outlet boxes or light fittings \u2014 risk of shock or electrocution if not isolated before disconnect",
+          "Uncontrolled release of HVAC refrigerant or compressed gas during disconnection \u2014 risk of chemical burn or inhalation injury",
+          "Falling light fittings or terminal units from height \u2014 risk of head injury to personnel below"
+        ],
+        "dominant_hazard": "Electrical shock during disconnection of energised fittings",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Isolate HVAC terminal units and diffusers from supply air and return air ducts; cap or plug all openings immediately after disconnection to prevent dust and debris entry.",
+          "Obtain HVAC disconnection certificate from services trade confirming refrigerant and compressed gas systems are depressurised and safely vented before terminal unit removal.",
+          "Secure light fittings with rope or strap before loosening final fixings; lower fittings hand-over-hand to ground level \u2014 do not drop or swing fittings over occupied areas.",
+          "Barricade and delineate the removal zone below all elevated work on Level 3 to prevent unauthorised entry; post 'Removal in Progress' signs at all access points.",
+          "Brief all site personnel on Level 3 that fixture and plant removal is in progress; confirm no unauthorised entry to the removal zone and coordinate with concurrent occupied-building activities.",
+          "Tag all reusable components with project ID and storage location before removal; store safely in designated area away from pedestrian and vehicle traffic.",
+          "Notify building occupants / body corporate / strata manager of work schedule, access restrictions, and expected noise/dust at least 48 hours before work starts"
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start work until: written notification delivered to all affected occupants and body corporate/strata manager"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: voltage is detected on any outlet box or fitting during verification testing \u2014 do not proceed until electrical coordinator re-isolates and re-certifies.",
+          "\ud83d\uded1 STOP WORK if: HVAC refrigerant or gas disconnection certificate cannot be obtained before terminal unit removal \u2014 contact services coordinator immediately.",
+          "\ud83d\uded1 STOP WORK if: barricade or exclusion zone is breached or removal zone is entered by unauthorised personnel during active removal work."
+        ],
+        "admin": [
+          "Obtain HVAC disconnection certificate from services trade confirming safe venting and depressurisation.",
+          "Coordinate removal schedule with building services and facilities teams; confirm no concurrent electrical or mechanical work is in progress on Level 3."
+        ],
+        "ppe": [
+          "Safety helmet (hard hat) \u2014 mandatory when working below or adjacent to elevated removals.",
+          "eye protection\u2014 mandatory when disconnecting electrical outlets or HVAC ducts.",
+          "High-visibility vest \u2014 mandatory in the removal zone.",
+          "cut-resistant gloves",
+          "steel-capped footwear\u2014 mandatory on Level 3 during removal operations."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Supervisor + appointed electrician",
+          "frequency": "Before each fixture/fitting disconnection",
+          "evidence": "Electrical isolation certificate on-site; multi-meter test log; photograph of de-energised outlet and fitting tags"
+        },
+        "responsibility": {
+          "SUP": "Supervise Remove fixtures, fittings, and mechanical",
+          "WKR": "Perform Remove fixtures, fittings, and mechanical per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.6"
+      },
+      {
+        "sequence": 3,
+        "task": "Demolish existing partition walls and ceiling grid",
+        "scope": "Remove gyprock partitions, timber/metal frames, suspended ceiling grid, and panels. Confirm absence of asbestos via provided clearance certificate. Manage dust and debris within hoarding. Load and remove debris to skip bin. Establish falling-object exclusion zone for full height of demolition face plus 5m below.",
+        "trade_type": "Demolition",
+        "hrcw": true,
+        "hrcw_category": "cl.3 \u2014 Demolition of load-bearing structure",
+        "hazards": [
+          "Collapse or uncontrolled fall of partition wall or ceiling grid section \u2014 risk of crush injury to personnel",
+          "Asbestos fibre release if clearance certificate is not valid or if disturbed material is not confirmed asbestos-free \u2014 risk of mesothelioma or lung disease",
+          "Struck-by injury from power tools or hand tools during wall and grid dismantling \u2014 risk of laceration or fracture"
+        ],
+        "dominant_hazard": "Falling debris \u2014 risk of serious head injury or death",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Wet-suppress gyprock and ceiling panels during removal to suppress dust \u2014 do not allow dry breakout or dust generation above containment.",
+          "Install temporary propping or bracing on load-bearing partition frames before removal commences \u2014 no unauthorised cutting or sudden load release.",
+          "Use dust extraction or on-tool dust capture during any grinding, cutting, or power-tool use \u2014 maintain RPE if dust cannot be suppressed.",
+          "Load debris directly into skip bin from containment hoarding \u2014 do not throw or drop debris from height."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not remove load-bearing partition frame until: engineer-approved temporary propping is installed, inspected, and signed off."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: debris escapes containment hoarding or personnel breach falling-object exclusion zone.",
+          "\ud83d\uded1 STOP WORK if: unplanned structural movement, cracking, or load instability is observed in remaining building elements or temporary props."
+        ],
+        "admin": [
+          "Provide engineer-approved temporary propping or bracing plan before load-bearing partition removal.",
+          "Brief workers on exclusion zone, falling-object risk, asbestos trigger, and stop-work conditions."
+        ],
+        "ppe": [
+          "Hard hat (mandatory \u2014 full shift in demolition zone and exclusion zone below).",
+          "High-visibility vest (Class D).",
+          "Steel-capped boots.",
+          "Organic vapour + particulate respirator (P2 equivalent or higher) \u2014 mandatory if dust suppression fails or dry breakout occurs.",
+          "eye protection",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "N/A",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Exclusion zone maintained \u2014 no unauthorised personnel entry; debris contained within hoarding.",
+          "who": "Supervisor / Demolition contractor",
+          "frequency": "Continuous during demolition; pre-shift check of hoarding and signage.",
+          "evidence": "Zone barricades intact and visible; no debris outside containment; exclusion zone log maintained; asbestos certificate sighted and dated."
+        },
+        "responsibility": {
+          "SUP": "Supervise Demolish existing partition walls and",
+          "WKR": "Perform Demolish existing partition walls and per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.2"
+      },
+      {
+        "sequence": 4,
+        "task": "Expose and prepare structural ceiling substrate",
+        "scope": "Remove loose material, dust, and debris from exposed slab soffit. Check for cracks, spalling, or surface damage. Report any structural concerns to project manager before proceeding. Brush clean and allow substrate to settle before installing new ceiling system.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Dust and debris exposure during cleaning and loose-material removal \u2014 risk of respiratory irritation or inhalation of fine particles",
+          "Falling debris or loose material from slab soffit during cleaning \u2014 risk of head or eye injury",
+          "Structural damage not identified \u2014 risk of collapse or sudden failure during subsequent ceiling installation if cracks or spalling are not correctly reported"
+        ],
+        "dominant_hazard": "Unidentified structural damage leading to collapse during installation",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Obtain structural engineer's written approval before starting work \u2014 confirm slab soffit can safely support temporary ceiling load and inspection activity.",
+          "Wet all loose material and dust on slab soffit using spray bottle or damp cloth \u2014 do not dry sweep or brush.",
+          "Remove loose debris by hand into labelled waste bag \u2014 do not force material; stop if material will not separate cleanly.",
+          "Check entire slab soffit surface for cracks wider than 2 mm, spalling deeper than 10 mm, rust staining, or water damage \u2014 mark each defect with tape and photograph.",
+          "Brief all workers on hazard: structural defects must be reported before ceiling work proceeds \u2014 do not assume defects are minor.",
+          "Do not cover or hide any structural defect with new material \u2014 all defects must be visible to project manager and engineer.",
+          "Allow substrate to air dry for minimum 24 hours after cleaning \u2014 verify no active moisture or seepage before signing off.",
+          "Provide report to project manager listing all defects found, location, size, and photographs \u2014 obtain PM sign-off before proceeding to ceiling installation."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install ceiling system until: structural engineer has inspected and approved all identified defects in writing and PM has authorized method to proceed."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: slab soffit shows signs of active structural movement, settlement, or failure during cleaning.",
+          "\ud83d\uded1 STOP WORK if: cracks wider than 5 mm or spalling deeper than 25 mm are found \u2014 engineer re-assessment required.",
+          "\ud83d\uded1 STOP WORK if: water seepage, active moisture, or structural decay is present \u2014 substrate cannot be certified as safe for load."
+        ],
+        "admin": [
+          "Complete structural defect register with photographs and measurements before submission to PM.",
+          "Brief all site personnel that this is a structural-critical task \u2014 defect reporting is a no-fault safety hold."
+        ],
+        "ppe": [
+          "eye protection",
+          "cut-resistant gloves",
+          "P2 or P3 respirator (organic vapour if mould present \u2014 confirm with SDS before use)",
+          "Hard hat (falling debris risk)",
+          "Steel-capped boots"
+        ],
+        "ccvs_code": "N/A",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Project Manager / Structural Engineer",
+          "frequency": "Before task start; before ceiling installation",
+          "evidence": "Signed engineer approval letter or inspection certificate; defect register with photographs and PM sign-off"
+        },
+        "responsibility": {
+          "SUP": "Supervise Expose and prepare structural ceiling",
+          "WKR": "Perform Expose and prepare structural ceiling per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.3"
+      },
+      {
+        "sequence": 5,
+        "task": "Install new suspended ceiling grid and hangers",
+        "scope": "Locate and confirm ceiling anchor points in structural slab. Install hanger wires or spring anchors at spacing per design drawings. Erect perimeter and main runners at correct height and alignment. Confirm grid is level and stable before panel installation.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker loses balance or slips while working at ceiling height on ladders or scaffolding \u2014 risk of serious injury or death",
+          "Hanger wire failure or incorrect installation \u2014 risk of ceiling grid collapse during or after installation",
+          "Struck-by injury from ceiling components, tools, or equipment during installation \u2014 risk of laceration or fracture",
+          "Entanglement hazard from hanger wire or spring anchor components \u2014 risk of trapped hand or arm during handling"
+        ],
+        "dominant_hazard": "Fall from height during ceiling installation",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Install and secure ladder or mobile elevated work platform (MEWP) on level ground before ascending to ceiling height.",
+          "Confirm all anchor points in structural slab are sound and rated for design load before installing first hanger wire.",
+          "Install hanger wires or spring anchors at spacing and load rating per design drawings; do not deviate from spacing or anchor type.",
+          "Wear safety harness with lanyard anchored to independent fixed point if working above 2 m and fall protection cannot be guaranteed by platform edge.",
+          "Install edge protection or guardrail around elevated work platform; maintain clear 1.2 m exclusion zone below ceiling work.",
+          "Check hanger wire and spring anchor components for damage, corrosion, or defect before installation; do not use damaged items.",
+          "Level and align perimeter and main runners using spirit level and laser alignment tool before fixing secondary hangers.",
+          "Barricade floor area below work; post warning sign 'Ceiling Installation in Progress \u2014 Do Not Enter'."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install hanger wires until: structural engineer or supervisor confirms all anchor points are located, exposed, and rated for design load on site.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install ceiling panels until: grid alignment and levelling is confirmed by supervisor and documented (written sign-off or photo record)."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: hanger wire is cracked, corroded, kinked, or shows visible defect before or during installation.",
+          "\ud83d\uded1 STOP WORK if: any anchor point is crumbling, loose, or does not support test load without movement.",
+          "\ud83d\uded1 STOP WORK if: grid is not level (tolerance >10 mm over 3 m) or shows visible sag or misalignment after installation.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain site induction (White Card CPCCWHS1001) and confirm understanding of fall prevention and suspended load hazards.",
+          "Confirm occupied building protocols: liaison with building manager, restriction of work hours, and exclusion of building occupants from work area.",
+          "Keep design drawings and hanger spacing schedule on site and visible during installation.",
+          "Record hanger installation locations and load test results in site log or photo record for final inspection.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Safety harness and shock-absorber lanyard (if working above 2 m without edge protection guardrail)",
+          "Safety helmet (hard hat)",
+          "Non-slip steel-capped footwear",
+          "High-visibility vest or shirt",
+          "cut-resistant gloves"
+        ],
+        "ccvs_code": "WAH-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Check all hanger wires and anchor points for damage or loose components before and during installation.",
+          "who": "Supervisor / Leading hand",
+          "frequency": "Before each work shift; continuous during installation; before moving to next grid section",
+          "evidence": "Visual check recorded in site diary or photo log; hanger installation schedule ticked off per location; final grid level sign-off by supervisor"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install new suspended ceiling grid",
+          "WKR": "Perform Install new suspended ceiling grid per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.4"
+      },
+      {
+        "sequence": 6,
+        "task": "Install new partition walls and timber frames",
+        "scope": "Erect floor-to-ceiling gyprock partitions along marked lines. Install top and bottom plates, studs, and noggins per design drawings. Confirm vertical and horizontal alignment. Install service access holes as marked. Do not install gyprock facing until frames are inspected and approved.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker loses balance on ladder or scaffold while installing top plates or upper studs \u2014 risk of serious injury or death",
+          "Partition frame collapse during installation if not adequately braced \u2014 risk of crush injury to personnel",
+          "Struck-by injury from falling timber or studs during frame erection \u2014 risk of head or upper-body injury",
+          "Muscle strain or back injury during manual handling of heavy timber frames or stud lengths \u2014 risk of soft-tissue injury"
+        ],
+        "dominant_hazard": "Fall from height during partition frame installation",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Erect mobile elevated work platform (MEWP) or secure ladder to stable base before installing top plates above 2m height.",
+          "Install temporary horizontal bracing between studs at mid-height and top during frame erection to prevent collapse or sideways movement.",
+          "Wear safety harness with lanyard attached to fixed anchor point when working above 2m on scaffold or MEWP.",
+          "Brief all workers on partition layout and marked service access holes before timber delivery and frame start.",
+          "Confirm vertical and horizontal alignment with laser level or spirit level after every second stud is secured.",
+          "Use mechanical handling aid (trolley, dolly) to move stud lengths and frame assemblies; carry only short timber lengths by hand.",
+          "Barricade and delineate partition work area to exclude site personnel not involved in frame erection.",
+          "Position timber stacks flat and stable, no higher than 1.5m, away from edge of work platform or scaffold."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install top plates above 2m height until: ladder or MEWP is installed, secured, and tagged.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install gyprock facing until: project supervisor or structural engineer confirms vertical and horizontal alignment, bracing is complete, and service holes are cut and clear."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: frame shows visible lateral movement, temporary bracing loosens or shifts, or unauthorised removal of bracing occurs.",
+          "\ud83d\uded1 STOP WORK if: worker loses footing or stability on ladder or MEWP, or harness becomes detached or slack.",
+          "\ud83d\uded1 STOP WORK if: building occupants or site personnel enter barricaded work area or partition layout differs materially from marked design.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Obtain design drawings and confirm marked partition lines and service hole locations on site before frame material delivery.",
+          "Confirm manual handling loads; if any single stud or frame section exceeds 20 kg, assign two workers or use mechanical aid.",
+          "Record frame installation progress and alignment confirmation (date, worker name, level) in site diary before moving to next partition.",
+          "Coordinate with building occupants; advise of work area boundaries and restrict access during frame erection.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat",
+          "steel-capped footwear",
+          "High-visibility vest",
+          "Safety harness and lanyard (when working above 2m)",
+          "cut-resistant gloves",
+          "eye protection",
+          "Dust mask (P2) when drilling service access holes"
+        ],
+        "ccvs_code": "CHM-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "SDS reviewed for product hazards, RPE matched to SDS requirements (organic vapour cartridge for solvents, not P2 dust mask), ventilation confirmed operational",
+          "who": "Site supervisor or nominated worker induction authority",
+          "frequency": "Before each shift and each time worker enters MEWP or climbs ladder above 2m",
+          "evidence": "Harness tag and lanyard visual check; worker acknowledgment in toolbox talk record"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install new partition walls and",
+          "WKR": "Perform Install new partition walls and per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.7"
+      },
+      {
+        "sequence": 7,
+        "task": "Coordinate and install services routes and terminations",
+        "scope": "Work with electrical, data, and HVAC trades to route cables, conduits, and ductwork through partition cavities and above ceiling grid. Install outlet boxes, data points, and grille supports as per services design. Complete all service rough-ins before gyprock facing commences.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+        "hazards": [
+          "Electrocution \u2014 contact with energised electrical cable or conduit during routing or termination \u2014 risk of shock or death if cable is not isolated or identified",
+          "Struck-by injury from suspended cable or ductwork during installation \u2014 risk of head or facial injury",
+          "Pinch-point or crush injury to fingers and hands during ductwork or cable-tray assembly \u2014 risk of fracture or crush injury",
+          "Coordination failure between trades \u2014 risk of rework, delay, and repeat exposure to hazards if electrical, data, and HVAC routes conflict"
+        ],
+        "dominant_hazard": "Electrocution during energised cable routing",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Verify all electrical, data, and HVAC trade routes on marked-up floor plan and 3D model before any installation starts. Resolve conflicts on site with all trades present and document agreement in writing.",
+          "Use cable identification tape (colour-coded per AS/NZS 3000) at all cable entry and exit points. Do not route unmarked cable.",
+          "Install electrical conduit or cable tray before pulling cable. Do not lay exposed cable in partition cavities or ceiling voids.",
+          "Secure all suspended ductwork and cable trays with approved hangers every 1.2 m. Check that hangers are anchored to structural members, not partition frames or services.",
+          "Wear cut-resistant gloves (Level 5) and eye protection, conduit, and ductwork edges. Change gloves if cut or torn.",
+          "Establish exclusion zone (2 m radius) below all overhead service installation work. Restrict access to authorised workers and alert occupants before work starts.",
+          "Brief all trades on pinch-point and crush hazards during ductwork assembly. Demonstrate safe hand position and clearance zone around bending and joining operations."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not route any electrical cable until: licensed electrician has issued isolation certificate confirming cable de-energised and locked-off at source, and plan conflicts have been resolved and documented",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start gyprock facing until: all service rough-ins complete, tested, and signed off in writing by electrical, data, and HVAC trade leads"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: any unmarked, unidentified, or suspected energised cable is encountered during routing or termination",
+          "\ud83d\uded1 STOP WORK if: trade routes conflict on site and cannot be resolved immediately with all trades present",
+          "\ud83d\uded1 STOP WORK if: any suspended ductwork or cable tray anchor point shifts, loosens, or shows visible damage during or after installation"
+        ],
+        "admin": [
+          "Obtain marked-up floor plans and 3D services model from design engineer before work starts.",
+          "Schedule pre-installation coordination meeting with electrical, data, and HVAC trade leads. Document agreed routes and sequence.",
+          "Maintain cable identification record (location, colour, route, de-energised date, electrician sign-off) on site.",
+          "Record all trade sign-offs on service rough-in completion checklist before gyprock commences.",
+          "Brief all occupants in building areas where overhead service work is occurring. Display exclusion zone signage.",
+          "Report any hazmat discovery (asbestos-containing insulation, lead paint on cable conduit) to project manager immediately."
+        ],
+        "ppe": [
+          "cut-resistant gloves",
+          "eye protection",
+          "High-visibility vest (occupied building, near occupant movement)",
+          "Hard hat (ceiling cavity work, suspended load risk)"
+        ],
+        "ccvs_code": "ELE-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Scaffold or EWP daily pre-use check completed, documented, no visible defects",
+          "who": "Site supervisor and electrical trade lead",
+          "frequency": "Before each service routing task and each cable termination",
+          "evidence": "Signed isolation certificate on site, visual inspection of cable de-energisation tester reading, trade sign-off log"
+        },
+        "responsibility": {
+          "SUP": "Supervise Coordinate and install services routes",
+          "WKR": "Perform Coordinate and install services routes per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.8"
+      },
+      {
+        "sequence": 8,
+        "task": "Install ceiling panels, gyprock facing, and seals",
+        "scope": "Install suspended ceiling tiles or panels into grid framework. Install gyprock sheets to partition frames. Seal all partition-to-soffit gaps and service penetrations with fire-rated sealant. Joint tape and finish gyprock seams per specification. Allow compound to cure",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker loses balance on ladder or platform while lifting ceiling panels or gyprock sheets \u2014 risk of serious injury or death",
+          "Gyprock sheet or panel falls from height or during handling \u2014 risk of crush injury or head injury to personnel below",
+          "Chemical burn from fire-rated sealant contact with skin \u2014 risk of dermatitis or respiratory irritation if fumes are inhaled",
+          "Muscle strain or back injury during manual handling and installation of heavy gyprock panels \u2014 risk of soft-tissue injury or acute strain"
+        ],
+        "dominant_hazard": "Fall from height during panel or gyprock installation",
+        "risk_pre": "High(9)",
+        "risk_post": "Medium(6)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "controls": [
+          "Install and secure work platform or scaffolding to grid height before starting. Platform must be stable, level, and rated for full crew weight plus material loads.",
+          "Erect exclusion zone below work area. Barricade 2 m radius around all panel and gyprock handling. Post spotter to control access and watch for dropped objects.",
+          "check ladder or step stool for damage or defects before use. Secure ladder base with feet on level ground. Only single-person access allowed on ladders.",
+          "Wear harness and lanyard clipped to overhead anchor point rated for work load during elevated work above 2 m height.",
+          "Check fire-rated sealant SDS on point of use before opening. Confirm ventilation in area is adequate \u2014 open windows or activate local exhaust fan.",
+          "Wear chemical-resistant gloves and hi-viz shirt or vest",
+          "Use two-person team for gyprock sheet handling. Use lifting frame or mechanical hoist to raise sheets to height. Never manually lift gyprock above shoulder height.",
+          "Secure ceiling panels and gyprock sheets to grid or frame immediately after installation. Do not leave unsupported material at height."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install panels or gyprock until: work platform is installed, level, secured, and tagged as safe by supervisor",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not apply fire-rated sealant until: substrate is clean and dry, SDS Section 8 ventilation requirements are confirmed on site, and chemical PPE is available and worn"
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: worker loses footing on platform or ladder, or harness anchor point fails",
+          "\ud83d\uded1 STOP WORK if: gyprock sheet or panel becomes unstable, drops, or shows signs of falling",
+          "\ud83d\uded1 STOP WORK if: sealant fumes cannot be controlled by ventilation or worker reports respiratory irritation or skin contact occurs",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Brief all crew on hazards, control method, and exclusion zone boundaries before work starts.",
+          "Confirm building occupants are notified of ceiling work, exclusion zone, and sealant cure time before starting.",
+          "Record work completion, cure time start, and re-entry approval date on site log.",
+          "White Card (CPCCWHS1001) verification \u2014 general construction induction completed by all workers on site.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Hard hat \u2014 mandatory for all personnel on site during elevated work",
+          "Safety harness and lanyard \u2014 mandatory for workers above 2 m height",
+          "chemical-resistant gloves (nitrile or task-appropriate)",
+          "hi-viz shirt or vest\u2014 mandatory when handling gyprock or applying sealant",
+          "Organic vapour respirator (cartridge-type, per SDS Section 8) \u2014 mandatory if sealant ventilation is inadequate or fumes are detected",
+          "steel-capped footwear\u2014 steel-capped boots with slip-resistant sole"
+        ],
+        "ccvs_code": "CHM-H6",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "SDS reviewed for product hazards, RPE matched to SDS requirements (organic vapour cartridge for solvents, not P2 dust mask), ventilation confirmed operational",
+          "who": "Supervisor",
+          "frequency": "Before each work shift starts, continuous visual monitoring during work",
+          "evidence": "Supervisor sign-off on platform inspection checklist; harness and lanyard visual check; exclusion zone maintained and clear of unauthorised entry"
+        },
+        "responsibility": {
+          "SUP": "Verify SDS on site, check ventilation, sign off hold points",
+          "WKR": "Apply sealant per specification, wear PPE, report chemical exposure"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.5"
+      },
+      {
+        "sequence": 9,
+        "task": "Install carpet tiles and floor finishes",
+        "scope": "Prepare floor substrate \u2014 vacuum, remove all dust and debris. Install underlay if required. Lay carpet tiles in specified pattern from centre point outward. Trim edge tiles to suit perimeter and service penetrations. Secure tiles as per manufacturer specification.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Trip hazard from debris, underlay folds, or uneven floor substrate \u2014 risk of slip and fall causing minor injury or fracture",
+          "Muscle strain or back injury during kneeling, bending, and manual laying of carpet tiles \u2014 risk of soft-tissue injury or acute strain",
+          "Exposure to adhesive or bonding-agent fumes during tile installation \u2014 risk of respiratory irritation or chemical sensitivity"
+        ],
+        "dominant_hazard": "Muscle strain or back injury during repetitive installation work",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(4)",
+        "risk_pre_score": {
+          "likelihood": 3,
+          "consequence": 2
+        },
+        "risk_post_score": {
+          "likelihood": 2,
+          "consequence": 2
+        },
+        "controls": [
+          "Clear and vacuum floor substrate thoroughly before underlay or tile placement \u2014 remove all dust, debris, and loose material.",
+          "check floor surface for levelness, cracks, or damage \u2014 tell supervisor if substrate varies >3 mm over 3 m or is unsuitable for tile installation.",
+          "Lay underlay smoothly without folds or wrinkles \u2014 secure edges and seams to prevent trip hazards during tile installation.",
+          "Start tile layout from marked centre point \u2014 establish grid pattern and confirm alignment before securing any tiles.",
+          "Kneel on tile-laying board or kneeling pad \u2014 do not work on bare concrete or hard surfaces for extended periods.",
+          "Limit repetitive bending and kneeling \u2014 rotate task every 30 minutes with posture-neutral task (e.g., measuring, trimming, material staging).",
+          "Use handheld tile cutter for edge trims \u2014 cut tiles over debris tray to contain dust and fragments; never bend or force tiles by hand.",
+          "Apply adhesive or bonding agent per manufacturer SDS \u2014 make sure room is ventilated, SDS on point of use, and application limits adhered to."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not install underlay or start tiling until: floor substrate is clean, dry, inspected, and levelness confirmed as suitable for installation."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: floor substrate is uneven (>3 mm variation over 3 m), cracked, contaminated, or wet \u2014 do not proceed until rectified and approved.",
+          "\ud83d\uded1 STOP WORK if: ventilation fails during adhesive application or room becomes unoccupiable due to fume buildup \u2014 resume only when air quality is restored.",
+          "\ud83d\uded1 STOP WORK if: worker reports back pain, muscle strain, or repetitive-strain symptoms \u2014 assign alternative task and review work pace and posture."
+        ],
+        "admin": [
+          "Confirm building occupancy and public access \u2014 brief occupants on restricted floor areas and cure time before re-entry.",
+          "Obtain SDS for tile adhesive or bonding agent \u2014 review Section 8 (exposure control) and Section 16 (health hazard) before tile installation starts.",
+          "Document tile layout pattern and centre-point mark \u2014 photograph and brief all workers before installation commences.",
+          "Record cure times and re-entry restrictions on site signage \u2014 post 'Do Not Walk \u2014 Curing Tiles' notices until manufacturer cure period is met."
+        ],
+        "ppe": [
+          "cut-resistant gloves",
+          "Organic vapour respirator (per SDS Section 8) \u2014 if adhesive vapour levels exceed manufacturer threshold or room ventilation is limited.",
+          "Safety shoes with good grip \u2014 for wet or adhesive-contaminated floor areas.",
+          "Knee pads \u2014 for kneeling work on hard floors and underlay."
+        ],
+        "ccvs_code": "SIL-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Dust extraction running and P2 respirator fitted before each grinding cycle",
+          "who": "Supervisor",
+          "who_checks": "Supervisor",
+          "frequency": "before each use",
+          "evidence": "Worker confirmation and visual check of extraction hose and respirator seal",
+          "what_to_look_for": "Worker confirmation and visual check of extraction hose and respirator seal"
+        },
+        "responsibility": {
+          "SUP": "Supervise Install carpet tiles and floor",
+          "WKR": "Perform Install carpet tiles and floor per SWMS"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.9"
+      },
+      {
+        "sequence": 10,
+        "task": "Reinstall light fittings, grilles, and access panels",
+        "scope": "Install and connect light fittings and outlets to completed electrical rough-in. Fit HVAC diffusers and grilles to completed ductwork. Install access panels to ceiling grid. Test all fittings for secure mounting and functionality.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.6 \u2014 Work in or adjacent to energised electrical installation",
+        "hazards": [
+          "Electrocution \u2014 contact with energised electrical connections or incorrectly isolated supply during light fitting installation \u2014 risk of shock or death",
+          "Fall from height \u2014 worker loses balance on ladder while installing ceiling fittings \u2014 risk of serious injury or death",
+          "Falling light fitting or grille during installation \u2014 risk of head or upper-body injury to personnel below"
+        ],
+        "dominant_hazard": "Electrocution during connection of light fittings to energised supply",
+        "risk_pre": "High(6)",
+        "risk_post": "Medium(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Verify electrical supply to light circuit is isolated at switchboard and padlocked before opening any fitting or connection point.",
+          "Confirm isolation using a two-point voltage tester on the circuit before touching any conductor or terminal.",
+          "Install light fittings and connect to isolated rough-in only. Do not work on energised circuits.",
+          "Check each light fitting for secure mounting to ceiling structure before energising circuit.",
+          "Test fitting functionality after energisation only when all personnel have vacated the area directly below.",
+          "Install HVAC grilles and diffusers to completed ductwork using specified fixing method \u2014 verify no loose components before leaving work area.",
+          "Position ladder on stable, level ground. Keep ladder at 75\u00b0 angle. Do not overreach \u2014 move ladder instead.",
+          "Barricade area directly below ceiling work to prevent unauthorised entry during fitting installation and testing."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not energise any light circuit until: electrical rough-in has been checked for continuity and earth integrity by the electrician, and isolation and two-point test have been verified and recorded by supervisor on site."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: voltage tester shows supply is not fully isolated before any connection work begins.",
+          "\ud83d\uded1 STOP WORK if: ladder becomes unstable, unsecured, or personnel attempt to work from ladder at angle less than 70\u00b0 or greater than 80\u00b0.",
+          "\ud83d\uded1 STOP WORK if: occupied building personnel enter the barricaded area below ceiling work."
+        ],
+        "admin": [
+          "Obtain site isolation permit confirming electrical supply isolation and padlock placement before work starts.",
+          "Brief all personnel on barricade location and entry prohibition during fitting installation and testing phase.",
+          "Record circuit isolation, two-point test result, and fitting functionality test in site logbook with date, time, and tester name.",
+          "tell building manager and occupants of temporary supply isolation and expected duration."
+        ],
+        "ppe": [
+          "Safety helmet (AS/NZS 1801)",
+          "steel-capped footwear",
+          "High-visibility shirt or vest (AS/NZS 1906.4)"
+        ],
+        "ccvs_code": "ELE-H6",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Two-point voltage test on isolated circuit \u2014 negative result on both test points before any conductor contact.",
+          "who": "Electrician and supervisor",
+          "frequency": "Before opening any fitting connection point; before energising each circuit after installation",
+          "evidence": "Site logbook entry: date, time, circuit identification, tester name, test result (pass/fail), supervisor sign-off"
+        },
+        "responsibility": {
+          "SUP": "Verify fall protection, check module weights, sign off hold points",
+          "WKR": "Wear fall harness, check lanyard attachment, report equipment damage"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.10"
+      },
+      {
+        "sequence": 11,
+        "task": "Conduct final inspection and defect rectification",
+        "scope": "check partitions, ceiling, flooring, and all fittings for compliance with design and specifications. Identify and fix defects \u2014 loose panels, gaps, damaged tiles, misaligned fittings. Obtain written sign-off from project manager. Clean all work areas and remove temporary protection.",
+        "trade_type": "General",
+        "hrcw": true,
+        "hrcw_category": "cl.2 \u2014 Construction work at height \u2014 risk of fall >2m",
+        "hazards": [
+          "Fall from height \u2014 worker loses balance on ladder while inspecting or accessing ceiling defects \u2014 risk of serious injury or death",
+          "Struck-by injury during defect rectification \u2014 risk of minor injury from tools or hand tools",
+          "Incomplete rectification of defects \u2014 risk of latent safety failure if structural or safety-critical defects are not identified or properly repaired"
+        ],
+        "dominant_hazard": "Fall from height during inspection and rectification work",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Use stable step ladder (max 2 m) or mobile work platform rated for load before accessing ceiling or elevated defects \u2014 do not climb on partition edges or unstable bases.",
+          "Check ladder for damage, loose rungs, or defects before each use \u2014 do not use damaged ladder.",
+          "Position ladder on flat, level, clear ground with feet locked or braced \u2014 do not use ladder on uneven surfaces or carpet.",
+          "Brief all workers on defect types before inspection starts \u2014 use defect schedule or photographic reference to identify scope-critical defects.",
+          "check partitions, ceiling, flooring, and fittings against original design drawings and specification \u2014 record all defects in writing with location and type.",
+          "Prioritise safety-critical defects (loose fixings, structural misalignment, fall hazards) before cosmetic defects \u2014 stop work and report to PM if structural defect found.",
+          "fix defects using hand tools or approved power tools \u2014 do not use power tools in wet areas without RCD protection.",
+          "After rectification, re-check defect location to confirm repair meets specification \u2014 do not sign off without visual confirmation."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not fix defects until: defect schedule inspected and approved by project manager and any structural defects referred to structural engineer for assessment.",
+          "\u26a0\ufe0f HOLD POINT \u2014 do not obtain final sign-off until: all scope defects have been inspected, documented in defect schedule, and either rectified or formally deferred by project manager in writing."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: structural defect, loose load-bearing fixing, or misalignment affecting occupant safety is identified \u2014 report immediately to project manager and structural engineer before proceeding.",
+          "\ud83d\uded1 STOP WORK if: worker loses balance, slips, or near-miss on ladder or elevated access \u2014 re-assess access method and revise controls.",
+          "\ud83d\uded1 STOP WORK if: defect cannot be rectified within scope (requires specialist trade, engineer redesign, or material replacement) \u2014 refer to project manager before deferring.",
+          "\ud83d\uded1 STOP WORK if: occupant balcony below work zone is not closed and barricaded"
+        ],
+        "admin": [
+          "Verify white card (CPCCWHS1001) held by all workers before work starts.",
+          "Confirm all temporary protection installed during fit-out (edge protection, fall arrest systems, exclusion zones) remains in place and functional during inspection and rectification.",
+          "Brief workers on occupied building protocol \u2014 do not block exits, maintain fire-rated doors, avoid noise during quiet hours, report damage to building manager immediately.",
+          "Keep defect schedule, inspection notes, and PM sign-off on file for handover and warranty.",
+          "Photograph defects before and after rectification \u2014 attach to defect schedule for evidence.",
+          "Close and barricade balconies directly below active work zone before elevated work starts each day",
+          "Notify affected residents before any noise/dust generating work on their level or adjacent levels"
+        ],
+        "ppe": [
+          "Safety helmet (when working near elevated areas or under ceiling work)",
+          "eye protection, small particles during rectification)",
+          "cut-resistant gloves",
+          "steel-capped footwear, slip resistance on various floor types)",
+          "High-visibility vest (required in occupied building common areas)"
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": true,
+        "monitoring": {
+          "critical_control": "Defect list reviewed and signed off by supervisor before rectification starts",
+          "who": "Supervisor / Site induction lead",
+          "frequency": "Before each inspection shift; each time ladder relocated",
+          "evidence": "Supervisor sight check; defect schedule signed by PM; photographic record of defects and repairs."
+        },
+        "responsibility": {
+          "SUP": "Verify access equipment safe, approve defect list, sign off completion",
+          "WKR": "Inspect per specification, photograph defects, report issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.11"
+      },
+      {
+        "sequence": 12,
+        "task": "Remove hoarding, demobilise site, and hand over",
+        "scope": "Dismantle hoarding and barricades. Remove all temporary protection, signage, and exclusion-zone markers. Sweep and vacuum Level 3 and common areas of dust and debris. Remove site bins and tools. Confirm area is safe and ready for occupancy. Provide keys and documentation to building manager.",
+        "trade_type": "General",
+        "hrcw": false,
+        "hrcw_category": null,
+        "hazards": [
+          "Struck-by injury from falling hoarding or barricade sections during dismantling \u2014 risk of head or upper-body injury",
+          "Trip hazard from debris, tools, or temporary protection materials during site cleanup \u2014 risk of slip and fall causing minor or moderate injury",
+          "Exposure to residual dust and fine particles during final sweeping and cleanup \u2014 risk of respiratory irritation or inhalation exposure"
+        ],
+        "dominant_hazard": "Struck-by injury from falling hoarding sections",
+        "risk_pre": "Medium(6)",
+        "risk_post": "Low(3)",
+        "risk_pre_score": {
+          "likelihood": 2,
+          "consequence": 3
+        },
+        "risk_post_score": {
+          "likelihood": 1,
+          "consequence": 3
+        },
+        "controls": [
+          "Wet-sweep or vacuum all Level 3 and common-area surfaces before hoarding removal to capture residual dust and prevent airborne release during dismantling.",
+          "Barricade hoarding dismantling zone with caution tape and 'Do Not Enter' signs; prohibit occupants and workers from entering 2 m radius during removal.",
+          "Remove hoarding panels systematically from top to bottom; secure each panel as it is loosened to prevent sudden drop or swing onto workers or occupants below.",
+          "check each hoarding section and barricade frame for stability, bent fixings, or damage before and during removal; do not force stuck components\u2014obtain supervisor approval to modify or cut fixings.",
+          "Place removed hoarding, barricade frames, and temporary bracing in designated waste bin or secure stack away from walkways and occupied zones.",
+          "Vacuum common-area floors and Level 3 using HEPA-filtered equipment to remove fine dust and debris; bag and label all waste as construction dust.",
+          "Remove all temporary signage, exclusion-zone markers, and caution tape; verify no tripping hazards remain on stairs, doorways, or floor level changes.",
+          "Sweep and check final work area for loose nails, screws, or metal fixings; remove or flag any debris before occupant re-entry."
+        ],
+        "hold_points": [
+          "\u26a0\ufe0f HOLD POINT \u2014 do not start occupant re-entry until: all hoarding removed, floors swept and vacuumed with HEPA extraction, final dust clearance inspected and approved by site supervisor, and building manager briefed on any outstanding remedial works."
+        ],
+        "stop_work": [
+          "\ud83d\uded1 STOP WORK if: hoarding or barricade section is unstable, bent, or at risk of falling during removal.",
+          "\ud83d\uded1 STOP WORK if: occupants or unauthorised workers enter hoarding dismantling zone.",
+          "\ud83d\uded1 STOP WORK if: HEPA vacuum fails during final dust clearance or dust extraction cannot be confirmed."
+        ],
+        "admin": [
+          "Obtain supervisor approval before modifying or cutting hoarding fixings.",
+          "Record final site photographic evidence of cleaned and demobilised areas.",
+          "Brief building manager on any outstanding remedial works, cleaning, or post-handover obligations.",
+          "Confirm all keys, access cards, and documentation transferred to building manager; obtain signed handover record."
+        ],
+        "ppe": [
+          "Hard hat (during hoarding removal only).",
+          "High-visibility vest.",
+          "cut-resistant gloves",
+          "Organic vapour respirator or P2 mask/respirator (fit-tested) if dust levels cannot be controlled (post-vacuum inspection determines fit).",
+          "steel-capped footwear, sole-puncture resistant)."
+        ],
+        "ccvs_code": "SYS-M3",
+        "wah_applicable": false,
+        "monitoring": {
+          "critical_control": "Exclusion zone barriers complete, signage visible, access controlled",
+          "who": "Site Supervisor",
+          "frequency": "Continuous during removal phase; final inspection before occupant re-entry",
+          "evidence": "Supervisor sign-off on hoarding removal log; photographic record of cleaned floors; building manager handover signature on keys and documentation transfer."
+        },
+        "responsibility": {
+          "SUP": "Verify exclusion zone complete, barriers intact, access controlled before work starts",
+          "WKR": "Set up and maintain barriers, stop work if zone breached, report access issues"
+        },
+        "source": "ai-generated",
+        "approved": false,
+        "version": "1.0",
+        "step": "1.12"
+      }
+    ]
+  },
+  "task_count": 12
+}
