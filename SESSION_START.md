@@ -37,6 +37,8 @@ Governance register: docs/BENCHMARK_GOVERNANCE_REGISTER.md
 Reviewer rubric:     docs/reviewer_rubric.md
 Generation rubric:   docs/SWMS_GENERATION_RUBRIC.md
 Expert review spec:  docs/SWMS_EXPERT_REVIEW_SPEC.md
+Pilot plan:          docs/FIVE_JOB_PILOT_PLAN.md
+Pilot workflow:      docs/CONSULTANT_PILOT_WORKFLOW.md
 Regression runner:   src/regression_runner.py
 Findings store:      core/findings_store.py
 Pattern detector:    core/pattern_detector.py
@@ -58,15 +60,19 @@ Decomposer:       task architecture + job_type detection
 Risk assessor:    hazards, HRCW, CCVS codes
 Control writer:   dominant-hazard-first + _get_dominant_family() constraint injected per task
 Assembler:        final SWMS assembly
-Validator:        issue gate (20 checks) + PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
+Validator:        issue gate (27 checks) + PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
 Reviewer agent:   parallel Critic — 4 agents concurrent — recalibrated credibility floor active
 Findings store:   captures all validator + reviewer findings to findings_log.jsonl
 Pattern detector: surfaces rule candidates on demand from findings store
 Rule promoter:    human-approved proposals — no source mutation in v1
 
+## Project milestone
+Five-job pilot: COMPLETE — consultant-assisted pilot baseline established
+System state: READY FOR CONSULTANT-ASSISTED COMMERCIAL PILOT
+
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           CLOSED — STRONG_WORKING_DRAFT_ONLY (V14 — deterministic limit reached, monitoring copy-paste is generation-quality limit)
+Lingate remedial:           CLOSED — STRONG_WORKING_DRAFT_ONLY
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
@@ -117,12 +123,12 @@ Scoring:
 - 4-5 = maybe, only if cheap and bounded
 - 0-3 = defer
 
-Default bias until the five-job pilot is complete:
-- prefer benchmark closure over new architecture
-- prefer narrow deterministic fixes over new subsystems
-- prefer pilot workflow improvements over platform abstractions
+Default bias now that the five-job pilot is complete:
+- prefer real customer jobs over internal refinement
+- prefer consultant-assisted workflow proof over platform architecture
+- prefer revenue-generating work over further benchmark cycles
+- prefer narrow fixes that improve real pilot jobs over speculative improvements
 - prefer proof over elegance
-- prefer customer-visible gains over internal sophistication
 
 ## Terminology — use exactly
 - job_type not "job family"
