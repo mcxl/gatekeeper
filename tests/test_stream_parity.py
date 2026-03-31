@@ -242,6 +242,35 @@ def test_ccvs_crane_lift_gets_wah():
     assert tb["ccvs_code"] == "WAH-H6"
 
 
+def test_ccvs_tilt_panel_gets_wah():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Lift, tilt, and position panel with mobile crane", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_plumb_brace_gets_wah():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Plumb panel and install temporary bracing system", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_remove_temp_bracing_gets_wah():
+    """Remove temporary bracing is WAH (structural at height), not SIL."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Remove temporary bracing system on engineer release only", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_prepare_panel_bases_gets_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+    tb = {"task": "Prepare panel bases and prop locations on slab", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_scissor_lift_transfer_gets_wah():
     """Scissor lift transfer tasks should get WAH-H6."""
     from core.orchestrator import _correct_ccvs_by_task_type

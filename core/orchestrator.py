@@ -1522,7 +1522,8 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     _CHM_DOMINANT = ("waterproof", "membrane", "epoxy", "primer")
     # Scaffold/EWP tasks with "remove" (e.g. "dismantle scaffold and remove from site")
     # are WAH, not SIL — exclude them from removal context
-    _WAH_OVERRIDE = ("scaffold", "ewp", "dismantle scaffold", "remove scaffold")
+    _WAH_OVERRIDE = ("scaffold", "ewp", "dismantle scaffold", "remove scaffold",
+                      "remove temporary brac", "remove temporary prop", "remove prop")
     is_wah_task = any(kw in task_name for kw in _WAH_OVERRIDE)
     is_removal = any(kw in task_name for kw in _REMOVAL_CONTEXT) and not is_wah_task
     if any(kw in task_name for kw in _CHM_DOMINANT) and not is_removal:
@@ -1542,7 +1543,13 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                     "roof access", "roof perimeter", "on roof",
                     "gutter", "flashing", "mobilise boom", "lower waste",
                     "crane-lift", "crane lift", "crane-assisted",
-                    "scissor lift", "transfer onto roof", "transfer from roof")
+                    "scissor lift", "transfer onto roof", "transfer from roof",
+                    # Structural erection / tilt-up / crane-assisted panel work
+                    "tilt", "panel with crane", "position panel",
+                    "plumb panel", "plumb and install", "install temporary brac",
+                    "brace cycle", "lift and position", "panel lift",
+                    "release crane hook", "remove temporary brac",
+                    "remove prop", "remove temporary prop")
     # Demob / site demobilisation tasks are procedural (SYS), not WAH
     _DEMOB_SYS = ("demob", "demobilise", "demobilize", "site demobil",
                    "building reinstate", "site reinstate", "handover",
@@ -1568,9 +1575,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                                          "waterproof", "render", "epoxy", "membrane")):
         correct = "CHM-H6"
     elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise",
-                                         "prop base", "prepare and level",
-                                         "confirm crane", "confirm lift",
-                                         "remove temporary prop", "remove prop",
+                                         "prop base", "panel base", "prop location",
+                                         "prepare and level", "prepare panel",
+                                         "confirm crane", "confirm lift", "confirm engineer",
                                          "remove traffic", "remove exclusion")):
         correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good",
