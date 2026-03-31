@@ -46,7 +46,7 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 512
+Passing: 513
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
@@ -65,7 +65,7 @@ Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           ACTIVE — V10 recovery cycle (sequence fixed, validator PASS_INTERNAL, reviewer 5 HF gen-variance)
+Lingate remedial:           ACTIVE — V11 (2 HF monitoring copy-paste, sequence correct, HRCW cl.4 fixed, deterministic limit)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
