@@ -116,6 +116,23 @@ _ARCH_PROMPT = """\
 You are an Australian WHS consultant. Review task architecture and sequencing only.
 Check: document control, task order against job-type mandatory sequence, framework vs
 work-package misuse, latent condition packaging.
+
+COLUMN STRUCTURE: 8 columns — Step, Task, Hazard, Risk (Pre), Controls, Risk (Post), Responsibility, CCVS Code.
+Column 8 contains CCVS code, HP, and SWT in that order.
+
+AUTOMATIC ISSUE GATE FLAGS — flag these regardless of overall status:
+- Access setup after access-dependent tasks
+- Removal after application or installation
+- Coatings before repairs
+- Reinstatement before finishes without source support
+- Pre-start controls inside demobilisation
+- Merged unlike work packages: demolition+waterproofing in one row, removal+reinstatement in one row
+
+QUALITY THRESHOLDS:
+BENCHMARK_QUALITY_CONFIRMED: source-faithful task map, believable workflow, no material sequencing gaps.
+STRONG_WORKING_DRAFT: broad sequence correct, main hazards identified, usable after consultant completion.
+BELOW_STRONG_WORKING_DRAFT: wrong sequence affecting safety logic, needs substantive rewrite.
+
 Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
 All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
 status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
@@ -124,6 +141,19 @@ _HRCW_PROMPT = """\
 You are an Australian WHS consultant. Review HRCW selection and dominant hazard logic only.
 Check: HRCW selection vs actual task wording, dominant control family match per task type,
 HRCW undercall and overcall, silica and hazmat adequacy.
+
+COLUMN STRUCTURE: 8 columns — Step, Task, Hazard, Risk (Pre), Controls, Risk (Post), Responsibility, CCVS Code.
+Column 8 contains CCVS code, HP, and SWT in that order.
+
+When reviewing Column 8 CCVS, check:
+- CCVS code present and correct for task hazard family
+- HRCW coherent with actual task wording, not just keywords
+- Dominant control family in Column 5 matches Column 8 CCVS family
+
+SINGLE DEFECT THAT STOPS CONFIRMATION:
+- False confidence in HRCW on high-risk work
+- Systematic Column 8 CCVS dominant-control mismatch
+
 Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
 All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
 status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
@@ -132,6 +162,27 @@ _CCVS_PROMPT = """\
 You are an Australian WHS consultant. Review CCVS evidence alignment only.
 Check: evidence field matches dominant control family for each live task, WAH dominance,
 missing CCVS rows for live tasks, N/A rows hiding real task risk.
+
+COLUMN STRUCTURE: 8 columns — Step, Task, Hazard, Risk (Pre), Controls, Risk (Post), Responsibility, CCVS Code.
+Column 8 contains CCVS code, HP, and SWT in that order.
+
+When reviewing Column 8, check all three components:
+- CCVS code present and correct for task hazard family
+- HP present and names a real condition
+- SWT present and tied to the dominant task failure mode
+- Order is CCVS first, HP second, SWT third
+
+AUTOMATIC ISSUE GATE FLAGS:
+- Column 8 CCVS/HP/SWT not aligned with dominant control in Column 5
+- Column 8 HP missing or generic across multiple tasks
+- Column 8 SWT missing or uses generic wording: stop work if unsafe / concerned / needed
+- Column 8 SWT checks the wrong failure mode for the task
+
+QUALITY THRESHOLDS:
+BENCHMARK_QUALITY_CONFIRMED: Column 8 CCVS verifies dominant controls every task, HP present and task-relevant, SWT tied to dominant failure mode every task.
+STRONG_WORKING_DRAFT: Column 8 CCVS not systematically wrong, some granularity still needs tightening.
+BELOW_STRONG_WORKING_DRAFT: Wrong control family in Column 8 CCVS across multiple tasks, Column 8 HP or SWT missing or generic across multiple tasks.
+
 Return a single flat JSON object. Keys: status, findings, automatable_defects, human_judgment_required.
 All values must be arrays of SHORT strings (under 80 chars each). No nested objects.
 status must be one of: PASS, FAIL, REVIEW. Keep total response under 2000 chars."""
@@ -141,6 +192,19 @@ You are an Australian WHS consultant. Review unsupported controls and profession
 credibility only. Check: unsupported admin and governance controls, filler controls,
 template contamination from another job family, whether the document reads like a
 practitioner wrote it or a compliance collage.
+
+COLUMN STRUCTURE: 8 columns — Step, Task, Hazard, Risk (Pre), Controls, Risk (Post), Responsibility, CCVS Code.
+Column 8 contains CCVS code, HP, and SWT in that order.
+
+AUTOMATIC ISSUE GATE FLAGS:
+- Unsupported keywords in Column 5 without source support: council permit, EPA, NATA, demolition supervisor, utility disconnection, asbestos clearance as active scope when source says latent only
+- HRCW not matching task wording
+- Placeholder present at issue stage
+- Generic SWT wording across more than two tasks
+
+Each finding must be classified as:
+- automatable_defect: a rule could catch this
+- human_judgment_required: consultant judgment needed
 
 BELOW_STRONG_WORKING_DRAFT signals — return status FAIL if ANY of these are present:
 - unsupported controls in live task steps: after-hours council permit, owners corporation
@@ -335,8 +399,10 @@ async def run_parallel_review(
             elif finding.status == "REVIEW":
                 review_items.append(tagged)
 
-    # Credibility-drift floor: if credibility agent returns FAIL,
+    # COORDINATOR ASSEMBLY RULE:
+    # If any specialist agent returns FAIL on credibility or drift,
     # overall status cannot be STRONG_WORKING_DRAFT or above.
+    # Floor at BELOW_STRONG_WORKING_DRAFT.
     # Unsupported controls in live task steps are trust-killers.
     cred_floor_active = cred.status == "FAIL"
 
