@@ -46,7 +46,7 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 521
+Passing: 527
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
@@ -65,7 +65,7 @@ Rule promoter:    human-approved proposals — no source mutation in v1
 
 ## Stream statuses — update after every session
 [UPDATE THESE AFTER EVERY SESSION]
-Lingate remedial:           AWAITING_EXTERNAL_REVIEW — V13 submitted 2026-03-31 (fifth submission)
+Lingate remedial:           CLOSED — STRONG_WORKING_DRAFT_ONLY (V14 — deterministic limit reached, monitoring copy-paste is generation-quality limit)
 CLT install:                AWAITING_EXTERNAL_REVIEW
 EWP roof access:            ACTIVE
 18 Danks Street:            CLOSED — STRONG_WORKING_DRAFT_ONLY
