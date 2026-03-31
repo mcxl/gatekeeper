@@ -800,6 +800,13 @@ def _task_phase_score(tb: dict) -> int:
                                        "isolate work", "barricade work", "barricade ",
                                        "exclusion zone", "hoarding", "site isolation")) and "demob" not in task_name:
         return 0
+    # Check removal/demolition by TASK NAME — must be before _PHASE_ORDER loop
+    # to prevent "remove existing waterproofing" matching "waterproof" at phase 4
+    _REMOVAL_PHASE_KW = ("remove existing", "strip existing", "demolish existing",
+                          "remove and dispose", "remove membrane", "remove screed",
+                          "remove tile", "rip out", "break out")
+    if any(kw in task_name for kw in _REMOVAL_PHASE_KW):
+        return 2
     # Check scaffold/access erection by task name — must be before QA check
     if any(kw in task_name for kw in ("erect scaffold", "scaffold erect", "install scaffold",
                                        "position ewp", "erect and certify",
@@ -909,6 +916,8 @@ _UNSUPPORTED_CONTROL_PHRASES = [
     "epa asbestos licence", "epa asbestos license",
     "epa licence holder clearance", "epa license holder clearance",
     "licensed asbestos assessor clearance",
+    # Active asbestos as admin when source says latent only
+    "asbestos clearance", "asbestos removal licence",
 ]
 
 # Active hazmat survey/assessment workflow — the quote treats these as latent conditions
