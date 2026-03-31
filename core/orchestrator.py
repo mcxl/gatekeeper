@@ -1157,6 +1157,70 @@ def _strip_demolition_content(tb: dict) -> None:
                          if "demolit" not in item.lower()]
 
 
+# Generator artefact phrases — technically incorrect or obviously AI-generated wording
+_GENERATOR_ARTEFACT_PHRASES = [
+    # WAH licence / training boilerplate
+    "working at heights licence",
+    "working at heights training verified",
+    "heights licence verified",
+    "wah licence",
+    # Incorrect anchor capacity claims
+    "anchor point rated to 6 kn",
+    "anchor points rated to 6 kn",
+    "6 kn anchor",
+    "anchor rated at 6kn",
+    "rated to 6kn",
+    # Scaffold load-testing (not standard practice)
+    "load-test scaffold",
+    "load-tested before use",
+    "load test each scaffold section",
+    "scaffold sections to be load-tested",
+    "load test scaffold",
+]
+
+# Prerequisite contradiction: "no hazardous substances" while chemical controls exist
+_NO_HAZARDOUS_PHRASES = [
+    "no hazardous substances identified",
+    "no hazardous materials identified",
+    "no hazardous substances present",
+    "no known hazardous",
+]
+
+
+def _strip_generator_artefacts(tb: dict) -> None:
+    """Strip technically incorrect or obviously generator-derived control wording.
+
+    Targets:
+    - WAH licence boilerplate (not a valid control — training is a prerequisite, not a live control)
+    - Incorrect anchor capacity numbers (6 kN is not a meaningful anchor rating)
+    - Scaffold load-testing (not standard Australian practice)
+    - Prerequisite contradiction (no hazardous substances + later chemical controls)
+    - P2 mask for solvent vapours (wrong RPE type for CHM tasks)
+    """
+    for field in ("controls", "admin", "hold_points", "stop_work", "ppe"):
+        items = tb.get(field, [])
+        if not isinstance(items, list):
+            continue
+        cleaned = []
+        for item in items:
+            item_lower = item.lower()
+            # Strip generator artefact phrases
+            if any(p in item_lower for p in _GENERATOR_ARTEFACT_PHRASES):
+                continue
+            # Strip prerequisite contradiction
+            if any(p in item_lower for p in _NO_HAZARDOUS_PHRASES):
+                continue
+            # Fix P2 mask for solvent/membrane tasks (CHM family)
+            ccvs = tb.get("ccvs_code", "")
+            if ccvs.startswith("CHM") and "p2" in item_lower and "solvent" not in item_lower:
+                item = item.replace("P2 mask", "organic vapour respirator (per SDS Section 8)")
+                item = item.replace("P2 respirator", "organic vapour respirator (per SDS Section 8)")
+                item = item.replace("p2 mask", "organic vapour respirator (per SDS Section 8)")
+                item = item.replace("p2 respirator", "organic vapour respirator (per SDS Section 8)")
+            cleaned.append(item)
+        tb[field] = cleaned
+
+
 def _improve_responsibility(tb: dict) -> None:
     """Replace generic SUP/WKR boilerplate with task-specific responsibility text.
 
@@ -1467,6 +1531,7 @@ def _normalise_task(tb: dict, inference: dict, jurisdiction: str, hot_work_ok: b
     _strip_sealant_drift(tb)
     _strip_timber_drift(tb)
     _strip_green_wall_drift(tb)
+    _strip_generator_artefacts(tb)
     _improve_responsibility(tb)
     _propagate_scaffold_wah(tb, inference)
     _inject_occupied_controls(tb, inference)

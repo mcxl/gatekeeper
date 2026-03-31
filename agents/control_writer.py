@@ -133,6 +133,13 @@ Examples of acceptable prudent inference:
 - Weather stop for long sheets or coatings
 - Stop work if unknown material encountered
 
+TECHNICALLY INCORRECT WORDING — never write these:
+- "working at heights licence verified" — WAH training is a prerequisite, not a live control
+- "anchor point rated to 6 kN" — not a meaningful anchor specification
+- "load-test scaffold before use" — not standard Australian scaffold practice
+- "No hazardous substances identified" as a prerequisite when later tasks use chemicals, membranes, or SDS-controlled products
+- "P2 mask" or "P2 respirator" for solvent or membrane vapour tasks — P2 is for particulate dust only; use "organic vapour respirator (per SDS Section 8)" for chemical/membrane tasks
+
 REFERENCE SWMS RULE:
 If a reference SWMS or project method exists, prefer project-specific controls over generic job-type heuristics. Source-faithfulness outweighs template logic.
 

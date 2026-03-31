@@ -109,6 +109,71 @@ def test_isolate_in_scope_does_not_trigger_phase_zero():
     assert _task_phase_score(tb) != 0
 
 
+# ── T2-B1.6: _strip_generator_artefacts ─────────────────────────────────────
+
+def test_strip_wah_licence_boilerplate():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "WAH-H6", "controls": [
+        "Install edge protection along balcony perimeter",
+        "Working at heights licence verified for all workers",
+        "Wear full body harness",
+    ], "admin": [], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert len(tb["controls"]) == 2
+    assert "licence" not in " ".join(tb["controls"]).lower()
+
+
+def test_strip_anchor_6kn():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "WAH-H6", "controls": [
+        "Check anchor point rated to 6 kN before use",
+        "Wear harness clipped to anchor",
+    ], "admin": [], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert len(tb["controls"]) == 1
+
+
+def test_strip_scaffold_load_test():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "WAH-H6", "controls": [
+        "Scaffold sections to be load-tested before use",
+        "Check scaffold tag current",
+    ], "admin": [], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert len(tb["controls"]) == 1
+    assert "load-test" not in tb["controls"][0].lower()
+
+
+def test_strip_no_hazardous_prerequisite():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "CHM-H6", "controls": [], "admin": [
+        "No hazardous substances identified",
+        "SDS on site for membrane product",
+    ], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert len(tb["admin"]) == 1
+    assert "SDS" in tb["admin"][0]
+
+
+def test_p2_replaced_with_organic_vapour_on_chm():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "CHM-H6", "controls": [
+        "Wear P2 mask during membrane application",
+    ], "admin": [], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert "organic vapour" in tb["controls"][0].lower()
+    assert "p2" not in tb["controls"][0].lower()
+
+
+def test_p2_preserved_on_sil_task():
+    from core.orchestrator import _strip_generator_artefacts
+    tb = {"ccvs_code": "SIL-H6", "controls": [
+        "Wear P2 respirator during grinding",
+    ], "admin": [], "hold_points": [], "stop_work": [], "ppe": []}
+    _strip_generator_artefacts(tb)
+    assert "P2" in tb["controls"][0]
+
+
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
 def test_ccvs_dismantle_scaffold_stays_wah():
