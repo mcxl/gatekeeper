@@ -683,6 +683,27 @@ def _check_job_type_mandatory_steps(tasks: list[dict],
                      f"All mandatory steps present for {job_type}")
 
 
+def _check_orphan_reinstatement(tasks: list[dict]) -> GateCheck:
+    """C21: Reinstatement without prior removal — REVIEW if reinstatement task has no matching removal."""
+    _REINSTATE_KW = ("reinstate", "reinstall", "reconnect", "refit")
+    _REMOVAL_KW = ("remove", "strip", "demolit", "disconnect", "dismantle")
+    reinstate_tasks = []
+    has_removal = False
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        if any(kw in tn for kw in _REMOVAL_KW):
+            has_removal = True
+        if any(kw in tn for kw in _REINSTATE_KW):
+            # Skip demob-style reinstatement (e.g. "reinstate occupant access and demobilise")
+            if "demob" in tn or "demobilis" in tn:
+                continue
+            reinstate_tasks.append(t.get("step", "?"))
+    if reinstate_tasks and not has_removal:
+        return GateCheck("orphan_reinstatement", CheckResult.REVIEW,
+                         f"Reinstatement tasks {', '.join(reinstate_tasks)} without prior removal/disconnection")
+    return GateCheck("orphan_reinstatement", CheckResult.PASS)
+
+
 # ── Main runner ──────────────────────────────────────────────────────────────
 
 def run_issue_gate(
@@ -741,6 +762,7 @@ def run_issue_gate(
         result.checks.append(_check_wah_dominance_extended(task_list))
         result.checks.append(_check_filler_controls(task_list))
         result.checks.append(_check_job_type_mandatory_steps(task_list, job_type))
+        result.checks.append(_check_orphan_reinstatement(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:

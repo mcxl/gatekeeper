@@ -735,13 +735,15 @@ _PHASE_ORDER = [
     (1, ["erect scaffold", "scaffold erect", "install scaffold",
          "position ewp", "ewp setup", "access equipment",
          "set up scaffold", "scaffolding and"]),
-    # Phase 2: Removals / stripping / preparation
+    # Phase 2: Removals / stripping / preparation / substrate exposure
     (2, ["remove green", "remove wall", "strip", "dismantle green",
          "prepare surface", "surface prep", "prep surface", "prepare masonry",
          "prepare render", "prepare facade", "clean facade",
          "pressure wash", "survey", "mark area",
          "inspect facade", "check and expose", "check and isolate",
-         "crack inspection", "inspect crack"]),
+         "crack inspection", "inspect crack",
+         "expose substrate", "expose and prepare", "substrate inspection",
+         "substrate for inspection"]),
     # Phase 3: Structural repairs
     (3, ["crack stitch", "spalling", "concrete repair", "reconstruct",
          "repoint", "brickwork", "structural"]),
@@ -903,6 +905,10 @@ _UNSUPPORTED_CONTROL_PHRASES = [
     "lane closure", "speed reduction",
     "as 1742",
     "after-hours work permit", "after-hours permit", "council after-hours",
+    # NSW asbestos terminology — invalid framing
+    "epa asbestos licence", "epa asbestos license",
+    "epa licence holder clearance", "epa license holder clearance",
+    "licensed asbestos assessor clearance",
 ]
 
 # Active hazmat survey/assessment workflow — the quote treats these as latent conditions
@@ -911,6 +917,9 @@ _ACTIVE_HAZMAT_PHRASES = [
     "asbestos survey", "asbestos register", "acm status",
     "licensed assessor", "asbestos assessor",
     "hazardous material assessment",
+    # Active asbestos as planned work when source says latent/contingency only
+    "asbestos removal plan", "asbestos clearance certificate",
+    "asbestos clearance inspection",
 ]
 
 
@@ -1157,7 +1166,12 @@ def _improve_responsibility(tb: dict) -> None:
             resp["SUP"] = "Verify exclusion zone complete, barriers intact, access controlled before work starts"
         if wkr_is_generic:
             resp["WKR"] = "Set up and maintain barriers, stop work if zone breached, report access issues"
-    elif any(kw in task_name for kw in ("scaffold", "ewp", "erect", "dismantle")):
+    elif any(kw in task_name for kw in ("dismantle scaffold", "dismantle access", "remove scaffold")):
+        if sup_is_generic:
+            resp["SUP"] = "Supervise dismantling sequence, verify exclusion zone below, sign off progressive removal"
+        if wkr_is_generic:
+            resp["WKR"] = "Dismantle per reverse-erection plan, wear harness at height, report defects"
+    elif any(kw in task_name for kw in ("scaffold", "ewp", "erect")):
         if sup_is_generic:
             resp["SUP"] = "Verify scaffold or EWP certification, supervise erection, sign off load checks"
         if wkr_is_generic:
@@ -1216,10 +1230,10 @@ _MONITORING_BY_HAZARD = {
         "what_to_look_for": "Worker confirmation and visual check of extraction hose and respirator seal",
     },
     "chemical": {
-        "critical_control": "SDS on site, PPE matched to chemical, ventilation confirmed",
+        "critical_control": "SDS reviewed for product hazards, RPE matched to SDS requirements (organic vapour cartridge for solvents, not P2 dust mask), ventilation confirmed operational",
         "who_checks": "Supervisor",
-        "frequency": "before each shift start",
-        "what_to_look_for": "SDS visible at work station, correct gloves/respirator worn, ventilation adequate",
+        "frequency": "before each shift start and after product change",
+        "what_to_look_for": "Current SDS posted at work station, RPE type matches SDS Section 8 requirements, mechanical ventilation running, cure window conditions met",
     },
     "wah": {
         "critical_control": "Harness clipped to anchor and lanyard taut before worker goes to height",

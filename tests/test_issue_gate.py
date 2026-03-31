@@ -23,6 +23,7 @@ from src.issue_gate import (
     _check_responsibility_field,
     _check_footer,
     _check_latent_condition_packaging,
+    _check_orphan_reinstatement,
     run_issue_gate,
 )
 
@@ -230,7 +231,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 16  # C1-C6 + C5b + C7-json + C10 + C14-C20
+        assert len(result.checks) == 17  # C1-C6 + C5b + C7-json + C10 + C14-C21
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -291,7 +292,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 19  # C1-C6 + C5b + C7-json + C10 + C14-C20 + C7-docx + C8 + C9
+        assert len(result.checks) == 20  # C1-C6 + C5b + C7-json + C10 + C14-C21 + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -421,6 +422,37 @@ class TestUnsupportedControlsJson:
         t = _tasks("Remove green wall")
         t[0]["controls"] = ["Check irrigation before removal"]
         assert _check_unsupported_controls_json(t).result == CheckResult.PASS
+
+
+class TestOrphanReinstatement:
+    def test_reinstatement_with_removal_passes(self):
+        tasks = [
+            {"step": "1.1", "task": "Remove existing membrane"},
+            {"step": "1.2", "task": "Reinstate balustrades and fittings"},
+        ]
+        assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
+
+    def test_reinstatement_without_removal_reviews(self):
+        tasks = [
+            {"step": "1.1", "task": "Apply waterproofing membrane"},
+            {"step": "1.2", "task": "Reinstate balustrades and fittings"},
+        ]
+        assert _check_orphan_reinstatement(tasks).result == CheckResult.REVIEW
+
+    def test_demob_reinstate_not_flagged(self):
+        """Demob-style reinstatement (e.g. 'reinstate access and demobilise') is not flagged."""
+        tasks = [
+            {"step": "1.1", "task": "Apply membrane"},
+            {"step": "1.2", "task": "Reinstate occupant access and demobilise"},
+        ]
+        assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
+
+    def test_no_reinstatement_passes(self):
+        tasks = [
+            {"step": "1.1", "task": "Paint wall"},
+            {"step": "1.2", "task": "Demobilise site"},
+        ]
+        assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
 
 
 import json
