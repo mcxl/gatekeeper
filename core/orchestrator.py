@@ -1372,7 +1372,11 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     # is a SIL task (dust/debris), not a CHM task (chemical application).
     _REMOVAL_CONTEXT = ("remove", "strip", "demolit", "break out", "rip out")
     _CHM_DOMINANT = ("waterproof", "membrane", "epoxy", "primer")
-    is_removal = any(kw in task_name for kw in _REMOVAL_CONTEXT)
+    # Scaffold/EWP tasks with "remove" (e.g. "dismantle scaffold and remove from site")
+    # are WAH, not SIL — exclude them from removal context
+    _WAH_OVERRIDE = ("scaffold", "ewp", "dismantle scaffold", "remove scaffold")
+    is_wah_task = any(kw in task_name for kw in _WAH_OVERRIDE)
+    is_removal = any(kw in task_name for kw in _REMOVAL_CONTEXT) and not is_wah_task
     if any(kw in task_name for kw in _CHM_DOMINANT) and not is_removal:
         tb["ccvs_code"] = "CHM-H6"
         return
@@ -1393,7 +1397,7 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     _DEMOB_SYS = ("demob", "demobilise", "demobilize", "site demobil",
                    "building reinstate", "site reinstate", "handover",
                    "site restor", "site clean")
-    if any(kw in task_name for kw in _DEMOB_SYS):
+    if any(kw in task_name for kw in _DEMOB_SYS) and not is_wah_task:
         tb["ccvs_code"] = "SYS-M3"
         return
 

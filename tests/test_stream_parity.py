@@ -111,6 +111,33 @@ def test_isolate_in_scope_does_not_trigger_phase_zero():
 
 # ── T2-B2: _correct_ccvs_by_task_type — demob tasks ──────────────────────────
 
+def test_ccvs_dismantle_scaffold_stays_wah():
+    """Dismantle scaffold should get WAH, not SIL — 'remove' in task name must not trigger SIL."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Dismantle scaffold and remove from site", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_dismantle_scaffold_and_demobilise_stays_wah():
+    """Combined dismantle+demob task should get WAH, not SYS-M3."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Dismantle scaffold and demobilise site", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "WAH-H6"
+
+
+def test_ccvs_remove_membrane_stays_sil():
+    """Remove waterproofing membrane is genuinely SIL — must not get WAH."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Remove existing waterproofing membrane and screed", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SIL-H6"
+
+
 def test_ccvs_demob_task_corrected_to_sys():
     """Demob/reinstatement task should get SYS-M3, not WAH-H6."""
     from core.orchestrator import _correct_ccvs_by_task_type
