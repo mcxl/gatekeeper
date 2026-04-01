@@ -1,0 +1,24 @@
+{
+  "customer": "Precision Utility Boring",
+  "project": "Directional drilling and installation of new electrical and communications conduits beneath a suburban arterial road and shared footpath corridor",
+  "job_type": "civil",
+  "scope_modifiers": [
+    "live_services_interface",
+    "road_corridor",
+    "traffic_management",
+    "excavation",
+    "underground_services",
+    "public_interface"
+  ],
+  "scope_of_works": "Establish site and traffic controls, pothole and prove existing services, complete directional drilling bore path setup, drill pilot bore, ream and install conduits, manage drilling fluid returns, excavate entry and exit pits, reinstate disturbed surfaces, and complete service location verification and as-built records.",
+  "quick_scan_focus": [
+    "service proving before drilling and excavation",
+    "traffic and pedestrian interface controls",
+    "entry/exit pit excavation logic",
+    "drilling fluid return / containment controls",
+    "live electrical / communications service exposure",
+    "reinstatement and as-built / verification sequence"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

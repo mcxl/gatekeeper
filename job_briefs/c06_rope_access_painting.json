@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "Selection, use and care of industrial rope access systems for accessing high work faces via vertically suspended ropes for painting works to a 6-storey occupied residential building with existing certified anchors",
+  "job_type": "maintenance",
+  "scope_modifiers": [
+    "occupied_building"
+  ],
+  "scope_of_works": "Industrial rope access systems for accessing high work faces via vertically suspended ropes, where EWPs, scaffolds or building maintenance units are not reasonably practicable. Applies to industrial rope access systems only; excludes fall arrest systems. Access for painting works to 6-storey building with existing certified anchors.",
+  "quick_scan_focus": [
+    "rope access deployment and retrieval sequence",
+    "anchor certification and load testing",
+    "rescue and communication protocols",
+    "paint preparation and containment on facade",
+    "occupied building interface and exclusion zones",
+    "credential verification for rope access team"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "On-site tilt-up concrete panel construction for the SD Group project",
+  "job_type": "new_build",
+  "scope_modifiers": [
+    "building_under_construction"
+  ],
+  "scope_of_works": "Casting bed set-out, formwork, reinforcement, bond breaker application, insert and brace fixing, concrete pouring, curing and strength verification, pre-erection planning, crane mobilisation and lift preparation, panel erection by mobile crane, temporary bracing, permanent structural connections, ongoing brace monitoring, engineer-authorised brace removal, and final inspection/site clearance.",
+  "quick_scan_focus": [
+    "tilt-up sequence integrity",
+    "temporary bracing and brace monitoring logic",
+    "crane / landing / exclusion zone interface logic",
+    "engineer hold points and brace-removal authority",
+    "concrete strength / curing prerequisites before lift",
+    "simultaneous operations and shared work-zone conflicts"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

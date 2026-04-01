@@ -1,0 +1,24 @@
+{
+  "customer": "Apex Commercial Constructions",
+  "project": "Suspended formwork installation, deck pour and strike for Level 3 podium slab of a mixed-use apartment project in Parramatta",
+  "job_type": "new_build",
+  "scope_modifiers": [
+    "building_under_construction",
+    "tower_crane_interface",
+    "concrete_pour",
+    "live_edge_protection",
+    "multi_trade_interface"
+  ],
+  "scope_of_works": "Set out and install suspended slab formwork, falsework and edge protection; place reinforcement and embeds; coordinate pre-pour inspection; pour and finish concrete; cure slab; maintain backpropping; then strip formwork and progressively remove props in line with engineer requirements.",
+  "quick_scan_focus": [
+    "temporary works and falsework logic",
+    "pre-pour hold points",
+    "crane/interface controls",
+    "live edge protection sequence",
+    "backpropping and premature strike risk",
+    "engineer authority before prop removal",
+    "multi-trade interface and exclusion zones"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

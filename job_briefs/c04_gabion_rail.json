@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "Installation of gabion cages and reno mattress to drainage structures in a rail corridor environment",
+  "job_type": "civil",
+  "scope_modifiers": [
+    "civil_works"
+  ],
+  "scope_of_works": "Excavation, pad preparation, filter fabric, cage assembly, rock fill, concrete works, and backfill. Rail corridor environment with plant and overhead services interface.",
+  "quick_scan_focus": [
+    "excavation and pad preparation sequence",
+    "gabion cage assembly and rock fill",
+    "rail corridor interface and exclusion controls",
+    "overhead services interface",
+    "plant operation near rail assets",
+    "backfill and reinstatement"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

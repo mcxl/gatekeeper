@@ -1,0 +1,24 @@
+{
+  "customer": "Harbourline Hydraulic Services",
+  "project": "Sewer and stormwater stack replacement, roof drainage upgrade, and podium pump-out renewal for an 8-storey multi-residential building",
+  "job_type": "remedial",
+  "scope_modifiers": [
+    "occupied_building",
+    "live_services_interface",
+    "resident_interface",
+    "restricted_access",
+    "working_at_heights",
+    "confined_space_interface"
+  ],
+  "scope_of_works": "Remove and replace deteriorated sanitary and stormwater pipework in risers, ceilings and plant areas; complete staged service isolations; upgrade roof drainage points and downpipes; replace pump-out components; reinstate penetrations and finishes; pressure test, commission, and return services to occupants in stages.",
+  "quick_scan_focus": [
+    "staged service isolations",
+    "resident interface and occupied-building controls",
+    "roof drainage work at heights",
+    "confined-space interface around plant/pump-out areas",
+    "reinstatement and service return sequence",
+    "pressure testing and staged recommissioning"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

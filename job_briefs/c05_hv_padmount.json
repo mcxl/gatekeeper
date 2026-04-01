@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "Install HV equipment with permits, site setup, service locating, lifting, electrical controls, hazardous-substance management, associated hot works/demolition, and final clean-up in padmount/substation environments",
+  "job_type": "maintenance",
+  "scope_modifiers": [
+    "building_under_construction"
+  ],
+  "scope_of_works": "HV equipment installation in padmount and substation environments including permits, site setup, service locating, lifting, electrical controls, hazardous-substance management, associated hot works and demolition, and final clean-up.",
+  "quick_scan_focus": [
+    "HV isolation sequence before intrusive work",
+    "permit and authority-to-work logic",
+    "service locating before excavation or drilling",
+    "crane/lifting interface in substation environment",
+    "hazardous substance management",
+    "hot works controls and fire watch"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

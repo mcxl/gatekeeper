@@ -1,0 +1,18 @@
+{
+  "customer": "mcxi.co",
+  "project": "Erect concrete tilt-up panels with crane",
+  "job_type": "new_build",
+  "scope_modifiers": [
+    "building_under_construction"
+  ],
+  "scope_of_works": "Crane-assisted erection of tilt-up concrete panels including temporary bracing, permanent structural connections, and engineer-authorised brace removal.",
+  "quick_scan_focus": [
+    "tilt-up erection sequence integrity",
+    "temporary bracing and brace monitoring",
+    "crane exclusion zone and lift plan",
+    "engineer hold points and brace-removal authority",
+    "permanent connection before crane release"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

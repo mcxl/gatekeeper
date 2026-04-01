@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "Installation of metal roofing sheets, insulation/sarking blanket, safety wire/horizontal lifeline, flashings, gutters and downpipes to an industrial warehouse at Unitas site, Rouse Hill NSW",
+  "job_type": "new_build",
+  "scope_modifiers": [
+    "building_under_construction"
+  ],
+  "scope_of_works": "Roof packs (1.2-1.5 T per pack, sheet lengths 22-34 m) are crane-lifted from a semi-trailer at ground level using a 120T slewing crane operating from three designated setup positions per the approved roof load plan. Packs are distributed over precast roof panels at no more than 150 kg/m2 per pack. Workers access the roof via scissor lift through a gate in the perimeter guardrail system. Applicable HRCW: risk of a person falling more than 2 metres; movement of powered mobile plant (120T crane and scissor lift).",
+  "quick_scan_focus": [
+    "crane lift and pack distribution controls",
+    "scissor lift roof access and transfer sequence",
+    "guardrail and gate interface",
+    "long-sheet handling and wind controls",
+    "exclusion zone below active roof edge",
+    "safety wire / lifeline enabling controls"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}

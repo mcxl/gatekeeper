@@ -1,0 +1,19 @@
+{
+  "customer": "mcxi.co",
+  "project": "Withers Road Partial Upgrade, North Kellyville NSW 2155 for The Hills Shire Council",
+  "job_type": "civil",
+  "scope_modifiers": [
+    "civil_works"
+  ],
+  "scope_of_works": "Road widening to a four-lane cross-section, T-intersection reconstruction, and associated civil and infrastructure works within the existing road corridor. Includes demolition and removal of existing pavement, kerb and gutter, and footpath; bulk earthworks and road formation; sub-base and road base placement; stormwater drainage infrastructure; Sydney Water asset relocation; concrete kerb, gutter, footpaths, pedestrian ramps and shared path; intersection reconstruction with asphalt, line marking, and kerb returns; traffic signal installation and commissioning; street lighting modifications; final asphalt surfacing, line marking, pavement markers, signage, and road furniture. Works under approved CTMP with traffic control at all times.",
+  "quick_scan_focus": [
+    "traffic management and pedestrian interface",
+    "stormwater drainage and pit/pipe construction",
+    "Sydney Water asset relocation and hold points",
+    "intersection reconstruction sequence",
+    "traffic signal commissioning",
+    "asphalt and surfacing sequence"
+  ],
+  "last_used": "2026-04-01T00:00:00Z",
+  "jobs_run": 1
+}
