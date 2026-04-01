@@ -337,3 +337,45 @@ Never uses: Approved, Accepted, Compliant, Passed.
 
 Stored at: `src/data/procore_rule_packs/project_{id}.json`
 Must be created and reviewed before webhook processing works for a project.
+
+### Phase 1B: Live sandbox connection
+
+Phase 1B adds live Procore API connectivity for the Submittals surface.
+
+#### Required environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PROCORE_WEBHOOK_SECRET` | HMAC-SHA256 secret for webhook signature validation |
+| `PROCORE_ACCESS_TOKEN` | OAuth2 bearer token for API calls |
+| `PROCORE_CLIENT_ID` | Procore app client ID (used to detect live config) |
+| `PROCORE_CLIENT_SECRET` | Procore app client secret |
+| `PROCORE_COMPANY_ID` | Procore company ID (sent as header) |
+| `PROCORE_BASE_URL` | Base URL (default: `https://sandbox.procore.com`) |
+| `PROCORE_API_URL` | API URL (default: `https://sandbox.procore.com/rest/v1.1`) |
+
+#### How webhook registration works
+
+1. Register the webhook URL (`{your-domain}/v1/procore/webhook`) in Procore App Management
+2. Select the Submittals trigger: `submittals.submittal_logs.created`
+3. Configure the webhook secret and set `PROCORE_WEBHOOK_SECRET`
+4. Create a project rule pack at `src/data/procore_rule_packs/project_{id}.json`
+
+#### Retrieval modes
+
+| Mode | When used |
+|------|-----------|
+| `live_api` | `PROCORE_ACCESS_TOKEN` + `PROCORE_CLIENT_ID` configured, attachment URL present |
+| `simulated` | `_simulated_swms_text` field in payload (testing) |
+| `fixture` | `_fixture_pdf_text_path` field in payload (local dev) |
+
+#### Return path
+
+When in `live_api` mode, a formatted review comment is posted back to the Procore submittal log. The comment is advisory only and does not change submittal status.
+
+#### What remains after Phase 1B
+
+- Production OAuth2 token refresh (currently uses static token)
+- Procore sandbox webhook registration (requires Procore developer account)
+- Multi-project rule pack management UI
+- Additional Procore surfaces beyond Submittals

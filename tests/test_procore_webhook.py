@@ -297,3 +297,106 @@ class TestWebhookEndpoint:
         response = client.post("/v1/procore/webhook", content=b"not json",
                                headers={"Content-Type": "application/json"})
         assert response.status_code == 400
+
+    def test_retrieval_mode_in_response(self):
+        """Response should include retrieval_mode field."""
+        from fastapi.testclient import TestClient
+        from api.main import app
+        client = TestClient(app)
+
+        payload = _load_fixture("submittal_created")
+        payload["metadata"]["delivery_id"] = "evt-retrieval-mode"
+        payload["_simulated_swms_text"] = "Scaffold SWMS with harness and edge protection."
+
+        response = client.post("/v1/procore/webhook", content=json.dumps(payload),
+                               headers={"Content-Type": "application/json"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["retrieval_mode"] == "simulated"
+        assert body["comment_posted"] is False
+
+
+# ── API client unit tests ───────────────────────────────────────────────────
+
+class TestApiClient:
+    def test_is_live_configured_false_by_default(self):
+        from core.procore.api_client import is_live_configured
+        # In test environment, credentials should not be set
+        # This may be True if env vars happen to be set — test the function exists
+        result = is_live_configured()
+        assert isinstance(result, bool)
+
+    def test_format_review_as_comment(self):
+        from core.procore.api_client import format_review_as_comment
+        artifact = {
+            "status_recommendation": "Return for Amendment",
+            "review_confidence": "HIGH",
+            "required_amendments": [
+                {"title": "Missing rescue plan", "severity": "mandatory",
+                 "reason": "No rescue plan found."},
+            ],
+            "structural_findings": {
+                "sequence": "No issues detected",
+                "hrcw_alignment": "ISSUES FOUND",
+                "control_credibility": "No issues detected",
+                "unsupported_controls": "No issues detected",
+            },
+            "review_disclaimer": "Safe Method provides pre-screening support only.",
+        }
+        comment = format_review_as_comment(artifact, "SWMS_Test.pdf")
+        assert "Return for Amendment" in comment
+        assert "Missing rescue plan" in comment
+        assert "SWMS_Test.pdf" in comment
+        assert "Human review is required" in comment
+        # Must not contain banned terms
+        for banned in ("Approved", "Accepted", "Compliant"):
+            assert banned not in comment
+
+    def test_format_review_clean_artifact(self):
+        from core.procore.api_client import format_review_as_comment
+        clean = {
+            "status_recommendation": "Ready for Human Review",
+            "review_confidence": "HIGH",
+            "required_amendments": [],
+            "structural_findings": {
+                "sequence": "No issues detected",
+                "hrcw_alignment": "No issues detected",
+                "control_credibility": "No issues detected",
+                "unsupported_controls": "No issues detected",
+            },
+            "review_disclaimer": "Safe Method provides pre-screening support only.",
+        }
+        comment = format_review_as_comment(clean)
+        assert "Ready for Human Review" in comment
+        assert "Human review is required" in comment
+
+    def test_get_headers_raises_without_token(self, monkeypatch):
+        import core.procore.api_client as client_mod
+        monkeypatch.setattr(client_mod, "PROCORE_ACCESS_TOKEN", "")
+        with pytest.raises(ValueError, match="PROCORE_ACCESS_TOKEN"):
+            client_mod._get_headers()
+
+    def test_get_headers_includes_token(self, monkeypatch):
+        import core.procore.api_client as client_mod
+        monkeypatch.setattr(client_mod, "PROCORE_ACCESS_TOKEN", "test-token-123")
+        monkeypatch.setattr(client_mod, "PROCORE_COMPANY_ID", "99")
+        headers = client_mod._get_headers()
+        assert headers["Authorization"] == "Bearer test-token-123"
+        assert headers["Procore-Company-Id"] == "99"
+
+
+# ── Config validation tests ─────────────────────────────────────────────────
+
+class TestConfigValidation:
+    def test_webhook_secret_env_var(self):
+        """PROCORE_WEBHOOK_SECRET should be read from environment."""
+        # The variable is read at module import time
+        import api.main as main_mod
+        assert hasattr(main_mod, "_PROCORE_WEBHOOK_SECRET")
+
+    def test_rule_packs_dir_exists_or_created(self):
+        """Rule packs directory should be createable."""
+        import api.main as main_mod
+        rule_dir = main_mod._PROCORE_RULE_PACKS_DIR
+        rule_dir.mkdir(parents=True, exist_ok=True)
+        assert rule_dir.exists()

@@ -1125,21 +1125,42 @@ async def procore_webhook_endpoint(request: Request):
     with open(rule_pack_path, encoding="utf-8") as f:
         rule_pack = json.load(f)
 
-    # For Phase 1: use simulated/fixture PDF text extraction
-    # In Part B live mode, this would fetch the PDF from Procore API
     att = attachments[0]
-    swms_text = payload.get("_simulated_swms_text", "")
+    swms_text = ""
+    retrieval_mode = "none"
+
+    # Phase 1B: try live Procore API retrieval first
+    try:
+        from core.procore.api_client import fetch_attachment, is_live_configured
+        if is_live_configured() and att.url:
+            pdf_bytes = fetch_attachment(event.project_id, att.url)
+            from core.intake_extractor import extract_from_pdf
+            extraction = extract_from_pdf(pdf_bytes, source_label=att.filename)
+            if extraction.text_extraction_succeeded:
+                swms_text = extraction.raw_text
+                retrieval_mode = "live_api"
+                logger.info(f"Live retrieval: {len(swms_text)} chars from {att.filename}")
+    except Exception as live_err:
+        logger.warning(f"Live Procore retrieval failed: {live_err}")
+
+    # Phase 1A fallback: simulated/fixture text
+    if not swms_text:
+        swms_text = payload.get("_simulated_swms_text", "")
+        if swms_text:
+            retrieval_mode = "simulated"
 
     if not swms_text:
-        # Try to fetch from a local fixture path if provided
         fixture_path = payload.get("_fixture_pdf_text_path", "")
         if fixture_path and _Path(fixture_path).exists():
             swms_text = _Path(fixture_path).read_text(encoding="utf-8")
+            retrieval_mode = "fixture"
 
     if not swms_text:
         return JSONResponse(content={
             "status": "no_text",
-            "reason": f"Could not extract text from {att.filename}. Phase 1 requires simulated text.",
+            "reason": f"Could not extract text from {att.filename}. "
+                      "Configure PROCORE_ACCESS_TOKEN for live retrieval, "
+                      "or provide _simulated_swms_text for testing.",
             "attachment": att.filename,
         })
 
@@ -1149,11 +1170,28 @@ async def procore_webhook_endpoint(request: Request):
     # Log review
     log_review(review_artifact, event)
 
+    # Phase 1B: post comment back to Procore if live and configured
+    comment_posted = False
+    try:
+        from core.procore.api_client import (
+            format_review_as_comment,
+            is_live_configured,
+            post_submittal_comment,
+        )
+        if is_live_configured() and retrieval_mode == "live_api":
+            comment_text = format_review_as_comment(review_artifact, att.filename)
+            post_submittal_comment(event.project_id, event.resource_id, comment_text)
+            comment_posted = True
+    except Exception as comment_err:
+        logger.warning(f"Procore comment post failed: {comment_err}")
+
     return JSONResponse(content={
         "status": "reviewed",
         "delivery_id": event.delivery_id,
         "project_id": event.project_id,
         "attachment": att.filename,
+        "retrieval_mode": retrieval_mode,
+        "comment_posted": comment_posted,
         "review": review_artifact,
     })
 
