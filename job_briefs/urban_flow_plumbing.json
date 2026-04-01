@@ -1,0 +1,23 @@
+{
+  "customer": "Urban Flow Plumbing",
+  "project": "Rough-in, stack installation, fit-off and testing of hydraulic services for a 6-storey multi-residential apartment building in Brisbane",
+  "job_type": "new_build",
+  "scope_modifiers": [
+    "building_under_construction",
+    "multi_trade_interface",
+    "live_edge_protection",
+    "restricted_access",
+    "materials_hoist_interface"
+  ],
+  "scope_of_works": "Install sewer, sanitary drainage, stormwater, hot and cold water, gas and vent pipework to apartments and common areas, including risers, in-slab set-outs, penetrations, fixture fit-off, pressure testing, commissioning, and defect rectification.",
+  "quick_scan_focus": [
+    "penetrations and in-slab set-out logic",
+    "live edge protection and restricted access",
+    "materials hoist and delivery interface",
+    "pressure testing and commissioning sequence",
+    "gas, water, sewer, stormwater and vent separation",
+    "multi-trade coordination in shared work zones"
+  ],
+  "last_used": "2026-04-01T11:40:08Z",
+  "jobs_run": 1
+}
