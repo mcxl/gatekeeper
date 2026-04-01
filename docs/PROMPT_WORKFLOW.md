@@ -280,3 +280,60 @@ Returns: JSON project rule pack artifact (status: draft)
 ### Downstream use
 
 The project rule pack is designed to be used later by the SWMS Review Engine to compare subcontractor SWMS against principal contractor requirements. The pack must be reviewed and confirmed before use.
+
+---
+
+## Procore Webhook Spike — Phase 1
+
+Bounded spike proving one Procore-triggered SWMS pre-screen review path.
+
+### What it proves
+
+1. Safe Method can receive a Procore submittal event
+2. Identify and extract an uploaded SWMS PDF
+3. Load a project-specific rule pack
+4. Run a bounded pre-screen review
+5. Return a structured reviewer-facing artifact
+6. Repeat reliably with idempotency protection
+
+### Chosen Procore surface
+
+**Submittals** — the natural fit for subcontractor SWMS submission in Australian construction.
+
+### What it does NOT do
+
+- Autonomous approval
+- Multi-surface support
+- Resubmission comparison
+- Amendment generation
+- OCR for scanned PDFs
+- Full Procore app productization
+
+### Phase 1 status
+
+- **Part A (recorded/simulated payloads):** Complete. Tests, fixtures, contract validation all working.
+- **Part B (live Procore sandbox):** Not connected. Endpoint is ready; requires Procore sandbox credentials and webhook registration.
+
+### API endpoint
+
+```
+POST /v1/procore/webhook
+
+Receives raw JSON payload from Procore webhook.
+Validates signature (if PROCORE_WEBHOOK_SECRET configured).
+Processes submittal events only.
+Returns structured review artifact.
+```
+
+### Status vocabulary (restricted)
+
+- Ready for Human Review
+- Return for Amendment
+- Escalate
+
+Never uses: Approved, Accepted, Compliant, Passed.
+
+### Project rule packs
+
+Stored at: `src/data/procore_rule_packs/project_{id}.json`
+Must be created and reviewed before webhook processing works for a project.

@@ -1,0 +1,44 @@
+{
+  "event_type": "submittals.submittal_logs.created",
+  "timestamp": "2026-04-02T10:00:00Z",
+  "resource_name": "submittal_logs",
+  "resource_id": 98765,
+  "project_id": 12345,
+  "company_id": 67890,
+  "api_version": "v1.1",
+  "metadata": {
+    "source_app": "procore",
+    "delivery_id": "evt-abc123-def456"
+  },
+  "data": {
+    "id": 98765,
+    "title": "SWMS - Scaffold Erection - Bay 3",
+    "description": "Subcontractor SWMS for scaffold erection works Bay 3",
+    "specification_section": {
+      "id": 111,
+      "number": "01 35 00",
+      "description": "Special Procedures"
+    },
+    "status": {
+      "id": 1,
+      "name": "Open"
+    },
+    "current_revision": {
+      "id": 54321,
+      "number": 1,
+      "attachments": [
+        {
+          "id": 77777,
+          "filename": "SWMS_Scaffold_Bay3_v1.pdf",
+          "content_type": "application/pdf",
+          "url": "https://storage.procore.com/v4/d/us-east-1/pro-core.com/companies/67890/projects/12345/submittals/98765/attachments/77777"
+        }
+      ]
+    },
+    "submitter": {
+      "id": 999,
+      "name": "Formwork Solutions Pty Ltd"
+    },
+    "created_at": "2026-04-02T09:55:00Z"
+  }
+}

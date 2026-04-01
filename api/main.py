@@ -1043,6 +1043,122 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
 
 
 # ============================================================
+# PROCORE WEBHOOK — PHASE 1 SPIKE
+# ============================================================
+
+import os as _os
+from pathlib import Path as _Path
+
+_PROCORE_WEBHOOK_SECRET = _os.getenv("PROCORE_WEBHOOK_SECRET", "")
+_PROCORE_RULE_PACKS_DIR = _Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+
+
+@app.post("/v1/procore/webhook")
+async def procore_webhook_endpoint(request: Request):
+    """
+    POST /v1/procore/webhook
+
+    Receives Procore submittal events, extracts SWMS PDF,
+    runs bounded pre-screen review, returns structured artifact.
+    Human review is mandatory. Does not make approval decisions.
+
+    Phase 1: Submittals surface only.
+    """
+    from core.procore.webhook_handler import (
+        extract_submittal_attachments,
+        is_duplicate,
+        log_payload,
+        log_review,
+        parse_event,
+        validate_signature,
+    )
+    from core.procore.prescreen_reviewer import run_prescreen_review
+
+    # Read raw body for signature validation
+    body = await request.body()
+
+    # Validate webhook signature if secret is configured
+    if _PROCORE_WEBHOOK_SECRET:
+        sig = request.headers.get("X-Procore-Signature", "")
+        if not validate_signature(body, sig, _PROCORE_WEBHOOK_SECRET):
+            return JSONResponse(
+                content={"error": "Invalid webhook signature"},
+                status_code=401,
+            )
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return JSONResponse(content={"error": "Invalid JSON"}, status_code=400)
+
+    event = parse_event(payload)
+
+    # Log payload for replay/debugging
+    log_payload(event)
+
+    # Idempotency check
+    if event.delivery_id and is_duplicate(event.delivery_id):
+        return JSONResponse(content={"status": "already_processed", "delivery_id": event.delivery_id})
+
+    # Phase 1: only handle submittal events
+    if "submittal" not in event.event_type:
+        return JSONResponse(content={"status": "ignored", "reason": "not a submittal event"})
+
+    # Extract PDF attachments
+    attachments = extract_submittal_attachments(event)
+    if not attachments:
+        return JSONResponse(content={
+            "status": "no_pdf",
+            "reason": "No PDF attachments found in submittal",
+        })
+
+    # Load project rule pack
+    _PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
+    rule_pack_path = _PROCORE_RULE_PACKS_DIR / f"project_{event.project_id}.json"
+    if not rule_pack_path.exists():
+        return JSONResponse(content={
+            "status": "no_rule_pack",
+            "reason": f"No project rule pack found for project {event.project_id}",
+            "project_id": event.project_id,
+        })
+
+    with open(rule_pack_path, encoding="utf-8") as f:
+        rule_pack = json.load(f)
+
+    # For Phase 1: use simulated/fixture PDF text extraction
+    # In Part B live mode, this would fetch the PDF from Procore API
+    att = attachments[0]
+    swms_text = payload.get("_simulated_swms_text", "")
+
+    if not swms_text:
+        # Try to fetch from a local fixture path if provided
+        fixture_path = payload.get("_fixture_pdf_text_path", "")
+        if fixture_path and _Path(fixture_path).exists():
+            swms_text = _Path(fixture_path).read_text(encoding="utf-8")
+
+    if not swms_text:
+        return JSONResponse(content={
+            "status": "no_text",
+            "reason": f"Could not extract text from {att.filename}. Phase 1 requires simulated text.",
+            "attachment": att.filename,
+        })
+
+    # Run pre-screen review
+    review_artifact = run_prescreen_review(swms_text, rule_pack)
+
+    # Log review
+    log_review(review_artifact, event)
+
+    return JSONResponse(content={
+        "status": "reviewed",
+        "delivery_id": event.delivery_id,
+        "project_id": event.project_id,
+        "attachment": att.filename,
+        "review": review_artifact,
+    })
+
+
+# ============================================================
 # INTAKE NORMALIZER
 # ============================================================
 

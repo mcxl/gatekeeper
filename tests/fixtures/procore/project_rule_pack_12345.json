@@ -1,0 +1,50 @@
+{
+  "pack_version": "1.0",
+  "project_id": 12345,
+  "project_name": "Mixed Use Development - Parramatta",
+  "principal_contractor": "SD Group",
+  "status": "active",
+  "rules": [
+    {
+      "rule_id": "R01",
+      "category": "fall_prevention",
+      "requirement": "All SWMS involving work at height must include a rescue plan with named rescue provider and response time.",
+      "severity": "mandatory",
+      "basis": "project rule"
+    },
+    {
+      "rule_id": "R02",
+      "category": "scaffold",
+      "requirement": "Scaffold SWMS must reference scaffold design drawings or engineer certification.",
+      "severity": "mandatory",
+      "basis": "project rule"
+    },
+    {
+      "rule_id": "R03",
+      "category": "permits",
+      "requirement": "Hot work permit required for any cutting, welding, or grinding within 10m of combustible materials.",
+      "severity": "mandatory",
+      "basis": "project rule"
+    },
+    {
+      "rule_id": "R04",
+      "category": "ladder_restriction",
+      "requirement": "Ladders not permitted as a work platform. Access ladders permitted for transfer only.",
+      "severity": "mandatory",
+      "basis": "project rule"
+    },
+    {
+      "rule_id": "R05",
+      "category": "hrcw_declaration",
+      "requirement": "SWMS must declare all applicable HRCW categories. Undeclared HRCW is grounds for return.",
+      "severity": "mandatory",
+      "basis": "project rule"
+    }
+  ],
+  "structural_expectations": [
+    "Method sequence must be chronologically credible",
+    "Controls must lead with physical hazard controls, not admin",
+    "Hold points must name the approval authority",
+    "Stop work triggers must be tied to the dominant failure mode"
+  ]
+}
