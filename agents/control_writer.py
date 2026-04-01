@@ -49,7 +49,7 @@ def _record_usage(message) -> None:
 from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
 from prompts.swms import SWMS_BEHAVIOUR
 
-MODEL = os.getenv("CONTROL_WRITER_MODEL", "claude-haiku-4-5")
+MODEL = os.getenv("CONTROL_WRITER_MODEL", "claude-sonnet-4-20250514")
 
 SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are an Australian WHS control measure writer for construction SWMS documents.
