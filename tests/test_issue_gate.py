@@ -32,6 +32,7 @@ from src.issue_gate import (
     _check_prerequisite_contradiction,
     _check_generic_responsibility,
     _check_late_isolation,
+    _check_unsupported_admin_controls,
     _check_prerequisite_self_reference,
     _check_unresolved_placeholders,
     _check_risk_code_consistency,
@@ -970,3 +971,29 @@ class TestNswTerminology:
         ]
         result = _check_nsw_terminology(tasks)
         assert result.result == CheckResult.PASS
+
+
+# ── C16: Council permit scope-awareness ─────────────────────────────────────
+
+class TestCouncilPermitScopeAwareness:
+    def test_council_permit_ok_for_civil_road(self):
+        """Council permit is legitimate in civil road corridor scope."""
+        tasks = [
+            {"step": "1.1", "task": "Establish site, traffic controls, and exclusion zones",
+             "controls": [], "admin": ["Obtain council permit before work starts"],
+             "hold_points": [], "stop_work": []},
+            {"step": "1.2", "task": "Excavate entry pit near road pavement",
+             "controls": [], "admin": [], "hold_points": [], "stop_work": []},
+        ]
+        result = _check_unsupported_admin_controls(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_council_permit_flagged_on_non_civil(self):
+        """Council permit on a steel erection job is unsupported."""
+        tasks = [
+            {"step": "1.1", "task": "Erect steel frame",
+             "controls": [], "admin": ["Obtain council permit before erection"],
+             "hold_points": [], "stop_work": []},
+        ]
+        result = _check_unsupported_admin_controls(tasks)
+        assert result.result == CheckResult.FAIL

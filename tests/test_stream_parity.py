@@ -429,6 +429,23 @@ def test_ccvs_pumpout_corrected_to_sys():
     assert tb["ccvs_code"] == "SYS-M3"
 
 
+def test_ccvs_drill_bore_corrected_to_sil():
+    """Drill/bore tasks should get SIL-H6, not N/A."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Drill pilot bore and monitor bore fluids", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SIL-H6"
+
+
+def test_ccvs_verify_conduit_corrected_to_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Verify conduit continuity and complete service location records", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_brazing_corrected_to_chm():
     from core.orchestrator import _correct_ccvs_by_task_type
 

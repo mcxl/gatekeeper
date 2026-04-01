@@ -611,6 +611,11 @@ def _check_hrcw_undercall(tasks: list[dict],
 def _check_unsupported_admin_controls(tasks: list[dict],
                                        allowed: tuple[str, ...] = ()) -> GateCheck:
     """C16: Unsupported admin/governance controls — HARD FAIL."""
+    # Civil/road corridor scope detection — council permit is legitimate
+    all_task_names = " ".join(t.get("task", "").lower() for t in tasks)
+    civil_road_in_scope = any(kw in all_task_names for kw in (
+        "road", "traffic", "pavement", "footpath", "corridor",
+        "carriageway", "intersection", "kerb", "gutter", "line marking"))
     findings = []
     for t in tasks:
         step = t.get("step", "?")
@@ -619,6 +624,8 @@ def _check_unsupported_admin_controls(tasks: list[dict],
                 item_lower = item.lower()
                 for kw in UNSUPPORTED_ADMIN_KEYWORDS:
                     if kw in item_lower and kw not in allowed:
+                        if kw in ("council permit", "council approval") and civil_road_in_scope:
+                            continue
                         findings.append(f"{step}: '{kw}'")
     if len(findings) > SYSTEMIC_THRESHOLD:
         findings.insert(0, "SYSTEMIC:")

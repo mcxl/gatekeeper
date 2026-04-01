@@ -231,6 +231,7 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | C8 | Apex Commercial | Suspended formwork podium slab L3 | new_build | ~10 min | ESCALATE_EXTERNAL 0F | 0 | 6 | **First zero-FAIL result.** HRCW undercall (crane, propping). Generic responsibility x3. Risk/rating mismatch x3. Pre-pour inspection sequence. 5 engineer hold points. Strongest output in pilot. | Yes with minor edits |
 | C9 | Urban Flow Plumbing | Hydraulic services 6-storey residential | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 6 | CCVS N/A on fit-off/rough-in tasks. Orphan reinstatement FP on clean/cap/handover. Monitoring copy-paste. Risk/rating mismatch x3. Strong pressure test and core-hole hold points. Induction task sequenced late. | Yes with edits |
 | C10 | Harbourline Hydraulic | Stack replacement 8-storey occupied | remedial | ~15 min | RETRY_INTERNAL 3F | 3 | 6 | Coat/reinstate merge. CCVS N/A on pump-out. C22 staged-isolation FP (known limitation). Confined space HRCW undercall. Strongest occupied-building remedial output: resident interface, staged commissioning, atmospheric testing. | Yes with edits |
+| C11 | Precision Utility Boring | Directional drilling road corridor | civil | ~15 min | RETRY_INTERNAL 2F | 2 | 5 | Council permit FP (civil scope). CCVS N/A on drill/bore/verify tasks. Generic responsibility x2. Risk/rating mismatch x3. Strong service-proving and traffic interface logic. | Yes with edits |
 
 ---
 

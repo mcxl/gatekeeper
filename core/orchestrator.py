@@ -1614,7 +1614,10 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                                          "base course", "construct pavement", "lay pavement",
                                          "pavement surfac", "asphalt", "surfacing",
                                          "sawcut", "saw cut", "drainage", "stormwater",
-                                         "pit and pipe")):
+                                         "pit and pipe",
+                                         # Drilling / boring
+                                         "drill", "bore", "pilot bore",
+                                         "directional drill", "ream")):
         correct = "SIL-H6"
     elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
                                          "treat", "primer", "timber",
@@ -1637,7 +1640,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
         correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good",
                                          "hold point", "approval gate", "sign-off",
-                                         "consultant release")):
+                                         "consultant release",
+                                         "verify", "as-built", "continuity test",
+                                         "conduit check", "service location record")):
         correct = "SYS-M3"
     else:
         return  # no confident match — keep whatever the agent set
