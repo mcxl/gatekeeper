@@ -65,3 +65,40 @@ After a successful (non-dry-run) generation:
 1. Create `job_briefs/your_job.json` with required fields
 2. Run `--dry-run` to verify all fields present
 3. Run full generation and paste into Claude Code
+
+---
+
+## Batch Comparison Harness
+
+Developer tool for running multiple job briefs through the pipeline and producing a structured comparison report.
+
+### Usage
+
+```bash
+# Run all briefs
+python scripts/run_batch_harness.py --all
+
+# Run specific briefs
+python scripts/run_batch_harness.py job_briefs/c01_unitas_roofing.json job_briefs/c08_podium_slab.json
+
+# Dry run — list jobs without running
+python scripts/run_batch_harness.py --all --dry-run
+```
+
+### Output
+
+Reports are written to:
+- `src/outputs/batch_comparison_latest.json` — machine-readable
+- `src/outputs/batch_comparison_latest.md` — human-readable table
+
+### What the report contains
+
+Per job: brief ID, customer, job type, task count, validator status, gate FAIL/REVIEW counts, notable flags, elapsed time.
+
+Summary: validator status breakdown, total gate FAIL/REVIEW counts, zero-FAIL job count, averages, most-FAILs job.
+
+### When to use
+
+- Before/after model or prompt changes — compare gate results
+- Regression check across all pilot jobs
+- Quick health check of the current pipeline
