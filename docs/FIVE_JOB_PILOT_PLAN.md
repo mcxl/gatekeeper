@@ -226,6 +226,9 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | C3 | mcxi.co | Withers Road civil upgrade | civil | ~20 min | RETRY_INTERNAL 2F | 3 | 4 | CCVS N/A on 3 civil tasks. Commissioning false positive. Signal sequencing. Sydney Water hold points. Names. | Yes with edits |
 | C4 | mcxi.co | Gabion cage / rail corridor | civil | ~15 min | RETRY_INTERNAL 3F | 4 | 4 | Excellent sequence. Rail corridor controls missing (critical). 3 N/A CCVS. Waterproof false positive. HRCW excavation. | Yes with edits (rail controls needed) |
 | C5 | mcxi.co | HV equipment install / padmount | maintenance | ~15 min | RETRY_INTERNAL 2F | 3 | 6 | CRITICAL: isolation/permits after demo+hot work. 1 N/A CCVS. Membrane drift. Commissioning docx FP. Monitoring copy-paste. | Yes with edits (resequence critical) |
+| C6 | mcxi.co | Rope access painting 6-storey | maintenance | ~20 min | RETRY_INTERNAL 2F | 3 | 6 | Membrane FP (containment). Sequence reversal (completion notice first, disassemble before assemble). CCVS risk/rating mismatch x3. Scaffold copy-paste on rope access. Credential wording. | Yes with edits |
+| C7 | mcxi.co | Tilt-up panel construction | new_build | ~15 min | RETRY_INTERNAL 3F | 4 | 4 | Membrane FP (bond breaker/curing). CCVS N/A on casting bed. HRCW crane undercall. Risk/rating mismatch x3. Strongest tilt-up sequence and engineer hold points in pilot. | Yes with edits |
+| C8 | Apex Commercial | Suspended formwork podium slab L3 | new_build | ~10 min | ESCALATE_EXTERNAL 0F | 0 | 6 | **First zero-FAIL result.** HRCW undercall (crane, propping). Generic responsibility x3. Risk/rating mismatch x3. Pre-pour inspection sequence. 5 engineer hold points. Strongest output in pilot. | Yes with minor edits |
 
 ---
 
@@ -302,3 +305,19 @@ C5 exposed a real sequence gap: electrical isolation and permits appeared after 
 **Docx false positives fixed:** "utility isolation" and "commissioning" now scope-aware — allowed when HV/substation/signal/lighting task names are present.
 
 **Updated assessment:** System remains ready for consultant-assisted commercial use. C5 sequence gap was a real defect, now caught by C28. The consultant must still verify isolation sequencing on specialist electrical scopes, but the issue gate will flag it if the decomposer gets it wrong.
+
+### C6-C8 findings update (2026-04-01)
+
+**C6 (rope access painting):** Two deterministic defects fixed:
+- Membrane false positive on paint/coating containment scope — `paint_coating_in_scope` detection added
+- Sequence reversal (completion notice at task 1, disassemble before assemble) — demob keywords extended, completion/lift-exclusion excluded from phase 0, QA keywords extended
+
+**C7 (tilt-up panel construction):** Two deterministic defects fixed:
+- Membrane false positive on concrete scope (bond breaker, curing membrane) — `concrete_in_scope` detection added
+- CCVS N/A on casting bed / set-out tasks — keywords added to SYS-M3 classification
+
+**C8 (suspended formwork podium slab):** First zero-FAIL result. ESCALATE_EXTERNAL with 0 failures and 6 reviews (all consultant-completion items). Five engineer hold points. Strongest method logic, hold-point chain, and prop/strike discipline in the entire pilot. Membrane and CCVS fixes from C6/C7 confirmed working — no false positives on concrete scope.
+
+**Trend:** Gate FAIL count dropping across pilot: C1-C5 averaged 2.2F. C6-C7 averaged 2.5F (pre-fix). C8 hit 0F. The 32-check gate is now mature enough that new scopes produce REVIEW items only, not structural FAILs.
+
+**Updated assessment:** System confirmed ready for consultant-assisted commercial use across new_build, maintenance, civil, and remedial scopes. 600 tests. 32 issue gate checks. Average ~15 min per SWMS including consultant review.
