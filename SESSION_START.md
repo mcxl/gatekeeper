@@ -49,18 +49,18 @@ Promotion log:       src/data/promotion_log.jsonl
 
 ## Current test count
 [UPDATE THIS AFTER EVERY SESSION]
-Passing: 567
+Passing: 592
 
 ## Issue gate check count
 [UPDATE THIS AFTER EVERY SESSION]
-Checks: 27
+Checks: 32
 
 ## Pipeline summary — one line each
 Decomposer:       task architecture + job_type detection
 Risk assessor:    hazards, HRCW, CCVS codes
 Control writer:   dominant-hazard-first + _get_dominant_family() constraint injected per task
 Assembler:        final SWMS assembly
-Validator:        issue gate (27 checks) + PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
+Validator:        issue gate (32 checks) + PASS_INTERNAL / RETRY_INTERNAL / ESCALATE_EXTERNAL
 Reviewer agent:   parallel Critic — 4 agents concurrent — recalibrated credibility floor active
 Findings store:   captures all validator + reviewer findings to findings_log.jsonl
 Pattern detector: surfaces rule candidates on demand from findings store

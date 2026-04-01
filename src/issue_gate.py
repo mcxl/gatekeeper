@@ -899,6 +899,7 @@ def _check_prerequisite_contradiction(tasks: list[dict]) -> GateCheck:
 _GENERIC_RESP_PATTERNS = (
     "perform ", "supervise ", "manage ",
     "complete ", "carry out ",
+    "team ", "team -", "all workers", "all personnel", "everyone",
 )
 
 
@@ -929,6 +930,282 @@ def _check_generic_responsibility(tasks: list[dict]) -> GateCheck:
         return GateCheck("generic_responsibility", CheckResult.REVIEW,
                          "; ".join(findings[:3]))
     return GateCheck("generic_responsibility", CheckResult.PASS)
+
+
+# ── C29: Prerequisite self-reference ────────────────────────────────────────
+
+_POST_ERECTION_DELIVERABLES = (
+    "scaffold handover", "green tag", "safe to use tag",
+    "handover tag", "handover certificate",
+    "completion certificate", "test report", "inspection certificate",
+    "commissioning certificate",
+)
+
+_LATER_STEP_KEYWORDS = (
+    "erect", "install", "construct", "build", "assemble",
+    "inspect", "test", "commission", "hand over",
+)
+
+
+def _check_prerequisite_self_reference(tasks: list[dict]) -> GateCheck:
+    """C29: REVIEW if pre-start/prerequisite references a deliverable
+    that can only be created by a later method step."""
+    if not tasks:
+        return GateCheck("prerequisite_self_reference", CheckResult.PASS)
+
+    # Collect all prerequisite / pre-start / admin text from first task
+    # and any task whose step contains "pre-start" or "prerequisite"
+    prereq_texts: list[str] = []
+    later_task_names: list[str] = []
+    for i, t in enumerate(tasks):
+        tn = t.get("task", "").lower()
+        admin_items = t.get("admin", [])
+        if isinstance(admin_items, list):
+            for item in admin_items:
+                if isinstance(item, str):
+                    prereq_texts.append(item.lower())
+        hold_items = t.get("hold_points", [])
+        if isinstance(hold_items, list):
+            for item in hold_items:
+                if isinstance(item, str):
+                    prereq_texts.append(item.lower())
+        # Collect prerequisite fields if present
+        prereqs = t.get("prerequisites", [])
+        if isinstance(prereqs, list):
+            for item in prereqs:
+                if isinstance(item, str):
+                    prereq_texts.append(item.lower())
+        later_task_names.append(tn)
+
+    # Check if any prerequisite references a post-erection deliverable
+    findings = []
+    for pt in prereq_texts:
+        for deliverable in _POST_ERECTION_DELIVERABLES:
+            if deliverable in pt:
+                # Check if there is a later task that creates this deliverable
+                has_later = any(
+                    any(kw in tn for kw in _LATER_STEP_KEYWORDS)
+                    for tn in later_task_names
+                )
+                if has_later:
+                    findings.append(f"prerequisite references '{deliverable}' "
+                                    f"but erection/install is a later step")
+                    break
+    if findings:
+        return GateCheck("prerequisite_self_reference", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("prerequisite_self_reference", CheckResult.PASS)
+
+
+# ── C30: Unresolved placeholders / blank critical sections ──────────────────
+
+_PLACEHOLDER_RE = (
+    "[insert", "[tbc", "[tba", "[enter", "[specify", "[complete",
+    "[to be", "[add ", "[todo", "[tbd",
+)
+
+_SAFETY_CRITICAL_FIELDS = ("controls", "ppe", "stop_work", "hold_points")
+_ADMIN_FIELDS = ("admin", "responsibility")
+
+
+def _check_unresolved_placeholders(tasks: list[dict]) -> GateCheck:
+    """C30: FAIL if safety-critical fields contain unresolved placeholders.
+    REVIEW if admin/responsibility fields contain them."""
+    fails: list[str] = []
+    reviews: list[str] = []
+    for t in tasks:
+        step = t.get("step", "?")
+        # Check safety-critical fields
+        for field in _SAFETY_CRITICAL_FIELDS:
+            items = t.get(field, [])
+            if isinstance(items, list):
+                text = " ".join(str(i) for i in items).lower()
+            elif isinstance(items, str):
+                text = items.lower()
+            else:
+                continue
+            for pat in _PLACEHOLDER_RE:
+                if pat in text:
+                    fails.append(f"{step}/{field}: placeholder '{pat}...'")
+                    break
+        # Check monitoring
+        mon = t.get("monitoring")
+        if isinstance(mon, dict):
+            for mk in ("critical_control", "how_often", "who_monitors"):
+                mv = mon.get(mk, "")
+                if isinstance(mv, str) and any(p in mv.lower() for p in _PLACEHOLDER_RE):
+                    fails.append(f"{step}/monitoring.{mk}: placeholder")
+        # Check admin/responsibility fields
+        for field in _ADMIN_FIELDS:
+            val = t.get(field)
+            if isinstance(val, list):
+                text = " ".join(str(i) for i in val).lower()
+            elif isinstance(val, dict):
+                text = " ".join(str(v) for v in val.values()).lower()
+            elif isinstance(val, str):
+                text = val.lower()
+            else:
+                continue
+            for pat in _PLACEHOLDER_RE:
+                if pat in text:
+                    reviews.append(f"{step}/{field}: placeholder '{pat}...'")
+                    break
+    if fails:
+        return GateCheck("unresolved_placeholders", CheckResult.FAIL,
+                         "; ".join(fails[:3]))
+    if reviews:
+        return GateCheck("unresolved_placeholders", CheckResult.REVIEW,
+                         "; ".join(reviews[:3]))
+    return GateCheck("unresolved_placeholders", CheckResult.PASS)
+
+
+# ── C31: Risk code vs risk rating consistency ───────────────────────────────
+
+_SEVERITY_MAP = {"h": "high", "m": "medium", "l": "low"}
+
+
+def _check_risk_code_consistency(tasks: list[dict]) -> GateCheck:
+    """C31: REVIEW if risk code severity token contradicts stated Risk(Pre),
+    or if critical risk fields are blank on a live task row."""
+    import re
+    findings = []
+    for t in tasks:
+        step = t.get("step", "?")
+        risk_pre = t.get("risk_pre", "")
+        if isinstance(risk_pre, dict):
+            risk_pre = risk_pre.get("rating", "")
+        risk_pre_str = str(risk_pre).lower().strip()
+
+        ccvs = t.get("ccvs_code", "")
+        risk_code = t.get("risk_code", ccvs)
+        if not risk_code or risk_code == "N/A":
+            continue
+
+        # Extract severity token from risk code (e.g. SCF-L1 → L, WAH-H3 → H)
+        match = re.search(r'-([HML])\d', str(risk_code), re.IGNORECASE)
+        if not match:
+            continue
+        code_sev = match.group(1).lower()
+        code_word = _SEVERITY_MAP.get(code_sev, "")
+
+        # Extract stated severity from risk_pre
+        if not risk_pre_str:
+            continue
+        stated_sev = ""
+        for word in ("high", "medium", "low"):
+            if word in risk_pre_str:
+                stated_sev = word
+                break
+
+        if not stated_sev or not code_word:
+            continue
+
+        if code_word != stated_sev:
+            findings.append(f"{step}: code {risk_code} says {code_word} "
+                            f"but risk_pre says {stated_sev}")
+
+    # Check for blank risk fields on live task rows
+    for t in tasks:
+        step = t.get("step", "?")
+        has_hazards = bool(t.get("hazards"))
+        risk_post = t.get("risk_post", "")
+        if isinstance(risk_post, dict):
+            risk_post = risk_post.get("rating", "")
+        if has_hazards and not str(risk_post).strip():
+            findings.append(f"{step}: blank post-control risk on live task")
+
+    if findings:
+        return GateCheck("risk_code_consistency", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("risk_code_consistency", CheckResult.PASS)
+
+
+# ── C32: Cross-task control copy-paste (scaffold on non-scaffold) ───────────
+
+_SCAFFOLD_CONTROL_KEYWORDS = (
+    "scaffold tag", "scaffold handover", "tie register",
+    "scaffold plan", "handover certificate", "scaffold opening",
+    "basing out", "scaffold inspection", "scaffold signoff",
+    "scaffold sign-off", "scaffold certificate",
+)
+
+_SCAFFOLD_TASK_KEYWORDS = (
+    "scaffold", "scaffolding", "erect scaffold", "dismantle scaffold",
+)
+
+
+def _check_scaffold_control_on_non_scaffold(tasks: list[dict]) -> GateCheck:
+    """C32: REVIEW if scaffold-specific control language appears on
+    tasks that are not scaffold-related."""
+    findings = []
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        is_scaffold = any(kw in tn for kw in _SCAFFOLD_TASK_KEYWORDS)
+        if is_scaffold:
+            continue
+        # Collect all control text for this task
+        all_text = ""
+        for field in ("controls", "admin", "hold_points"):
+            items = t.get(field, [])
+            if isinstance(items, list):
+                all_text += " ".join(str(i) for i in items).lower() + " "
+        mon = t.get("monitoring")
+        if isinstance(mon, dict):
+            all_text += mon.get("critical_control", "").lower() + " "
+            all_text += mon.get("how_often", "").lower() + " "
+
+        for kw in _SCAFFOLD_CONTROL_KEYWORDS:
+            if kw in all_text:
+                findings.append(f"{t.get('step', '?')}: '{kw}' on non-scaffold task '{tn[:40]}'")
+                break
+    if findings:
+        return GateCheck("scaffold_control_copy_paste", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("scaffold_control_copy_paste", CheckResult.PASS)
+
+
+# ── C33: NSW jurisdiction terminology ───────────────────────────────────────
+
+_OUTDATED_NSW_TERMS = (
+    ("green card", "outdated credential — not current NSW terminology"),
+    ("workcover inspector", "superseded — SafeWork NSW replaced WorkCover"),
+    ("work cover inspector", "superseded — SafeWork NSW replaced WorkCover"),
+    ("workcover approved", "superseded — SafeWork NSW replaced WorkCover"),
+)
+
+
+def _check_nsw_terminology(tasks: list[dict]) -> GateCheck:
+    """C33: REVIEW if outdated or wrong-jurisdiction NSW terminology found."""
+    findings = []
+    for t in tasks:
+        all_text = ""
+        for field in ("controls", "admin", "hold_points", "ppe"):
+            items = t.get(field, [])
+            if isinstance(items, list):
+                all_text += " ".join(str(i) for i in items).lower() + " "
+            elif isinstance(items, str):
+                all_text += items.lower() + " "
+        mon = t.get("monitoring")
+        if isinstance(mon, dict):
+            for v in mon.values():
+                if isinstance(v, str):
+                    all_text += v.lower() + " "
+        resp = t.get("responsibility")
+        if isinstance(resp, dict):
+            for v in resp.values():
+                if isinstance(v, str):
+                    all_text += v.lower() + " "
+        elif isinstance(resp, str):
+            all_text += resp.lower() + " "
+
+        for term, reason in _OUTDATED_NSW_TERMS:
+            if term in all_text:
+                findings.append(f"{t.get('step', '?')}: '{term}' — {reason}")
+                break
+    if findings:
+        return GateCheck("nsw_terminology", CheckResult.REVIEW,
+                         "; ".join(findings[:3]))
+    return GateCheck("nsw_terminology", CheckResult.PASS)
 
 
 # ── Main runner ──────────────────────────────────────────────────────────────
@@ -1001,6 +1278,12 @@ def run_issue_gate(
         result.checks.append(_check_prerequisite_contradiction(task_list))
         result.checks.append(_check_generic_responsibility(task_list))
         result.checks.append(_check_late_isolation(task_list))
+        # C29-C33: cross-pack hardening checks
+        result.checks.append(_check_prerequisite_self_reference(task_list))
+        result.checks.append(_check_unresolved_placeholders(task_list))
+        result.checks.append(_check_risk_code_consistency(task_list))
+        result.checks.append(_check_scaffold_control_on_non_scaffold(task_list))
+        result.checks.append(_check_nsw_terminology(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:

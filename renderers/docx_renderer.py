@@ -1207,6 +1207,27 @@ def _fill_signoff_table(doc) -> None:
             _cs.set(qn('w:val'), '1')
 
 
+def _remove_duplicate_amendment_tables(doc) -> None:
+    """Remove duplicate amendment/sign-off tables (T6+T7) if they exist.
+
+    The V10 template has T4=worker amendment sign-off, T5=SWMS amendments,
+    T6=worker amendment sign-off (duplicate), T7=SWMS amendments (duplicate).
+    Remove T6+T7 so each section appears once only.
+    """
+    if len(doc.tables) < 8:
+        return
+    # Check if T6 and T7 are duplicates by comparing header text
+    t4_text = doc.tables[TBL_SIGNOFF_FIRST + 1].rows[0].cells[0].text.strip().lower() if len(doc.tables[TBL_SIGNOFF_FIRST + 1].rows) > 0 else ""
+    t6_text = doc.tables[TBL_SIGNOFF_FIRST + 3].rows[0].cells[0].text.strip().lower() if len(doc.tables) > TBL_SIGNOFF_FIRST + 3 and len(doc.tables[TBL_SIGNOFF_FIRST + 3].rows) > 0 else ""
+    if t4_text and t6_text and t4_text == t6_text:
+        # Remove T7 first (higher index), then T6
+        for offset in (4, 3):
+            idx = TBL_SIGNOFF_FIRST + offset
+            if len(doc.tables) > idx:
+                tbl_el = doc.tables[idx]._tbl
+                tbl_el.getparent().remove(tbl_el)
+
+
 def _build_footer(doc, project_meta, jur, jurisdiction, doc_date, description_text: str = "") -> None:
     """Build document footer by replacing template placeholders with actual values.
 
@@ -1269,6 +1290,57 @@ def _build_footer(doc, project_meta, jur, jurisdiction, doc_date, description_te
                     for para in cell.paragraphs:
                         para.clear()
                     _run(cell.paragraphs[0], description_text, size_pt=_SZ)
+
+        # Fix "Page 0 of 1" — replace any cell containing "Page" with proper
+        # Word field codes so pagination updates when opened in Word
+        for row in ft.rows:
+            for cell in row.cells:
+                if "page" in cell.text.lower() and ("0" in cell.text or "of" in cell.text.lower()):
+                    for para in cell.paragraphs:
+                        para.clear()
+                    p = cell.paragraphs[0]
+                    _run(p, "Page ", size_pt=_SZ)
+                    # PAGE field
+                    fld1_begin = OxmlElement('w:fldChar')
+                    fld1_begin.set(qn('w:fldCharType'), 'begin')
+                    run1 = OxmlElement('w:r')
+                    run1.append(fld1_begin)
+                    p._element.append(run1)
+                    instr1 = OxmlElement('w:r')
+                    instr1_text = OxmlElement('w:instrText')
+                    instr1_text.set(qn('xml:space'), 'preserve')
+                    instr1_text.text = ' PAGE '
+                    instr1.append(instr1_text)
+                    p._element.append(instr1)
+                    fld1_sep = OxmlElement('w:r')
+                    fld1_sep.append(OxmlElement('w:fldChar'))
+                    fld1_sep[-1].set(qn('w:fldCharType'), 'separate')
+                    p._element.append(fld1_sep)
+                    fld1_end = OxmlElement('w:r')
+                    fld1_end.append(OxmlElement('w:fldChar'))
+                    fld1_end[-1].set(qn('w:fldCharType'), 'end')
+                    p._element.append(fld1_end)
+                    _run(p, " of ", size_pt=_SZ)
+                    # NUMPAGES field
+                    fld2_begin = OxmlElement('w:fldChar')
+                    fld2_begin.set(qn('w:fldCharType'), 'begin')
+                    run2 = OxmlElement('w:r')
+                    run2.append(fld2_begin)
+                    p._element.append(run2)
+                    instr2 = OxmlElement('w:r')
+                    instr2_text = OxmlElement('w:instrText')
+                    instr2_text.set(qn('xml:space'), 'preserve')
+                    instr2_text.text = ' NUMPAGES '
+                    instr2.append(instr2_text)
+                    p._element.append(instr2)
+                    fld2_sep = OxmlElement('w:r')
+                    fld2_sep.append(OxmlElement('w:fldChar'))
+                    fld2_sep[-1].set(qn('w:fldCharType'), 'separate')
+                    p._element.append(fld2_sep)
+                    fld2_end = OxmlElement('w:r')
+                    fld2_end.append(OxmlElement('w:fldChar'))
+                    fld2_end[-1].set(qn('w:fldCharType'), 'end')
+                    p._element.append(fld2_end)
 
 
 # —— Main SWMS document renderer ——————————————————————————————————————————
@@ -1401,6 +1473,7 @@ def render_swms_document(
     _fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction)
     _build_ccvs_table(doc, tasks)
     _fill_signoff_table(doc)
+    _remove_duplicate_amendment_tables(doc)
     _build_footer(doc, project_meta, jur, jurisdiction, doc_date, _p0_text)
 
     # —— Remove empty filler paragraphs that cause blank page gaps ————

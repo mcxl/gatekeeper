@@ -209,9 +209,9 @@ class TestRendererOutputs:
 
     def test_document_has_expected_table_count(self, doc01):
         # Template guard should already catch this, but confirm in test too
-        assert len(doc01.tables) in (9, 10), (
-            f"Expected 9 or 10 tables, got {len(doc01.tables)}. "
-            "Template may have changed."
+        assert len(doc01.tables) in (8, 9, 10), (
+            f"Expected 8-10 tables, got {len(doc01.tables)}. "
+            "Template may have changed or duplicate amendment tables were removed."
         )
 
 

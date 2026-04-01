@@ -32,6 +32,11 @@ from src.issue_gate import (
     _check_prerequisite_contradiction,
     _check_generic_responsibility,
     _check_late_isolation,
+    _check_prerequisite_self_reference,
+    _check_unresolved_placeholders,
+    _check_risk_code_consistency,
+    _check_scaffold_control_on_non_scaffold,
+    _check_nsw_terminology,
     run_issue_gate,
 )
 
@@ -298,7 +303,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 24  # C1-C6 + C5b + C7-json + C10 + C14-C28 + seq-rule-pack
+        assert len(result.checks) == 29  # C1-C6 + C5b + C7-json + C10 + C14-C28 + C29-C33 + seq-rule-pack
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -359,7 +364,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 27  # C1-C6 + C5b + C7-json + C10 + C14-C28 + seq-rule-pack + C7-docx + C8 + C9
+        assert len(result.checks) == 32  # C1-C6 + C5b + C7-json + C10 + C14-C33 + seq-rule-pack + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -701,3 +706,227 @@ class TestLateIsolation:
 
 
 import json
+
+
+# ── C29: Prerequisite self-reference ────────────────────────────────────────
+
+class TestPrerequisiteSelfReference:
+    def test_review_handover_tag_before_erection(self):
+        tasks = [
+            {"step": "1.1", "task": "Erect scaffold",
+             "admin": ["Scaffold handover tag (green - Safe to Use) before use"]},
+            {"step": "1.2", "task": "Install guardrails"},
+        ]
+        result = _check_prerequisite_self_reference(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_site_induction(self):
+        tasks = [
+            {"step": "1.1", "task": "Erect scaffold",
+             "admin": ["Site induction certificate completed"]},
+        ]
+        result = _check_prerequisite_self_reference(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_review_completion_cert_with_later_inspect(self):
+        tasks = [
+            {"step": "1.1", "task": "Install roofing",
+             "admin": ["Completion certificate for roofing works"]},
+            {"step": "1.2", "task": "Inspect and hand over completed roof"},
+        ]
+        result = _check_prerequisite_self_reference(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_no_prerequisites(self):
+        tasks = [
+            {"step": "1.1", "task": "Install roofing"},
+        ]
+        result = _check_prerequisite_self_reference(tasks)
+        assert result.result == CheckResult.PASS
+
+
+# ── C30: Unresolved placeholders ────────────────────────────────────────────
+
+class TestUnresolvedPlaceholders:
+    def test_fail_placeholder_in_controls(self):
+        tasks = [
+            {"step": "1.1", "task": "Install handrails",
+             "controls": ["[Insert rescue plan reference]"]},
+        ]
+        result = _check_unresolved_placeholders(tasks)
+        assert result.result == CheckResult.FAIL
+
+    def test_review_placeholder_in_responsibility(self):
+        tasks = [
+            {"step": "1.1", "task": "Install handrails",
+             "responsibility": {"SUP": "[TBC]"}},
+        ]
+        result = _check_unresolved_placeholders(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_no_placeholders(self):
+        tasks = [
+            {"step": "1.1", "task": "Install handrails",
+             "controls": ["Use fall arrest harness with double lanyard"]},
+        ]
+        result = _check_unresolved_placeholders(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_fail_placeholder_in_monitoring(self):
+        tasks = [
+            {"step": "1.1", "task": "Concrete work",
+             "monitoring": {"critical_control": "[Insert monitoring frequency]"}},
+        ]
+        result = _check_unresolved_placeholders(tasks)
+        assert result.result == CheckResult.FAIL
+
+    def test_fail_tba_in_stop_work(self):
+        tasks = [
+            {"step": "1.1", "task": "Crane lift",
+             "stop_work": ["[TBA] — stop work trigger to be confirmed"]},
+        ]
+        result = _check_unresolved_placeholders(tasks)
+        assert result.result == CheckResult.FAIL
+
+
+# ── C31: Risk code consistency ──────────────────────────────────────────────
+
+class TestRiskCodeConsistency:
+    def test_review_low_code_high_risk(self):
+        tasks = [
+            {"step": "1.1", "task": "Lift steel",
+             "risk_pre": "High (3)", "risk_code": "SCF-L1", "hazards": ["dropped load"]},
+        ]
+        result = _check_risk_code_consistency(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_matching_code_and_rating(self):
+        tasks = [
+            {"step": "1.1", "task": "Lift steel",
+             "risk_pre": "High (3)", "risk_code": "SCF-H3", "risk_post": "Low (1)", "hazards": ["dropped load"]},
+        ]
+        result = _check_risk_code_consistency(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_pass_no_risk_code(self):
+        tasks = [
+            {"step": "1.1", "task": "Lift steel", "risk_pre": "High (3)"},
+        ]
+        result = _check_risk_code_consistency(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_review_blank_post_risk(self):
+        tasks = [
+            {"step": "1.1", "task": "Lift steel",
+             "hazards": ["dropped load"], "risk_post": ""},
+        ]
+        result = _check_risk_code_consistency(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_medium_matches(self):
+        tasks = [
+            {"step": "1.1", "task": "Work task",
+             "risk_pre": "Medium (2)", "risk_code": "WAH-M2", "risk_post": "Low (1)", "hazards": ["fall"]},
+        ]
+        result = _check_risk_code_consistency(tasks)
+        assert result.result == CheckResult.PASS
+
+
+# ── C27 extension: generic responsibility ───────────────────────────────────
+
+class TestGenericResponsibilityExtended:
+    def test_review_team(self):
+        tasks = [
+            {"step": "1.1", "task": "Tie bracing",
+             "responsibility": {"SUP": "Team - inspect ties and bracing"}},
+        ]
+        result = _check_generic_responsibility(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_review_all_workers(self):
+        tasks = [
+            {"step": "1.1", "task": "Exclusion zone",
+             "responsibility": {"WKR": "all workers to maintain zone"}},
+        ]
+        result = _check_generic_responsibility(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_review_everyone(self):
+        tasks = [
+            {"step": "1.1", "task": "Site clean",
+             "responsibility": {"WKR": "everyone on site"}},
+        ]
+        result = _check_generic_responsibility(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_specific_role(self):
+        tasks = [
+            {"step": "1.1", "task": "Inspect scaffold",
+             "responsibility": {"SUP": "Licensed scaffolder to inspect and tag scaffold after erection is complete"}},
+        ]
+        result = _check_generic_responsibility(tasks)
+        assert result.result == CheckResult.PASS
+
+
+# ── C32: Scaffold control on non-scaffold task ─────────────────────────────
+
+class TestScaffoldControlCopyPaste:
+    def test_review_scaffold_tag_on_ewp_task(self):
+        tasks = [
+            {"step": "1.1", "task": "Install handrails from EWP",
+             "controls": ["Check scaffold tag and scaffold handover certificate before use"]},
+        ]
+        result = _check_scaffold_control_on_non_scaffold(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_scaffold_tag_on_scaffold_task(self):
+        tasks = [
+            {"step": "1.1", "task": "Erect scaffold to level 3",
+             "controls": ["Check scaffold tag and scaffold handover certificate"]},
+        ]
+        result = _check_scaffold_control_on_non_scaffold(tasks)
+        assert result.result == CheckResult.PASS
+
+    def test_review_tie_register_on_roofing(self):
+        tasks = [
+            {"step": "1.1", "task": "Install roof sheets",
+             "admin": ["Update tie register after each bay"]},
+        ]
+        result = _check_scaffold_control_on_non_scaffold(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_no_scaffold_language(self):
+        tasks = [
+            {"step": "1.1", "task": "Install roof sheets",
+             "controls": ["Use harness with double lanyard"]},
+        ]
+        result = _check_scaffold_control_on_non_scaffold(tasks)
+        assert result.result == CheckResult.PASS
+
+
+# ── C33: NSW terminology ────────────────────────────────────────────────────
+
+class TestNswTerminology:
+    def test_review_green_card(self):
+        tasks = [
+            {"step": "1.1", "task": "Steel erection",
+             "controls": ["All workers must hold a valid green card"]},
+        ]
+        result = _check_nsw_terminology(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_review_workcover_inspector(self):
+        tasks = [
+            {"step": "1.1", "task": "Plant inspection",
+             "controls": ["Certificates done by qualified WorkCover inspectors"]},
+        ]
+        result = _check_nsw_terminology(tasks)
+        assert result.result == CheckResult.REVIEW
+
+    def test_pass_safework_nsw(self):
+        tasks = [
+            {"step": "1.1", "task": "Steel erection",
+             "controls": ["All workers must hold a valid SafeWork NSW white card"]},
+        ]
+        result = _check_nsw_terminology(tasks)
+        assert result.result == CheckResult.PASS
