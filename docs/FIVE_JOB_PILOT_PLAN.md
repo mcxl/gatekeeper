@@ -292,3 +292,13 @@ These edits are specialist-environment additions that the system correctly does 
 3. **For specialist environments (rail, confined space, live electrical)** — use the system for the base method and add specialist controls manually per the consultant workflow
 4. **Track consultant edit time and type** — when a recurring edit appears on 3+ jobs, implement as a deterministic fix
 5. **Do not invest in model tiering (Sonnet) yet** — the monitoring copy-paste issue is real but manageable at the consultant-review stage, and the deterministic CCVS/keyword fixes are delivering more value per hour
+
+### C5 findings update (HV equipment / padmount)
+
+C5 exposed a real sequence gap: electrical isolation and permits appeared after demolition and hot works. In HV/substation environments, isolation must be the first enabling step.
+
+**Fix applied:** C28 `_check_late_isolation()` — FAIL if isolation/permit/service-locating tasks appear after demolition or hot work in HV/substation scope. Phase scoring also updated to sort isolation tasks to phase 0.
+
+**Docx false positives fixed:** "utility isolation" and "commissioning" now scope-aware — allowed when HV/substation/signal/lighting task names are present.
+
+**Updated assessment:** System remains ready for consultant-assisted commercial use. C5 sequence gap was a real defect, now caught by C28. The consultant must still verify isolation sequencing on specialist electrical scopes, but the issue gate will flag it if the decomposer gets it wrong.

@@ -31,6 +31,7 @@ from src.issue_gate import (
     _check_p2_on_chm_task,
     _check_prerequisite_contradiction,
     _check_generic_responsibility,
+    _check_late_isolation,
     run_issue_gate,
 )
 
@@ -297,7 +298,7 @@ class TestRunIssueGate:
         result = run_issue_gate(json_path=str(json_path))
         assert isinstance(result, GateResult)
         assert result.task_count == 3
-        assert len(result.checks) == 23  # C1-C6 + C5b + C7-json + C10 + C14-C27 + seq-rule-pack
+        assert len(result.checks) == 24  # C1-C6 + C5b + C7-json + C10 + C14-C28 + seq-rule-pack
 
     def test_classification_pass(self, tmp_path):
         """All-pass JSON produces READY_FOR_EXPERT_REVIEW."""
@@ -358,7 +359,7 @@ class TestRealBenchmarkOutput:
         result = run_issue_gate(docx_path=self.docx, json_path=self.json)
         assert isinstance(result, GateResult)
         assert result.task_count > 0
-        assert len(result.checks) == 26  # C1-C6 + C5b + C7-json + C10 + C14-C27 + seq-rule-pack + C7-docx + C8 + C9
+        assert len(result.checks) == 27  # C1-C6 + C5b + C7-json + C10 + C14-C28 + seq-rule-pack + C7-docx + C8 + C9
 
     def test_real_output_no_hard_failures(self):
         """Real benchmark output should not have hard failures."""
@@ -663,6 +664,40 @@ class TestGenericResponsibility:
         tasks = [{"step": "1.1", "task": "Paint wall",
                   "responsibility": {"SUP": "Sup", "WKR": "Work"}}]
         assert _check_generic_responsibility(tasks).result == CheckResult.REVIEW
+
+
+class TestLateIsolation:
+    def test_fail_isolation_after_demo_in_hv_scope(self):
+        tasks = [
+            {"step": "1.1", "task": "Establish site"},
+            {"step": "1.2", "task": "Remove and demolish existing HV equipment"},
+            {"step": "1.3", "task": "Isolate electrical supply and confirm safe isolation"},
+        ]
+        assert _check_late_isolation(tasks).result == CheckResult.FAIL
+
+    def test_pass_isolation_before_demo_in_hv_scope(self):
+        tasks = [
+            {"step": "1.1", "task": "Establish site"},
+            {"step": "1.2", "task": "Isolate electrical supply and confirm safe isolation"},
+            {"step": "1.3", "task": "Remove and demolish existing HV equipment"},
+        ]
+        assert _check_late_isolation(tasks).result == CheckResult.PASS
+
+    def test_skip_non_hv_scope(self):
+        tasks = [
+            {"step": "1.1", "task": "Remove partition walls"},
+            {"step": "1.2", "task": "Obtain permit for work"},
+        ]
+        result = _check_late_isolation(tasks)
+        assert result.result == CheckResult.PASS
+        assert "skipped" in result.detail.lower()
+
+    def test_fail_permit_after_hot_work_in_substation(self):
+        tasks = [
+            {"step": "1.1", "task": "Hot works in substation area"},
+            {"step": "1.2", "task": "Obtain permits and confirm service isolation approvals"},
+        ]
+        assert _check_late_isolation(tasks).result == CheckResult.FAIL
 
 
 import json

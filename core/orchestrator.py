@@ -783,6 +783,27 @@ _QA_KEYWORDS = ["check work", "check completed", "check remedial",
 _COATING_TASK_KEYWORDS = ["paint", "stain", "coat", "seal unpaint", "timber treat",
                           "treat timber", "primer", "timber beam"]
 
+_HV_SCOPE_CUES = (
+    "high voltage", "hv ", "substation", "padmount", "switchgear",
+    "transformer", "electrical", "energised", "energized",
+    "live cable", "live electrical", "electrical supply",
+)
+
+_HV_ENABLEMENT_TASK_KEYWORDS = (
+    "isolat", "permit", "authority to work", "service locat",
+    "locate and mark", "locate underground", "locate overhead",
+    "locate service", "identify service", "safe isolation",
+    "de-energ", "de energ", "loto", "lock out",
+)
+
+
+def _is_hv_enablement_task(task_name: str, scope: str) -> bool:
+    """Return True for isolation-first enabling tasks in HV/live-electrical scopes."""
+    text = f"{task_name} {scope}"
+    has_scope_cue = any(cue in text for cue in _HV_SCOPE_CUES)
+    has_enablement = any(kw in task_name for kw in _HV_ENABLEMENT_TASK_KEYWORDS)
+    return has_scope_cue and has_enablement
+
 
 def _task_phase_score(tb: dict) -> int:
     """Return a phase score for sorting. Unmatched tasks get score 5 (coatings).
@@ -808,6 +829,19 @@ def _task_phase_score(tb: dict) -> int:
                                        "isolate occupant", "protect occupant",
                                        "protect area", "protect space",
                                        "isolate and protect")) and "demob" not in task_name:
+        return 0
+    # Check electrical isolation / permit / service-locating by TASK NAME
+    # These are enabling tasks that must precede demolition and intrusive work
+    if any(kw in task_name for kw in ("isolate electrical", "service isolation",
+                                       "confirm safe isolation", "obtain permit",
+                                       "confirm isolation", "locate and mark",
+                                       "locate underground", "locate overhead",
+                                       "authority to work", "isolation approval")) \
+            and "demob" not in task_name:
+        return 0
+    # HV / substation / live-electrical scopes require permit + isolation + service
+    # locating before any intrusive work. Keep this narrow and cue-driven.
+    if _is_hv_enablement_task(task_name, scope) and "demob" not in task_name:
         return 0
     # Check removal/demolition by TASK NAME — must be before _PHASE_ORDER loop
     # to prevent "remove existing waterproofing" matching "waterproof" at phase 4

@@ -395,7 +395,12 @@ def _check_unsupported_controls_json(tasks: list[dict],
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
-        "signal", "lighting", "commission", "energis", "energiz"))
+        "signal", "lighting", "commission", "energis", "energiz",
+        "electrical", "high voltage", "substation", "padmount"))
+    isolation_in_scope = any(kw in all_task_names for kw in (
+        "hv ", "high voltage", "substation", "padmount", "isolate electrical",
+        "safe isolation", "electrical supply", "utility isolation",
+        "service isolation", "switchgear", "transformer"))
 
     found = []
     for t in tasks:
@@ -418,6 +423,11 @@ def _check_unsupported_controls_json(tasks: list[dict],
                     continue
                 # Skip commissioning when signal/lighting/electrical work is in scope
                 if kw == "commissioning" and commissioning_in_scope:
+                    continue
+                # Skip utility/service/electrical isolation when HV/substation scope
+                if kw in ("utility isolation", "service isolation",
+                          "electrical isolation", "utility isolation certificate",
+                          "power isolation certificate") and isolation_in_scope:
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in all_text and "green wall" not in tn:
@@ -447,7 +457,12 @@ def _check_unsupported_controls_docx(doc,
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
-        "signal", "lighting", "commission", "energis", "energiz"))
+        "signal", "lighting", "commission", "energis", "energiz",
+        "electrical", "high voltage", "substation", "padmount"))
+    isolation_in_scope = any(kw in all_task_names for kw in (
+        "hv ", "high voltage", "substation", "padmount", "isolate electrical",
+        "safe isolation", "electrical supply", "utility isolation",
+        "service isolation", "switchgear", "transformer"))
 
     for r in range(1, len(t2.rows)):
         row_text = " ".join(t2.rows[r].cells[c].text for c in range(
@@ -461,6 +476,12 @@ def _check_unsupported_controls_docx(doc,
                 if kw in ("membrane", "waterproof") and waterproof_in_scope:
                     continue
                 if kw == "demolit" and demolition_in_scope:
+                    continue
+                if kw == "commissioning" and commissioning_in_scope:
+                    continue
+                if kw in ("utility isolation", "service isolation",
+                          "electrical isolation", "utility isolation certificate",
+                          "power isolation certificate") and isolation_in_scope:
                     continue
                 found.append(f"{step}:{kw}")
         if "irrigation" in row_text and "green wall" not in task_text:
@@ -783,6 +804,36 @@ def _check_sequence_rule_pack_violations(tasks: list[dict], description: str = "
     return GateCheck("sequence_rule_pack_violations", CheckResult.PASS)
 
 
+def _check_late_isolation(tasks: list[dict]) -> GateCheck:
+    """C28: Isolation/permit tasks after demolition or hot work — FAIL in HV/electrical scope.
+    Isolation, permits, and service locating must precede demolition and hot works
+    when the scope involves HV, substation, or live electrical work."""
+    _ISOLATION_KW = ("isolat", "permit", "service locat", "locate and mark",
+                      "authority to work", "safe isolation")
+    _INTRUSIVE_KW = ("demolish", "demolit", "remove", "hot work", "strip")
+    all_task_text = " ".join(t.get("task", "").lower() for t in tasks)
+    # Only apply in HV/electrical/substation scopes
+    is_hv_scope = any(kw in all_task_text for kw in ("hv ", "substation", "padmount",
+                                                       "energis", "energiz", "high voltage"))
+    if not is_hv_scope:
+        return GateCheck("late_isolation", CheckResult.PASS,
+                         "Not HV/electrical scope — skipped")
+    intrusive_started = False
+    late_findings = []
+    for t in tasks:
+        tn = t.get("task", "").lower()
+        if any(kw in tn for kw in _INTRUSIVE_KW):
+            intrusive_started = True
+        if intrusive_started and any(kw in tn for kw in _ISOLATION_KW):
+            if "demob" in tn or "clean" in tn:
+                continue
+            late_findings.append(f"{t.get('step', '?')}: '{tn[:50]}'")
+    if late_findings:
+        return GateCheck("late_isolation", CheckResult.FAIL,
+                         f"Isolation/permit after intrusive work in HV scope: {'; '.join(late_findings[:3])}")
+    return GateCheck("late_isolation", CheckResult.PASS)
+
+
 def _check_monitoring_copy_paste(tasks: list[dict]) -> GateCheck:
     """C24: Monitoring copy-paste — REVIEW if same critical_control text appears
     on 3+ tasks with different CCVS families."""
@@ -949,6 +1000,7 @@ def run_issue_gate(
         result.checks.append(_check_p2_on_chm_task(task_list))
         result.checks.append(_check_prerequisite_contradiction(task_list))
         result.checks.append(_check_generic_responsibility(task_list))
+        result.checks.append(_check_late_isolation(task_list))
 
     # Run docx-based checks (C7-docx, C8, C9)
     if doc:
