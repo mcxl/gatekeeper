@@ -225,6 +225,7 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | C2 | mcxi.co | Tilt-up panel erection with crane | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 3 | Sequence: permanent connections before lift, lift plan after brace removal. CCVS N/A on 4 tasks. HRCW. Names. | Yes with edits |
 | C3 | mcxi.co | Withers Road civil upgrade | civil | ~20 min | RETRY_INTERNAL 2F | 3 | 4 | CCVS N/A on 3 civil tasks. Commissioning false positive. Signal sequencing. Sydney Water hold points. Names. | Yes with edits |
 | C4 | mcxi.co | Gabion cage / rail corridor | civil | ~15 min | RETRY_INTERNAL 3F | 4 | 4 | Excellent sequence. Rail corridor controls missing (critical). 3 N/A CCVS. Waterproof false positive. HRCW excavation. | Yes with edits (rail controls needed) |
+| C5 | mcxi.co | HV equipment install / padmount | maintenance | ~15 min | RETRY_INTERNAL 2F | 3 | 6 | CRITICAL: isolation/permits after demo+hot work. 1 N/A CCVS. Membrane drift. Commissioning docx FP. Monitoring copy-paste. | Yes with edits (resequence critical) |
 
 ---
 
