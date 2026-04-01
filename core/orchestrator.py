@@ -1632,7 +1632,8 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
                                          "prepare and level", "prepare panel",
                                          "confirm crane", "confirm lift", "confirm engineer",
                                          "remove traffic", "remove exclusion",
-                                         "locate", "line marking", "signage", "road furniture")):
+                                         "locate", "line marking", "signage", "road furniture",
+                                         "pump-out", "pump out", "replace pump")):
         correct = "SYS-M3"
     elif any(kw in task_name for kw in ("check", "defect", "inspect", "make good",
                                          "hold point", "approval gate", "sign-off",

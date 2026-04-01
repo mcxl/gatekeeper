@@ -420,6 +420,15 @@ def test_ccvs_fitoff_corrected_to_chm():
     assert tb["ccvs_code"] == "CHM-H6"
 
 
+def test_ccvs_pumpout_corrected_to_sys():
+    """Pump-out replacement tasks should get SYS-M3, not N/A."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Replace pump-out components and test in confined space", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_brazing_corrected_to_chm():
     from core.orchestrator import _correct_ccvs_by_task_type
 
