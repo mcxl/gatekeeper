@@ -239,3 +239,44 @@ Returns: JSON intake artifact with job_brief_draft
 - Only machine-readable (text-layer) PDFs are supported
 - Scanned/image PDFs will return `extraction_insufficient`
 - If PDF text is weak, the user should paste the scope section manually
+
+---
+
+## Project Requirements Intake v1
+
+Creates a reviewable project rule pack from a single text-bearing source, with explicit uncertainty, while keeping the core Safe Method workflow unchanged.
+
+### What it does
+
+- Accepts project requirements text, DOCX, or machine-readable PDF
+- Extracts structured project rules: HRCW categories, site constraints, hold points, permits, PPE rules, induction rules, named authorities
+- Produces a draft rule pack with field-level extracted/inferred/unresolved status
+- Generates review prompts for the consultant/admin
+- Does NOT activate any rules or approve/reject SWMS — human review is mandatory
+
+### What it does NOT do
+
+- Automatic SWMS approval decisions
+- Full compliance/policy management
+- Multi-document reconciliation
+- OCR for scanned PDFs
+- HRCW/CCVS/risk inference (those remain in the generation pipeline)
+
+### API endpoint
+
+```
+POST /v1/project/requirements
+
+Form fields:
+  source_text: str (optional — pasted text)
+  source_file: UploadFile (optional — DOCX or PDF)
+  source_type: str (default: pasted_text)
+  source_label: str (optional)
+  clarification_note: str (optional)
+
+Returns: JSON project rule pack artifact (status: draft)
+```
+
+### Downstream use
+
+The project rule pack is designed to be used later by the SWMS Review Engine to compare subcontractor SWMS against principal contractor requirements. The pack must be reviewed and confirmed before use.

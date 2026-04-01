@@ -1109,6 +1109,71 @@ async def intake_normalize_endpoint(
 
 
 # ============================================================
+# PROJECT REQUIREMENTS INTAKE
+# ============================================================
+
+
+@app.post("/v1/project/requirements")
+async def project_requirements_endpoint(
+    source_text: str = Form(default=""),
+    source_file: UploadFile = File(default=None),
+    source_type: str = Form(default="pasted_text"),
+    source_label: str = Form(default=""),
+    clarification_note: str = Form(default=""),
+):
+    """
+    POST /v1/project/requirements
+
+    Create a reviewable project rule pack from a single text-bearing source.
+    Human review is mandatory before the pack is treated as active.
+    Does not approve or reject any SWMS. Returns a draft rule pack only.
+    """
+    from core.intake_extractor import (
+        extract_from_docx,
+        extract_from_pdf,
+        extract_from_text,
+    )
+    from core.project_requirements import normalize_project_requirements
+
+    try:
+        if source_file and source_file.filename:
+            file_bytes = await source_file.read()
+            label = source_label or source_file.filename or ""
+            fname = (source_file.filename or "").lower()
+            if fname.endswith(".pdf"):
+                extraction = extract_from_pdf(file_bytes, source_label=label)
+            elif fname.endswith((".docx", ".doc")):
+                extraction = extract_from_docx(file_bytes, source_label=label)
+            else:
+                try:
+                    text = file_bytes.decode("utf-8")
+                except UnicodeDecodeError:
+                    text = file_bytes.decode("latin-1", errors="replace")
+                extraction = extract_from_text(text, source_type="pasted_text", source_label=label)
+        elif source_text:
+            extraction = extract_from_text(
+                source_text,
+                source_type=source_type,
+                source_label=source_label,
+            )
+        else:
+            return JSONResponse(
+                content={"error": "Provide source_text or source_file"},
+                status_code=400,
+            )
+
+        result = normalize_project_requirements(extraction, clarification_note=clarification_note)
+        return JSONResponse(content=result)
+
+    except Exception as e:
+        logger.error(f"Project requirements intake failed:\n{traceback.format_exc()}")
+        return JSONResponse(
+            content={"detail": "An internal error occurred. Please try again."},
+            status_code=500,
+        )
+
+
+# ============================================================
 # CONSULTANT EDIT CAPTURE
 # ============================================================
 
