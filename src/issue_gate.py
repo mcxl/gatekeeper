@@ -393,6 +393,9 @@ def _check_unsupported_controls_json(tasks: list[dict],
     # that domain is in-scope for the whole SWMS — not drift.
     all_task_names = " ".join(t.get("task", "").lower() for t in tasks)
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
+    paint_coating_in_scope = any(kw in all_task_names for kw in (
+        "paint", "coating", "scraping", "surface prep", "primer",
+        "render", "facade", "containment"))
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
         "signal", "lighting", "commission", "energis", "energiz",
@@ -415,8 +418,8 @@ def _check_unsupported_controls_json(tasks: list[dict],
             if kw in all_text:
                 if kw in ("propping plan", "propping design"):
                     continue
-                # Skip waterproofing terms when waterproofing is in job scope
-                if kw in ("membrane", "waterproof") and waterproof_in_scope:
+                # Skip waterproofing terms when waterproofing or paint/coating is in job scope
+                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope):
                     continue
                 # Skip demolition terms when demolition/removal is in job scope
                 if kw == "demolit" and demolition_in_scope:
@@ -455,6 +458,9 @@ def _check_unsupported_controls_docx(doc,
         for r in range(1, len(t2.rows))
     )
     waterproof_in_scope = "waterproof" in all_task_names or "membrane" in all_task_names
+    paint_coating_in_scope = any(kw in all_task_names for kw in (
+        "paint", "coating", "scraping", "surface prep", "primer",
+        "render", "facade", "containment"))
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
         "signal", "lighting", "commission", "energis", "energiz",
@@ -473,7 +479,7 @@ def _check_unsupported_controls_docx(doc,
             if kw in row_text:
                 if kw in ("propping plan", "propping design"):
                     continue
-                if kw in ("membrane", "waterproof") and waterproof_in_scope:
+                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope):
                     continue
                 if kw == "demolit" and demolition_in_scope:
                     continue

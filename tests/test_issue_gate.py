@@ -485,6 +485,27 @@ class TestUnsupportedControlsJson:
         ]
         assert _check_unsupported_controls_json(tasks).result == CheckResult.PASS
 
+    def test_membrane_ok_for_paint_removal_containment(self):
+        """Debris containment membrane is legitimate in paint removal scope."""
+        tasks = [
+            {"step": "1.1", "task": "Prepare surface and remove existing paint and coatings",
+             "controls": ["Set up vinyl debris containment membrane with sealed seams"],
+             "admin": [], "hold_points": [], "stop_work": []},
+            {"step": "1.2", "task": "Apply primer and paint coats to facade",
+             "controls": ["Apply coating per manufacturer instructions"],
+             "admin": [], "hold_points": [], "stop_work": []},
+        ]
+        assert _check_unsupported_controls_json(tasks).result == CheckResult.PASS
+
+    def test_membrane_still_flagged_on_unrelated_scope(self):
+        """Membrane on a steel erection job with no paint/waterproof scope is drift."""
+        tasks = [
+            {"step": "1.1", "task": "Erect steel frame",
+             "controls": ["Apply membrane where required"],
+             "admin": [], "hold_points": [], "stop_work": []},
+        ]
+        assert _check_unsupported_controls_json(tasks).result == CheckResult.FAIL
+
     def test_demolit_ok_for_removal_task(self):
         t = _tasks("Remove existing tile bed")
         t[0]["controls"] = ["Demolition sequence per method statement"]

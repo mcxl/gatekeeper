@@ -109,6 +109,32 @@ def test_isolate_in_scope_does_not_trigger_phase_zero():
     assert _task_phase_score(tb) != 0
 
 
+def test_disassemble_phases_as_demob():
+    """'Disassemble rope access system' should get demob phase score (8)."""
+    from core.orchestrator import _task_phase_score
+
+    tb = {"task": "Disassemble rope access system and check equipment", "scope": ""}
+    assert _task_phase_score(tb) == 8
+
+
+def test_completion_notification_not_phase_zero():
+    """'Tell occupants of work completion' should NOT get phase 0."""
+    from core.orchestrator import _task_phase_score
+
+    tb = {"task": "tell occupants of work completion and lift exclusion zones", "scope": ""}
+    score = _task_phase_score(tb)
+    assert score != 0, f"Completion notification got phase 0, should be late-stage (got {score})"
+    assert score >= 7, f"Completion notification should be QA/demob phase, got {score}"
+
+
+def test_remove_site_equipment_phases_as_demob():
+    """'Remove site equipment and demobilise' should get demob phase (8)."""
+    from core.orchestrator import _task_phase_score
+
+    tb = {"task": "Remove site equipment and demobilise", "scope": ""}
+    assert _task_phase_score(tb) == 8
+
+
 # ── T2-B1.6: _strip_generator_artefacts ─────────────────────────────────────
 
 def test_strip_wah_licence_boilerplate():

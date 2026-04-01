@@ -770,14 +770,16 @@ _PHASE_ORDER = [
 
 
 _DEMOB_KEYWORDS = ["demobilise", "demobilize", "demob", "dismantle scaffold",
-                    "remove scaffold", "site restor"]
+                    "remove scaffold", "site restor", "disassemble",
+                    "remove site equipment", "remove equipment"]
 _REPAIR_KEYWORDS = ["crack stitch", "spalling", "concrete repair", "reconstruct",
                      "repoint", "brickwork reconstruct", "brickwork repoint",
                      "brickwork repair", "structural repair", "repair concrete",
                      "repair brick", "mortar joint", "repair spalling"]
 _QA_KEYWORDS = ["check work", "check completed", "check remedial",
                 "quality", "practical completion", "make good defect",
-                "sign-off"]
+                "sign-off", "work completion", "notify completion",
+                "tell occupant"]
 
 
 _COATING_TASK_KEYWORDS = ["paint", "stain", "coat", "seal unpaint", "timber treat",
@@ -828,7 +830,10 @@ def _task_phase_score(tb: dict) -> int:
                                        "exclusion zone", "hoarding", "site isolation",
                                        "isolate occupant", "protect occupant",
                                        "protect area", "protect space",
-                                       "isolate and protect")) and "demob" not in task_name:
+                                       "isolate and protect")) \
+            and "demob" not in task_name \
+            and "completion" not in task_name \
+            and "lift exclusion" not in task_name:
         return 0
     # Check electrical isolation / permit / service-locating by TASK NAME
     # These are enabling tasks that must precede demolition and intrusive work
