@@ -1618,7 +1618,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
         correct = "SIL-H6"
     elif any(kw in task_name for kw in ("paint", "coat", "stain", "seal", "sealant",
                                          "treat", "primer", "timber",
-                                         "waterproof", "render", "epoxy", "membrane")):
+                                         "waterproof", "render", "epoxy", "membrane",
+                                         "rough-in", "rough in", "fit-off", "fit off",
+                                         "fixture", "brazing", "soldering")):
         correct = "CHM-H6"
     elif any(kw in task_name for kw in ("signal", "lighting", "commission",
                                          "energis", "energiz")):

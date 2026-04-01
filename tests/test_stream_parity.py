@@ -403,6 +403,31 @@ def test_ccvs_handover_task_corrected_to_sys():
     assert tb["ccvs_code"] == "SYS-M3"
 
 
+def test_ccvs_roughin_corrected_to_chm():
+    """Plumbing rough-in tasks should get CHM-H6, not N/A."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Install internal apartment and common area fixture rough-ins", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "CHM-H6"
+
+
+def test_ccvs_fitoff_corrected_to_chm():
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Install fixture fit-offs, final connections, and visible terminations", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "CHM-H6"
+
+
+def test_ccvs_brazing_corrected_to_chm():
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Brazing copper joints for hot water risers", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "CHM-H6"
+
+
 def test_ccvs_casting_bed_setout_corrected_to_sys():
     """Casting bed / set-out tasks should get SYS-M3, not N/A."""
     from core.orchestrator import _correct_ccvs_by_task_type

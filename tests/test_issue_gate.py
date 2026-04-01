@@ -551,6 +551,14 @@ class TestOrphanReinstatement:
         ]
         assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
 
+    def test_handover_reinstatement_not_flagged(self):
+        """Clean/cap/handover reinstatement is not a removal-then-reinstate pattern."""
+        tasks = [
+            {"step": "1.1", "task": "Install pipework"},
+            {"step": "1.2", "task": "Clean, protect, cap, and final site reinstatement before handover"},
+        ]
+        assert _check_orphan_reinstatement(tasks).result == CheckResult.PASS
+
     def test_no_reinstatement_passes(self):
         tasks = [
             {"step": "1.1", "task": "Paint wall"},

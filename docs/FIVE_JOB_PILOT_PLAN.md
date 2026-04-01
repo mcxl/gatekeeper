@@ -229,6 +229,7 @@ Recommendation: implement option 2 (deterministic monitoring dedup) first. If it
 | C6 | mcxi.co | Rope access painting 6-storey | maintenance | ~20 min | RETRY_INTERNAL 2F | 3 | 6 | Membrane FP (containment). Sequence reversal (completion notice first, disassemble before assemble). CCVS risk/rating mismatch x3. Scaffold copy-paste on rope access. Credential wording. | Yes with edits |
 | C7 | mcxi.co | Tilt-up panel construction | new_build | ~15 min | RETRY_INTERNAL 3F | 4 | 4 | Membrane FP (bond breaker/curing). CCVS N/A on casting bed. HRCW crane undercall. Risk/rating mismatch x3. Strongest tilt-up sequence and engineer hold points in pilot. | Yes with edits |
 | C8 | Apex Commercial | Suspended formwork podium slab L3 | new_build | ~10 min | ESCALATE_EXTERNAL 0F | 0 | 6 | **First zero-FAIL result.** HRCW undercall (crane, propping). Generic responsibility x3. Risk/rating mismatch x3. Pre-pour inspection sequence. 5 engineer hold points. Strongest output in pilot. | Yes with minor edits |
+| C9 | Urban Flow Plumbing | Hydraulic services 6-storey residential | new_build | ~15 min | RETRY_INTERNAL 1F | 1 | 6 | CCVS N/A on fit-off/rough-in tasks. Orphan reinstatement FP on clean/cap/handover. Monitoring copy-paste. Risk/rating mismatch x3. Strong pressure test and core-hole hold points. Induction task sequenced late. | Yes with edits |
 
 ---
 

@@ -736,8 +736,10 @@ def _check_orphan_reinstatement(tasks: list[dict]) -> GateCheck:
         if any(kw in tn for kw in _REMOVAL_KW):
             has_removal = True
         if any(kw in tn for kw in _REINSTATE_KW):
-            # Skip demob-style reinstatement (e.g. "reinstate occupant access and demobilise")
+            # Skip demob-style or handover-style reinstatement
             if "demob" in tn or "demobilis" in tn:
+                continue
+            if "handover" in tn or "final" in tn or "clean" in tn or "cap" in tn:
                 continue
             reinstate_tasks.append(t.get("step", "?"))
     if reinstate_tasks and not has_removal:
