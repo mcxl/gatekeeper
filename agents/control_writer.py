@@ -11,11 +11,14 @@ Output: ControlManifest dict
 from __future__ import annotations
 import json
 import asyncio
+import os
 import anthropic
 from core.utils import strip_fences
 
 from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
 from prompts.swms import SWMS_BEHAVIOUR
+
+MODEL = os.getenv("CONTROL_WRITER_MODEL", "claude-haiku-4-5")
 
 SYSTEM_PROMPT = SAFE_METHOD_SYSTEM_BEHAVIOUR + "\n\n" + SWMS_BEHAVIOUR + "\n\n" + """\
 You are an Australian WHS control measure writer for construction SWMS documents.
@@ -412,9 +415,9 @@ async def _write_controls_for_task(
     )
 
     message = _get_client().messages.create(
-        model="claude-haiku-4-5",
+        model=MODEL,
         max_tokens=2000,
-        system=SYSTEM_PROMPT,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_content}],
     )
 
