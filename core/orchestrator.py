@@ -1623,7 +1623,9 @@ def _correct_ccvs_by_task_type(tb: dict) -> None:
     elif any(kw in task_name for kw in ("signal", "lighting", "commission",
                                          "energis", "energiz")):
         correct = "ELE-H6"
-    elif any(kw in task_name for kw in ("establish", "setup", "set up", "mobilise",
+    elif any(kw in task_name for kw in ("establish", "setup", "set up", "set out",
+                                         "set-out", "casting bed", "formwork base",
+                                         "mobilise",
                                          "prop base", "panel base", "prop location",
                                          "prepare and level", "prepare panel",
                                          "confirm crane", "confirm lift", "confirm engineer",

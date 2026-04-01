@@ -396,6 +396,9 @@ def _check_unsupported_controls_json(tasks: list[dict],
     paint_coating_in_scope = any(kw in all_task_names for kw in (
         "paint", "coating", "scraping", "surface prep", "primer",
         "render", "facade", "containment"))
+    concrete_in_scope = any(kw in all_task_names for kw in (
+        "concrete", "pour", "cure", "curing", "casting",
+        "tilt-up", "tilt up", "bond breaker"))
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
         "signal", "lighting", "commission", "energis", "energiz",
@@ -419,7 +422,7 @@ def _check_unsupported_controls_json(tasks: list[dict],
                 if kw in ("propping plan", "propping design"):
                     continue
                 # Skip waterproofing terms when waterproofing or paint/coating is in job scope
-                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope):
+                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope or concrete_in_scope):
                     continue
                 # Skip demolition terms when demolition/removal is in job scope
                 if kw == "demolit" and demolition_in_scope:
@@ -461,6 +464,9 @@ def _check_unsupported_controls_docx(doc,
     paint_coating_in_scope = any(kw in all_task_names for kw in (
         "paint", "coating", "scraping", "surface prep", "primer",
         "render", "facade", "containment"))
+    concrete_in_scope = any(kw in all_task_names for kw in (
+        "concrete", "pour", "cure", "curing", "casting",
+        "tilt-up", "tilt up", "bond breaker"))
     demolition_in_scope = "demolit" in all_task_names or "remov" in all_task_names
     commissioning_in_scope = any(kw in all_task_names for kw in (
         "signal", "lighting", "commission", "energis", "energiz",
@@ -479,7 +485,7 @@ def _check_unsupported_controls_docx(doc,
             if kw in row_text:
                 if kw in ("propping plan", "propping design"):
                     continue
-                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope):
+                if kw in ("membrane", "waterproof") and (waterproof_in_scope or paint_coating_in_scope or concrete_in_scope):
                     continue
                 if kw == "demolit" and demolition_in_scope:
                     continue

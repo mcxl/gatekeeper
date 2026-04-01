@@ -497,6 +497,17 @@ class TestUnsupportedControlsJson:
         ]
         assert _check_unsupported_controls_json(tasks).result == CheckResult.PASS
 
+    def test_membrane_ok_for_concrete_curing(self):
+        """Bond breaker / curing membrane is legitimate in concrete scope."""
+        tasks = [
+            {"step": "1.1", "task": "Set out casting bed and prepare formwork bases",
+             "controls": [], "admin": [], "hold_points": [], "stop_work": []},
+            {"step": "1.2", "task": "Pour, finish, and cure concrete panels",
+             "controls": ["Apply curing membrane to exposed surface"],
+             "admin": [], "hold_points": [], "stop_work": []},
+        ]
+        assert _check_unsupported_controls_json(tasks).result == CheckResult.PASS
+
     def test_membrane_still_flagged_on_unrelated_scope(self):
         """Membrane on a steel erection job with no paint/waterproof scope is drift."""
         tasks = [

@@ -403,6 +403,23 @@ def test_ccvs_handover_task_corrected_to_sys():
     assert tb["ccvs_code"] == "SYS-M3"
 
 
+def test_ccvs_casting_bed_setout_corrected_to_sys():
+    """Casting bed / set-out tasks should get SYS-M3, not N/A."""
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Set out casting bed and prepare formwork bases", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
+def test_ccvs_site_setout_corrected_to_sys():
+    from core.orchestrator import _correct_ccvs_by_task_type
+
+    tb = {"task": "Site set-out and level survey", "ccvs_code": "N/A"}
+    _correct_ccvs_by_task_type(tb)
+    assert tb["ccvs_code"] == "SYS-M3"
+
+
 def test_ccvs_green_wall_reinstate_stays_wah():
     """Green wall reinstatement is genuinely at height — stays WAH."""
     from core.orchestrator import _correct_ccvs_by_task_type
