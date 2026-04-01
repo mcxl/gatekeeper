@@ -12,8 +12,39 @@ from __future__ import annotations
 import json
 import asyncio
 import os
+import threading
 import anthropic
 from core.utils import strip_fences
+
+# ── Token usage tracking ────────────────────────────────────────────────────
+# Module-level accumulator for Control Writer API call token usage.
+# Call reset_token_usage() before a generation run, then read get_token_usage() after.
+_token_lock = threading.Lock()
+_token_usage = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+
+
+def reset_token_usage() -> None:
+    """Reset the token usage accumulator. Call before each generation run."""
+    with _token_lock:
+        _token_usage["input_tokens"] = 0
+        _token_usage["output_tokens"] = 0
+        _token_usage["calls"] = 0
+
+
+def get_token_usage() -> dict:
+    """Return accumulated token usage since last reset."""
+    with _token_lock:
+        return dict(_token_usage)
+
+
+def _record_usage(message) -> None:
+    """Record token usage from an Anthropic API response."""
+    usage = getattr(message, "usage", None)
+    if usage:
+        with _token_lock:
+            _token_usage["input_tokens"] += getattr(usage, "input_tokens", 0)
+            _token_usage["output_tokens"] += getattr(usage, "output_tokens", 0)
+            _token_usage["calls"] += 1
 
 from prompts.system import SAFE_METHOD_SYSTEM_BEHAVIOUR
 from prompts.swms import SWMS_BEHAVIOUR
@@ -420,6 +451,7 @@ async def _write_controls_for_task(
         system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_content}],
     )
+    _record_usage(message)
 
     block = message.content[0]
     if not hasattr(block, 'text'):
