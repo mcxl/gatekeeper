@@ -177,3 +177,65 @@ Each record contains:
 ### Concurrency
 
 v1 uses a module-level `threading.Lock()` for atomic JSONL append within a single process. If multi-process write concurrency is needed later, upgrade to SQLite or file-locking.
+
+---
+
+## Intake Normalizer v1
+
+Creates a reviewable job-brief draft from a single text-bearing intake source, with explicit uncertainty, while keeping the core Safe Method workflow unchanged.
+
+### What it does
+
+- Accepts pasted text, email body, DOCX, or machine-readable PDF
+- Extracts raw text and source metadata
+- Produces a normalized draft artifact with field-level `extracted / inferred / unresolved` status
+- Generates review prompts for the consultant
+- Does NOT start generation — consultant review is mandatory
+
+### Supported inputs
+
+| Source | How |
+|--------|-----|
+| Pasted scope text | `source_text` form field |
+| Email body | `source_text` with `source_type=email_text` |
+| DOCX file | `source_file` upload |
+| Machine-readable PDF | `source_file` upload |
+
+### Not supported in v1
+
+- Scanned/image PDFs (returns `extraction_insufficient`)
+- OCR rescue
+- Multi-document merge
+- Mailbox sync
+- HRCW / CCVS / risk extraction
+- Automatic generation after intake
+
+### API endpoint
+
+```
+POST /v1/swms/intake
+
+Form fields:
+  source_text: str (optional — pasted text)
+  source_file: UploadFile (optional — DOCX or PDF)
+  source_type: str (default: pasted_text)
+  source_label: str (optional filename/label)
+  clarification_note: str (optional short note)
+
+Returns: JSON intake artifact with job_brief_draft
+```
+
+### Limits
+
+| Limit | Value |
+|-------|-------|
+| Max file size | 10 MB |
+| Max PDF pages | 10 |
+| Min useful text | 50 chars |
+| Max text chars | 50,000 (truncated with warning) |
+
+### Known PDF limitations
+
+- Only machine-readable (text-layer) PDFs are supported
+- Scanned/image PDFs will return `extraction_insufficient`
+- If PDF text is weak, the user should paste the scope section manually
