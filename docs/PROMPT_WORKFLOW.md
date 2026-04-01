@@ -138,3 +138,42 @@ pytest -n 4
 ```
 
 All tests are compatible with both sequential and parallel execution.
+
+---
+
+## Consultant Edit Capture
+
+Compares generated SWMS docx to the consultant-reviewed docx and stores structured edit signals.
+
+### How it works
+
+1. Consultant generates a SWMS via Safe Method
+2. Consultant opens the docx in Microsoft Word and makes edits
+3. Consultant uploads both the original and reviewed docx to `/v1/swms/capture-edits`
+4. The system extracts task tables from both documents
+5. Computes row-by-row edit delta (similarity ratio, changed tasks, changed responsibilities)
+6. Stores only structured edit signals — **no raw document content is stored**
+
+### What is stored in `src/data/consultant_edits.jsonl`
+
+Each record contains:
+- `job_id` — opaque internal identifier
+- `captured_at` — ISO timestamp
+- `review_duration_mins` — time spent reviewing
+- `would_issue` — boolean
+- `main_edit_categories` — normalized list
+- `changed_task_count`, `total_task_count`
+- `average_similarity_ratio`
+- `changed_responsibilities_count`
+- `major_rewrite_detected` — true if similarity < 0.7
+- `generated_doc_fingerprint`, `reviewed_doc_fingerprint` — sha256
+
+### What is NOT stored
+
+- Raw docx content
+- Full task/control text
+- Customer or project names
+
+### Concurrency
+
+v1 uses a module-level `threading.Lock()` for atomic JSONL append within a single process. If multi-process write concurrency is needed later, upgrade to SQLite or file-locking.

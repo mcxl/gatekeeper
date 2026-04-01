@@ -1043,6 +1043,97 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
 
 
 # ============================================================
+# CONSULTANT EDIT CAPTURE
+# ============================================================
+
+import threading
+_edit_capture_lock = threading.Lock()
+
+
+@app.post("/v1/swms/capture-edits")
+async def capture_edits_endpoint(
+    generated_docx: UploadFile = File(...),
+    reviewed_docx: UploadFile = File(...),
+    job_id: str = Form(...),
+    review_duration_mins: int = Form(...),
+    would_issue: str = Form(...),
+    main_edit_categories: str = Form(""),
+):
+    """
+    POST /v1/swms/capture-edits
+
+    Compare generated SWMS docx to consultant-reviewed docx.
+    Stores only structured edit signals — no raw document content.
+    """
+    from datetime import datetime, timezone
+    from core.edit_capture import (
+        compute_edit_delta,
+        extract_swms_table_text,
+        fingerprint_snapshot,
+    )
+
+    try:
+        gen_bytes = await generated_docx.read()
+        rev_bytes = await reviewed_docx.read()
+
+        gen_rows = extract_swms_table_text(gen_bytes)
+        rev_rows = extract_swms_table_text(rev_bytes)
+
+        gen_fp = fingerprint_snapshot(gen_rows)
+        rev_fp = fingerprint_snapshot(rev_rows)
+
+        delta = compute_edit_delta(gen_rows, rev_rows)
+
+        # Normalize categories
+        categories = [
+            c.strip().lower()
+            for c in main_edit_categories.split(",")
+            if c.strip()
+        ]
+
+        # Parse would_issue from form string
+        would_issue_bool = would_issue.lower() in ("true", "1", "yes")
+
+        record = {
+            "capture_version": "1.0",
+            "job_id": job_id,
+            "captured_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "review_duration_mins": review_duration_mins,
+            "would_issue": would_issue_bool,
+            "main_edit_categories": categories,
+            "changed_task_count": delta["changed_task_count"],
+            "total_task_count": delta["total_task_count"],
+            "generated_row_count": delta["generated_row_count"],
+            "reviewed_row_count": delta["reviewed_row_count"],
+            "average_similarity_ratio": delta["average_similarity_ratio"],
+            "changed_responsibilities_count": delta["changed_responsibilities_count"],
+            "major_rewrite_detected": delta["major_rewrite_detected"],
+            "generated_doc_fingerprint": gen_fp,
+            "reviewed_doc_fingerprint": rev_fp,
+        }
+
+        # Append to JSONL — thread-safe for single-process use
+        import json
+        from pathlib import Path
+        edits_path = Path(__file__).parent.parent / "src" / "data" / "consultant_edits.jsonl"
+        edits_path.parent.mkdir(parents=True, exist_ok=True)
+        with _edit_capture_lock:
+            with open(edits_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+        return JSONResponse(content=record)
+
+    except ValueError as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error(f"Edit capture failed:\n{traceback.format_exc()}")
+        return JSONResponse(
+            content={"detail": "An internal error occurred. Please try again."},
+            status_code=500,
+        )
+
+
+# ============================================================
 # JURISDICTION CHECK
 # ============================================================
 
