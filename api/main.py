@@ -1165,7 +1165,11 @@ async def procore_webhook_endpoint(request: Request):
         })
 
     # Run pre-screen review
-    review_artifact = run_prescreen_review(swms_text, rule_pack)
+    review_artifact = run_prescreen_review(
+        swms_text, rule_pack,
+        job_id=f"procore-{event.project_id}-{event.resource_id}",
+        document_reference=att.filename,
+    )
 
     # Log review
     log_review(review_artifact, event)

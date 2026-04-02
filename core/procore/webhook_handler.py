@@ -36,6 +36,14 @@ ALLOWED_STATUSES = frozenset({
     "Escalate",
 })
 
+# ── Workflow states — never use approved/accepted/compliant/passed ──────────
+
+ALLOWED_WORKFLOW_STATES = frozenset({
+    "reviewed_pending_human",
+    "returned_for_amendment_recommended",
+    "escalated_for_attention",
+})
+
 MAX_REQUIRED_AMENDMENTS = 5
 
 REVIEW_DISCLAIMER = (

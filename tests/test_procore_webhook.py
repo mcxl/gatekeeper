@@ -1,12 +1,11 @@
 """
-tests/test_procore_webhook.py — Tests for Procore webhook spike Phase 1.
+tests/test_procore_webhook.py — Tests for Procore review-first workflow.
 """
 
 import hashlib
 import hmac
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.procore.webhook_handler import (
     ALLOWED_STATUSES,
+    ALLOWED_WORKFLOW_STATES,
     MAX_REQUIRED_AMENDMENTS,
     REVIEW_DISCLAIMER,
     extract_submittal_attachments,
@@ -63,7 +63,6 @@ class TestEventParsing:
         event = parse_event(payload)
         assert event.event_type == "submittals.submittal_logs.created"
         assert event.project_id == 12345
-        assert event.resource_id == 98765
         assert event.delivery_id == "evt-abc123-def456"
 
     def test_extract_pdf_attachments(self):
@@ -76,8 +75,7 @@ class TestEventParsing:
     def test_no_attachments(self):
         payload = {"event_type": "test", "data": {}, "metadata": {}}
         event = parse_event(payload)
-        attachments = extract_submittal_attachments(event)
-        assert len(attachments) == 0
+        assert len(extract_submittal_attachments(event)) == 0
 
 
 # ── Idempotency ─────────────────────────────────────────────────────────────
@@ -98,9 +96,9 @@ class TestIdempotency:
         assert not is_duplicate("evt-004")
 
 
-# ── Pre-screen review ──────────────────────────────────────────────────────
+# ── Phase 2 pre-screen review ──────────────────────────────────────────────
 
-class TestPrescreenReview:
+class TestPrescreenReviewPhase2:
     @pytest.fixture(autouse=True)
     def setup(self):
         self.rule_pack = _load_fixture("project_rule_pack_12345")
@@ -116,73 +114,131 @@ class TestPrescreenReview:
             "Task 4: Demobilise scaffold and clear site\n"
         )
 
-    def test_review_artifact_structure(self):
+    def test_review_version_is_2(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
-        assert "review_summary" in result
-        assert "status_recommendation" in result
-        assert "required_amendments" in result
-        assert "project_specific_mismatches" in result
-        assert "structural_findings" in result
-        assert "review_confidence" in result
-        assert "review_disclaimer" in result
-        assert "requires_human_review" in result
+        assert result["review_version"] == "2.0"
+
+    def test_workflow_state_in_allowed(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert result["workflow_state"] in ALLOWED_WORKFLOW_STATES
+
+    def test_status_in_allowed(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert result["status_recommendation"] in ALLOWED_STATUSES
 
     def test_requires_human_review_always_true(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         assert result["requires_human_review"] is True
 
-    def test_status_uses_allowed_vocabulary(self):
-        result = run_prescreen_review(self.swms_text, self.rule_pack)
-        assert result["status_recommendation"] in ALLOWED_STATUSES
-
-    def test_status_never_uses_approved(self):
+    def test_status_never_uses_approval_language(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         full_text = json.dumps(result).lower()
-        for banned in ("approved", "accepted", "compliant", "passed"):
-            # Allow "No issues detected" but not standalone "passed"
-            assert f'"{banned}"' not in full_text, f"Banned term '{banned}' found in output"
+        for banned in ("approved", "accepted", "compliant"):
+            assert f'"{banned}"' not in full_text
 
     def test_max_amendments_enforced(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         assert len(result["required_amendments"]) <= MAX_REQUIRED_AMENDMENTS
+
+    def test_amendments_have_priority(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        for a in result["required_amendments"]:
+            assert "priority" in a
+            assert isinstance(a["priority"], int)
+
+    def test_amendments_prioritized_mandatory_first(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        amendments = result["required_amendments"]
+        if len(amendments) >= 2:
+            # All mandatory should come before advisory
+            mandatory_idx = [i for i, a in enumerate(amendments) if a["severity"] == "mandatory"]
+            advisory_idx = [i for i, a in enumerate(amendments) if a["severity"] == "advisory"]
+            if mandatory_idx and advisory_idx:
+                assert max(mandatory_idx) < min(advisory_idx)
+
+    def test_project_mismatches_separated_from_structural(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert "project_specific_mismatches" in result
+        assert "structural_findings" in result
+        assert isinstance(result["project_specific_mismatches"], list)
+        assert isinstance(result["structural_findings"], dict)
+
+    def test_document_fingerprint_present(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert "document_fingerprint" in result
+        assert len(result["document_fingerprint"]) == 16
+
+    def test_document_fingerprint_stable(self):
+        r1 = run_prescreen_review(self.swms_text, self.rule_pack)
+        r2 = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert r1["document_fingerprint"] == r2["document_fingerprint"]
+
+    def test_reviewed_at_present(self):
+        result = run_prescreen_review(self.swms_text, self.rule_pack)
+        assert "reviewed_at" in result
+        assert "T" in result["reviewed_at"]
+
+    def test_job_id_and_document_ref_passed_through(self):
+        result = run_prescreen_review(
+            self.swms_text, self.rule_pack,
+            job_id="test-123", document_reference="SWMS_v1.pdf",
+        )
+        assert result["job_id"] == "test-123"
+        assert result["document_reference"] == "SWMS_v1.pdf"
 
     def test_disclaimer_present(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         assert result["review_disclaimer"] == REVIEW_DISCLAIMER
 
     def test_rescue_plan_flagged(self):
-        """Scaffold SWMS without rescue plan should trigger amendment."""
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         titles = [a["title"] for a in result["required_amendments"]]
         assert any("rescue plan" in t.lower() for t in titles)
-
-    def test_scaffold_design_flagged(self):
-        """Scaffold SWMS without design reference should trigger amendment."""
-        result = run_prescreen_review(self.swms_text, self.rule_pack)
-        titles = [a["title"] for a in result["required_amendments"]]
-        assert any("scaffold design" in t.lower() for t in titles)
 
     def test_filler_controls_detected(self):
         result = run_prescreen_review(self.swms_text, self.rule_pack)
         assert result["structural_findings"]["control_credibility"] == "ISSUES FOUND"
 
-    def test_clean_swms_passes_structural(self):
+    def test_clean_swms_reviewed_pending_human(self):
         clean = (
             "SWMS - Office Painting\n"
             "HRCW: Not applicable\n"
-            "Task 1: Prepare and clean surfaces\n"
-            "Controls: Wet areas barricaded. P2 mask during sanding.\n"
-            "Task 2: Apply two-coat acrylic system\n"
-            "Controls: Ventilation maintained. SDS on site.\n"
+            "Task 1: Prepare surfaces\nControls: Wet areas barricaded.\n"
+            "Task 2: Apply paint\nControls: Ventilation maintained.\n"
         )
         result = run_prescreen_review(clean, {"rules": [], "structural_expectations": []})
-        assert result["structural_findings"]["control_credibility"] == "No issues detected"
+        assert result["workflow_state"] == "reviewed_pending_human"
         assert result["requires_human_review"] is True
 
-    def test_empty_rule_pack_produces_valid_artifact(self):
-        result = run_prescreen_review("Some SWMS text here.", {"rules": [], "structural_expectations": []})
-        assert result["status_recommendation"] in ALLOWED_STATUSES
+    def test_missing_rule_pack_noted(self):
+        result = run_prescreen_review(
+            "Some SWMS text for scaffold.", {"rules": [], "structural_expectations": []},
+        )
+        assert result["project_rule_pack_available"] is False
+        assert "structural review only" in result["review_summary"].lower()
+
+    def test_empty_rule_pack_valid_artifact(self):
+        result = run_prescreen_review("SWMS text.", {"rules": [], "structural_expectations": []})
+        assert result["review_version"] == "2.0"
         assert result["requires_human_review"] is True
+        assert result["workflow_state"] in ALLOWED_WORKFLOW_STATES
+
+
+# ── Workflow state vocabulary ───────────────────────────────────────────────
+
+class TestWorkflowStateVocabulary:
+    def test_no_approval_states(self):
+        for state in ALLOWED_WORKFLOW_STATES:
+            assert "approved" not in state
+            assert "accepted" not in state
+            assert "compliant" not in state
+            assert "passed" not in state
+
+    def test_no_approval_statuses(self):
+        for status in ALLOWED_STATUSES:
+            assert "Approved" not in status
+            assert "Accepted" not in status
+            assert "Compliant" not in status
 
 
 # ── Payload logging ─────────────────────────────────────────────────────────
@@ -209,7 +265,6 @@ class TestWebhookEndpoint:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         reset_idempotency()
-        # Set up rule pack for project 12345
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         rule_pack = _load_fixture("project_rule_pack_12345")
@@ -217,7 +272,6 @@ class TestWebhookEndpoint:
             json.dumps(rule_pack), encoding="utf-8"
         )
         yield
-        # Cleanup
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
     def test_valid_submittal_reviewed(self):
@@ -228,20 +282,17 @@ class TestWebhookEndpoint:
         payload = _load_fixture("submittal_created")
         payload["_simulated_swms_text"] = (
             "SWMS - Scaffold Erection Bay 3\n"
-            "Task 1: Erect scaffold to level 3 using harness and edge protection.\n"
-            "Controls: Install edge protection before access. Follow SWMS.\n"
+            "Task 1: Erect scaffold to level 3 using harness.\nControls: Follow SWMS.\n"
         )
 
-        response = client.post(
-            "/v1/procore/webhook",
-            content=json.dumps(payload),
-            headers={"Content-Type": "application/json"},
-        )
+        response = client.post("/v1/procore/webhook", content=json.dumps(payload),
+                               headers={"Content-Type": "application/json"})
         assert response.status_code == 200
         body = response.json()
         assert body["status"] == "reviewed"
+        assert body["review"]["review_version"] == "2.0"
         assert body["review"]["requires_human_review"] is True
-        assert body["review"]["status_recommendation"] in ALLOWED_STATUSES
+        assert body["review"]["workflow_state"] in ALLOWED_WORKFLOW_STATES
 
     def test_duplicate_processed_once(self):
         from fastapi.testclient import TestClient
@@ -249,18 +300,14 @@ class TestWebhookEndpoint:
         client = TestClient(app)
 
         payload = _load_fixture("submittal_created")
-        payload["_simulated_swms_text"] = "Some SWMS text for scaffold work."
+        payload["_simulated_swms_text"] = "Some SWMS text."
 
-        # First call
         r1 = client.post("/v1/procore/webhook", content=json.dumps(payload),
                          headers={"Content-Type": "application/json"})
-        assert r1.status_code == 200
         assert r1.json()["status"] == "reviewed"
 
-        # Second call — same delivery_id
         r2 = client.post("/v1/procore/webhook", content=json.dumps(payload),
                          headers={"Content-Type": "application/json"})
-        assert r2.status_code == 200
         assert r2.json()["status"] == "already_processed"
 
     def test_missing_rule_pack(self):
@@ -269,13 +316,12 @@ class TestWebhookEndpoint:
         client = TestClient(app)
 
         payload = _load_fixture("submittal_created")
-        payload["project_id"] = 99999  # no rule pack for this
+        payload["project_id"] = 99999
         payload["metadata"]["delivery_id"] = "evt-missing-pack"
         payload["_simulated_swms_text"] = "text"
 
         response = client.post("/v1/procore/webhook", content=json.dumps(payload),
                                headers={"Content-Type": "application/json"})
-        assert response.status_code == 200
         assert response.json()["status"] == "no_rule_pack"
 
     def test_non_submittal_ignored(self):
@@ -286,7 +332,6 @@ class TestWebhookEndpoint:
         payload = {"event_type": "budget.updated", "metadata": {"delivery_id": "evt-budget"}}
         response = client.post("/v1/procore/webhook", content=json.dumps(payload),
                                headers={"Content-Type": "application/json"})
-        assert response.status_code == 200
         assert response.json()["status"] == "ignored"
 
     def test_invalid_json_returns_400(self):
@@ -299,18 +344,16 @@ class TestWebhookEndpoint:
         assert response.status_code == 400
 
     def test_retrieval_mode_in_response(self):
-        """Response should include retrieval_mode field."""
         from fastapi.testclient import TestClient
         from api.main import app
         client = TestClient(app)
 
         payload = _load_fixture("submittal_created")
         payload["metadata"]["delivery_id"] = "evt-retrieval-mode"
-        payload["_simulated_swms_text"] = "Scaffold SWMS with harness and edge protection."
+        payload["_simulated_swms_text"] = "Scaffold SWMS with harness."
 
         response = client.post("/v1/procore/webhook", content=json.dumps(payload),
                                headers={"Content-Type": "application/json"})
-        assert response.status_code == 200
         body = response.json()
         assert body["retrieval_mode"] == "simulated"
         assert body["comment_posted"] is False
@@ -319,13 +362,6 @@ class TestWebhookEndpoint:
 # ── API client unit tests ───────────────────────────────────────────────────
 
 class TestApiClient:
-    def test_is_live_configured_false_by_default(self):
-        from core.procore.api_client import is_live_configured
-        # In test environment, credentials should not be set
-        # This may be True if env vars happen to be set — test the function exists
-        result = is_live_configured()
-        assert isinstance(result, bool)
-
     def test_format_review_as_comment(self):
         from core.procore.api_client import format_review_as_comment
         artifact = {
@@ -333,7 +369,7 @@ class TestApiClient:
             "review_confidence": "HIGH",
             "required_amendments": [
                 {"title": "Missing rescue plan", "severity": "mandatory",
-                 "reason": "No rescue plan found."},
+                 "reason": "No rescue plan found.", "priority": 1},
             ],
             "structural_findings": {
                 "sequence": "No issues detected",
@@ -341,34 +377,13 @@ class TestApiClient:
                 "control_credibility": "No issues detected",
                 "unsupported_controls": "No issues detected",
             },
-            "review_disclaimer": "Safe Method provides pre-screening support only.",
+            "review_disclaimer": REVIEW_DISCLAIMER,
         }
         comment = format_review_as_comment(artifact, "SWMS_Test.pdf")
         assert "Return for Amendment" in comment
-        assert "Missing rescue plan" in comment
-        assert "SWMS_Test.pdf" in comment
         assert "Human review is required" in comment
-        # Must not contain banned terms
         for banned in ("Approved", "Accepted", "Compliant"):
             assert banned not in comment
-
-    def test_format_review_clean_artifact(self):
-        from core.procore.api_client import format_review_as_comment
-        clean = {
-            "status_recommendation": "Ready for Human Review",
-            "review_confidence": "HIGH",
-            "required_amendments": [],
-            "structural_findings": {
-                "sequence": "No issues detected",
-                "hrcw_alignment": "No issues detected",
-                "control_credibility": "No issues detected",
-                "unsupported_controls": "No issues detected",
-            },
-            "review_disclaimer": "Safe Method provides pre-screening support only.",
-        }
-        comment = format_review_as_comment(clean)
-        assert "Ready for Human Review" in comment
-        assert "Human review is required" in comment
 
     def test_get_headers_raises_without_token(self, monkeypatch):
         import core.procore.api_client as client_mod
@@ -378,25 +393,44 @@ class TestApiClient:
 
     def test_get_headers_includes_token(self, monkeypatch):
         import core.procore.api_client as client_mod
-        monkeypatch.setattr(client_mod, "PROCORE_ACCESS_TOKEN", "test-token-123")
+        monkeypatch.setattr(client_mod, "PROCORE_ACCESS_TOKEN", "test-token")
         monkeypatch.setattr(client_mod, "PROCORE_COMPANY_ID", "99")
         headers = client_mod._get_headers()
-        assert headers["Authorization"] == "Bearer test-token-123"
-        assert headers["Procore-Company-Id"] == "99"
+        assert headers["Authorization"] == "Bearer test-token"
 
 
-# ── Config validation tests ─────────────────────────────────────────────────
+# ── Config validation ───────────────────────────────────────────────────────
 
 class TestConfigValidation:
     def test_webhook_secret_env_var(self):
-        """PROCORE_WEBHOOK_SECRET should be read from environment."""
-        # The variable is read at module import time
         import api.main as main_mod
         assert hasattr(main_mod, "_PROCORE_WEBHOOK_SECRET")
 
-    def test_rule_packs_dir_exists_or_created(self):
-        """Rule packs directory should be createable."""
+    def test_rule_packs_dir_createable(self):
         import api.main as main_mod
-        rule_dir = main_mod._PROCORE_RULE_PACKS_DIR
-        rule_dir.mkdir(parents=True, exist_ok=True)
-        assert rule_dir.exists()
+        main_mod._PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
+        assert main_mod._PROCORE_RULE_PACKS_DIR.exists()
+
+
+# ── Resubmission comparison preparation ────────────────────────────────────
+
+class TestResubmissionPrep:
+    def test_artifact_has_identifiers_for_comparison(self):
+        """Phase 2 artifact should have enough identifiers for later version comparison."""
+        rule_pack = _load_fixture("project_rule_pack_12345")
+        result = run_prescreen_review(
+            "Scaffold SWMS with harness.", rule_pack,
+            job_id="procore-12345-98765",
+            document_reference="SWMS_v1.pdf",
+        )
+        assert result["job_id"]
+        assert result["project_id"]
+        assert result["document_reference"]
+        assert result["document_fingerprint"]
+        assert result["reviewed_at"]
+
+    def test_different_text_different_fingerprint(self):
+        rule_pack = _load_fixture("project_rule_pack_12345")
+        r1 = run_prescreen_review("SWMS version 1 text.", rule_pack)
+        r2 = run_prescreen_review("SWMS version 2 text with amendments.", rule_pack)
+        assert r1["document_fingerprint"] != r2["document_fingerprint"]

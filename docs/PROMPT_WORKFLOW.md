@@ -379,3 +379,39 @@ When in `live_api` mode, a formatted review comment is posted back to the Procor
 - Procore sandbox webhook registration (requires Procore developer account)
 - Multi-project rule pack management UI
 - Additional Procore surfaces beyond Submittals
+
+### Phase 2: Review-first workflow
+
+Phase 2 adds a structured principal-contractor review workflow layer on top of the webhook path.
+
+#### What Phase 2 adds
+
+- **Workflow states:** `reviewed_pending_human`, `returned_for_amendment_recommended`, `escalated_for_attention`
+- **Prioritized amendments:** mandatory-first ordering, priority numbers, capped at 5
+- **Project-specific mismatch separation:** clearly separated from generic structural findings
+- **Version identifiers:** `document_fingerprint`, `reviewed_at`, `job_id` for later comparison
+- **Explicit rule-pack-available flag:** clear when structural review only (no project pack)
+- **Review version 2.0 artifact contract**
+
+#### Workflow states (restricted)
+
+| State | Meaning |
+|-------|---------|
+| `reviewed_pending_human` | Pre-screen complete, awaiting human reviewer decision |
+| `returned_for_amendment_recommended` | System recommends return for subcontractor amendment |
+| `escalated_for_attention` | Requires escalation to senior reviewer/safety team |
+
+Never uses: approved, accepted, compliant, passed.
+
+#### How project rule packs affect the review
+
+- If a rule pack exists for the project, project-specific rules are checked and mismatches reported separately
+- If no rule pack exists, structural review still runs but `project_rule_pack_available` is false
+- Rule packs are stored at `src/data/procore_rule_packs/project_{id}.json`
+
+#### What remains deferred
+
+- **Resubmission comparison:** Phase 2 prepares the data shape (fingerprints, identifiers) but does not compare versions. Phase 3 would add version-to-version comparison.
+- **Amendment template generation:** Not in scope
+- **Autonomous approval:** Never in scope
+- **Multi-surface support:** Submittals only
