@@ -106,3 +106,13 @@ If this experiment is adopted, a light prompt validation pass against Sonnet out
 - Monitor the first 5 real customer jobs after adoption for ccvs_coverage regressions
 - If ccvs_coverage FAILs increase, add a light monitoring-coverage prompt constraint for Sonnet
 - Do not change Decomposer, Risk Assessor, or Assembler models in this phase
+
+### Post-adoption validation status
+
+**Status:** Pending — first 3 real Sonnet jobs must complete mandatory edit capture.
+
+**Known gap:** The adoption experiment had no edit-capture evidence (no reviewed/final docx artifacts existed). The first 3 real jobs must go through consultant edit capture to confirm that structural gains translate into lower real consultant burden.
+
+**Tracking template:** `docs/validation/sonnet_post_adoption_validation.md`
+
+This is an operational observation window, not a re-run of the adoption experiment.
