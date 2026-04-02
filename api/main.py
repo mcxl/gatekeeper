@@ -1169,6 +1169,8 @@ async def procore_webhook_endpoint(request: Request):
         swms_text, rule_pack,
         job_id=f"procore-{event.project_id}-{event.resource_id}",
         document_reference=att.filename,
+        source_surface="submittals",
+        source_item_id=str(event.resource_id),
     )
 
     # Log review

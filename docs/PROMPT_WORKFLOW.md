@@ -409,9 +409,20 @@ Never uses: approved, accepted, compliant, passed.
 - If no rule pack exists, structural review still runs but `project_rule_pack_available` is false
 - Rule packs are stored at `src/data/procore_rule_packs/project_{id}.json`
 
+#### Phase 2 refinements
+
+- **Workflow state precedence:** LOW confidence -> escalated; high/hrcw_gap -> escalated; amendments -> returned; else -> reviewed_pending_human
+- **Controlled basis vocabulary:** issue_gate_check, project_rule, structural_defect, hrcw_gap, reviewer_judgment
+- **Deterministic amendment ordering:** severity -> basis reliability -> source order
+- **Top-5 visible amendments:** `suppressed_issue_count` tracks hidden overflow
+- **project_review_status:** AVAILABLE | PARTIAL | UNAVAILABLE
+- **Stable identifiers:** review_run_id, document_hash, source_surface, source_item_id for Phase 3 comparison
+- **LOW confidence escalation:** forces escalated_for_attention + strengthened disclaimer
+- **Evidence rules:** evidence_ref populated for deterministic findings; null for judgment-only
+
 #### What remains deferred
 
-- **Resubmission comparison:** Phase 2 prepares the data shape (fingerprints, identifiers) but does not compare versions. Phase 3 would add version-to-version comparison.
+- **Resubmission comparison:** Phase 2 prepares the data shape (document_hash, review_run_id, source_item_id) but does not compare versions. Phase 3 would add version-to-version comparison.
 - **Amendment template generation:** Not in scope
 - **Autonomous approval:** Never in scope
 - **Multi-surface support:** Submittals only
