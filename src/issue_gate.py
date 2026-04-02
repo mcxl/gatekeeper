@@ -53,6 +53,8 @@ class GateCheck:
     name: str
     result: CheckResult
     detail: str = ""
+    rule_id: str = ""
+    finding_key: str = ""
 
 
 @dataclass
@@ -1311,6 +1313,17 @@ def run_issue_gate(
         result.checks.append(_check_unsupported_controls_docx(doc, allowed_keywords))
         result.checks.append(_check_responsibility_field(doc, stage))
         result.checks.append(_check_footer(doc))
+
+    # Annotate checks with rule library metadata
+    try:
+        from src.rule_library.rule_library import _find_by_finding_key
+        for check in result.checks:
+            rule = _find_by_finding_key(check.name)
+            if rule:
+                check.rule_id = rule["rule_id"]
+                check.finding_key = rule["finding_key"]
+    except Exception:
+        pass  # rule library annotation is advisory — never blocks gate
 
     # Classify overall result
     if result.failed > 0:

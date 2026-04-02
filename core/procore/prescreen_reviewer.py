@@ -205,6 +205,15 @@ def _check_project_rules(text: str, rules: list[dict]) -> list[dict]:
     return amendments
 
 
+def _get_library_version() -> str:
+    """Get the rule library version. Returns empty string if unavailable."""
+    try:
+        from src.rule_library.rule_library import load
+        return load().get("library_version", "")
+    except Exception:
+        return ""
+
+
 def _make_issue_key(basis: str, rule_id: str, category: str, title: str) -> str:
     """Generate a stable issue key for comparison matching."""
     if rule_id:
@@ -403,6 +412,7 @@ def run_prescreen_review(
         "suppressed_issue_count": suppressed,
         "_all_amendments": sorted_amendments,  # full internal inventory for comparison
         "rule_pack_version": project_rule_pack.get("pack_version", ""),
+        "rule_library_version": _get_library_version(),
         "project_specific_mismatches": project_mismatches,
         "structural_findings": {
             "sequence": seq_status,

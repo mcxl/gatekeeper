@@ -461,3 +461,49 @@ Phase 3 compares the current SWMS review against the previous reviewed version f
 - `comparison_bypassed_as_net_new_review`: true if too different for granular comparison
 - `has_regression`: true if new mandatory/high issues appeared
 - `comparison_disclaimer`: always present, always advisory
+
+---
+
+## Rule Library Overlay v1
+
+Lightweight normalization and annotation layer giving findings stable identifiers and consistent metadata for governance, traceability, and reporting.
+
+### What it is
+
+- A small static JSON taxonomy (`src/rule_library/rule_library.json`)
+- A thin mapping/annotation layer (`src/rule_library/rule_library.py`)
+- Additive metadata on existing findings — does not replace review logic
+
+### What it is NOT
+
+- Not a new decision engine
+- Not a rule authoring system
+- Not executable logic
+- Not routing or escalation automation
+
+### Rule ID prefixes
+
+| Prefix | Meaning |
+|--------|---------|
+| `IG-xxx` | Issue gate deterministic check |
+| `RV-xxx` | Reviewer judgment finding |
+| `PR-xxx` | Project rule reference (future) |
+| `CO-xxx` | Consultant-only (future) |
+
+### Mapping precedence
+
+1. `finding_key` exact match (issue gate checks)
+2. Project rule `rule_id` (PR- prefix)
+3. `rule_family` match (reviewer findings)
+4. No match → `rule_id: null` (explicit)
+
+### Canonical library vs project rule packs
+
+The canonical library is separate from project-specific rule packs. Project rule packs may reference canonical `rule_id`s where applicable but are not merged into the canonical library.
+
+### Deferred to v2
+
+- Executable logic in the taxonomy
+- Customer-editable rules
+- Routing/escalation automation
+- Scoring/weighting engine
