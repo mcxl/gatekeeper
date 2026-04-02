@@ -1173,8 +1173,29 @@ async def procore_webhook_endpoint(request: Request):
         source_item_id=str(event.resource_id),
     )
 
-    # Log review
+    # Log review and store full artifact for Phase 3 comparison
     log_review(review_artifact, event)
+    try:
+        from core.procore.review_store import store_artifact
+        store_artifact(review_artifact)
+    except Exception:
+        logger.warning("Failed to store review artifact for comparison")
+
+    # Phase 3: resubmission comparison
+    comparison = None
+    try:
+        from core.procore.review_store import find_previous_artifact
+        from core.procore.resubmission_comparison import compare_reviews
+        previous = find_previous_artifact(
+            project_id=str(event.project_id),
+            source_surface="submittals",
+            source_item_id=str(event.resource_id),
+            exclude_run_id=review_artifact.get("review_run_id", ""),
+        )
+        if previous:
+            comparison = compare_reviews(review_artifact, previous, current_swms_text=swms_text)
+    except Exception as cmp_err:
+        logger.warning(f"Resubmission comparison failed: {cmp_err}")
 
     # Phase 1B: post comment back to Procore if live and configured
     comment_posted = False
@@ -1191,7 +1212,7 @@ async def procore_webhook_endpoint(request: Request):
     except Exception as comment_err:
         logger.warning(f"Procore comment post failed: {comment_err}")
 
-    return JSONResponse(content={
+    response_content = {
         "status": "reviewed",
         "delivery_id": event.delivery_id,
         "project_id": event.project_id,
@@ -1199,7 +1220,10 @@ async def procore_webhook_endpoint(request: Request):
         "retrieval_mode": retrieval_mode,
         "comment_posted": comment_posted,
         "review": review_artifact,
-    })
+    }
+    if comparison:
+        response_content["comparison"] = comparison
+    return JSONResponse(content=response_content)
 
 
 # ============================================================

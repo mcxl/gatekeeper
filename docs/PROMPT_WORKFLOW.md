@@ -426,3 +426,38 @@ Never uses: approved, accepted, compliant, passed.
 - **Amendment template generation:** Not in scope
 - **Autonomous approval:** Never in scope
 - **Multi-surface support:** Submittals only
+
+### Phase 3: Resubmission comparison
+
+Phase 3 compares the current SWMS review against the previous reviewed version for the same Procore item.
+
+#### What Phase 3 adds
+
+- **Issue classification:** fixed_issues, still_open_issues, new_issues
+- **Stable issue matching:** exact issue_key (Tier 1), fuzzy title+reason (Tier 2)
+- **Conservative matching:** weak matches (<0.85) stay still_open, never auto-fixed
+- **Macro similarity check:** bypasses granular comparison if document is >40% different
+- **Rule pack version safety:** flags when rule pack changed between reviews
+- **Scope reduction detection:** flags >15% task count drop
+- **Regression detection:** has_regression when new mandatory/high issues appear
+- **Comparison confidence:** HIGH / MEDIUM / LOW (LOW forces escalation)
+
+#### How matching works
+
+| Tier | Method | Threshold | Result |
+|------|--------|-----------|--------|
+| 1 | Exact issue_key | exact | still_open (exact match) |
+| 2 | Fuzzy title+reason | >=0.85 | still_open (strong) |
+| 2 | Fuzzy title+reason | >=0.50 | still_open (weak — conservative) |
+| - | Unmatched previous | - | fixed |
+| - | Unmatched current | - | new |
+
+#### Key fields
+
+- `comparison_confidence`: HIGH / MEDIUM / LOW
+- `rule_pack_changed`: true if versions differ
+- `scope_reduction_flag`: true if task count dropped >15%
+- `document_similarity_warning`: true if macro similarity is poor
+- `comparison_bypassed_as_net_new_review`: true if too different for granular comparison
+- `has_regression`: true if new mandatory/high issues appeared
+- `comparison_disclaimer`: always present, always advisory

@@ -195,9 +195,25 @@ def _check_project_rules(text: str, rules: list[dict]) -> list[dict]:
             amendment.setdefault("severity", severity)
             amendment.setdefault("basis", basis)
             amendment["project_rule"] = requirement
+            # Stable issue key for comparison
+            amendment["issue_key"] = _make_issue_key(
+                amendment.get("basis", ""), rule_id, category,
+                amendment.get("title", ""),
+            )
             amendments.append(amendment)
 
     return amendments
+
+
+def _make_issue_key(basis: str, rule_id: str, category: str, title: str) -> str:
+    """Generate a stable issue key for comparison matching."""
+    if rule_id:
+        return f"{basis}:{rule_id}"
+    if category:
+        return f"{basis}:{category}"
+    # Normalize title stem
+    stem = title.lower().split("(")[0].strip().replace(" ", "_")[:40]
+    return f"{basis}:{stem}"
 
 
 def _check_structural_expectations(text: str, expectations: list[str]) -> list[dict]:
@@ -385,6 +401,8 @@ def run_prescreen_review(
         "review_summary": summary,
         "required_amendments": visible,
         "suppressed_issue_count": suppressed,
+        "_all_amendments": sorted_amendments,  # full internal inventory for comparison
+        "rule_pack_version": project_rule_pack.get("pack_version", ""),
         "project_specific_mismatches": project_mismatches,
         "structural_findings": {
             "sequence": seq_status,
