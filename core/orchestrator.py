@@ -21,6 +21,7 @@ import asyncio
 import functools
 import logging
 import re as _re
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -119,6 +120,40 @@ async def _run_full_pipeline(
     except Exception as e:
         log.error(f"Agent 1 failed: {e}")
         raise RuntimeError(f"Decomposer failed: {e}") from e
+
+    # ── DAG sequence validation (excavation) ──────────────────────────────────
+    category_hint = (
+        inference.get("hrcw_category", "") or ""
+    ) + " " + " ".join(inference.get("keywords_matched", []) if inference.get("keywords_matched") else [])
+    category_hint = category_hint.lower()
+
+    if "excavat" in category_hint or "excavat" in description.lower():
+        try:
+            from core.sequence_validator import SequenceValidator
+            _exc_validator = SequenceValidator(
+                str(Path(__file__).parent / "dag_rules" / "excavation.json"),
+                strict_mode=False,
+            )
+            dag_result = _exc_validator.validate(
+                task_manifest.get("tasks", []), "excavation"
+            )
+        except Exception as e:
+            log.warning(f"DAG validation error: {e}")
+            dag_result = {
+                "sequence_validated": False,
+                "hard_fails": [], "human_reviews": [],
+                "mandatory_acknowledgments": [], "cse_overlap": "none",
+            }
+
+        task_manifest["dag_result"] = dag_result
+        log.info(
+            f"DAG validation: valid={dag_result.get('valid')}, "
+            f"hard_fails={len(dag_result.get('hard_fails', []))}, "
+            f"cse_overlap={dag_result.get('cse_overlap')}"
+        )
+
+        if dag_result.get("mandatory_acknowledgments"):
+            task_manifest["mandatory_acknowledgments"] = dag_result["mandatory_acknowledgments"]
 
     # ── Agent 2: Risk assess ──────────────────────────────────────────────────
     log.info("Agent 2 — Risk Assessor starting")

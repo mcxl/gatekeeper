@@ -1,0 +1,78 @@
+{
+  "category": "excavation",
+  "mapping_confidence_threshold": 0.65,
+  "cse_explicit_keywords": [
+    "manhole", "sewer", "shaft", "pump station",
+    "pit entry", "confined space"
+  ],
+  "cse_ambiguous_indicators": [
+    "restricted access", "limited egress",
+    "narrow trench", "enclosed"
+  ],
+  "atmospheric_minimum_controls": [
+    "gas detector",
+    "continuous monitor",
+    "rescue plan"
+  ],
+  "nodes": [
+    {
+      "id": "byda_clearance",
+      "keywords": ["byda", "before you dig", "dial before you dig", "service clearance"],
+      "predecessors": [],
+      "violation_type": "HARD_FAIL",
+      "note": "BYDA plus physical locating required"
+    },
+    {
+      "id": "service_locating",
+      "keywords": ["service locat", "pothole", "gpr", "ground penetrat", "scan underground"],
+      "predecessors": ["byda_clearance"],
+      "violation_type": "HARD_FAIL"
+    },
+    {
+      "id": "excavation_permit",
+      "keywords": [
+        "permit to be obtained", "permit required from pc",
+        "excavation permit prior to", "obtain permit before",
+        "permit from principal contractor"
+      ],
+      "predecessors": ["service_locating"],
+      "violation_type": "HARD_FAIL",
+      "note": "checks for permit process reference only"
+    },
+    {
+      "id": "mechanical_excavation",
+      "keywords": ["excavat", "dig", "trench", "earthwork", "machine dig", "bucket"],
+      "predecessors": ["excavation_permit"],
+      "violation_type": "HARD_FAIL"
+    },
+    {
+      "id": "shoring",
+      "keywords": ["shor", "bench", "batter", "trench shield", "trench box"],
+      "predecessors": ["mechanical_excavation"],
+      "violation_type": "HARD_FAIL"
+    },
+    {
+      "id": "atmospheric_monitoring",
+      "keywords": ["atmospheric", "gas monitor", "oxygen", "lel", "air quality", "4-gas", "four gas"],
+      "predecessors": [],
+      "violation_type": "HARD_FAIL",
+      "condition": "cse_overlap",
+      "note": "mandatory before trench_entry when CSE"
+    },
+    {
+      "id": "competent_person_signoff",
+      "keywords": ["competent person", "daily inspection", "engineer sign", "supervisor certif", "inspector sign"],
+      "predecessors": ["shoring"],
+      "violation_type": "HUMAN_REVIEW",
+      "mandatory_acknowledgment": "I confirm a competent person has been designated for daily trench inspection and sign-off."
+    },
+    {
+      "id": "trench_entry",
+      "keywords": ["entry", "enter trench", "work in trench", "personnel in", "workers in excavation", "access trench"],
+      "predecessors_always": ["shoring"],
+      "predecessors_if_cse": ["atmospheric_monitoring"],
+      "violation_type": "HARD_FAIL",
+      "note": "terminal danger node"
+    }
+  ]
+}

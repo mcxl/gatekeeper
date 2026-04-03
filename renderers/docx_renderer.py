@@ -1192,6 +1192,29 @@ def _build_ccvs_table(doc, tasks) -> None:
                 data_trPr.remove(_th)
 
 
+def _render_mandatory_acknowledgments(doc, tasks) -> None:
+    """Render mandatory acknowledgment blocks if any task has them."""
+    acks = []
+    for tb in tasks:
+        task_acks = getattr(tb, "mandatory_acknowledgments", None) or []
+        acks.extend(task_acks)
+    if not acks:
+        return
+    # Add acknowledgment paragraph(s) after the task table
+    for ack_text in dict.fromkeys(acks):  # dedupe preserving order
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_after = Pt(6)
+        run = p.add_run("REQUIRED: Safety Manager Acknowledgment")
+        run.bold = True
+        run.font.color.rgb = RED
+        run.font.size = Pt(10)
+        p2 = doc.add_paragraph()
+        run2 = p2.add_run(ack_text)
+        run2.font.size = Pt(9)
+        run2.bold = True
+
+
 def _fill_signoff_table(doc) -> None:
     """Prevent sign-off tables rows from splitting across pages."""
     for ti in range(TBL_SIGNOFF_FIRST, TBL_SIGNOFF_LAST + 1):
@@ -1469,6 +1492,7 @@ def render_swms_document(
         _tr._tr.getparent().remove(_tr._tr)
 
     _build_task_table(doc, tasks)
+    _render_mandatory_acknowledgments(doc, tasks)
     _format_risk_matrix(doc)
     _fill_prerequisites_table(doc, tasks, inference, project_meta, jur, jurisdiction)
     _build_ccvs_table(doc, tasks)

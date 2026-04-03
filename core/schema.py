@@ -29,6 +29,7 @@ class TaskBlock(BaseModel):
     responsibility: dict[str, str]
     ccvs_code: str | None = None
     monitoring: MonitoringEntry | None = None
+    mandatory_acknowledgments: list[str] = Field(default_factory=list)
     wah_applicable: bool = False
     source: Literal["library", "ai-generated"] = "library"
     approved: bool = False
