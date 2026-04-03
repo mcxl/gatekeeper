@@ -12,6 +12,7 @@ Human review is mandatory. Safe Method does not make approval decisions.
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -22,6 +23,76 @@ from core.procore.webhook_handler import (
     MAX_REQUIRED_AMENDMENTS,
     REVIEW_DISCLAIMER,
 )
+
+_log = logging.getLogger(__name__)
+
+
+# ── Version suicide check ───────────────────────────────────────────────────
+
+async def is_job_superseded(
+    submittal_id: str,
+    current_version: str,
+) -> bool:
+    """Check if a newer version of this submittal is already received/processing/complete.
+
+    Query job_states for this submittal_id. If a newer version is already
+    received, processing, or complete — return True.
+    Never raises — returns False on any error.
+    """
+    try:
+        from src.job_state import read_state_log
+        records = read_state_log()
+        for rec in records:
+            item_id = str(rec.get("source_item_id", ""))
+            version = rec.get("detail", {}).get("version_id", "")
+            state = rec.get("state", "")
+            if (item_id == str(submittal_id)
+                    and version > current_version
+                    and state in ("received", "processing", "succeeded")):
+                return True
+    except Exception as e:
+        _log.warning(f"is_job_superseded check failed: {e}")
+    return False
+
+
+def check_superseded_before_posting(
+    submittal_id: str,
+    current_version: str,
+) -> bool:
+    """Synchronous wrapper for version suicide check before Procore comment posting.
+
+    Returns True if superseded (caller should exit without posting).
+    """
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Cannot await in sync context with running loop — use thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(
+                    asyncio.run, is_job_superseded(submittal_id, current_version)
+                ).result(timeout=5)
+        return asyncio.run(is_job_superseded(submittal_id, current_version))
+    except Exception as e:
+        _log.warning(f"check_superseded_before_posting failed: {e}")
+        return False
+
+
+def guard_before_posting(submittal_id: str, current_version: str) -> bool:
+    """Guard for version suicide before any Procore comment POST.
+
+    Returns True if superseded — caller must exit without posting.
+    Logs job_superseded event when returning True.
+    """
+    if check_superseded_before_posting(submittal_id, current_version):
+        _log.info(
+            "job_superseded: submittal_id=%s current_version=%s action=exit_without_posting",
+            submittal_id, current_version,
+        )
+        return True
+    return False
+
 
 # ── Controlled vocabularies ─────────────────────────────────────────────────
 
