@@ -18,7 +18,9 @@ import json
 import logging
 import os
 import sys
+import time
 import traceback
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +63,62 @@ from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
+from api.procore import router as procore_router
 from core.api_keys import get_user_or_api_key, log_api_key_usage
+from core.job_state import record_state
+from core.logging_config import get_correlation_id, log_event, set_correlation_id
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+@app.middleware("http")
+async def correlation_middleware(request: Request, call_next):
+    """Attach and propagate correlation_id for every inbound request."""
+    started = time.perf_counter()
+    inbound_cid = request.headers.get("X-Correlation-ID", "").strip()
+    cid = inbound_cid or str(uuid.uuid4())
+    set_correlation_id(cid)
+
+    log_event(
+        event_type="request_received",
+        duration_ms=None,
+        metadata={
+            "method": request.method,
+            "path": request.url.path,
+            "correlation_id": cid,
+        },
+    )
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        log_event(
+            event_type="request_complete",
+            duration_ms=duration_ms,
+            metadata={
+                "status_code": 500,
+                "method": request.method,
+                "path": request.url.path,
+                "correlation_id": cid,
+            },
+        )
+        raise
+
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    response.headers["X-Correlation-ID"] = cid
+    log_event(
+        event_type="request_complete",
+        duration_ms=duration_ms,
+        metadata={
+            "status_code": response.status_code,
+            "method": request.method,
+            "path": request.url.path,
+            "correlation_id": cid,
+        },
+    )
+    return response
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -89,6 +143,7 @@ from api.control_pack_routes import router as control_pack_router
 app.include_router(upload_router)
 app.include_router(intake_router)
 app.include_router(control_pack_router)
+app.include_router(procore_router, prefix="/procore")
 
 app.add_middleware(
     CORSMiddleware,
@@ -590,6 +645,9 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
     from fastapi.responses import StreamingResponse
     from core.orchestrator import generate_swms_stream
 
+    cid = get_correlation_id()
+    await record_state(cid, "swms_generate", "received", {"path": "/generate/stream"})
+
     description = (request.get("description") or "").strip()
     if not description or len(description.split()) < 3:
         return JSONResponse(
@@ -622,9 +680,17 @@ async def generate_stream(request: dict, user: dict = Depends(get_current_user))
                     break
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
+            await record_state(cid, "swms_generate", "complete", {"path": "/generate/stream"})
         except Exception as e:
+            await record_state(
+                cid,
+                "swms_generate",
+                "failed",
+                {"path": "/generate/stream", "error": type(e).__name__, "detail": str(e)[:200]},
+            )
             logger.error(f"Stream generation failed:\n{traceback.format_exc()}")
             yield f"data: {json.dumps({'type': 'error', 'message': f'Generation failed: {type(e).__name__}: {e}'})}\n\n"
+            raise
 
     return StreamingResponse(
         event_generator(),
@@ -644,6 +710,8 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
     Renders all tasks into a single Word document and returns as file download.
     Runs post-render validation if validate=true (default).
     """
+    cid = get_correlation_id()
+    await record_state(cid, "render_docx", "received", {"path": "/render/docx"})
     try:
         jurisdiction = request.get("jurisdiction", "AU")
         docx_bytes, filename = _render_tasks_to_docx(request, jurisdiction=jurisdiction)
@@ -666,14 +734,27 @@ async def render_docx_endpoint(request: dict, user: dict = Depends(get_current_u
                 rev_action = validator_summary.get("reviewer_action", "")[:200]
                 headers["X-Reviewer-Action"] = rev_action.encode("ascii", errors="replace").decode("ascii")
 
+        await record_state(cid, "render_docx", "complete", {"path": "/render/docx"})
         return Response(
             content=docx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers=headers,
         )
     except ValueError as e:
+        await record_state(
+            cid,
+            "render_docx",
+            "failed",
+            {"path": "/render/docx", "error": type(e).__name__, "detail": str(e)[:200]},
+        )
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
+        await record_state(
+            cid,
+            "render_docx",
+            "failed",
+            {"path": "/render/docx", "error": type(e).__name__, "detail": str(e)[:200]},
+        )
         logger.error(f"Render DOCX failed:\n{traceback.format_exc()}")
         return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
 
@@ -862,19 +943,34 @@ async def render_pdf_endpoint(request: dict, user: dict = Depends(get_current_us
     """
     from renderers.pdf_renderer import docx_to_pdf
 
+    cid = get_correlation_id()
+    await record_state(cid, "render_pdf", "received", {"path": "/render/pdf"})
     try:
         docx_bytes, docx_filename = _render_tasks_to_docx(request)
         pdf_bytes = docx_to_pdf(docx_bytes)
         pdf_filename = docx_filename.rsplit(".", 1)[0] + ".pdf"
 
+        await record_state(cid, "render_pdf", "complete", {"path": "/render/pdf"})
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={"Content-Disposition": f'attachment; filename="{pdf_filename}"'},
         )
     except ValueError as e:
+        await record_state(
+            cid,
+            "render_pdf",
+            "failed",
+            {"path": "/render/pdf", "error": type(e).__name__, "detail": str(e)[:200]},
+        )
         return JSONResponse(content={"error": str(e)}, status_code=400)
     except Exception as e:
+        await record_state(
+            cid,
+            "render_pdf",
+            "failed",
+            {"path": "/render/pdf", "error": type(e).__name__, "detail": str(e)[:200]},
+        )
         logger.error(f"Render PDF failed:\n{traceback.format_exc()}")
         return JSONResponse(content={"detail": f"Render failed: {type(e).__name__}: {e}"}, status_code=500)
 
@@ -1482,6 +1578,9 @@ async def v1_generate_stream(request: dict, auth: dict = Depends(get_user_or_api
     import time as _time
     from core.orchestrator import generate_swms_stream
 
+    cid = get_correlation_id()
+    await record_state(cid, "swms_generate", "received", {"path": "/v1/generate/stream"})
+
     description = (request.get("description") or "").strip()
     if not description or len(description.split()) < 3:
         return JSONResponse(
@@ -1517,10 +1616,18 @@ async def v1_generate_stream(request: dict, auth: dict = Depends(get_user_or_api
                     break
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
+            await record_state(cid, "swms_generate", "complete", {"path": "/v1/generate/stream"})
         except Exception as e:
             success = False
+            await record_state(
+                cid,
+                "swms_generate",
+                "failed",
+                {"path": "/v1/generate/stream", "error": type(e).__name__, "detail": str(e)[:200]},
+            )
             logger.error(f"v1 stream generation failed:\n{traceback.format_exc()}")
             yield f"data: {_json.dumps({'type': 'error', 'message': 'An internal error occurred. Please try again.'})}\n\n"
+            raise
         finally:
             if auth.get("key_id"):
                 elapsed = (_time.monotonic_ns() // 1_000_000) - start_ms
