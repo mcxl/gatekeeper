@@ -107,7 +107,8 @@ async def correlation_middleware(request: Request, call_next):
         raise
 
     duration_ms = int((time.perf_counter() - started) * 1000)
-    response.headers["X-Correlation-ID"] = cid
+    if "x-correlation-id" not in response.headers:
+        response.headers["x-correlation-id"] = cid
     log_event(
         event_type="request_complete",
         duration_ms=duration_ms,

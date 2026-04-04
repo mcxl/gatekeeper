@@ -84,7 +84,10 @@ async def procore_webhook(request: Request):
             },
         )
     except Exception as exc:
-        logger.error("job_states insert failed: %s", exc)
+        logger.error("job_states insert failed: %s — type: %s", exc, type(exc).__name__)
+        import traceback
+
+        logger.error(traceback.format_exc())
 
     return JSONResponse(
         content={"status": "accepted", "correlation_id": correlation_id},
