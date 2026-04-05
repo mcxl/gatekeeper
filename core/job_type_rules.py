@@ -26,6 +26,13 @@ class JobTypeRulePack:
     clt_crane_detected: bool = False
 
 
+@dataclass
+class SequenceRulePack:
+    pack_id: str
+    fail_if_late: list[str] = field(default_factory=list)
+    fail_if_missing: list[str] = field(default_factory=list)
+
+
 # ── Rule packs ───────────────────────────────────────────────────────────────
 
 _REMEDIAL = JobTypeRulePack(
@@ -167,3 +174,37 @@ OCCUPIED_RESIDENTIAL_ADDITIONAL = [
     "resident_exclusion_zone_logic",
     "emergency_arrangements_for_occupied_building",
 ]
+
+
+_SEQUENCE_PACK_PROTECTED_ROOF_ACCESS_SCISSOR = SequenceRulePack(
+    pack_id="protected_roof_access_scissor",
+    fail_if_late=[
+        "exclusion zone",
+    ],
+    fail_if_missing=[
+        "verify protected access arrangement",
+        "exclusion zone",
+        "controlled transfer into protected roof zone",
+    ],
+)
+
+
+def match_sequence_rule_packs(description: str) -> list[SequenceRulePack]:
+    """
+    Returns active sequence rule packs for the description.
+    """
+    text = (description or "").lower()
+    has_scissor = "scissor lift" in text
+    has_roof = "roof" in text
+    has_protected = (
+        "guardrail" in text
+        or "guardrailed" in text
+        or "protected" in text
+    )
+    excluded = (
+        "roofing installation" in text
+        or "leading edge" in text
+    )
+    if has_scissor and has_roof and has_protected and not excluded:
+        return [_SEQUENCE_PACK_PROTECTED_ROOF_ACCESS_SCISSOR]
+    return []
