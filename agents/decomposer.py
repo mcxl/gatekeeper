@@ -205,6 +205,15 @@ TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
 - hrcw_flags: list of HRCW categories that apply, empty list if hrcw=false
 - complexity: low / medium / high
 
+SEQUENCE RULE — MANDATORY:
+The first task in every SWMS must be the pre-start safety briefing and SWMS review. This is non-negotiable.
+sequence 1 must always be:
+  task: "Pre-start safety briefing and SWMS review"
+  scope: "All workers briefed on SWMS content, site hazards, emergency procedures, and hold points before any work begins."
+  hrcw: false
+  environment: []
+Do not place any site work task at sequence 1 under any circumstances.
+
 Return ONLY a valid JSON object. No commentary. No markdown fences.
 Schema:
 {
