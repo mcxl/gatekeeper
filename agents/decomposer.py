@@ -274,13 +274,14 @@ async def run_decomposer(description: str, inference: dict, scope_context: dict 
     scope_block = _build_scope_context_block(scope_context)
     sequence_packs = match_sequence_rule_packs(description)
     sequence_pack_context = render_sequence_rule_pack_context(sequence_packs)
+    sequence_pack_block = "\n\n" + sequence_pack_context if sequence_pack_context else ""
 
     user_content = (
         f"Work description:\n{description}"
         f"{hrcw_context}"
         f"{env_context}"
         f"{scope_block}"
-        f"{'\\n\\n' + sequence_pack_context if sequence_pack_context else ''}"
+        f"{sequence_pack_block}"
         f"\n\nGenerate between 8 and 12 tasks. Maximum 12 — combine minor steps if needed."
         f"\n\nDecompose into ordered tasks. Return TaskManifest JSON only."
     )
