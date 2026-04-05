@@ -272,6 +272,25 @@ CCVS CODES — assign the highest applicable:
   SIL-H9  Silica dust — uncontrolled exposure, no RPE, no monitoring
   N/A     No CCVS trigger for this task
 
+CCVS CONTAMINATION RULE - MANDATORY:
+Your controls, monitoring, and CCVS verification checks must only relate
+to this specific task and its CCVS code.
+
+FORBIDDEN - never include in any task:
+- Grinding cycle checks or dust extraction controls unless the task
+  explicitly involves grinding or cutting
+- P2 respirator fitting checks unless the task involves silica or dust
+- EWP pre-use checks unless the task involves EWP operation
+- Scaffold inspection items unless the task involves scaffold erection or use
+- "Module weight" or "module weights" - never under any circumstances
+- "Solar panel" - never
+- "Check lanyard attachment" in any ground-level, excavation, or demob task
+- "Dust extraction running" in any task that does not involve cutting,
+  grinding, or drilling into concrete or masonry
+
+If a control does not match this task's name, scope, and CCVS code - do not
+write it.
+
 SILICA SCORING RULES:
 - Active dust generation (grinding, cutting, drilling, jackhammering)
   MUST use SIL-H6 or SIL-H9 — never SYS or N/A

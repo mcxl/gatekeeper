@@ -103,6 +103,65 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
+def _scan_contamination(
+    task_blocks: list[dict],
+) -> list[dict]:
+    import logging
+    log = logging.getLogger(__name__)
+
+    MARKERS = [
+        "module weight",
+        "module weights",
+        "grinding cycle",
+        "dust extraction running",
+        "p2 respirator fitted before each",
+        "scaffold daily pre-use",
+        "ewp pre-use check",
+        "solar panel",
+    ]
+    WAH_MARKER = "check lanyard attachment"
+
+    for tb in task_blocks:
+        ccvs = tb.get("ccvs_code", "N/A")
+        is_wah = ccvs.startswith("WAH")
+
+        for field in [
+            "controls", "admin", "ppe",
+            "hold_points", "stop_work"
+        ]:
+            original = tb.get(field, [])
+            cleaned = []
+            for bullet in original:
+                bl = bullet.lower()
+                contaminated = False
+                for marker in MARKERS:
+                    if marker in bl:
+                        log.warning(
+                            "Contamination removed "
+                            "from '%s' [%s]: '%s'",
+                            tb.get("task", ""),
+                            field,
+                            bullet[:80],
+                        )
+                        contaminated = True
+                        break
+                if not contaminated and not is_wah:
+                    if WAH_MARKER in bl:
+                        log.warning(
+                            "Contamination removed "
+                            "from '%s' [%s]: '%s'",
+                            tb.get("task", ""),
+                            field,
+                            bullet[:80],
+                        )
+                        contaminated = True
+                if not contaminated:
+                    cleaned.append(bullet)
+            tb[field] = cleaned
+
+    return task_blocks
+
+
 async def run_assembler(
     task_manifest: dict,
     risk_manifest: dict,
@@ -116,6 +175,9 @@ async def run_assembler(
     """
     merged = _pre_merge(task_manifest, risk_manifest, control_manifest)
     task_blocks = [_finalise_task_block(m) for m in merged]
+    task_blocks = _scan_contamination(
+        task_blocks
+    )
     return task_blocks
 
 
@@ -175,9 +237,10 @@ async def run_assembler_single(
     text = strip_fences(block.text)
 
     from core.utils import extract_json
-    fixed = extract_json(text)
-    _post_process_task_block(fixed)
-    return fixed
+    tb = extract_json(text)
+    _post_process_task_block(tb)
+    tb = _scan_contamination([tb])[0]
+    return tb
 
 
 def _pre_merge(
