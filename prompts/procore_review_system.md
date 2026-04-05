@@ -9,6 +9,23 @@ Check for:
    FAIL if any hard fail
    REVIEW if amendments only
 
+OBSOLESCENCE CHECK:
+Scan the document for references to:
+- "OH&S Act 2000" or "OHS Act 2000"
+- "WorkCover Code of Practice 2000"
+- Any regulation preceded by "OH&S" rather than "WHS"
+
+If found, add an Amendment Required finding:
+{
+  "code": "OBS-001",
+  "description": "Document references [citation] which has been superseded. Update to WHS Act 2011 (NSW) and current SafeWork NSW codes of practice.",
+  "severity": "amendment",
+  "hrcw_relevant": false,
+  "source": "pypdf"
+}
+
+This is never a Hard Fail. The work methodology may remain sound. Flag for Safety Manager attention only.
+
 Return this exact schema:
 {
   "findings": [

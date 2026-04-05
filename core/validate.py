@@ -125,6 +125,74 @@ def _is_wah_exempt(bullet: str) -> bool:
 # SCORE_TASK — runs all 12 checks, returns ValidationResult
 # ============================================================
 
+_GEOTECH_TERMS = ("geotech", "geotechnical", "soil report", "soil assessment", "foundation report")
+_GEOTECH_DEFERRED = ("tba", "tbc", "to be", "pending", "not yet", "awaiting")
+_DEPTH_PATTERN = re.compile(r"(\d+\.?\d*)\s*m(?:etre|eter|m|\b)", re.IGNORECASE)
+_INFERRED_DEPTH_KEYWORDS = ("shoring", "trench shield", "trench box", "bench", "batter")
+_STABLE_ROCK_TERMS = ("stable rock", "competent rock", "no shoring required")
+_STABLE_ROCK_AUTHORITY = ("cpeng", "nper", "registered geotechnical", "geotechnical engineer")
+
+
+def check_21_geotech_trigger(task: TaskBlock) -> str:
+    """Check 21: Geotech trigger for excavation >= 1.5m.
+
+    Returns 'PASS', 'FAIL', 'FAIL_STABLE_ROCK', or 'SKIP'.
+    """
+    hrcw_cat = str(getattr(task, "hrcw_category", "") or "").lower()
+    task_text = task.task.lower() + " " + task.scope.lower()
+    all_text = task_text + " " + " ".join(h.lower() for h in task.hazards)
+
+    is_excavation = "excavat" in hrcw_cat or "trench" in hrcw_cat or "excavat" in task_text or "trench" in task_text
+
+    if not is_excavation:
+        return "SKIP"
+
+    search_text = (
+        all_text + " "
+        + " ".join(c.lower() for c in task.controls)
+        + " " + " ".join(a.lower() for a in task.admin)
+        + " " + " ".join(s.lower() for s in task.stop_work)
+        + " " + " ".join(h.lower() for h in task.hold_points)
+    )
+
+    # Check for explicit depth >= 1.5m
+    depth_mentioned = False
+    for match in _DEPTH_PATTERN.finditer(search_text):
+        try:
+            depth = float(match.group(1))
+            if depth >= 1.5:
+                depth_mentioned = True
+                break
+        except ValueError:
+            continue
+
+    # Infer depth >= 1.5m if shoring/trench-shield keywords present
+    if not depth_mentioned:
+        if any(kw in search_text for kw in _INFERRED_DEPTH_KEYWORDS):
+            depth_mentioned = True
+
+    if not depth_mentioned:
+        return "SKIP"
+
+    # Stable rock path — requires registered geotechnical authority
+    if any(term in search_text for term in _STABLE_ROCK_TERMS):
+        if any(auth in search_text for auth in _STABLE_ROCK_AUTHORITY):
+            return "PASS"
+        return "FAIL_STABLE_ROCK"
+
+    # Check for geotech citation — exclude deferred/vague references
+    for term in _GEOTECH_TERMS:
+        if term in search_text:
+            # Check if the citation is deferred
+            for sent in search_text.split("."):
+                if term in sent and any(d in sent for d in _GEOTECH_DEFERRED):
+                    continue  # deferred — does not count
+                if term in sent:
+                    return "PASS"  # concrete citation found
+
+    return "FAIL"
+
+
 def score_task(task: TaskBlock) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
@@ -341,6 +409,24 @@ def score_task(task: TaskBlock) -> ValidationResult:
                 warnings.append(f"Check 13 — {w}: '{_preview(item)}'")
     except ImportError:
         pass
+
+    # ----------------------------------------------------------
+    # CHECK 21: GEOTECH TRIGGER
+    # Excavation >= 1.5m requires geotechnical soil report citation.
+    # ----------------------------------------------------------
+    _geotech_result = check_21_geotech_trigger(task)
+    if _geotech_result == "FAIL":
+        errors.append(
+            "Check 21 — Rule 21: No geotechnical soil report cited for "
+            "excavation ≥ 1.5m. HRCW — work in excavations requires "
+            "a current geotechnical assessment."
+        )
+    elif _geotech_result == "FAIL_STABLE_ROCK":
+        errors.append(
+            "Check 21 — Rule 21: 'Stable rock' claim requires sign-off "
+            "by a CPEng, NPER, or registered geotechnical engineer. "
+            "No qualifying authority cited."
+        )
 
     passed = len(errors) == 0
     return ValidationResult(
