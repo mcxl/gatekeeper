@@ -43,6 +43,8 @@ Good: Install push-pull props to engineer sequence
 Bad: Roofing works / Manage site safety / Undertake repairs
 
 SEQUENCE RULES — enforce strictly:
+- Task 1 is always the mandatory pre-start safety briefing and SWMS review.
+  Sequence and dependency rules below begin from Task 2 onward.
 - Enabling tasks before dependent tasks
 - Access and setup before access-dependent work
 - Isolate and barricade before scaffold erection
@@ -54,12 +56,14 @@ SEQUENCE RULES — enforce strictly:
 - Demobilisation last
 
 FRAMEWORK VS STANDALONE:
-Do NOT create task rows for:
+Do NOT create extra task rows for:
 - Generic toolbox talk
-- Generic SWMS review
+- Generic SWMS review (except the mandatory Task 1 pre-start briefing and SWMS review)
 - Generic latent condition wording
 - Generic emergency note
 These belong in pre-start logic or stop-work framework, not as standalone task rows in the main sequence.
+Mandatory exception:
+- Task 1 must always be the dedicated pre-start safety briefing and SWMS review row.
 
 Distinguish clearly:
 - Standalone task: real physical work stage
@@ -145,23 +149,32 @@ PLAIN ENGLISH WRITING RULES (WorkCover NSW Guidelines):
 RULES:
 - Maximum 8 tasks. 6-8 tasks is ideal. Combine minor steps into logical groups.
 - Tasks must be in logical work sequence:
-    mobilisation → site establishment → preparatory works →
+    pre-start briefing → mobilisation → site establishment → preparatory works →
     principal works → finishing → defects / make good → demobilisation
 
 TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
-- Tilt-up or precast concrete: site setup → formwork erection →
+- Excavation / civil trenching: pre-start safety briefing and SWMS review →
+  service locating, DBYD confirmation, and permit activation →
+  traffic management and exclusion setup → mechanical and hand excavation →
+  installation or repair work → inspection/testing → backfill/reinstatement →
+  demobilisation.
+- Tilt-up or precast concrete: pre-start safety briefing and SWMS review →
+  site setup → formwork erection →
   reinforcement → concrete pour → cure and strip formwork →
   panel preparation and inspection → crane erection and panel
   installation → post-erection bracing → defect inspection and
   fix → brace removal (engineer release only) → demobilisation.
   NEVER place brace removal before erection. NEVER place site
   setup after any construction activity.
-- Scaffold: site setup → scaffold erection → principal works →
+- Scaffold: pre-start safety briefing and SWMS review →
+  site setup → scaffold erection → principal works →
   scaffold dismantling → demobilisation.
-- Demolition: site setup → services isolation → hazmat survey
+- Demolition: pre-start safety briefing and SWMS review →
+  site setup → services isolation → hazmat survey
   and removal → structural demolition (top-down) → debris
   removal → demobilisation.
-- Remedial waterproofing / balcony / terrace: site setup →
+- Remedial waterproofing / balcony / terrace: pre-start safety briefing and SWMS review →
+  site setup →
   scaffold or access → remove existing membrane, screed, and
   tile bed (silica-producing demolition task) → repair substrate
   (cracks, spalling) → apply new waterproofing membrane →
@@ -169,11 +182,13 @@ TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
   ALWAYS include a separate removal/demolition task before
   waterproofing application. Do not skip straight to membrane
   application without first removing the failed existing system.
-- Remedial painting / facade repairs: site setup → scaffold or
+- Remedial painting / facade repairs: pre-start safety briefing and SWMS review →
+  site setup → scaffold or
   access → removals and preparation → structural repairs →
   sealant and coating application → finish coats → reinstatement
   → defects → demobilisation. Keep repairs before coatings.
-- CLT / mass timber panel installation: site setup → crane
+- CLT / mass timber panel installation: pre-start safety briefing and SWMS review →
+  site setup → crane
   positioning and lift plan confirmation → prepare prop bases
   (check bearing, timber packing where required) → lift and
   position panel with crane → plumb panel and install temporary
@@ -205,13 +220,71 @@ TRADE-SPECIFIC SEQUENCE RULES (override generic sequence):
 - complexity: low / medium / high
 
 SEQUENCE RULE — MANDATORY:
-The first task in every SWMS must be the pre-start safety briefing and SWMS review. This is non-negotiable.
-sequence 1 must always be:
-  task: "Pre-start safety briefing and SWMS review"
-  scope: "All workers briefed on SWMS content, site hazards, emergency procedures, and hold points before any work begins."
-  hrcw: false
-  environment: []
-Do not place any site work task at sequence 1 under any circumstances.
+
+TASK 1 MUST ALWAYS BE:
+  task: "Pre-start safety briefing
+    and SWMS review"
+  scope: "All workers briefed on SWMS
+    content, site hazards, emergency
+    procedures, and hold points before
+    any work begins."
+  type: prestart
+
+No exceptions. No site work task
+may appear at sequence 1.
+
+TASK 2 MUST ALWAYS BE the primary
+site setup task for the work type:
+  Excavation: service locating, DBYD
+    confirmation, and permit activation
+  Heights/roof: fall protection and
+    edge protection setup
+  Scaffold: scaffold erection and
+    inspection
+  Electrical: isolation, LOTO, and
+    permit activation
+  General: site establishment,
+    exclusion zones, access control
+
+FINAL TASK MUST ALWAYS BE:
+  Site clean-up, demobilisation, and
+  access reinstatement.
+  No task may appear after demob.
+
+STRUCTURAL BACKBONE RULES — MANDATORY:
+
+Heights HRCW detected:
+  Fall protection setup task must appear
+  before any elevated work task.
+
+Excavation HRCW detected:
+  Service locating and permit activation
+  must appear before any mechanical
+  excavation task.
+
+Inspection and testing tasks:
+  Must appear after core work tasks
+  and before demobilisation.
+  Never before the work they inspect.
+
+HRCW TASK MAPPING — mandatory:
+  For each HRCW category in inference
+  output, generate at least one task
+  that directly addresses it:
+  - Traffic corridor: traffic management
+    establishment task required
+  - Gas mains: utility notification and
+    service protection task required
+  - Scaffold: scaffold erection and
+    inspection as a distinct task
+
+TASK SCOPE RULE:
+  Define what the crew is doing,
+  not how they control risks.
+  Do not include PPE, environmental
+  controls, or safety tools in task
+  names or scope descriptions.
+  Controls are written by Agent 3.
 
 Return ONLY a valid JSON object. No commentary. No markdown fences.
 Schema:
@@ -262,6 +335,98 @@ def _build_scope_context_block(scope_context: dict) -> str:
     )
 
 
+def _enforce_structural_backbone(manifest: dict, description: str) -> dict:
+    """Deterministically enforce mandatory decomposer bookend tasks."""
+    tasks = manifest.get("tasks", []) or []
+    if not isinstance(tasks, list):
+        return manifest
+
+    desc = (description or "").lower()
+
+    def _new_task(task: str, scope: str, trade_type: str = "General", hrcw: bool = False) -> dict:
+        return {
+            "sequence": 0,
+            "task": task,
+            "scope": scope,
+            "trade_type": trade_type,
+            "environment": [],
+            "hrcw": hrcw,
+            "hrcw_flags": [],
+            "complexity": "low",
+        }
+
+    def _is_briefing(t: dict) -> bool:
+        text = f"{t.get('task', '')} {t.get('scope', '')}".lower()
+        return any(k in text for k in ("pre-start", "swms review", "safety briefing", "toolbox"))
+
+    def _is_demob(t: dict) -> bool:
+        text = f"{t.get('task', '')} {t.get('scope', '')}".lower()
+        return any(k in text for k in ("demob", "demobil", "site clean-up", "site cleanup", "reinstat"))
+
+    body = [t for t in tasks if isinstance(t, dict) and not _is_briefing(t) and not _is_demob(t)]
+
+    if any(k in desc for k in ("excavat", "trench", "stormwater", "dbyd", "shoring")):
+        task2 = _new_task(
+            "Locate and mark services, DBYD confirmation, and permit activation",
+            "Confirm service locations, permits, and controls before excavation starts.",
+            trade_type="Civil",
+            hrcw=True,
+        )
+    elif any(k in desc for k in ("scaffold", "scaffolding")):
+        task2 = _new_task(
+            "Scaffold erection and inspection setup",
+            "Erect scaffold and complete inspection before any dependent work starts.",
+            trade_type="WAH",
+            hrcw=True,
+        )
+    elif any(k in desc for k in ("electrical", "11kv", "hv ", "loto", "isolation")):
+        task2 = _new_task(
+            "Isolation, LOTO, and permit activation",
+            "Isolate systems, apply lockout-tagout, and activate permits before work starts.",
+            trade_type="Electrical",
+            hrcw=True,
+        )
+    elif any(k in desc for k in ("roof", "height", "elevated", "edge protection")):
+        task2 = _new_task(
+            "Fall protection and edge protection setup",
+            "Set up verified fall and edge protection before any elevated work starts.",
+            trade_type="WAH",
+            hrcw=True,
+        )
+    else:
+        task2 = _new_task(
+            "Site establishment, exclusion zones, and access control",
+            "Establish site setup, exclusion zones, and controlled access before work starts.",
+            trade_type="General",
+            hrcw=False,
+        )
+
+    task1 = _new_task(
+        "Pre-start safety briefing and SWMS review (site induction)",
+        "All workers briefed on SWMS content, site hazards, emergency procedures, and hold points before any work begins.",
+        trade_type="General",
+        hrcw=False,
+    )
+    final_task = _new_task(
+        "Site clean-up, demobilisation, and access reinstatement",
+        "Complete clean-up, remove temporary works, and reinstate safe site access.",
+        trade_type="General",
+        hrcw=False,
+    )
+
+    max_body = 9  # keep 12-task hard cap with 3 mandatory bookends
+    body = body[:max_body]
+    rebuilt = [task1, task2] + body + [final_task]
+
+    for idx, task in enumerate(rebuilt, start=1):
+        task["sequence"] = idx
+
+    manifest["tasks"] = rebuilt
+    manifest["total_tasks"] = len(rebuilt)
+    manifest["hrcw_present"] = any(bool(t.get("hrcw", False)) for t in rebuilt)
+    return manifest
+
+
 async def run_decomposer(description: str, inference: dict, scope_context: dict | None = None) -> dict:
     """
     Run Agent 1 — Task Decomposer.
@@ -307,6 +472,7 @@ async def run_decomposer(description: str, inference: dict, scope_context: dict 
     text = re.sub(r",\s*([}\]])", r"", text)
     from core.utils import extract_json
     manifest = extract_json(text)
+    manifest = _enforce_structural_backbone(manifest, description)
     _validate_task_manifest(manifest)
     return manifest
 
