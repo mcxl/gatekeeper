@@ -36,6 +36,7 @@ _level3_test.*
 
 # Waitlist / PII data
 data/waitlist.json
+data/demo_leads.json
 data/*.json
 
 # Misc

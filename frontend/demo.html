@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Method — Review Your SWMS</title>
+<style>
+:root{--dk:#1F3864;--mid:#2E75B6;--lt:#D6E4F0;--red:#C00000;--grn:#2e7d32;--w:#FFF;--txt:#1a1a2e}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;color:var(--txt);line-height:1.6;background:#f8f9fc}
+a{color:var(--mid);text-decoration:none}a:hover{text-decoration:underline}
+
+nav{display:flex;justify-content:space-between;align-items:center;padding:0 40px;height:56px;background:var(--dk)}
+nav .logo{color:var(--w);font-weight:700;font-size:18px}
+nav .login{color:var(--w);font-size:13px;opacity:.8}
+
+.hdr{background:var(--dk);color:var(--w);padding:60px 40px 40px;text-align:center}
+.hdr h1{font-size:36px;font-weight:800;margin-bottom:12px}
+.hdr p{font-size:17px;opacity:.85}
+.hdr .disc{font-size:12px;opacity:.6;margin-top:8px}
+
+.main{max-width:900px;margin:0 auto;padding:40px 20px;display:flex;gap:24px}
+.left{flex:1;min-width:0}
+.sidebar{width:220px;flex-shrink:0;position:sticky;top:20px;align-self:flex-start;display:none}
+.sidebar.show{display:block}
+.sidebar .stitle{font-size:11px;font-weight:700;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:12px}
+.sidebar .ssub{font-size:12px;color:#aaa;margin-bottom:16px}
+.sidebar .rule{font-size:12px;color:#bbb;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.sidebar .snote{font-size:11px;color:#aaa;font-style:italic;margin-top:12px}
+
+.card{background:var(--w);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:40px;margin-bottom:24px}
+
+/* Upload */
+#upload-zone{border:2px dashed var(--mid);border-radius:8px;padding:48px 24px;text-align:center;cursor:pointer;background:#f8fbff;transition:all .2s}
+#upload-zone:hover{border-color:var(--dk);background:#f0f4fa}
+#upload-zone .arrow{font-size:48px;color:var(--mid);line-height:1}
+#upload-zone h3{font-size:18px;color:var(--dk);margin:12px 0 8px}
+#upload-zone .browse{font-size:14px;color:#666}
+#upload-zone .types{font-size:12px;color:#999;margin-top:8px}
+.file-info{display:none;text-align:center;padding:24px}
+.file-info .fname{font-weight:600;color:var(--dk);font-size:15px}
+.file-info .fsize{font-size:13px;color:#888;margin:4px 0}
+.file-info .change{font-size:13px;color:var(--mid);cursor:pointer}
+.file-info .tick{color:var(--grn);font-size:24px;margin-bottom:8px}
+.file-err{color:var(--red);font-size:13px;text-align:center;margin-top:8px;display:none}
+
+#review-btn{display:none;width:100%;background:var(--red);color:var(--w);font-weight:700;font-size:18px;padding:18px;border:none;border-radius:6px;cursor:pointer;margin-top:16px;font-family:inherit}
+#review-btn:hover{background:#a00}
+#review-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Loading */
+#loading{display:none;text-align:center;padding:40px}
+#loading .spinner{width:40px;height:40px;border:4px solid var(--lt);border-top-color:var(--mid);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading .ltxt{font-size:16px;color:var(--dk);font-weight:600}
+#loading .lsub{font-size:13px;color:#666;margin-top:4px}
+#loading .steps{margin-top:16px;text-align:left;max-width:280px;margin-left:auto;margin-right:auto}
+#loading .step{font-size:13px;color:var(--mid);padding:3px 0;opacity:0;transition:opacity .3s}
+#loading .step.show{opacity:1}
+
+/* Results */
+#results-panel{display:none}
+.res-hdr{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.res-hdr .rname{font-size:14px;font-weight:600;color:var(--dk)}
+.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px}
+.badge-grn{background:#e8f5e9;color:var(--grn)}
+.badge-amb{background:#fff3e0;color:#e65100}
+.badge-red{background:#fce4ec;color:var(--red)}
+.res-disc{font-size:12px;color:#666;margin-bottom:24px}
+
+.risk-bar{text-align:center;padding:24px 0;border-bottom:1px solid #f0f0f0;margin-bottom:24px}
+.risk-bar .num{font-size:48px;font-weight:800;color:var(--red)}
+.risk-bar .lbl{font-size:16px;color:#666}
+.risk-bar .matched{font-size:14px;color:var(--grn);margin-top:8px}
+
+.cat-title{font-size:16px;font-weight:700;color:var(--dk);margin:24px 0 12px}
+.cat-card{position:relative;border-left:4px solid var(--red);padding:12px 16px;background:#fff5f5;border-radius:4px;margin-bottom:8px;overflow:hidden}
+.cat-card .cname{font-weight:700;color:var(--red);font-size:14px}
+.cat-card .cref{font-size:12px;color:#888;margin-top:2px}
+.cat-card .blur-zone{filter:blur(4px);user-select:none;font-size:13px;color:#666;margin-top:6px;pointer-events:none}
+.cat-card .lock{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:#666;font-weight:600;z-index:2;white-space:nowrap}
+.cat-more{color:var(--red);font-size:14px;font-weight:600;margin-top:8px}
+
+.matched-toggle{font-size:14px;color:var(--mid);cursor:pointer;margin:20px 0 8px;font-weight:500}
+.matched-list{display:none}
+.matched-list.open{display:block}
+.matched-item{font-size:13px;color:#444;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.matched-item::before{content:"\2713 ";color:var(--grn);font-weight:700}
+
+.sep{border-top:1px solid #e8e8e8;margin:32px 0}
+
+.cta-h{font-size:20px;font-weight:700;color:var(--dk);margin-bottom:8px}
+.cta-body{font-size:15px;color:#555;margin-bottom:8px}
+.cta-price{font-weight:700;color:var(--dk);font-size:15px}
+.cta-alt{font-size:13px;color:#888;margin-top:4px}
+.cta-tip{font-size:11px;color:var(--mid);margin-top:8px}
+#buy-btn{width:100%;background:var(--red);color:var(--w);font-weight:700;font-size:17px;padding:18px;border:none;border-radius:6px;cursor:pointer;margin-top:16px;font-family:inherit}
+#buy-btn:hover{background:#a00}
+.buy-msg{display:none;font-size:14px;color:var(--dk);text-align:center;margin-top:12px}
+.alt-buy{font-size:13px;color:#666;text-align:center;margin-top:8px;cursor:pointer}
+
+.email-cap{margin-top:8px}
+.email-cap p{font-size:14px;color:#555;margin-bottom:8px}
+.email-row{display:flex;gap:8px}
+.email-row input{flex:1;border:1px solid #ddd;border-radius:6px;padding:10px 14px;font-size:14px;font-family:inherit}
+.email-row button{background:var(--mid);color:var(--w);border:none;border-radius:6px;padding:10px 20px;font-size:14px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.email-ok{display:none;color:var(--grn);font-size:14px}
+
+.procore-up{background:#f0f4fa;padding:40px;border-radius:8px;margin:32px 0;text-align:center}
+.procore-up h3{font-size:16px;font-weight:600;color:var(--dk);margin-bottom:12px}
+.procore-up p{font-size:14px;color:#555;margin-bottom:20px}
+.procore-up .btn{display:inline-block;background:var(--dk);color:var(--w);padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600}
+.procore-up .sm{font-size:12px;color:#888;margin-top:12px}
+
+.err-panel{display:none;text-align:center;padding:32px}
+.err-panel p{font-size:16px;color:var(--red);margin-bottom:16px}
+.err-panel button{background:var(--mid);color:var(--w);border:none;border-radius:6px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit}
+
+footer{background:var(--dk);padding:32px 40px;color:var(--w);font-size:13px;display:flex;justify-content:space-between;align-items:center;opacity:.7}
+footer a{color:var(--lt)}
+
+@media(max-width:768px){
+  .main{flex-direction:column}.sidebar{display:none!important}
+  .hdr h1{font-size:26px}.hdr{padding:40px 20px 24px}
+  .email-row{flex-direction:column}
+  footer{flex-direction:column;gap:12px;text-align:center}
+  nav{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<nav><a class="logo" href="/">Safe Method</a><a class="login" href="/app">Log in &rarr;</a></nav>
+
+<div class="hdr">
+  <h1>Review Your SWMS</h1>
+  <p>Upload your document. Safe Method identifies potential regulatory triggers and missing requirements — before your Safety Manager does.</p>
+  <div class="disc">Free review &middot; No account required &middot; No document stored after analysis</div>
+</div>
+
+<div class="main">
+<div class="left">
+
+<!-- Upload -->
+<div class="card" id="upload-card">
+  <div id="upload-zone" onclick="document.getElementById('file-input').click()">
+    <div class="arrow">&uarr;</div>
+    <h3>Drop your SWMS here</h3>
+    <div class="browse">or click to browse</div>
+    <div class="types">.pdf and .docx accepted</div>
+  </div>
+  <div class="file-info" id="file-info">
+    <div class="tick">&#10003;</div>
+    <div class="fname" id="fname"></div>
+    <div class="fsize" id="fsize"></div>
+    <div class="change" onclick="resetUpload()">Change file</div>
+  </div>
+  <div class="file-err" id="file-err"></div>
+  <input type="file" id="file-input" accept=".pdf,.docx" style="display:none">
+  <button id="review-btn" onclick="startReview()">Review My SWMS</button>
+</div>
+
+<!-- Loading -->
+<div class="card" id="loading">
+  <div class="spinner"></div>
+  <div class="ltxt">Reviewing your document...</div>
+  <div class="lsub">This takes 10–30 seconds</div>
+  <div class="steps">
+    <div class="step" id="s1">Extracting text...</div>
+    <div class="step" id="s2">Identifying HRCW categories...</div>
+    <div class="step" id="s3">Checking regulatory requirements...</div>
+    <div class="step" id="s4">Preparing findings...</div>
+  </div>
+</div>
+
+<!-- Error -->
+<div class="card err-panel" id="err-panel">
+  <p id="err-msg">Unable to complete review.</p>
+  <button onclick="resetAll()">Try Again</button>
+</div>
+
+<!-- Results -->
+<div class="card" id="results-panel">
+  <div class="res-hdr">
+    <div class="rname" id="rname"></div>
+    <div id="rbadge"></div>
+  </div>
+  <div class="res-disc">Safe Method identifies potential regulatory triggers for your review. These findings are not a legal determination.</div>
+
+  <div class="risk-bar">
+    <div class="num" id="gap-count">0</div>
+    <div class="lbl">potential issues identified</div>
+    <div class="matched" id="matched-count"></div>
+  </div>
+
+  <div class="cat-title" id="cat-title">Issues found across these categories:</div>
+  <div id="cat-cards"></div>
+  <div class="cat-more" id="cat-more" style="display:none"></div>
+
+  <div class="matched-toggle" id="matched-toggle" onclick="toggleMatched()"></div>
+  <div class="matched-list" id="matched-list"></div>
+
+  <div class="sep"></div>
+
+  <h3 class="cta-h">Get the full report and corrected draft</h3>
+  <div class="cta-body">See every issue with specific corrective guidance. Receive a gap-corrected SWMS draft in the Safe Method template — ready for human review and site submission.</div>
+  <div class="cta-price">Mobilisation Pack (recommended)</div>
+  <div class="cta-price">$69 — SWMS draft + HRCW Register + Hold Points Register</div>
+  <div class="cta-alt">or $49 for SWMS draft only</div>
+  <div class="cta-tip">&#9432; 92% of Tier 1 PCs require an HRCW Register for this work type</div>
+  <button id="buy-btn" onclick="handleBuy()">Get Mobilisation Pack — $69</button>
+  <div class="buy-msg" id="buy-msg">Payment coming soon. <a href="/#waitlist">Join the waitlist to be first in line &rarr;</a></div>
+  <div class="alt-buy" onclick="handleBuy()">SWMS draft only — $49 &rarr;</div>
+
+  <div class="sep"></div>
+
+  <div class="email-cap" id="email-cap">
+    <p>Want us to email you these findings? No account needed.</p>
+    <div class="email-row" id="email-row">
+      <input type="email" id="cap-email" placeholder="your@email.com.au">
+      <button onclick="sendEmail()">Send findings</button>
+    </div>
+    <div class="email-ok" id="email-ok"></div>
+  </div>
+</div>
+
+<!-- Procore upsell -->
+<div class="procore-up" id="procore-up" style="display:none">
+  <h3>Want this review to happen automatically every time a subcontractor submits via Procore?</h3>
+  <p>Safe Method's Procore integration reviews every submittal and posts findings back to the comment thread — without manual upload.</p>
+  <a class="btn" href="/#waitlist">Register for Procore Pilot &rarr;</a>
+  <div class="sm">Founding Member rate: $4,900/year &middot; First 5 pilot PCs only</div>
+</div>
+
+</div><!-- /left -->
+
+<div class="sidebar" id="sidebar">
+  <div class="stitle">Procore Integration Only</div>
+  <div class="ssub">Deterministic rule layer</div>
+  <div class="rule">&#128274; Rule 21 — Geotech trigger</div>
+  <div class="rule">&#128274; Rule 22 — WAH rescue plan</div>
+  <div class="rule">&#128274; Rule 23 — Electrical services</div>
+  <div class="rule">&#128274; Confidence routing</div>
+  <div class="rule">&#128274; Hard-fail audit trail</div>
+  <div class="rule">&#128274; T002 reasoning trace</div>
+  <div class="snote">Available with Procore integration</div>
+</div>
+</div><!-- /main -->
+
+<footer>
+  <div><strong>Safe Method</strong><br>mcxico Pty Ltd &middot; Sydney NSW<br>Built for Australian construction safety workflows</div>
+  <div><a href="/app">Log in to generator &rarr;</a></div>
+</footer>
+
+<script>
+let selectedFile=null,resultData=null;
+
+// Upload zone drag/drop
+const uz=document.getElementById('upload-zone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--dk)';uz.style.background='#f0f4fa'});
+uz.addEventListener('dragleave',()=>{uz.style.borderColor='';uz.style.background=''});
+uz.addEventListener('drop',e=>{e.preventDefault();uz.style.borderColor='';uz.style.background='';if(e.dataTransfer.files.length)handleFile(e.dataTransfer.files[0])});
+document.getElementById('file-input').addEventListener('change',e=>{if(e.target.files.length)handleFile(e.target.files[0])});
+
+function handleFile(f){
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext!=='pdf'&&ext!=='docx'){showErr('Please upload a PDF or DOCX file');return}
+  if(f.size>20*1024*1024){showErr('File too large. Maximum 20MB.');return}
+  selectedFile=f;
+  document.getElementById('file-err').style.display='none';
+  document.getElementById('upload-zone').style.display='none';
+  const fi=document.getElementById('file-info');fi.style.display='block';
+  document.getElementById('fname').textContent=f.name.length>40?f.name.slice(0,37)+'...':f.name;
+  const sz=f.size>1024*1024?(f.size/1024/1024).toFixed(1)+' MB':Math.round(f.size/1024)+' KB';
+  document.getElementById('fsize').textContent=sz;
+  document.getElementById('review-btn').style.display='block';
+}
+function showErr(m){const e=document.getElementById('file-err');e.textContent=m;e.style.display='block'}
+function resetUpload(){
+  selectedFile=null;document.getElementById('file-input').value='';
+  document.getElementById('upload-zone').style.display='';
+  document.getElementById('file-info').style.display='none';
+  document.getElementById('review-btn').style.display='none';
+  document.getElementById('file-err').style.display='none';
+}
+
+function resetAll(){
+  resetUpload();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('err-panel').style.display='none';
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('procore-up').style.display='none';
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('upload-card').style.display='';
+}
+
+async function startReview(){
+  if(!selectedFile)return;
+  document.getElementById('upload-card').style.display='none';
+  const ld=document.getElementById('loading');ld.style.display='block';
+  document.getElementById('err-panel').style.display='none';
+  document.getElementById('results-panel').style.display='none';
+
+  // Progress steps
+  const timers=[];
+  timers.push(setTimeout(()=>document.getElementById('s1').classList.add('show'),0));
+  timers.push(setTimeout(()=>document.getElementById('s2').classList.add('show'),3000));
+  timers.push(setTimeout(()=>document.getElementById('s3').classList.add('show'),8000));
+  timers.push(setTimeout(()=>document.getElementById('s4').classList.add('show'),15000));
+
+  const fd=new FormData();fd.append('file',selectedFile);
+  try{
+    const ctrl=new AbortController();
+    const to=setTimeout(()=>ctrl.abort(),45000);
+    const r=await fetch('/upload/swms-gap',{method:'POST',body:fd,signal:ctrl.signal});
+    clearTimeout(to);
+    timers.forEach(clearTimeout);
+    if(!r.ok){showError(r.status>=500?'Unable to complete review. Please check your file and try again.':'Unable to complete review. Please try again.');return}
+    resultData=await r.json();
+    showResults();
+  }catch(e){
+    timers.forEach(clearTimeout);
+    if(e.name==='AbortError')showError('Review is taking longer than expected. Please try again.');
+    else showError('Connection error. Please check your internet and try again.');
+  }
+}
+
+function showError(m){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('err-panel').style.display='block';
+  document.getElementById('err-msg').textContent=m;
+}
+
+function showResults(){
+  document.getElementById('loading').style.display='none';
+  const rp=document.getElementById('results-panel');rp.style.display='block';
+  document.getElementById('procore-up').style.display='block';
+  document.getElementById('sidebar').classList.add('show');
+
+  const d=resultData;
+  const gaps=d.gaps||[];const matched=d.matched||[];const conf=d.confidence||0;
+
+  document.getElementById('rname').textContent=selectedFile?selectedFile.name.slice(0,40):'Document';
+
+  // Confidence badge
+  const bb=document.getElementById('rbadge');
+  if(conf>0.8)bb.innerHTML='<span class="badge badge-grn">Confidence: High</span>';
+  else if(conf>=0.5)bb.innerHTML='<span class="badge badge-amb">Confidence: Medium</span>';
+  else bb.innerHTML='<span class="badge badge-red">Confidence: Low — manual review strongly recommended</span>';
+
+  document.getElementById('gap-count').textContent=gaps.length;
+  document.getElementById('matched-count').innerHTML=matched.length?'\u2713 '+matched.length+' requirements appear satisfied':'';
+
+  // Category cards
+  const cats=[];const catMap={};
+  gaps.forEach(g=>{
+    const c=g.split(/[:\-—]/)[0].trim().split(' ').slice(0,4).join(' ');
+    if(!catMap[c]){catMap[c]=[];cats.push(c)}
+    catMap[c].push(g);
+  });
+
+  const cc=document.getElementById('cat-cards');cc.innerHTML='';
+  const show=cats.slice(0,3);
+  show.forEach(cat=>{
+    const items=catMap[cat];
+    const preview=items[0].split(' ').slice(0,6).join(' ')+'...';
+    cc.innerHTML+=`<div class="cat-card"><div class="cname">${esc(cat)}</div><div class="blur-zone">${esc(preview)}</div><div class="lock">\uD83D\uDD12 Unlock fix — $49</div></div>`;
+  });
+  const remaining=gaps.length-show.reduce((a,c)=>a+catMap[c].length,0);
+  const cm=document.getElementById('cat-more');
+  if(cats.length>3||remaining>0){cm.style.display='block';cm.textContent='+ '+(gaps.length-show.length)+' more issues identified'}
+  else cm.style.display='none';
+  document.getElementById('cat-title').style.display=gaps.length?'':'none';
+
+  // Matched
+  const mt=document.getElementById('matched-toggle');
+  const ml=document.getElementById('matched-list');ml.innerHTML='';
+  if(matched.length){
+    mt.textContent='\u25B8 Show requirements met ('+matched.length+')';mt.style.display='block';
+    matched.forEach(m=>{ml.innerHTML+=`<div class="matched-item">${esc(m)}</div>`});
+  }else{mt.style.display='none'}
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function toggleMatched(){
+  const ml=document.getElementById('matched-list');
+  const mt=document.getElementById('matched-toggle');
+  ml.classList.toggle('open');
+  mt.textContent=(ml.classList.contains('open')?'\u25BE':'\u25B8')+mt.textContent.slice(1);
+}
+
+function handleBuy(){
+  document.getElementById('buy-msg').style.display='block';
+}
+
+async function sendEmail(){
+  const em=document.getElementById('cap-email').value.trim();
+  if(!em||!em.includes('@'))return;
+  const ctx='gaps:'+(resultData?.gaps?.length||0)+',confidence:'+(resultData?.confidence||0);
+  try{
+    await fetch('/demo/email-capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,context:ctx})});
+    document.getElementById('email-row').style.display='none';
+    const ok=document.getElementById('email-ok');ok.style.display='block';ok.textContent='\u2713 Findings will be emailed to '+em;
+  }catch(e){}
+}
+</script>
+</body>
+</html>

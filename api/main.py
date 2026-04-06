@@ -357,6 +357,11 @@ async def index():
     return _html_response(os.path.join(_FRONTEND_DIR, "marketing.html"))
 
 
+@app.get("/demo", response_class=HTMLResponse)
+async def demo_page():
+    return _html_response(os.path.join(_FRONTEND_DIR, "demo.html"))
+
+
 @app.get("/tasks")
 async def list_tasks():
     """Return all approved tasks as JSON."""
@@ -1550,6 +1555,45 @@ async def capture_edits_endpoint(
 # ============================================================
 
 _WAITLIST_PATH = os.path.join(_ROOT, "data", "waitlist.json")
+_DEMO_LEADS_PATH = os.path.join(_ROOT, "data", "demo_leads.json")
+
+
+@app.post("/demo/email-capture")
+@limiter.limit("10/hour")
+async def demo_email_capture(request: Request):
+    """Capture email from demo page — no auth required."""
+    from datetime import datetime, timezone
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(content={"detail": "Invalid JSON"}, status_code=400)
+
+    email = str(body.get("email", "")).strip()
+    if not email or "@" not in email:
+        return JSONResponse(content={"detail": "Valid email required"}, status_code=422)
+
+    context = str(body.get("context", ""))[:200]
+
+    entry = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "email": email,
+        "context": context,
+    }
+
+    os.makedirs(os.path.dirname(_DEMO_LEADS_PATH), exist_ok=True)
+    import json as _json
+    existing = []
+    if os.path.exists(_DEMO_LEADS_PATH):
+        try:
+            with open(_DEMO_LEADS_PATH, encoding="utf-8") as f:
+                existing = _json.load(f)
+        except Exception:
+            existing = []
+    existing.append(entry)
+    with open(_DEMO_LEADS_PATH, "w", encoding="utf-8") as f:
+        _json.dump(existing, f, indent=2, ensure_ascii=False)
+
+    return JSONResponse(content={"status": "ok"})
 
 
 @app.post("/waitlist/submit")
