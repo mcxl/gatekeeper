@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Method — Automate Your Site Access Gate</title>
+<style>
+:root {
+  --dark-blue: #1F3864;
+  --mid-blue: #2E75B6;
+  --light-blue: #D6E4F0;
+  --red: #C00000;
+  --white: #FFFFFF;
+  --grey: #F8F9FA;
+  --text: #333333;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: system-ui, 'Inter', -apple-system, sans-serif; color: var(--text); line-height: 1.6; }
+a { color: var(--mid-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Nav */
+nav { display:flex; justify-content:space-between; align-items:center; padding:1rem 2rem; background:var(--white); border-bottom:2px solid var(--light-blue); }
+nav .logo { font-size:1.4rem; font-weight:700; color:var(--dark-blue); }
+nav .login { font-size:0.9rem; color:var(--mid-blue); }
+
+/* Hero */
+.hero { background:var(--dark-blue); color:var(--white); padding:4rem 2rem; text-align:center; }
+.hero h1 { font-size:2.4rem; margin-bottom:0.5rem; }
+.hero h2 { font-size:1.3rem; font-weight:400; opacity:0.9; margin-bottom:1.5rem; }
+.hero p { max-width:680px; margin:0 auto 2rem; font-size:1.05rem; opacity:0.85; }
+.hero .cta-group { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-bottom:1rem; }
+.btn-primary { background:var(--red); color:var(--white); padding:0.8rem 2rem; border-radius:6px; font-size:1rem; font-weight:600; border:none; cursor:pointer; display:inline-block; }
+.btn-primary:hover { background:#A00000; text-decoration:none; }
+.btn-secondary { background:transparent; color:var(--white); padding:0.8rem 2rem; border-radius:6px; font-size:1rem; border:2px solid var(--white); cursor:pointer; display:inline-block; }
+.btn-secondary:hover { background:rgba(255,255,255,0.1); text-decoration:none; }
+.hero .small-link { font-size:0.85rem; opacity:0.7; }
+
+/* Proof Strip */
+.proof-strip { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:1rem; padding:2rem; background:var(--light-blue); text-align:center; }
+.proof-strip div { font-size:0.9rem; font-weight:500; color:var(--dark-blue); padding:0.5rem; }
+
+/* Sections */
+section { padding:3rem 2rem; max-width:900px; margin:0 auto; }
+section h2 { font-size:1.6rem; color:var(--dark-blue); margin-bottom:1rem; }
+section p { margin-bottom:1rem; }
+.alt-bg { background:var(--grey); }
+.alt-bg section { max-width:900px; margin:0 auto; }
+
+/* How It Works */
+.steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px,1fr)); gap:2rem; margin-top:1.5rem; }
+.step { background:var(--white); border:1px solid var(--light-blue); border-radius:8px; padding:1.5rem; }
+.step .num { display:inline-block; background:var(--mid-blue); color:var(--white); width:2rem; height:2rem; border-radius:50%; text-align:center; line-height:2rem; font-weight:700; margin-bottom:0.5rem; }
+.step h3 { font-size:1.1rem; color:var(--dark-blue); margin-bottom:0.5rem; }
+
+/* Procore Strip */
+.procore-strip { background:var(--dark-blue); color:var(--white); padding:2.5rem 2rem; text-align:center; }
+.procore-strip h3 { font-size:1.3rem; margin-bottom:0.5rem; }
+.procore-strip p { max-width:680px; margin:0 auto 1.5rem; opacity:0.85; }
+
+/* Waitlist Form */
+.waitlist { background:var(--grey); padding:3rem 2rem; }
+.waitlist-inner { max-width:600px; margin:0 auto; }
+.waitlist h2 { font-size:1.6rem; color:var(--dark-blue); margin-bottom:1.5rem; text-align:center; }
+.waitlist form { display:grid; gap:1rem; }
+.waitlist label { font-size:0.9rem; font-weight:500; color:var(--dark-blue); }
+.waitlist input, .waitlist select { width:100%; padding:0.6rem; border:1px solid #CCC; border-radius:4px; font-size:0.95rem; }
+.waitlist .toggle { display:flex; gap:1rem; align-items:center; }
+.waitlist .toggle label { font-weight:400; }
+.waitlist button[type="submit"] { background:var(--red); color:var(--white); padding:0.8rem; border:none; border-radius:6px; font-size:1rem; font-weight:600; cursor:pointer; }
+.waitlist button[type="submit"]:hover { background:#A00000; }
+.waitlist .success { text-align:center; color:var(--dark-blue); font-size:1.1rem; font-weight:500; padding:2rem 0; display:none; }
+
+/* Footer */
+footer { text-align:center; padding:2rem; background:var(--dark-blue); color:var(--white); font-size:0.85rem; }
+footer a { color:var(--light-blue); }
+footer p { margin:0.3rem 0; opacity:0.8; }
+
+@media (max-width:600px) {
+  .hero h1 { font-size:1.6rem; }
+  .hero h2 { font-size:1rem; }
+  nav { padding:0.8rem 1rem; }
+  section { padding:2rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Safe Method</div>
+  <a class="login" href="/app">Log in</a>
+</nav>
+
+<div class="hero">
+  <h1>Automate Your Site Access Gate</h1>
+  <h2>Reduce SWMS review from 5 days to 3 minutes.</h2>
+  <p>Safe Method identifies potential regulatory triggers, missing requirements, and audit risks for human review — before a subcontractor reaches site.</p>
+  <div class="cta-group">
+    <a class="btn-primary" href="#waitlist">Join Pilot Waitlist</a>
+    <a class="btn-secondary" href="/demo">See How Review Works</a>
+  </div>
+  <a class="small-link" href="/app">Subcontractor SWMS Builder &rarr;</a>
+</div>
+
+<div class="proof-strip">
+  <div>Purpose-built for Section 21A governance</div>
+  <div>Audit-ready active oversight</div>
+  <div>Your expertise is the final authority</div>
+  <div>Procore-integrated review pipeline</div>
+</div>
+
+<section>
+  <h2>Most SWMS delays do not come from writing.</h2>
+  <p>They come from review, back-and-forth, missed triggers, and inconsistent gate decisions across projects.</p>
+</section>
+
+<div class="alt-bg">
+<section>
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <h3>Upload the subcontractor SWMS</h3>
+      <p>PDF or DOCX enters a structured review flow.</p>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <h3>Review identified gaps</h3>
+      <p>Safe Method surfaces missing requirements, matched requirements, and confidence signals.</p>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <h3>Make the gate decision</h3>
+      <p>The Safety Manager reviews findings, applies project judgement, and decides whether the package proceeds, returns, or escalates.</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<section>
+  <h2>Safe Method identifies — you decide.</h2>
+  <p>Safe Method is designed to support audit-ready active oversight. It does not replace the reviewer's judgement, project controls, or statutory duties.</p>
+</section>
+
+<div class="procore-strip">
+  <h3>Designed for Procore-connected review workflows</h3>
+  <p>Procore integration adds routing logic, deterministic rules, legislative hard-fail triggers, and structured comment layers for review teams.</p>
+  <a class="btn-primary" href="#waitlist">Register Interest for Procore Pilot</a>
+</div>
+
+<div class="waitlist" id="waitlist">
+  <div class="waitlist-inner">
+    <h2>Join the Pilot Waitlist</h2>
+    <form id="waitlist-form">
+      <div>
+        <label for="wl-name">Full name *</label>
+        <input type="text" id="wl-name" name="name" required>
+      </div>
+      <div>
+        <label for="wl-company">Company name *</label>
+        <input type="text" id="wl-company" name="company" required>
+      </div>
+      <div>
+        <label for="wl-role">Role</label>
+        <select id="wl-role" name="role">
+          <option value="">Select...</option>
+          <option>Safety Manager</option>
+          <option>Head of Safety</option>
+          <option>Project Manager</option>
+          <option>Director / Owner</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="wl-email">Email *</label>
+        <input type="email" id="wl-email" name="email" required>
+      </div>
+      <div>
+        <label for="wl-volume">SWMS reviewed per month</label>
+        <select id="wl-volume" name="swms_per_month">
+          <option value="">Select...</option>
+          <option>1-5</option>
+          <option>6-20</option>
+          <option>21-50</option>
+          <option>50+</option>
+        </select>
+      </div>
+      <div>
+        <label for="wl-method">Current review method</label>
+        <select id="wl-method" name="review_method">
+          <option value="">Select...</option>
+          <option>Manual (email/paper)</option>
+          <option>HammerTech</option>
+          <option>SafetyCulture</option>
+          <option>Other platform</option>
+        </select>
+      </div>
+      <div class="toggle">
+        <label>Procore user?</label>
+        <label><input type="radio" name="procore_user" value="Yes"> Yes</label>
+        <label><input type="radio" name="procore_user" value="No" checked> No</label>
+      </div>
+      <div>
+        <label for="wl-state">State</label>
+        <select id="wl-state" name="state">
+          <option value="">Select...</option>
+          <option>NSW</option>
+          <option>VIC</option>
+          <option>QLD</option>
+          <option>WA</option>
+          <option>SA</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <button type="submit">Request Early Access</button>
+    </form>
+    <div class="success" id="wl-success">Thank you. We'll be in touch within 48 hours.</div>
+  </div>
+</div>
+
+<footer>
+  <p><strong>Safe Method</strong> &mdash; mcxico Pty Ltd</p>
+  <p>Built for Australian construction</p>
+  <p><a href="/app">Log in to generator &rarr;</a></p>
+</footer>
+
+<script>
+document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    name: form.name.value,
+    company: form.company.value,
+    role: form.role.value,
+    email: form.email.value,
+    swms_per_month: form.swms_per_month.value,
+    review_method: form.review_method.value,
+    procore_user: form.procore_user.value,
+    state: form.state.value,
+  };
+  try {
+    const resp = await fetch('/waitlist/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      form.style.display = 'none';
+      document.getElementById('wl-success').style.display = 'block';
+    }
+  } catch(err) {
+    alert('Submission failed. Please try again.');
+  }
+});
+</script>
+
+</body>
+</html>

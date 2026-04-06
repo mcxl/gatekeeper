@@ -354,7 +354,7 @@ async def serve_review():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return _html_response(os.path.join(_FRONTEND_DIR, "login.html"))
+    return _html_response(os.path.join(_FRONTEND_DIR, "marketing.html"))
 
 
 @app.get("/tasks")
@@ -1543,6 +1543,51 @@ async def capture_edits_endpoint(
             content={"detail": "An internal error occurred. Please try again."},
             status_code=500,
         )
+
+
+# ============================================================
+# WAITLIST
+# ============================================================
+
+_WAITLIST_PATH = os.path.join(_ROOT, "data", "waitlist.json")
+
+
+@app.post("/waitlist/submit")
+async def waitlist_submit(request: Request):
+    """Accept waitlist signup — no auth required."""
+    from datetime import datetime, timezone
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    entry = {
+        "name": body.get("name", ""),
+        "company": body.get("company", ""),
+        "role": body.get("role", ""),
+        "email": body.get("email", ""),
+        "swms_per_month": body.get("swms_per_month", ""),
+        "review_method": body.get("review_method", ""),
+        "procore_user": body.get("procore_user", ""),
+        "state": body.get("state", ""),
+        "submitted_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+    os.makedirs(os.path.dirname(_WAITLIST_PATH), exist_ok=True)
+
+    import json as _json
+    existing = []
+    if os.path.exists(_WAITLIST_PATH):
+        try:
+            with open(_WAITLIST_PATH, encoding="utf-8") as f:
+                existing = _json.load(f)
+        except Exception:
+            existing = []
+    existing.append(entry)
+    with open(_WAITLIST_PATH, "w", encoding="utf-8") as f:
+        _json.dump(existing, f, indent=2, ensure_ascii=False)
+
+    return JSONResponse(content={"status": "ok"})
 
 
 # ============================================================

@@ -1419,6 +1419,15 @@ _MONITORING_BY_HAZARD = {
 
 def _improve_monitoring(tb: dict) -> None:
     """Replace generic WAH-only monitoring with hazard-specific critical controls."""
+    contamination_markers = [
+        "grinding cycle",
+        "dust extraction running",
+        "p2 respirator fitted before each",
+        "module weight",
+        "ewp pre-use",
+        "scaffold daily pre-use",
+    ]
+
     mon = tb.get("monitoring")
     if not isinstance(mon, dict):
         # Create monitoring if missing — use schema field names (who, evidence)
@@ -1426,6 +1435,11 @@ def _improve_monitoring(tb: dict) -> None:
         tb["monitoring"] = {"critical_control": "", "who": "", "who_checks": "",
                             "frequency": "", "evidence": "", "what_to_look_for": ""}
         mon = tb["monitoring"]
+
+    existing_cc = (mon.get("critical_control") or "").lower()
+    if any(marker in existing_cc for marker in contamination_markers):
+        tb["monitoring"] = None
+        return
     task_name = tb.get("task", "").lower()
     scope = tb.get("scope", "").lower()
     text = task_name + " " + scope
@@ -1502,7 +1516,16 @@ def _improve_monitoring(tb: dict) -> None:
     elif pattern == "wah":
         should_replace = False  # keep whatever the agent set for WAH tasks
     if should_replace:
-        mon["critical_control"] = template["critical_control"]
+        proposed_cc = template["critical_control"]
+        proposed_cc_lower = proposed_cc.lower()
+        # Only flag contamination if the template doesn't match the task's own pattern.
+        # Dust monitoring on a dust task is correct, not contamination.
+        if pattern not in ("dust", "chemical") and any(
+            marker in proposed_cc_lower for marker in contamination_markers
+        ):
+            tb["monitoring"] = None
+            return
+        mon["critical_control"] = proposed_cc
 
 
 def _dedup_monitoring_across_tasks(task_blocks: list[dict]) -> None:
