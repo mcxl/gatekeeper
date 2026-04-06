@@ -139,6 +139,33 @@ footer a{color:var(--lt)}
   </div>
 </div>
 
+<div class="sec" style="background:#fff">
+  <h2 style="font-size:28px;font-weight:700;color:#1F3864;text-align:center;margin-bottom:32px">The review pipeline</h2>
+  <div style="max-width:640px;margin:0 auto;padding:0 20px">
+<svg width="100%" viewBox="0 0 680 604" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+<g><rect x="160" y="30" width="280" height="56" rx="8" fill="#444441" stroke="#b4b2a9" stroke-width="0.5"/><text x="300" y="52" text-anchor="middle" dominant-baseline="central" fill="#d3d1c7" font-size="14" font-weight="500" font-family="system-ui,sans-serif">Subcontractor submits SWMS</text><text x="300" y="70" text-anchor="middle" dominant-baseline="central" fill="#b4b2a9" font-size="12" font-family="system-ui,sans-serif">via Procore submittal workflow</text></g>
+<line x1="300" y1="86" x2="300" y2="144" stroke="#9c9a92" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="160" y="146" width="280" height="56" rx="8" fill="#0c447c" stroke="#85b7eb" stroke-width="0.5"/><text x="300" y="168" text-anchor="middle" dominant-baseline="central" fill="#b5d4f4" font-size="14" font-weight="500" font-family="system-ui,sans-serif">Safe Method receives instantly</text><text x="300" y="186" text-anchor="middle" dominant-baseline="central" fill="#85b7eb" font-size="12" font-family="system-ui,sans-serif">Procore webhook triggers the review</text></g>
+<line x1="300" y1="202" x2="300" y2="260" stroke="#9c9a92" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="160" y="262" width="280" height="70" rx="8" fill="#0c447c" stroke="#85b7eb" stroke-width="0.5"/><text x="300" y="287" text-anchor="middle" dominant-baseline="central" fill="#b5d4f4" font-size="14" font-weight="500" font-family="system-ui,sans-serif">AI review + 23 safety rules</text><text x="300" y="308" text-anchor="middle" dominant-baseline="central" fill="#85b7eb" font-size="12" font-family="system-ui,sans-serif">extract &#183; confidence route &#183; hard-fail gate</text></g>
+<path d="M440,292 L460,292" fill="none" stroke="#E24B4A" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="462" y="265" width="170" height="56" rx="8" fill="#791f1f" stroke="#f09595" stroke-width="0.5"/><text x="547" y="287" text-anchor="middle" dominant-baseline="central" fill="#f7c1c1" font-size="14" font-weight="500" font-family="system-ui,sans-serif">Hard fail triggered</text><text x="547" y="305" text-anchor="middle" dominant-baseline="central" fill="#f09595" font-size="12" font-family="system-ui,sans-serif">rule cited &#183; doc returned</text></g>
+<line x1="300" y1="332" x2="300" y2="390" stroke="#9c9a92" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="50" y="368" fill="#c2c0b6" font-size="12" font-family="system-ui,sans-serif">under 3 min</text>
+<line x1="128" y1="368" x2="158" y2="368" stroke="#9c9a92" stroke-width="0.5" stroke-dasharray="4,3"/>
+<g><rect x="160" y="392" width="280" height="56" rx="8" fill="#085041" stroke="#5dcaa5" stroke-width="0.5"/><text x="300" y="414" text-anchor="middle" dominant-baseline="central" fill="#9fe1cb" font-size="14" font-weight="500" font-family="system-ui,sans-serif">Findings posted to Procore</text><text x="300" y="432" text-anchor="middle" dominant-baseline="central" fill="#5dcaa5" font-size="12" font-family="system-ui,sans-serif">structured report in comment thread</text></g>
+<line x1="300" y1="448" x2="300" y2="506" stroke="#9c9a92" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="160" y="508" width="280" height="56" rx="8" fill="#27500a" stroke="#97c459" stroke-width="0.5"/><text x="300" y="530" text-anchor="middle" dominant-baseline="central" fill="#c0dd97" font-size="14" font-weight="500" font-family="system-ui,sans-serif">Safety Manager decides</text><text x="300" y="548" text-anchor="middle" dominant-baseline="central" fill="#97c459" font-size="12" font-family="system-ui,sans-serif">approve, return, or escalate</text></g>
+<text x="300" y="590" text-anchor="middle" fill="#c2c0b6" font-size="12" font-family="system-ui,sans-serif">Safe Method identifies &#8212; you decide</text>
+</svg>
+  </div>
+</div>
+
 <div class="sec sec-dk"><div class="ctr-sm">
   <h2>Safe Method identifies. You decide.</h2>
   <p>Designed for audit-ready active oversight. Safe Method does not replace your judgement, your project controls, or your statutory duties. Every hard-fail decision includes a plain-English reasoning trace so you can review, challenge, or override it.</p>
