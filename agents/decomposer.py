@@ -401,6 +401,46 @@ def _enforce_structural_backbone(manifest: dict, description: str) -> dict:
             hrcw=False,
         )
 
+    def _is_duplicate_of(
+        body_task: dict,
+        injected_task: dict,
+    ) -> bool:
+        similarity_keywords = {
+            "service": ["service", "dbyd", "dial before", "utility", "locating", "locate"],
+            "traffic": ["traffic", "tmp", "tcp", "lane", "pedestrian"],
+            "isolation": ["isolat", "loto", "lockout", "permit", "electrical"],
+            "scaffold": ["scaffold", "erect", "inspection"],
+            "atmospheric": ["atmospheric", "gas test", "confined", "entry permit"],
+            "demolition": ["demolish", "hazmat", "survey", "services isolation"],
+            "asbestos": ["asbestos", "air monitor", "decontamination"],
+            "crane": ["crane", "lift plan", "prop base", "panel"],
+            "overhead": ["overhead", "sad", "spotter", "exclusion zone"],
+            "fall": ["fall protection", "edge protection", "anchor"],
+        }
+
+        injected_text = (
+            injected_task.get("task", "")
+            + " "
+            + injected_task.get("scope", "")
+        ).lower()
+        body_text = (
+            body_task.get("task", "")
+            + " "
+            + body_task.get("scope", "")
+        ).lower()
+
+        for keywords in similarity_keywords.values():
+            injected_match = any(k in injected_text for k in keywords)
+            body_match = any(k in body_text for k in keywords)
+            if injected_match and body_match:
+                return True
+        return False
+
+    body = [
+        t for t in body
+        if not _is_duplicate_of(t, task2)
+    ]
+
     task1 = _new_task(
         "Pre-start safety briefing and SWMS review (site induction)",
         "All workers briefed on SWMS content, site hazards, emergency procedures, and hold points before any work begins.",
