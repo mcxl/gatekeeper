@@ -1553,24 +1553,45 @@ _WAITLIST_PATH = os.path.join(_ROOT, "data", "waitlist.json")
 
 
 @app.post("/waitlist/submit")
+@limiter.limit("5/hour")
 async def waitlist_submit(request: Request):
-    """Accept waitlist signup — no auth required."""
+    """Accept waitlist signup — no auth required. Rate limited 5/hour/IP."""
     from datetime import datetime, timezone
     try:
         body = await request.json()
     except Exception:
-        body = {}
+        return JSONResponse(content={"detail": "Invalid JSON"}, status_code=400)
+
+    # Validate required fields
+    _REQUIRED = ("name", "company", "role", "email", "swms_per_month", "state")
+    missing = [f for f in _REQUIRED if not str(body.get(f, "")).strip()]
+    if missing:
+        return JSONResponse(
+            content={"detail": f"Missing required fields: {', '.join(missing)}"},
+            status_code=422,
+        )
+    email = str(body.get("email", "")).strip()
+    if "@" not in email:
+        return JSONResponse(
+            content={"detail": "Invalid email address"},
+            status_code=422,
+        )
+
+    # Normalize procore_user to bool
+    pu = body.get("procore_user", False)
+    if isinstance(pu, str):
+        pu = pu.lower() in ("true", "yes", "1")
 
     entry = {
-        "name": body.get("name", ""),
-        "company": body.get("company", ""),
-        "role": body.get("role", ""),
-        "email": body.get("email", ""),
-        "swms_per_month": body.get("swms_per_month", ""),
-        "review_method": body.get("review_method", ""),
-        "procore_user": body.get("procore_user", ""),
-        "state": body.get("state", ""),
-        "submitted_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "name": str(body.get("name", "")).strip(),
+        "company": str(body.get("company", "")).strip(),
+        "role": str(body.get("role", "")).strip(),
+        "email": email,
+        "swms_per_month": str(body.get("swms_per_month", "")).strip(),
+        "procore_user": pu,
+        "state": str(body.get("state", "")).strip(),
+        "review_method": str(body.get("review_method", "")).strip(),
     }
 
     os.makedirs(os.path.dirname(_WAITLIST_PATH), exist_ok=True)
@@ -1587,7 +1608,7 @@ async def waitlist_submit(request: Request):
     with open(_WAITLIST_PATH, "w", encoding="utf-8") as f:
         _json.dump(existing, f, indent=2, ensure_ascii=False)
 
-    return JSONResponse(content={"status": "ok"})
+    return JSONResponse(content={"status": "ok", "message": "Application received"})
 
 
 # ============================================================
