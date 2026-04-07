@@ -1800,6 +1800,8 @@ async def v1_render_pdf(request: dict, auth: dict = Depends(get_user_or_api_key)
         return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
+from pims.routes import router as pims_router
+app.include_router(pims_router)
 app.include_router(v1)
 
 
@@ -1807,3 +1809,4 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
 
+F
