@@ -128,6 +128,8 @@ async def enrich_observation(observation_text: str) -> dict:
             },
         )
         resp.raise_for_status()
+        log.info(f"Haiku response status: {resp.status_code}")
+        log.info(f"Haiku response body: {resp.text[:500]}")
         data = resp.json()
         text = data["content"][0]["text"].strip()
         return json.loads(text)
