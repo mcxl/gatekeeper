@@ -840,6 +840,46 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 <!-- Main -->
 <main class="main">
 
+        <!-- ── Staging Inbox ─────────────────────────────── -->
+        <section class="card" id="staging-section">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <h2 style="margin:0; font-size:1.05rem;">
+              📥 Staging Inbox
+              <span id="staging-badge" style="
+                display:inline-block; margin-left:8px; padding:2px 9px;
+                background:#f59e0b; color:#fff; border-radius:12px;
+                font-size:0.75rem; font-weight:700; vertical-align:middle;">
+                0
+              </span>
+            </h2>
+            <button onclick="loadStaging()" style="
+              padding:4px 12px; font-size:0.78rem; font-weight:600;
+              background:transparent; border:1px solid #cbd5e1;
+              border-radius:6px; cursor:pointer;">
+              ↻ Refresh
+            </button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:#f8fafc; text-align:left;">
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="staging-tbody">
+                <tr><td colspan="7" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
   <!-- KPIs -->
   <div class="kpi-row">
     <div class="kpi-card total">
@@ -1336,6 +1376,176 @@ function renderAllObsMobile(obs) {
     </div>
   `).join('');
 }
+
+    // ── Staging Inbox ──────────────────────────────────────────
+
+    const CONFORMANCE_COLOURS = {
+      Compliant:   { bg: '#dcfce7', color: '#15803d' },
+      Conditional: { bg: '#fef9c3', color: '#854d0e' },
+      NCR:         { bg: '#fee2e2', color: '#991b1b' },
+      Info:        { bg: '#e0e7ff', color: '#3730a3' },
+    };
+
+    async function loadStaging() {
+      const tbody = document.getElementById('staging-tbody');
+      const badge = document.getElementById('staging-badge');
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+
+      const { data, error } = await db
+        .from('pims_staging')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
+        return;
+      }
+
+      const pending = data.filter(r => r.review_status !== 'Approved');
+      badge.textContent = pending.length;
+      badge.style.background = pending.length > 0 ? '#f59e0b' : '#22c55e';
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => {
+        const conf   = row.conformance_status || '';
+        const colours = CONFORMANCE_COLOURS[conf] || { bg: '#f1f5f9', color: '#475569' };
+        const approved = row.review_status === 'Approved';
+        return `
+          <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${row.observation_text || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${row.ccvs_code}</code>` : '—'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
+              <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;
+                background:${approved ? '#dcfce7' : '#fef9c3'};
+                color:${approved ? '#15803d' : '#854d0e'};">
+                ${row.review_status || 'Pending'}
+              </span>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <button
+                id="btn-${row.id}"
+                onclick="approveStagingRecord('${row.id}')"
+                ${approved ? 'disabled' : ''}
+                style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:${approved ? '#9ca3af' : '#16a34a'};border:none;
+                  border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
+                ${approved ? '✓ Approved' : '✓ Approve'}
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function approveStagingRecord(stagingId) {
+      const btn = document.getElementById(`btn-${stagingId}`);
+      if (!btn || btn.disabled) return;
+      if (!confirm('Promote this observation to PIMS records?')) return;
+
+      btn.disabled    = true;
+      btn.textContent = 'Approving…';
+
+      try {
+        // 1. Fetch the staging record
+        const { data: rows, error: fetchErr } = await db
+          .from('pims_staging')
+          .select('*')
+          .eq('id', stagingId);
+
+        if (fetchErr || !rows?.length) throw new Error(fetchErr?.message || 'Record not found');
+        const staging = rows[0];
+
+        if (staging.review_status === 'Approved') {
+          btn.textContent = '✓ Approved';
+          btn.style.background = '#9ca3af';
+          return;
+        }
+
+        // 2. Build observation row
+        const COPY_FIELDS = [
+          'audit_id','seq_no','observation_date','observation_text',
+          'filename','photo_url','submitted_by','device_info',
+          'enriched','enriched_at','conformance_status','ccvs_code',
+          'ccvs_category','ccvs_confidence','action_required',
+          'action_description','responsible','due_category','monitoring_note',
+        ];
+        const obsRow = {};
+        COPY_FIELDS.forEach(f => { obsRow[f] = staging[f]; });
+        obsRow.staging_id   = stagingId;
+        obsRow.review_status = 'Approved';
+        obsRow.approved_by  = 'dashboard';
+        obsRow.approved_at  = new Date().toISOString();
+
+        // 3. Insert into pims_observations
+        const { error: insErr } = await db
+          .from('pims_observations')
+          .insert(obsRow);
+        if (insErr) throw new Error(insErr.message);
+
+        // 4. Mark staging as Approved
+        const { error: updErr } = await db
+          .from('pims_staging')
+          .update({ review_status: 'Approved' })
+          .eq('id', stagingId);
+        if (updErr) console.warn('Staging update failed:', updErr.message);
+
+        // 5. Update UI
+        btn.textContent      = '✓ Approved';
+        btn.style.background = '#9ca3af';
+        btn.style.cursor     = 'not-allowed';
+
+        const statusCell = document.getElementById(`status-${stagingId}`);
+        if (statusCell) statusCell.innerHTML = `
+          <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;
+            font-weight:600;background:#dcfce7;color:#15803d;">Approved</span>`;
+
+        const row = document.getElementById(`staging-row-${stagingId}`);
+        if (row) row.style.opacity = '0.45';
+
+        // Update badge count
+        const badge = document.getElementById('staging-badge');
+        const current = parseInt(badge.textContent) || 0;
+        const newCount = Math.max(0, current - 1);
+        badge.textContent = newCount;
+        badge.style.background = newCount > 0 ? '#f59e0b' : '#22c55e';
+
+        showToast('Record promoted to PIMS observations.', 'success');
+
+      } catch (err) {
+        btn.disabled    = false;
+        btn.textContent = '✓ Approve';
+        showToast(`Error: ${err.message}`, 'error');
+        console.error('approveStagingRecord:', err);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const colours = { success:'#16a34a', warning:'#d97706', error:'#dc2626', info:'#2563eb' };
+      const el = document.createElement('div');
+      el.textContent = message;
+      Object.assign(el.style, {
+        position:'fixed', bottom:'24px', right:'24px', padding:'12px 20px',
+        background: colours[type] || colours.info, color:'#fff',
+        borderRadius:'8px', fontWeight:'600', fontSize:'0.875rem',
+        boxShadow:'0 4px 12px rgba(0,0,0,.2)', zIndex:'9999',
+        maxWidth:'400px', lineHeight:'1.4',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),350); }, 4500);
+    }
+
+    // Load staging on page load
+    loadStaging();
 
 // ── Go ──
 loadData();

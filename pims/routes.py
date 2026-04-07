@@ -39,6 +39,27 @@ RPD_SUPABASE_URL    = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodn
 RPD_SUPABASE_KEY    = os.getenv("RPD_SUPABASE_ANON_KEY", "")
 RPD_PIMS_TOKEN      = os.getenv("PIMS_RPD_TOKEN", "")
 
+VALID_CCVS = {
+    "WAH-H6", "WAH-H9",
+    "IRA-H6", "IRA-H9",
+    "SIL-H6", "SIL-H9",
+    "STR-H6", "STR-H9",
+    "MOB-H6", "MOB-M4",
+    "CHM-M3", "CHM-H6",
+    "ENE-M4", "ENE-H6",
+    "SYS-L1", "SYS-L2",
+    "SYS-M3", "SYS-M4",
+    "SYS-H6",
+}
+
+STAGING_COPY_FIELDS = [
+    "audit_id", "seq_no", "observation_date", "observation_text",
+    "filename", "photo_url", "submitted_by", "device_info",
+    "enriched", "enriched_at", "conformance_status", "ccvs_code",
+    "ccvs_category", "ccvs_confidence", "action_required",
+    "action_description", "responsible", "due_category", "monitoring_note",
+]
+
 # SD Group Supabase (future)
 SDG_SUPABASE_URL    = os.getenv("SDG_SUPABASE_URL", "")
 SDG_SUPABASE_KEY    = os.getenv("SDG_SUPABASE_ANON_KEY", "")
@@ -316,3 +337,110 @@ async def sdgroup_observation(
         expected_token=SDG_PIMS_TOKEN,
         token=         x_pims_token,
     )
+
+
+@router.post("/staging/{staging_id}/approve")
+async def approve_staging_rpd(
+    staging_id: str,
+    x_pims_token: str = Header(..., alias="X-PIMS-Token"),
+):
+    if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid PIMS token")
+
+    headers = {
+        "apikey":        RPD_SUPABASE_KEY,
+        "Authorization": f"Bearer {RPD_SUPABASE_KEY}",
+        "Content-Type":  "application/json",
+        "Prefer":        "return=representation",
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers=headers,
+            params={"id": f"eq.{staging_id}", "select": "*"},
+        )
+        r.raise_for_status()
+        rows = r.json()
+
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"Staging record {staging_id} not found.")
+
+        staging = rows[0]
+
+        if staging.get("review_status") == "Approved":
+            raise HTTPException(status_code=409, detail=f"Staging record {staging_id} is already Approved.")
+
+        if not staging.get("observation_text"):
+            raise HTTPException(status_code=422, detail="Cannot approve a record with no observation_text.")
+
+        now_utc = datetime.utcnow().isoformat()
+        obs_row = {field: staging.get(field) for field in STAGING_COPY_FIELDS}
+        obs_row.update({
+            "staging_id":    staging_id,
+            "review_status": "Approved",
+            "approved_by":   "dashboard",
+            "approved_at":   now_utc,
+        })
+
+        r2 = await client.post(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            json=obs_row,
+        )
+        if r2.status_code not in (200, 201):
+            log.error(f"pims_observations insert failed: {r2.status_code} {r2.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to insert observation: {r2.text}")
+
+        new_obs = r2.json()[0]
+
+        r3 = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers={**headers, "Prefer": "return=minimal"},
+            params={"id": f"eq.{staging_id}"},
+            json={"review_status": "Approved"},
+        )
+        if r3.status_code not in (200, 204):
+            log.warning(f"pims_staging status update failed for {staging_id}: {r3.status_code} {r3.text}")
+
+        ccvs = staging.get("ccvs_code")
+        response = {
+            "observation": new_obs,
+            "staging_id":  staging_id,
+            "message":     "Record promoted to pims_observations.",
+        }
+        if ccvs and ccvs not in VALID_CCVS:
+            response["ccvs_warning"] = f"CCVS code '{ccvs}' is not in the approved RPD taxonomy."
+
+        return response
+
+
+@router.get("/observations/rpd")
+async def list_observations_rpd(
+    x_pims_token: str = Header(..., alias="X-PIMS-Token"),
+    audit_id: str | None = None,
+):
+    if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid PIMS token")
+
+    headers = {
+        "apikey":        RPD_SUPABASE_KEY,
+        "Authorization": f"Bearer {RPD_SUPABASE_KEY}",
+        "Content-Type":  "application/json",
+    }
+    params = {
+        "review_status": "eq.Approved",
+        "order":         "approved_at.desc",
+        "select":        "*",
+    }
+    if audit_id:
+        params["audit_id"] = f"eq.{audit_id}"
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json()
