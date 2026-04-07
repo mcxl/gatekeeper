@@ -110,15 +110,7 @@ RULES:
 
 async def enrich_observation(observation_text: str) -> dict:
     """Call Claude Haiku to classify and enrich a PIMS observation."""
-    log.warning(f"ANTHROPIC_API_KEY present: {bool(ANTHROPIC_API_KEY)}, length: {len(ANTHROPIC_API_KEY)}")
     try:
-        import socket
-        try:
-            socket.getaddrinfo("api.anthropic.com", 443)
-            log.warning("DNS resolution for api.anthropic.com: OK")
-        except Exception as dns_err:
-            log.error(f"DNS resolution failed: {dns_err}")
-
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -137,8 +129,6 @@ async def enrich_observation(observation_text: str) -> dict:
                 },
             )
             resp.raise_for_status()
-            log.warning(f"Haiku response status: {resp.status_code}")
-            log.warning(f"Haiku response body: {resp.text[:500]}")
             data = resp.json()
             text = data["content"][0]["text"].strip()
             if text.startswith("```"):
