@@ -116,7 +116,13 @@ def _scan_contamination(
         "dust extraction running",
         "p2 respirator fitted before each",
         "scaffold daily pre-use",
+        "ewp pre-use",
         "ewp pre-use check",
+        "check lanyard attachment",
+        "safework nsw hrcw notification current",
+        "maintain hrcw notification",
+        "notification current throughout",
+        "maintain safework notification",
         "solar panel",
     ]
     WAH_MARKER = "check lanyard attachment"
@@ -135,6 +141,8 @@ def _scan_contamination(
                 bl = bullet.lower()
                 contaminated = False
                 for marker in MARKERS:
+                    if marker == WAH_MARKER and is_wah:
+                        continue
                     if marker in bl:
                         log.warning(
                             "Contamination removed "
@@ -158,6 +166,22 @@ def _scan_contamination(
                 if not contaminated:
                     cleaned.append(bullet)
             tb[field] = cleaned
+
+    for tb in task_blocks:
+        mon = tb.get("monitoring")
+        if not isinstance(mon, dict):
+            continue
+        cc = (mon.get("critical_control") or "").lower()
+        for marker in MARKERS:
+            if marker in cc:
+                logging.getLogger(__name__).warning(
+                    "Monitoring contamination"
+                    " removed from '%s': '%s'",
+                    tb.get("task", ""),
+                    mon["critical_control"][:80],
+                )
+                tb["monitoring"] = None
+                break
 
     return task_blocks
 

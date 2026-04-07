@@ -292,6 +292,11 @@ async def serve_pims():
     return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard.html"))
 
 
+@app.get("/pims-rpd", response_class=HTMLResponse)
+async def serve_pims_rpd():
+    return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard_rpd.html"))
+
+
 @app.get("/ra", response_class=HTMLResponse)
 async def serve_ra():
     return _html_response(os.path.join(_FRONTEND_DIR, "dev.html"))

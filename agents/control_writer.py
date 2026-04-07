@@ -291,6 +291,28 @@ FORBIDDEN - never include in any task:
 If a control does not match this task's name, scope, and CCVS code - do not
 write it.
 
+FORBIDDEN REGULATORY PHRASES —
+never generate these under any
+circumstances:
+
+- "SafeWork NSW HRCW notification
+  current throughout"
+- "Maintain SafeWork NSW HRCW
+  notification current"
+- "HRCW notification current"
+- "Maintain HRCW notification"
+- Any instruction that implies a
+  continuous or ongoing SafeWork NSW
+  notification obligation during work.
+  There is no such general obligation
+  for standard HRCW excavation.
+
+For HRCW work, the correct control is:
+"Notify SafeWork NSW before work
+  starts if required under WHS
+  Regulation 2017."
+That is the only acceptable form.
+
 SILICA SCORING RULES:
 - Active dust generation (grinding, cutting, drilling, jackhammering)
   MUST use SIL-H6 or SIL-H9 — never SYS or N/A
