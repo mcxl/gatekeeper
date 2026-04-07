@@ -110,29 +110,33 @@ RULES:
 
 async def enrich_observation(observation_text: str) -> dict:
     """Call Claude Haiku to classify and enrich a PIMS observation."""
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key":         ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type":      "application/json",
-            },
-            json={
-                "model":      "claude-haiku-4-5-20251001",
-                "max_tokens": 512,
-                "system":     ENRICHMENT_SYSTEM,
-                "messages": [
-                    {"role": "user", "content": f"Observation: {observation_text}"}
-                ],
-            },
-        )
-        resp.raise_for_status()
-        log.info(f"Haiku response status: {resp.status_code}")
-        log.info(f"Haiku response body: {resp.text[:500]}")
-        data = resp.json()
-        text = data["content"][0]["text"].strip()
-        return json.loads(text)
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key":         ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type":      "application/json",
+                },
+                json={
+                    "model":      "claude-haiku-4-5-20251001",
+                    "max_tokens": 512,
+                    "system":     ENRICHMENT_SYSTEM,
+                    "messages": [
+                        {"role": "user", "content": f"Observation: {observation_text}"}
+                    ],
+                },
+            )
+            resp.raise_for_status()
+            log.info(f"Haiku response status: {resp.status_code}")
+            log.info(f"Haiku response body: {resp.text[:500]}")
+            data = resp.json()
+            text = data["content"][0]["text"].strip()
+            return json.loads(text)
+    except Exception as e:
+        log.error(f"Haiku enrichment failed: {type(e).__name__}: {e}")
+        raise
 
 
 # ── Supabase helpers ───────────────────────────────────────────────────────────
