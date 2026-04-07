@@ -1394,7 +1394,7 @@ function renderAllObsMobile(obs) {
       const { data, error } = await db
         .from('pims_staging')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('submitted_at', { ascending: false });
 
       if (error || !data) {
         tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
