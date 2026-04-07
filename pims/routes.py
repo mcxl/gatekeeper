@@ -110,6 +110,7 @@ RULES:
 
 async def enrich_observation(observation_text: str) -> dict:
     """Call Claude Haiku to classify and enrich a PIMS observation."""
+    log.info(f"ANTHROPIC_API_KEY present: {bool(ANTHROPIC_API_KEY)}, length: {len(ANTHROPIC_API_KEY)}")
     try:
         import socket
         try:
