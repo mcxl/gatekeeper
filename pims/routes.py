@@ -141,6 +141,11 @@ async def enrich_observation(observation_text: str) -> dict:
             log.warning(f"Haiku response body: {resp.text[:500]}")
             data = resp.json()
             text = data["content"][0]["text"].strip()
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            text = text.strip()
             return json.loads(text)
     except Exception as e:
         log.error(f"Haiku enrichment failed: {type(e).__name__}: {e}")
