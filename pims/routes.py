@@ -110,12 +110,12 @@ RULES:
 
 async def enrich_observation(observation_text: str) -> dict:
     """Call Claude Haiku to classify and enrich a PIMS observation."""
-    log.info(f"ANTHROPIC_API_KEY present: {bool(ANTHROPIC_API_KEY)}, length: {len(ANTHROPIC_API_KEY)}")
+    log.warning(f"ANTHROPIC_API_KEY present: {bool(ANTHROPIC_API_KEY)}, length: {len(ANTHROPIC_API_KEY)}")
     try:
         import socket
         try:
             socket.getaddrinfo("api.anthropic.com", 443)
-            log.info("DNS resolution for api.anthropic.com: OK")
+            log.warning("DNS resolution for api.anthropic.com: OK")
         except Exception as dns_err:
             log.error(f"DNS resolution failed: {dns_err}")
 
@@ -137,8 +137,8 @@ async def enrich_observation(observation_text: str) -> dict:
                 },
             )
             resp.raise_for_status()
-            log.info(f"Haiku response status: {resp.status_code}")
-            log.info(f"Haiku response body: {resp.text[:500]}")
+            log.warning(f"Haiku response status: {resp.status_code}")
+            log.warning(f"Haiku response body: {resp.text[:500]}")
             data = resp.json()
             text = data["content"][0]["text"].strip()
             return json.loads(text)
