@@ -432,7 +432,7 @@ async def generate(
         )
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return JSONResponse(
         content={
