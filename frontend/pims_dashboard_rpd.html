@@ -840,49 +840,6 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 <!-- Main -->
 <main class="main">
 
-        <!-- ── Staging Inbox ─────────────────────────────── -->
-        <section class="card" id="staging-section">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-            <h2 style="margin:0; font-size:1.05rem;">
-              📥 Staging Inbox
-              <span id="staging-badge" style="
-                display:inline-block; margin-left:8px; padding:2px 9px;
-                background:#f59e0b; color:#fff; border-radius:12px;
-                font-size:0.75rem; font-weight:700; vertical-align:middle;">
-                0
-              </span>
-            </h2>
-            <button onclick="loadStaging()" style="
-              padding:4px 12px; font-size:0.78rem; font-weight:600;
-              background:transparent; border:1px solid #cbd5e1;
-              border-radius:6px; cursor:pointer;">
-              ↻ Refresh
-            </button>
-          </div>
-
-          <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-              <thead>
-                <tr style="background:#f8fafc; text-align:left;">
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Photo</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
-                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
-                </tr>
-              </thead>
-              <tbody id="staging-tbody">
-                <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
   <!-- KPIs -->
   <div class="kpi-row">
     <div class="kpi-card total">
@@ -1012,6 +969,49 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     </div>
     <div class="mobile-cards" id="allObsMobileCards"></div>
   </div>
+
+  <!-- ── Staging Inbox ─────────────────────────────── -->
+  <section class="card" id="staging-section">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <h2 style="margin:0; font-size:1.05rem;">
+        📥 Staging Inbox
+        <span id="staging-badge" style="
+          display:inline-block; margin-left:8px; padding:2px 9px;
+          background:#f59e0b; color:#fff; border-radius:12px;
+          font-size:0.75rem; font-weight:700; vertical-align:middle;">
+          0
+        </span>
+      </h2>
+      <button onclick="loadStaging()" style="
+        padding:4px 12px; font-size:0.78rem; font-weight:600;
+        background:transparent; border:1px solid #cbd5e1;
+        border-radius:6px; cursor:pointer;">
+        ↻ Refresh
+      </button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+        <thead>
+          <tr style="background:#f8fafc; text-align:left;">
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Photo</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="staging-tbody">
+          <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
 </main>
 
