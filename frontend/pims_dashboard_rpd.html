@@ -11,6 +11,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 /* ── Reset ── */
@@ -972,7 +973,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
   <!-- ── Staging Inbox ─────────────────────────────── -->
   <section class="card" id="staging-section">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+    <!-- Collapsible header -->
+    <div onclick="toggleStaging()" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
       <h2 style="margin:0; font-size:1.05rem;">
         📥 Staging Inbox
         <span id="staging-badge" style="
@@ -982,34 +984,52 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           0
         </span>
       </h2>
-      <button onclick="loadStaging()" style="
-        padding:4px 12px; font-size:0.78rem; font-weight:600;
-        background:transparent; border:1px solid #cbd5e1;
-        border-radius:6px; cursor:pointer;">
-        ↻ Refresh
-      </button>
+      <span id="staging-chevron" style="font-size:1.1rem; color:#94a3b8; transition:transform 0.2s;">▼</span>
     </div>
 
-    <div style="overflow-x:auto;">
-      <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-        <thead>
-          <tr style="background:#f8fafc; text-align:left;">
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Photo</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
-            <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
-          </tr>
-        </thead>
-        <tbody id="staging-tbody">
-          <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
-        </tbody>
-      </table>
+    <!-- Collapsible body — hidden by default -->
+    <div id="staging-body" style="display:none; margin-top:14px;">
+
+      <!-- Toolbar -->
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <button onclick="loadStaging()" style="
+          padding:4px 12px; font-size:0.78rem; font-weight:600;
+          background:transparent; border:1px solid #cbd5e1;
+          border-radius:6px; cursor:pointer;">
+          ↻ Refresh
+        </button>
+        <button onclick="downloadStagingXLSX()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#2563eb; border:none; border-radius:6px; cursor:pointer;">
+          ⬇ Download XLSX
+        </button>
+        <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+          <thead>
+            <tr style="background:#f8fafc; text-align:left;">
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">
+                <input type="checkbox" id="staging-select-all" onchange="toggleSelectAll(this)" title="Select all">
+              </th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">Photo</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="staging-tbody">
+            <tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -1382,6 +1402,8 @@ function renderAllObsMobile(obs) {
 
     // ── Staging Inbox ──────────────────────────────────────────
 
+    let stagingData = []; // cache for XLSX export
+
     const CONFORMANCE_COLOURS = {
       Compliant:   { bg: '#dcfce7', color: '#15803d' },
       Conditional: { bg: '#fef9c3', color: '#854d0e' },
@@ -1389,10 +1411,68 @@ function renderAllObsMobile(obs) {
       Info:        { bg: '#e0e7ff', color: '#3730a3' },
     };
 
+    let stagingOpen = false;
+
+    function toggleStaging() {
+      stagingOpen = !stagingOpen;
+      const body = document.getElementById('staging-body');
+      const chev = document.getElementById('staging-chevron');
+      body.style.display = stagingOpen ? 'block' : 'none';
+      chev.style.transform = stagingOpen ? 'rotate(180deg)' : '';
+      if (stagingOpen && stagingData.length === 0) loadStaging();
+    }
+
+    function toggleSelectAll(cb) {
+      document.querySelectorAll('.staging-cb').forEach(c => c.checked = cb.checked);
+      updateSelectCount();
+    }
+
+    function updateSelectCount() {
+      const total = document.querySelectorAll('.staging-cb').length;
+      const checked = document.querySelectorAll('.staging-cb:checked').length;
+      const el = document.getElementById('staging-select-count');
+      el.textContent = checked > 0 ? `${checked} of ${total} selected` : '';
+    }
+
+    function getSelectedRows() {
+      const ids = [...document.querySelectorAll('.staging-cb:checked')].map(c => c.dataset.id);
+      return ids.length > 0 ? stagingData.filter(r => ids.includes(r.id)) : stagingData;
+    }
+
+    function downloadStagingXLSX() {
+      const rows = getSelectedRows();
+      if (!rows.length) { alert('No rows to export.'); return; }
+      const headers = ['#','Date','Observation','Photo ID','CCVS Code','Conformance Status',
+        'Action Required','Action Description','Responsible','Due Category',
+        'Monitoring Note','Enriched Text','Legal Reference','Photo URL','Review Status'];
+      const wsData = [headers, ...rows.map((r,i) => [
+        i+1,
+        r.observation_date || '',
+        r.observation_text || '',
+        r.filename || '',
+        r.ccvs_code || '',
+        r.conformance_status || '',
+        r.action_required ? 'Yes' : 'No',
+        r.action_description || '',
+        r.responsible || '',
+        r.due_category || '',
+        r.monitoring_note || '',
+        r.observation_text_enriched || '',
+        r.legal_reference || '',
+        r.photo_url || '',
+        r.review_status || '',
+      ])];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [6,12,40,20,12,16,10,30,14,12,30,40,30,50,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, ws, 'Staging');
+      XLSX.writeFile(wb, `PIMS_Staging_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
     async function loadStaging() {
       const tbody = document.getElementById('staging-tbody');
       const badge = document.getElementById('staging-badge');
-      tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
       const { data, error } = await db
         .from('pims_staging')
@@ -1400,35 +1480,40 @@ function renderAllObsMobile(obs) {
         .order('submitted_at', { ascending: false });
 
       if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="9" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
         return;
       }
 
+      stagingData = data;
       const pending = data.filter(r => r.review_status !== 'Approved');
       badge.textContent = pending.length;
       badge.style.background = pending.length > 0 ? '#f59e0b' : '#22c55e';
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
         return;
       }
 
       tbody.innerHTML = data.map(row => {
-        const conf   = row.conformance_status || '';
+        const conf    = row.conformance_status || '';
         const colours = CONFORMANCE_COLOURS[conf] || { bg: '#f1f5f9', color: '#475569' };
         const approved = row.review_status === 'Approved';
+        const thumb = row.photo_url
+          ? `<a href="${row.photo_url}" target="_blank" rel="noopener" title="${row.filename || 'View photo'}">
+               <img src="${row.photo_url}" alt="photo"
+                 style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;display:block;"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+               <span style="display:none;font-size:0.72rem;color:#2563eb;">📷 View</span>
+             </a>`
+          : '<span style="color:#cbd5e1;font-size:0.72rem;">—</span>';
         return `
           <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
+              <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="updateSelectCount()" ${approved ? 'disabled' : ''}>
+            </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
-              ${row.photo_url
-                ? `<a href="${row.photo_url}" target="_blank" rel="noopener"
-                    style="font-size:0.75rem;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
-                    📷 <span style="text-decoration:underline;">${row.filename || 'View'}</span>
-                  </a>`
-                : '<span style="color:#cbd5e1;font-size:0.72rem;">—</span>'}
-            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">${thumb}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${row.observation_text || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
               ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${row.ccvs_code}</code>` : '—'}
