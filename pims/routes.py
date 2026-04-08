@@ -19,6 +19,7 @@ Codex fixes applied:
     P2 — get_or_create_audit uses upsert to eliminate race window
     P2 — approve/list routes guard on missing Supabase key
     P2 — seq_no auto-assigned from max existing seq_no for audit
+    FIX — All server-side Supabase calls use service role key
 """
 
 from __future__ import annotations
@@ -42,14 +43,16 @@ router = APIRouter(prefix="/pims", tags=["pims"])
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # RPD Supabase
-RPD_SUPABASE_URL  = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodni.supabase.co")
-RPD_SUPABASE_KEY  = os.getenv("RPD_SUPABASE_ANON_KEY", "")
-RPD_PIMS_TOKEN    = os.getenv("PIMS_RPD_TOKEN", "")
+RPD_SUPABASE_URL         = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodni.supabase.co")
+RPD_SUPABASE_KEY         = os.getenv("RPD_SUPABASE_ANON_KEY", "")
+RPD_SUPABASE_SERVICE_KEY = os.getenv("RPD_SUPABASE_SERVICE_KEY", "")
+RPD_PIMS_TOKEN           = os.getenv("PIMS_RPD_TOKEN", "")
 
 # SD Group Supabase (future)
-SDG_SUPABASE_URL  = os.getenv("SDG_SUPABASE_URL", "")
-SDG_SUPABASE_KEY  = os.getenv("SDG_SUPABASE_ANON_KEY", "")
-SDG_PIMS_TOKEN    = os.getenv("PIMS_SDG_TOKEN", "")
+SDG_SUPABASE_URL         = os.getenv("SDG_SUPABASE_URL", "")
+SDG_SUPABASE_KEY         = os.getenv("SDG_SUPABASE_ANON_KEY", "")
+SDG_SUPABASE_SERVICE_KEY = os.getenv("SDG_SUPABASE_SERVICE_KEY", "")
+SDG_PIMS_TOKEN           = os.getenv("PIMS_SDG_TOKEN", "")
 
 VALID_CCVS = {
     "WAH-H6", "WAH-H9",
@@ -211,7 +214,7 @@ async def enrich_observation(observation_text: str) -> dict:
 
 async def enrich_and_update(
     supabase_url: str,
-    supabase_key: str,
+    supabase_service_key: str,
     record_id: str,
     observation_text: str,
 ) -> None:
@@ -222,12 +225,7 @@ async def enrich_and_update(
         log.error(f"Background enrichment failed for {record_id}: {e}")
         return
 
-    headers = {
-        "apikey":        supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
-        "Content-Type":  "application/json",
-        "Prefer":        "return=minimal",
-    }
+    headers = _supabase_headers(supabase_service_key, prefer="return=minimal")
     patch = {
         "conformance_status":        enrichment.get("conformance_status"),
         "ccvs_code":                 enrichment.get("ccvs_code"),
@@ -258,9 +256,11 @@ async def enrich_and_update(
     except Exception as e:
         log.error(f"Background patch exception for {record_id}: {e}")
 
+
 # ── Supabase helpers ───────────────────────────────────────────────────────────
 
 def _supabase_headers(supabase_key: str, prefer: str = "return=representation") -> dict:
+    """Build standard Supabase REST headers."""
     return {
         "apikey":        supabase_key,
         "Authorization": f"Bearer {supabase_key}",
@@ -271,16 +271,20 @@ def _supabase_headers(supabase_key: str, prefer: str = "return=representation") 
 
 async def get_or_create_audit(
     supabase_url: str,
-    supabase_key: str,
+    supabase_service_key: str,
     audit_ref: str,
 ) -> str:
+    """
+    Return existing audit id or create a new audit record.
+    Uses upsert with service role key to eliminate race window.
+    """
     today = date.today().isoformat()
     parts = audit_ref.split("_", 1)
     audit_date = parts[0] if len(parts[0]) == 10 else today
     site_name  = parts[1].replace("_", " ") if len(parts) > 1 else audit_ref
 
     headers = _supabase_headers(
-        supabase_key,
+        supabase_service_key,
         prefer="return=representation,resolution=merge-duplicates",
     )
     async with httpx.AsyncClient(timeout=15) as client:
@@ -301,10 +305,11 @@ async def get_or_create_audit(
 
 async def next_seq_no(
     supabase_url: str,
-    supabase_key: str,
+    supabase_service_key: str,
     audit_id: str,
 ) -> int:
-    headers = _supabase_headers(supabase_key, prefer="return=representation")
+    """Return max(seq_no) + 1 for the given audit, or 1 if none exist."""
+    headers = _supabase_headers(supabase_service_key, prefer="return=representation")
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.get(
             f"{supabase_url}/rest/v1/pims_staging",
@@ -325,13 +330,14 @@ async def next_seq_no(
 
 async def insert_staging(
     supabase_url: str,
-    supabase_key: str,
+    supabase_service_key: str,
     audit_id: str,
     request: ObservationRequest,
     enrichment: dict,
     seq_no: int,
 ) -> str:
-    headers = _supabase_headers(supabase_key)
+    """Insert observation into pims_staging. Returns record id."""
+    headers = _supabase_headers(supabase_service_key)
     record = {
         "audit_id":           audit_id,
         "seq_no":             seq_no,
@@ -373,15 +379,17 @@ async def insert_staging(
 async def _handle_observation(
     request: ObservationRequest,
     supabase_url: str,
-    supabase_key: str,
+    supabase_service_key: str,
     expected_token: str,
     token: str,
     background_tasks: BackgroundTasks,
 ) -> ObservationResponse:
+    """Shared handler for all client observation endpoints."""
     if not expected_token or token != expected_token:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
-    if not supabase_key:
-        raise HTTPException(status_code=503, detail="Supabase not configured for this client")
+
+    if not supabase_service_key:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
 
     empty_enrichment = {
         "conformance_status":        None,
@@ -398,9 +406,9 @@ async def _handle_observation(
     }
 
     try:
-        audit_id = await get_or_create_audit(supabase_url, supabase_key, request.audit_ref)
-        seq_no = request.seq_no if request.seq_no is not None else await next_seq_no(supabase_url, supabase_key, audit_id)
-        record_id = await insert_staging(supabase_url, supabase_key, audit_id, request, empty_enrichment, seq_no)
+        audit_id = await get_or_create_audit(supabase_url, supabase_service_key, request.audit_ref)
+        seq_no = request.seq_no if request.seq_no is not None else await next_seq_no(supabase_url, supabase_service_key, audit_id)
+        record_id = await insert_staging(supabase_url, supabase_service_key, audit_id, request, empty_enrichment, seq_no)
     except Exception as e:
         log.error(f"Supabase insert failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to save observation")
@@ -408,7 +416,7 @@ async def _handle_observation(
     background_tasks.add_task(
         enrich_and_update,
         supabase_url=supabase_url,
-        supabase_key=supabase_key,
+        supabase_service_key=supabase_service_key,
         record_id=record_id,
         observation_text=request.observation_text,
     )
@@ -433,13 +441,14 @@ async def rpd_observation(
     background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
+    """Receive a field observation for RPD and enrich with CCVS codes."""
     return await _handle_observation(
-        request=          request,
-        supabase_url=     RPD_SUPABASE_URL,
-        supabase_key=     RPD_SUPABASE_KEY,
-        expected_token=   RPD_PIMS_TOKEN,
-        token=            x_pims_token,
-        background_tasks= background_tasks,
+        request=              request,
+        supabase_url=         RPD_SUPABASE_URL,
+        supabase_service_key= RPD_SUPABASE_SERVICE_KEY,
+        expected_token=       RPD_PIMS_TOKEN,
+        token=                x_pims_token,
+        background_tasks=     background_tasks,
     )
 
 
@@ -449,13 +458,14 @@ async def sdgroup_observation(
     background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
+    """Receive a field observation for SD Group and enrich with CCVS codes."""
     return await _handle_observation(
-        request=          request,
-        supabase_url=     SDG_SUPABASE_URL,
-        supabase_key=     SDG_SUPABASE_KEY,
-        expected_token=   SDG_PIMS_TOKEN,
-        token=            x_pims_token,
-        background_tasks= background_tasks,
+        request=              request,
+        supabase_url=         SDG_SUPABASE_URL,
+        supabase_service_key= SDG_SUPABASE_SERVICE_KEY,
+        expected_token=       SDG_PIMS_TOKEN,
+        token=                x_pims_token,
+        background_tasks=     background_tasks,
     )
 
 
@@ -466,11 +476,11 @@ async def approve_staging_rpd(
 ):
     if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
-    if not RPD_SUPABASE_KEY:
-        raise HTTPException(status_code=503, detail="Supabase not configured")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
 
-    headers_repr    = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=representation")
-    headers_minimal = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=minimal")
+    headers_repr    = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    headers_minimal = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal")
 
     async with httpx.AsyncClient(timeout=15) as client:
         r = await client.get(
@@ -554,10 +564,10 @@ async def list_observations_rpd(
 ):
     if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
-    if not RPD_SUPABASE_KEY:
-        raise HTTPException(status_code=503, detail="Supabase not configured")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
 
-    headers = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=representation")
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     params = {
         "review_status": "eq.Approved",
         "order":         "approved_at.desc",
