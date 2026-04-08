@@ -866,15 +866,18 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
                 <tr style="background:#f8fafc; text-align:left;">
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Photo</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
                   <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
                 </tr>
               </thead>
               <tbody id="staging-tbody">
-                <tr><td colspan="7" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
+                <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1389,7 +1392,7 @@ function renderAllObsMobile(obs) {
     async function loadStaging() {
       const tbody = document.getElementById('staging-tbody');
       const badge = document.getElementById('staging-badge');
-      tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
       const { data, error } = await db
         .from('pims_staging')
@@ -1397,7 +1400,7 @@ function renderAllObsMobile(obs) {
         .order('submitted_at', { ascending: false });
 
       if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
         return;
       }
 
@@ -1406,7 +1409,7 @@ function renderAllObsMobile(obs) {
       badge.style.background = pending.length > 0 ? '#f59e0b' : '#22c55e';
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
         return;
       }
 
@@ -1418,12 +1421,36 @@ function renderAllObsMobile(obs) {
           <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
+              ${row.photo_url
+                ? `<a href="${row.photo_url}" target="_blank" rel="noopener"
+                    style="font-size:0.75rem;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
+                    📷 <span style="text-decoration:underline;">${row.filename || 'View'}</span>
+                  </a>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;">—</span>'}
+            </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${row.observation_text || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
               ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${row.ccvs_code}</code>` : '—'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
               ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px; background:#f8fbff;">
+              ${row.observation_text_enriched
+                ? `<span title="${row.observation_text_enriched.replace(/"/g,'&quot;')}"
+                    style="display:block;font-size:0.75rem;line-height:1.45;color:#1e3a5f;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+                    ${row.observation_text_enriched}
+                  </span>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px; background:#f8fbff;">
+              ${row.legal_reference
+                ? `<span title="${row.legal_reference.replace(/"/g,'&quot;')}"
+                    style="display:block;font-size:0.72rem;line-height:1.45;color:#374151;font-style:italic;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+                    ${row.legal_reference}
+                  </span>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">—</span>'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
               <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;
@@ -1478,6 +1505,7 @@ function renderAllObsMobile(obs) {
           'enriched','enriched_at','conformance_status','ccvs_code',
           'ccvs_category','ccvs_confidence','action_required',
           'action_description','responsible','due_category','monitoring_note',
+          'observation_text_enriched','legal_reference',
         ];
         const obsRow = {};
         COPY_FIELDS.forEach(f => { obsRow[f] = staging[f]; });
