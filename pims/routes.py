@@ -268,7 +268,7 @@ async def insert_staging(
         "seq_no":             request.seq_no,
         "photo_url":          request.photo_url,
         "filename":           request.filename,
-        "observation_date":   request.observation_date or date.today().isoformat(),
+        "observation_date":   (request.observation_date or "")[:10] or date.today().isoformat(),
         "observation_text":   request.observation_text,
         "submitted_by":       request.submitted_by,
         "device_info":        request.device_info,
