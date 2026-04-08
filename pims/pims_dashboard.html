@@ -3,460 +3,931 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PIMS Dashboard — Safe Method</title>
+<title>PIMS Dashboard — RPD</title>
 
-<!-- Supabase JS -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 
 <style>
-/* ── Reset + Base ── */
+/* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 :root {
-  --dark-blue: #1F3864;
-  --mid-blue:  #2E75B6;
-  --light-blue:#D6E4F0;
-  --red:       #C00000;
-  --green:     #375623;
-  --green-bg:  #E2EFDA;
-  --amber:     #7F6000;
-  --amber-bg:  #FFF2CC;
-  --red-bg:    #FFE0E0;
-  --info-bg:   #D6E4F0;
-  --white:     #ffffff;
-  --grey-100:  #f5f6fa;
-  --grey-200:  #e8eaf0;
-  --grey-400:  #9fa3b0;
-  --grey-700:  #4a4d5e;
-  --font:      'Segoe UI', Arial, sans-serif;
-  --radius:    6px;
-  --shadow:    0 2px 8px rgba(31,56,100,0.10);
+  --navy:        #0A1628;
+  --navy-80:     rgba(10,22,40,0.80);
+  --blue:        #0057FF;
+  --blue-light:  #E8F0FF;
+  --blue-mid:    #3B82F6;
+  --green:       #00C48C;
+  --green-bg:    #E6FAF4;
+  --green-text:  #006B4F;
+  --amber:       #F59E0B;
+  --amber-bg:    #FEF3C7;
+  --amber-text:  #92400E;
+  --red:         #EF4444;
+  --red-bg:      #FEE2E2;
+  --red-text:    #991B1B;
+  --info-bg:     #EFF6FF;
+  --info-text:   #1D4ED8;
+  --white:       #FFFFFF;
+  --surface:     #F4F7FC;
+  --card:        #FFFFFF;
+  --border:      rgba(10,22,40,0.08);
+  --border-mid:  rgba(10,22,40,0.14);
+  --text-primary:#0A1628;
+  --text-muted:  #6B7A99;
+  --text-light:  #A0ABBE;
+  --font:        'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+  --r-sm:        8px;
+  --r-md:        14px;
+  --r-lg:        20px;
+  --r-xl:        28px;
+  --shadow-sm:   0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md:   0 4px 16px rgba(10,22,40,0.08), 0 1px 4px rgba(10,22,40,0.04);
+  --shadow-lg:   0 12px 40px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --transition:  0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+html { scroll-behavior: smooth; }
+
 body {
   font-family: var(--font);
-  background: var(--grey-100);
-  color: var(--grey-700);
+  background: var(--surface);
+  color: var(--text-primary);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Background texture ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,87,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,196,140,0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Header ── */
 .header {
-  background: var(--dark-blue);
-  color: white;
-  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--navy-80);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 32px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-.header-brand { display: flex; align-items: center; gap: 12px; }
-.header-brand svg { width: 28px; height: 28px; }
-.header-brand h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
-.header-brand span { font-size: 12px; opacity: 0.65; margin-left: 4px; }
+
+.header-left { display: flex; align-items: center; gap: 14px; }
+
+.logo {
+  width: 32px; height: 32px;
+  background: var(--blue);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 4px 12px rgba(0,87,255,0.4);
+}
+.logo svg { width: 18px; height: 18px; }
+
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.2px;
+}
+.header-title span {
+  font-weight: 300;
+  opacity: 0.5;
+  margin-left: 6px;
+  font-size: 13px;
+}
+
 .header-right { display: flex; align-items: center; gap: 12px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4cd964; display: inline-block; }
-.status-dot.loading { background: #ffcc00; animation: pulse 1s infinite; }
-.status-dot.error   { background: var(--red); }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 100px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ADE80;
+  box-shadow: 0 0 6px #4ADE80;
+  animation: livepulse 2s infinite;
+}
+.live-dot.loading { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1s infinite; }
+.live-dot.error   { background: var(--red);   box-shadow: 0 0 6px var(--red); animation: none; }
+
+@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
 /* ── Filters bar ── */
 .filters-bar {
-  background: white;
-  border-bottom: 1px solid var(--grey-200);
-  padding: 10px 28px;
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+  background: rgba(244,247,252,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 32px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   flex-wrap: wrap;
 }
-.filters-bar label { font-size: 12px; font-weight: 600; color: var(--dark-blue); }
-.filters-bar select, .filters-bar input {
-  font-family: var(--font);
-  font-size: 13px;
-  border: 1px solid var(--grey-200);
-  border-radius: var(--radius);
-  padding: 5px 10px;
-  color: var(--grey-700);
-  background: white;
-  cursor: pointer;
-  min-width: 160px;
+
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
-.filters-bar select:focus, .filters-bar input:focus { outline: 2px solid var(--mid-blue); }
+
+.filter-select {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1.5px solid var(--border-mid);
+  border-radius: var(--r-sm);
+  padding: 5px 28px 5px 10px;
+  color: var(--text-primary);
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7A99' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  -webkit-appearance: none;
+  cursor: pointer;
+  min-width: 140px;
+  transition: border-color var(--transition);
+}
+.filter-select:focus { outline: none; border-color: var(--blue); }
+
+.divider { width: 1px; height: 20px; background: var(--border-mid); margin: 0 4px; }
+
 .btn {
   font-family: var(--font);
   font-size: 12px;
   font-weight: 600;
   padding: 6px 16px;
-  border-radius: var(--radius);
+  border-radius: var(--r-sm);
   border: none;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--transition);
+  white-space: nowrap;
 }
-.btn-primary { background: var(--mid-blue); color: white; }
-.btn-primary:hover { background: var(--dark-blue); }
-.btn-success { background: #34a853; color: white; }
-.btn-success:hover { background: #2d9249; }
-.btn-outline { background: white; color: var(--mid-blue); border: 1.5px solid var(--mid-blue); }
-.btn-outline:hover { background: var(--light-blue); }
-.btn-danger { background: var(--red); color: white; }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border-mid);
+}
+.btn-ghost:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
 
-/* ── Main layout ── */
-.main { padding: 20px 28px; display: flex; flex-direction: column; gap: 20px; }
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,87,255,0.25);
+}
+.btn-primary:hover { background: #0044CC; box-shadow: 0 4px 14px rgba(0,87,255,0.35); transform: translateY(-1px); }
 
-/* ── KPI cards ── */
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover { background: #00A878; transform: translateY(-1px); }
+
+.ml-auto { margin-left: auto; }
+
+/* ── Main ── */
+.main { padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1; }
+
+/* ── KPI Cards ── */
 .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+
 .kpi-card {
-  background: white;
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  box-shadow: var(--shadow);
-  border-top: 3px solid transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  background: var(--card);
+  border-radius: var(--r-lg);
+  padding: 20px 22px 18px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: cardReveal 0.5s forwards;
 }
-.kpi-card.total     { border-color: var(--dark-blue); }
-.kpi-card.compliant { border-color: var(--green); }
-.kpi-card.conditional { border-color: #e6a817; }
-.kpi-card.ncr       { border-color: var(--red); }
-.kpi-card.open      { border-color: var(--mid-blue); }
-.kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey-400); }
-.kpi-value { font-size: 32px; font-weight: 700; line-height: 1; }
-.kpi-card.total     .kpi-value { color: var(--dark-blue); }
-.kpi-card.compliant .kpi-value { color: var(--green); }
-.kpi-card.conditional .kpi-value { color: #e6a817; }
-.kpi-card.ncr       .kpi-value { color: var(--red); }
-.kpi-card.open      .kpi-value { color: var(--mid-blue); }
-.kpi-sub { font-size: 11px; color: var(--grey-400); }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-card:nth-child(2) { animation-delay: 0.10s; }
+.kpi-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-card:nth-child(4) { animation-delay: 0.20s; }
+.kpi-card:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes cardReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.kpi-card.total::before     { background: var(--navy); }
+.kpi-card.compliant::before { background: var(--green); }
+.kpi-card.conditional::before { background: var(--amber); }
+.kpi-card.ncr::before       { background: var(--red); }
+.kpi-card.open::before      { background: var(--blue); }
+
+.kpi-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+.kpi-card.total     .kpi-icon { background: rgba(10,22,40,0.06); }
+.kpi-card.compliant .kpi-icon { background: var(--green-bg); }
+.kpi-card.conditional .kpi-icon { background: var(--amber-bg); }
+.kpi-card.ncr       .kpi-icon { background: var(--red-bg); }
+.kpi-card.open      .kpi-icon { background: var(--blue-light); }
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+.kpi-value {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 6px;
+}
+.kpi-card.total     .kpi-value { color: var(--navy); }
+.kpi-card.compliant .kpi-value { color: var(--green-text); }
+.kpi-card.conditional .kpi-value { color: var(--amber-text); }
+.kpi-card.ncr       .kpi-value { color: var(--red-text); }
+.kpi-card.open      .kpi-value { color: var(--blue); }
+
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 400;
+  line-height: 1.4;
+}
 
 /* ── Charts row ── */
-.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.charts-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+
+/* ── Card ── */
 .card {
-  background: white;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
   overflow: hidden;
+  opacity: 0;
+  animation: cardReveal 0.5s 0.3s forwards;
 }
+
 .card-header {
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--grey-200);
+  padding: 16px 20px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid var(--border);
 }
-.card-title { font-size: 13px; font-weight: 700; color: var(--dark-blue); }
-.card-body { padding: 16px 18px; }
-canvas { max-height: 240px; }
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+.card-meta {
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 400;
+}
 
-/* ── CCVS Summary table ── */
-.ccvs-table-wrap { overflow-x: auto; }
-table.data-table {
+.card-body { padding: 18px 20px; }
+canvas { max-height: 220px; }
+
+/* ── Data tables ── */
+.table-wrap { overflow-x: auto; }
+
+table.dt {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
-table.data-table th {
-  background: var(--dark-blue);
-  color: white;
-  padding: 8px 12px;
+table.dt thead tr {
+  background: var(--surface);
+}
+table.dt th {
+  padding: 10px 14px;
   text-align: left;
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  white-space: nowrap;
-}
-table.data-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--grey-200);
-  vertical-align: top;
-}
-table.data-table tr:hover td { background: var(--grey-100); }
-table.data-table tr:last-child td { border-bottom: none; }
-
-/* ── Status badges ── */
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.badge-compliant   { background: var(--green-bg);  color: var(--green); }
-.badge-conditional { background: var(--amber-bg);  color: var(--amber); }
-.badge-ncr         { background: var(--red-bg);    color: var(--red); }
-.badge-info        { background: var(--info-bg);   color: var(--dark-blue); }
-.badge-open        { background: var(--red-bg);    color: var(--red); }
-.badge-inprogress  { background: var(--amber-bg);  color: var(--amber); }
-.badge-closed      { background: var(--green-bg);  color: var(--green); }
-.badge-na          { background: var(--grey-200);  color: var(--grey-400); }
-
-.ccvs-code {
-  font-family: monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  background: var(--light-blue);
-  color: var(--dark-blue);
-  padding: 1px 6px;
-  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 1.5px solid var(--border-mid);
+}
+table.dt td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+table.dt tbody tr { transition: background var(--transition); }
+table.dt tbody tr:hover td { background: var(--blue-light); }
+table.dt tbody tr:last-child td { border-bottom: none; }
+table.dt tbody tr.row-ncr td { background: #fff8f8; }
+table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.badge-compliant   { background: var(--green-bg);  color: var(--green-text); }
+.badge-conditional { background: var(--amber-bg);  color: var(--amber-text); }
+.badge-ncr         { background: var(--red-bg);    color: var(--red-text); }
+.badge-info        { background: var(--info-bg);   color: var(--info-text); }
+.badge-open        { background: var(--red-bg);    color: var(--red-text); }
+.badge-inprogress  { background: var(--amber-bg);  color: var(--amber-text); }
+.badge-closed      { background: var(--green-bg);  color: var(--green-text); }
+.badge-na          { background: var(--surface);   color: var(--text-light); }
+
+/* ── CCVS code chip ── */
+.ccvs-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--navy);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
 }
 
-/* ── Open Actions table ── */
-.actions-table-wrap { overflow-x: auto; }
-.row-ncr td { background: #fff8f8 !important; }
-.row-ncr:hover td { background: #fff0f0 !important; }
+/* ── Due labels ── */
+.due-immediate { color: var(--red-text); font-weight: 700; font-size: 11px; }
+.due-next      { color: var(--amber-text); font-weight: 600; font-size: 11px; }
+.due-ongoing   { color: var(--blue); font-size: 11px; }
+.due-na        { color: var(--text-light); font-size: 11px; }
 
-/* ── Close-out modal ── */
+/* ── Progress bar ── */
+.prog-wrap { display: flex; align-items: center; gap: 8px; }
+.prog-bar  { flex: 1; height: 5px; background: var(--surface); border-radius: 100px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 100px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.prog-pct  { font-size: 11px; font-weight: 700; min-width: 34px; text-align: right; }
+
+/* ── Update button ── */
+.btn-update {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--border-mid);
+  background: white;
+  color: var(--blue);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-update:hover {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+  box-shadow: 0 2px 8px rgba(0,87,255,0.25);
+}
+
+/* ── Modal ── */
 .modal-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 200;
+  background: rgba(10,22,40,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 500;
   align-items: center;
   justify-content: center;
 }
 .modal-overlay.active { display: flex; }
+
 .modal {
   background: white;
-  border-radius: 10px;
-  width: 540px;
+  border-radius: var(--r-xl);
+  width: 520px;
   max-width: 95vw;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
 }
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .modal-header {
-  background: var(--dark-blue);
+  background: var(--navy);
   color: white;
-  padding: 16px 20px;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.modal-header h3 { font-size: 14px; font-weight: 700; }
-.modal-close { background: none; border: none; color: white; font-size: 20px; cursor: pointer; line-height: 1; }
-.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-header h3 { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+.modal-close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: white;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition);
+  line-height: 1;
+}
+.modal-close:hover { background: rgba(255,255,255,0.2); }
+
+.modal-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+
+.obs-card {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border-left: 3px solid var(--blue);
+}
+.action-card {
+  background: var(--red-bg);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--red-text);
+  border-left: 3px solid var(--red);
+  font-weight: 500;
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
-.form-group label { font-size: 12px; font-weight: 600; color: var(--dark-blue); }
-.form-group select, .form-group input, .form-group textarea {
+.form-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.form-input, .form-select, .form-textarea {
   font-family: var(--font);
   font-size: 13px;
-  border: 1.5px solid var(--grey-200);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-  color: var(--grey-700);
+  font-weight: 400;
+  border: 1.5px solid var(--border-mid);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  color: var(--text-primary);
+  background: white;
+  transition: border-color var(--transition);
+  width: 100%;
 }
-.form-group select:focus, .form-group input:focus, .form-group textarea:focus {
+.form-input:focus, .form-select:focus, .form-textarea:focus {
   outline: none;
-  border-color: var(--mid-blue);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0,87,255,0.08);
 }
-.form-group textarea { resize: vertical; min-height: 80px; }
-.obs-preview {
-  font-size: 12px;
-  background: var(--grey-100);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  border-left: 3px solid var(--mid-blue);
-  line-height: 1.5;
-  color: var(--grey-700);
-}
-.modal-footer { padding: 14px 20px; border-top: 1px solid var(--grey-200); display: flex; justify-content: flex-end; gap: 10px; }
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-input:disabled { background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
 
-/* ── Loading state ── */
+.modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--surface);
+}
+
+/* ── Loading overlay ── */
 .loading-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(255,255,255,0.7);
-  z-index: 300;
+  background: var(--navy);
+  z-index: 1000;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 .loading-overlay.active { display: flex; }
-.spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--grey-200);
-  border-top-color: var(--mid-blue);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: var(--grey-700); }
 
-/* ── Export button ── */
-.export-row { display: flex; justify-content: flex-end; }
+.loader-logo {
+  width: 56px; height: 56px;
+  background: var(--blue);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 40px rgba(0,87,255,0.5);
+  animation: logoPulse 1.5s ease-in-out infinite;
+}
+@keyframes logoPulse { 0%,100%{box-shadow:0 0 40px rgba(0,87,255,0.5)} 50%{box-shadow:0 0 60px rgba(0,87,255,0.8)} }
+
+.loader-logo svg { width: 28px; height: 28px; }
+.loader-title { font-size: 20px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+.loader-sub   { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 300; }
+
+.loader-bar-wrap { width: 200px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 100px; overflow: hidden; margin-top: 4px; }
+.loader-bar { height: 100%; width: 40%; background: var(--blue); border-radius: 100px; animation: loaderSlide 1.2s ease-in-out infinite; }
+@keyframes loaderSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(600%)} }
+
+/* ── Section label ── */
+.section-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-light);
+  font-size: 13px;
+}
 
 /* ── Responsive ── */
-@media (max-width: 900px) {
-  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1000px) {
+  .kpi-row    { grid-template-columns: repeat(3,1fr); }
   .charts-row { grid-template-columns: 1fr; }
 }
-@media (max-width: 600px) {
-  .kpi-row { grid-template-columns: repeat(2, 1fr); }
-  .main, .filters-bar { padding: 12px 14px; }
-  .header { padding: 0 14px; }
+
+/* ── Mobile (≤640px) ── */
+@media (max-width: 640px) {
+  /* Layout */
+  .main        { padding: 12px; gap: 12px; }
+  .header      { padding: 0 14px; height: 52px; }
+  .header-title span { display: none; }
+
+  /* Filters — collapsible drawer */
+  .filters-bar {
+    top: 52px;
+    padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden;
+    max-height: 52px;
+    transition: max-height 0.3s ease;
+  }
+  .filters-bar.open { max-height: 400px; }
+
+  .filter-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+  }
+  .filter-toggle-icon { font-size: 10px; transition: transform 0.2s; }
+  .filters-bar.open .filter-toggle-icon { transform: rotate(180deg); }
+
+  .filters-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0 12px;
+  }
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 16px;
+    gap: 4px;
+  }
+  .filter-select { min-width: unset; width: 100%; font-size: 14px; padding: 8px 32px 8px 12px; }
+  .divider { display: none; }
+  .btn-ghost { margin: 6px 16px 0; }
+  .ml-auto { margin-left: 0; display: none; }
+
+  /* KPI — 2 col */
+  .kpi-row {
+    grid-template-columns: repeat(2,1fr);
+    gap: 10px;
+  }
+  .kpi-card { padding: 14px 14px 12px; border-radius: var(--r-md); }
+  .kpi-icon { width: 28px; height: 28px; font-size: 13px; margin-bottom: 10px; border-radius: 8px; }
+  .kpi-value { font-size: 28px; letter-spacing: -1.5px; }
+  .kpi-label { font-size: 9px; }
+  .kpi-sub   { font-size: 10px; }
+
+  /* Charts */
+  .charts-row { grid-template-columns: 1fr; gap: 12px; }
+  canvas { max-height: 180px; }
+
+  /* Cards */
+  .card { border-radius: var(--r-md); }
+  .card-header { padding: 12px 14px 10px; flex-wrap: wrap; gap: 4px; }
+  .card-meta { font-size: 10px; width: 100%; }
+
+  /* Hide desktop tables on mobile */
+  .dt-desktop { display: none; }
+
+  /* Mobile card list for actions */
+  .mobile-cards { display: flex; flex-direction: column; gap: 0; }
+  .m-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .m-card:last-child { border-bottom: none; }
+  .m-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .m-card-seq { font-size: 12px; font-weight: 700; color: var(--text-light); }
+  .m-card-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .m-card-action { font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+  .m-card-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .m-card-meta-item { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .m-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .m-card-monitoring { font-size: 11px; color: var(--text-light); line-height: 1.4; font-style: italic; }
+
+  /* Modal — full screen on mobile */
+  .modal-overlay { align-items: flex-end; }
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    max-height: 92vh;
+    overflow-y: auto;
+    animation: modalUp 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  }
+  @keyframes modalUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-header { padding: 14px 18px; }
+  .modal-body   { padding: 16px 18px; }
+  .modal-footer { padding: 12px 18px; }
+  .form-row     { grid-template-columns: 1fr; }
+
+  /* Export button — move to header */
+  .header-export { display: flex !important; }
+  .btn-primary { font-size: 11px; padding: 6px 12px; }
+
+  /* CCVS table — keep but scroll */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dt th, .dt td { white-space: nowrap; font-size: 11px; padding: 8px 10px; }
 }
+
+/* Hide mobile-only elements on desktop */
+.filter-toggle  { display: none; }
+.filters-inner  { display: contents; }
+.mobile-cards   { display: none; }
+.header-export  { display: none; }
 </style>
 </head>
 <body>
 
-<!-- ── CONFIG — fill in your Supabase details ── -->
+<!-- CONFIG -->
 <script>
-const SUPABASE_URL  = 'https://zekmyvjxxfwhrlexgfnw.supabase.co';       // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpla215dmp4eGZ3aHJsZXhnZm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTI5NzcsImV4cCI6MjA4ODU4ODk3N30.b8ghv9D4YtUrUms48PX4HmVhesi42ouFil1I6mPqRJI';  // starts with eyJ...
+const SUPABASE_URL  = 'https://nebdpofqglfyfyqqodni.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYmRwb2ZxZ2xmeWZ5cXFvZG5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTc4OTUsImV4cCI6MjA5MTA3Mzg5NX0.l0gntIzOZdNGc9MbzB2fKLpzt-Iln74tRdQFHSRSZk0';
 </script>
 
-<!-- Loading overlay -->
+<!-- Loading screen -->
 <div class="loading-overlay active" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="loading-text">Loading PIMS data...</div>
+  <div class="loader-logo">
+    <svg viewBox="0 0 28 28" fill="none"><path d="M7 14l5 5 9-9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div class="loader-title">PIMS Dashboard</div>
+  <div class="loader-sub">Safe Method</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
 </div>
 
 <!-- Close-out modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-header">
-      <h3>Update Close-out Status</h3>
+      <h3>Update Close-out</h3>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="obs-preview" id="modalObsText"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="obs-card" id="modalObsText"></div>
+      <div class="action-card" id="modalAction"></div>
+      <div class="form-row">
         <div class="form-group">
-          <label>CCVS Code</label>
-          <input type="text" id="modalCcvs" disabled>
+          <label class="form-label">CCVS Code</label>
+          <input class="form-input" id="modalCcvs" disabled>
         </div>
         <div class="form-group">
-          <label>Responsible</label>
-          <input type="text" id="modalResponsible" disabled>
+          <label class="form-label">Responsible</label>
+          <input class="form-input" id="modalResponsible" disabled>
         </div>
       </div>
       <div class="form-group">
-        <label>Action Required</label>
-        <div class="obs-preview" id="modalAction" style="border-left-color:var(--red)"></div>
-      </div>
-      <div class="form-group">
-        <label>Close-out Status *</label>
-        <select id="modalStatus">
+        <label class="form-label">Close-out Status</label>
+        <select class="form-select" id="modalStatus">
           <option value="Open">Open</option>
           <option value="In Progress">In Progress</option>
           <option value="Closed">Closed</option>
         </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-row">
         <div class="form-group">
-          <label>Closed Date</label>
-          <input type="date" id="modalClosedDate">
+          <label class="form-label">Closed Date</label>
+          <input type="date" class="form-input" id="modalClosedDate">
         </div>
         <div class="form-group">
-          <label>Closed By</label>
-          <input type="text" id="modalClosedBy" placeholder="Name / role">
+          <label class="form-label">Closed By</label>
+          <input type="text" class="form-input" id="modalClosedBy" placeholder="Name / role">
         </div>
       </div>
       <div class="form-group">
-        <label>Close-out Notes</label>
-        <textarea id="modalNotes" placeholder="Describe action taken, evidence sighted, or reason for deferral..."></textarea>
+        <label class="form-label">Close-out Notes</label>
+        <textarea class="form-textarea" id="modalNotes" placeholder="Describe action taken, evidence sighted, or reason for deferral..."></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-success" onclick="saveCloseout()">Save Close-out</button>
     </div>
   </div>
 </div>
 
-<!-- ── Header ── -->
+<!-- Header -->
 <header class="header">
-  <div class="header-brand">
-    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="28" height="28" rx="6" fill="#2E75B6"/>
-      <path d="M7 14l5 5 9-9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <h1>PIMS Dashboard <span>/ Safe Method</span></h1>
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><path d="M7 14l5 5 9-9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="header-title">PIMS Dashboard <span>/ RPD</span></div>
   </div>
   <div class="header-right">
-    <span id="connStatus" style="font-size:12px;opacity:0.7">Connecting...</span>
-    <div class="status-dot loading" id="statusDot"></div>
+    <div class="live-badge">
+      <div class="live-dot loading" id="statusDot"></div>
+      <span id="connStatus">Connecting</span>
+    </div>
+    <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
   </div>
 </header>
 
-<!-- ── Filters ── -->
-<div class="filters-bar">
-  <label>Site</label>
-  <select id="filterSite" onchange="applyFilters()"><option value="">All Sites</option></select>
-
-  <label>Audit Date</label>
-  <select id="filterAudit" onchange="applyFilters()"><option value="">All Audits</option></select>
-
-  <label>Status</label>
-  <select id="filterStatus" onchange="applyFilters()">
-    <option value="">All</option>
-    <option value="Compliant">Compliant</option>
-    <option value="Conditional">Conditional</option>
-    <option value="NCR">NCR</option>
-    <option value="Info">Info</option>
-  </select>
-
-  <label>CCVS Category</label>
-  <select id="filterCcvs" onchange="applyFilters()"><option value="">All</option></select>
-
-  <button class="btn btn-outline" onclick="resetFilters()">Reset</button>
-  <div style="margin-left:auto">
-    <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+<!-- Filters -->
+<div class="filters-bar" id="filtersBar">
+  <div class="filter-toggle" onclick="toggleFilters()">
+    <span>🔍 Filter observations</span>
+    <span class="filter-toggle-icon">▼</span>
+  </div>
+  <div class="filters-inner">
+    <div class="filter-group">
+      <span class="filter-label">Site</span>
+      <select class="filter-select" id="filterSite" onchange="applyFilters()"><option value="">All Sites</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Audit</span>
+      <select class="filter-select" id="filterAudit" onchange="applyFilters()"><option value="">All Audits</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Status</span>
+      <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="Compliant">Compliant</option>
+        <option value="Conditional">Conditional</option>
+        <option value="NCR">NCR</option>
+        <option value="Info">Info</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">CCVS</span>
+      <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All Categories</option></select>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
   </div>
 </div>
 
-<!-- ── Main content ── -->
+<!-- Main -->
 <main class="main">
 
-  <!-- KPI row -->
+        <!-- ── Staging Inbox ─────────────────────────────── -->
+        <section class="card" id="staging-section">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <h2 style="margin:0; font-size:1.05rem;">
+              📥 Staging Inbox
+              <span id="staging-badge" style="
+                display:inline-block; margin-left:8px; padding:2px 9px;
+                background:#f59e0b; color:#fff; border-radius:12px;
+                font-size:0.75rem; font-weight:700; vertical-align:middle;">
+                0
+              </span>
+            </h2>
+            <button onclick="loadStaging()" style="
+              padding:4px 12px; font-size:0.78rem; font-weight:600;
+              background:transparent; border:1px solid #cbd5e1;
+              border-radius:6px; cursor:pointer;">
+              ↻ Refresh
+            </button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:#f8fafc; text-align:left;">
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Photo</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                  <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="staging-tbody">
+                <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+  <!-- KPIs -->
   <div class="kpi-row">
     <div class="kpi-card total">
+      <div class="kpi-icon">📋</div>
       <div class="kpi-label">Total Observations</div>
       <div class="kpi-value" id="kpiTotal">—</div>
       <div class="kpi-sub" id="kpiAuditLabel">—</div>
     </div>
     <div class="kpi-card compliant">
+      <div class="kpi-icon">✓</div>
       <div class="kpi-label">Compliant</div>
       <div class="kpi-value" id="kpiCompliant">—</div>
       <div class="kpi-sub" id="kpiCompliantPct">—</div>
     </div>
     <div class="kpi-card conditional">
+      <div class="kpi-icon">⚡</div>
       <div class="kpi-label">Conditional</div>
       <div class="kpi-value" id="kpiConditional">—</div>
       <div class="kpi-sub">Actions with conditions</div>
     </div>
     <div class="kpi-card ncr">
+      <div class="kpi-icon">⚠</div>
       <div class="kpi-label">Non-Conformances</div>
       <div class="kpi-value" id="kpiNcr">—</div>
       <div class="kpi-sub">Require immediate action</div>
     </div>
     <div class="kpi-card open">
+      <div class="kpi-icon">🔓</div>
       <div class="kpi-label">Open Actions</div>
       <div class="kpi-value" id="kpiOpen">—</div>
       <div class="kpi-sub" id="kpiOpenPct">—</div>
     </div>
   </div>
 
-  <!-- Charts row -->
+  <!-- Charts -->
   <div class="charts-row">
     <div class="card">
       <div class="card-header">
         <span class="card-title">Conformance by CCVS Category</span>
       </div>
-      <div class="card-body">
-        <canvas id="chartCategory"></canvas>
-      </div>
+      <div class="card-body"><canvas id="chartCategory"></canvas></div>
     </div>
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Conformance Status Breakdown</span>
+        <span class="card-title">Status Breakdown</span>
       </div>
       <div class="card-body" style="display:flex;align-items:center;justify-content:center">
         <canvas id="chartDonut"></canvas>
@@ -464,23 +935,23 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     </div>
   </div>
 
-  <!-- CCVS Monitoring & Measurement -->
+  <!-- CCVS Monitoring -->
   <div class="card">
     <div class="card-header">
       <span class="card-title">CCVS Monitoring & Measurement</span>
-      <span style="font-size:11px;color:var(--grey-400)">NCRs and Conditionals by code — click a row to update close-out</span>
+      <span class="card-meta">Click Update on any open action to record close-out</span>
     </div>
-    <div class="card-body ccvs-table-wrap">
-      <table class="data-table" id="ccvsTable">
+    <div class="card-body table-wrap" style="padding:0">
+      <table class="dt" id="ccvsTable">
         <thead>
           <tr>
-            <th>CCVS Code</th>
+            <th style="padding-left:20px">CCVS Code</th>
             <th>Category</th>
-            <th>Total Obs</th>
+            <th>Observations</th>
             <th>NCR</th>
             <th>Conditional</th>
             <th>Open Actions</th>
-            <th>Compliance Rate</th>
+            <th style="min-width:160px;padding-right:20px">Compliance Rate</th>
           </tr>
         </thead>
         <tbody id="ccvsTableBody"></tbody>
@@ -492,13 +963,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   <div class="card">
     <div class="card-header">
       <span class="card-title">Open Actions Register</span>
-      <span id="openActionsCount" style="font-size:11px;color:var(--grey-400)"></span>
+      <span class="card-meta" id="openActionsCount"></span>
     </div>
-    <div class="card-body actions-table-wrap">
-      <table class="data-table" id="actionsTable">
+    <div class="card-body table-wrap dt-desktop" style="padding:0">
+      <table class="dt">
         <thead>
           <tr>
-            <th>#</th>
+            <th style="padding-left:20px">#</th>
             <th>Photo</th>
             <th>Status</th>
             <th>CCVS</th>
@@ -506,375 +977,301 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
             <th>Responsible</th>
             <th>Due</th>
             <th>Close-out</th>
-            <th>Update</th>
+            <th style="padding-right:20px"></th>
           </tr>
         </thead>
         <tbody id="actionsTableBody"></tbody>
       </table>
     </div>
+    <div class="mobile-cards" id="actionsMobileCards"></div>
   </div>
 
   <!-- All Observations -->
   <div class="card">
     <div class="card-header">
       <span class="card-title">All Observations</span>
-      <span id="allObsCount" style="font-size:11px;color:var(--grey-400)"></span>
+      <span class="card-meta" id="allObsCount"></span>
     </div>
-    <div class="card-body actions-table-wrap">
-      <table class="data-table" id="allObsTable">
+    <div class="card-body table-wrap dt-desktop" style="padding:0">
+      <table class="dt">
         <thead>
           <tr>
-            <th>#</th>
+            <th style="padding-left:20px">#</th>
             <th>Photo</th>
             <th>Date</th>
             <th>Observation</th>
             <th>Status</th>
-            <th>CCVS Code</th>
+            <th>CCVS</th>
             <th>Action</th>
             <th>Responsible</th>
-            <th>Monitoring Note</th>
+            <th style="padding-right:20px">Monitoring Note</th>
           </tr>
         </thead>
         <tbody id="allObsTableBody"></tbody>
       </table>
     </div>
+    <div class="mobile-cards" id="allObsMobileCards"></div>
   </div>
 
 </main>
 
 <script>
-// ── Supabase init ──
+// ── Init Supabase ──
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── State ──
-let allAudits = [];
-let allObs    = [];
-let filtered  = [];
-let charts    = {};
-let editingId = null;
+let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
 
-// ── Status helpers ──
-function badgeHtml(status) {
-  const map = {
-    'Compliant':   'compliant',
-    'Conditional': 'conditional',
-    'NCR':         'ncr',
-    'Info':        'info',
-    'Open':        'open',
-    'In Progress': 'inprogress',
-    'Closed':      'closed',
-    'N/A':         'na',
-  };
-  const cls = map[status] || 'na';
-  return `<span class="badge badge-${cls}">${status || 'N/A'}</span>`;
+// ── Helpers ──
+function badge(status) {
+  const map = { Compliant:'compliant', Conditional:'conditional', NCR:'ncr', Info:'info', Open:'open', 'In Progress':'inprogress', Closed:'closed', 'N/A':'na' };
+  return `<span class="badge badge-${map[status]||'na'}">${status||'N/A'}</span>`;
+}
+function ccvs(code) {
+  return code ? `<span class="ccvs-chip">${code}</span>` : '<span style="color:var(--text-light)">—</span>';
+}
+function dueLabel(d) {
+  if (d==='Immediate') return `<span class="due-immediate">⚡ Immediate</span>`;
+  if (d==='Next audit') return `<span class="due-next">Next audit</span>`;
+  if (d==='Ongoing')    return `<span class="due-ongoing">Ongoing</span>`;
+  return `<span class="due-na">—</span>`;
+}
+function trunc(t, n=80) { return t && t.length>n ? t.slice(0,n)+'…' : (t||'—'); }
+
+function animateCount(el, target) {
+  const start = 0, duration = 600;
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + (target - start) * ease);
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
 }
 
-function ccvsHtml(code) {
-  if (!code) return '<span style="color:var(--grey-400)">—</span>';
-  return `<span class="ccvs-code">${code}</span>`;
-}
-
-function dueHtml(due) {
-  if (due === 'Immediate') return `<span style="color:var(--red);font-weight:700;font-size:12px">Immediate</span>`;
-  if (due === 'Next audit') return `<span style="color:#e6a817;font-weight:600;font-size:12px">Next audit</span>`;
-  if (due === 'Ongoing')    return `<span style="color:var(--mid-blue);font-size:12px">Ongoing</span>`;
-  return `<span style="color:var(--grey-400);font-size:12px">—</span>`;
-}
-
-function truncate(text, n=80) {
-  if (!text) return '—';
-  return text.length > n ? text.slice(0, n) + '…' : text;
-}
-
-// ── Load data ──
+// ── Load ──
 async function loadData() {
+  setStatus('loading');
   try {
-    setConnStatus('loading');
-
-    const [auditsRes, obsRes] = await Promise.all([
+    const [aRes, oRes] = await Promise.all([
       db.from('pims_audits').select('*').order('audit_date', { ascending: false }),
-      db.from('pims_observations').select('*, pims_audits(site_name, audit_date, audit_ref, principal_contractor)').order('seq_no'),
+      db.from('pims_observations').select('*, pims_audits(site_name,audit_date,audit_ref,principal_contractor)').order('seq_no'),
     ]);
-
-    if (auditsRes.error) throw auditsRes.error;
-    if (obsRes.error) throw obsRes.error;
-
-    allAudits = auditsRes.data;
-    allObs    = obsRes.data;
-
+    if (aRes.error) throw aRes.error;
+    if (oRes.error) throw oRes.error;
+    allAudits = aRes.data;
+    allObs    = oRes.data;
     populateFilters();
     applyFilters();
-    setConnStatus('ok');
+    setStatus('ok');
   } catch (err) {
+    setStatus('error', err.message);
     console.error(err);
-    setConnStatus('error', err.message);
   } finally {
     document.getElementById('loadingOverlay').classList.remove('active');
   }
 }
 
-function setConnStatus(state, msg) {
+function setStatus(state, msg) {
   const dot  = document.getElementById('statusDot');
   const text = document.getElementById('connStatus');
-  dot.className = 'status-dot ' + (state === 'loading' ? 'loading' : state === 'error' ? 'error' : '');
-  text.textContent = state === 'ok' ? `${allObs.length} records` : state === 'error' ? `Error: ${msg}` : 'Loading…';
+  dot.className = 'live-dot' + (state==='loading' ? ' loading' : state==='error' ? ' error' : '');
+  text.textContent = state==='ok' ? `${allObs.length} records` : state==='error' ? `Error: ${msg}` : 'Loading…';
 }
 
-// ── Populate filter dropdowns ──
 function populateFilters() {
   const siteEl  = document.getElementById('filterSite');
   const auditEl = document.getElementById('filterAudit');
   const ccvsEl  = document.getElementById('filterCcvs');
-
-  const sites = [...new Set(allAudits.map(a => a.site_name))].sort();
-  sites.forEach(s => { const o = new Option(s, s); siteEl.appendChild(o); });
-
-  allAudits.forEach(a => {
-    const label = `${a.site_name} — ${a.audit_date}`;
-    auditEl.appendChild(new Option(label, a.id));
-  });
-
-  const cats = [...new Set(allObs.map(o => o.ccvs_category).filter(Boolean))].sort();
-  cats.forEach(c => { ccvsEl.appendChild(new Option(c, c)); });
+  [...new Set(allAudits.map(a=>a.site_name))].sort().forEach(s => siteEl.appendChild(new Option(s,s)));
+  allAudits.forEach(a => auditEl.appendChild(new Option(`${a.site_name} — ${a.audit_date}`, a.id)));
+  [...new Set(allObs.map(o=>o.ccvs_category).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
 }
 
-// ── Filters ──
 function applyFilters() {
   const site   = document.getElementById('filterSite').value;
   const audit  = document.getElementById('filterAudit').value;
   const status = document.getElementById('filterStatus').value;
-  const ccvs   = document.getElementById('filterCcvs').value;
-
+  const cat    = document.getElementById('filterCcvs').value;
   filtered = allObs.filter(o => {
     if (site   && o.pims_audits?.site_name !== site) return false;
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
-    if (ccvs   && o.ccvs_category !== ccvs) return false;
+    if (cat    && o.ccvs_category !== cat) return false;
     return true;
   });
-
   renderKPIs();
   renderCharts();
   renderCcvsTable();
-  renderActionsTable();
+  renderActions();
   renderAllObs();
 }
 
 function resetFilters() {
-  ['filterSite','filterAudit','filterStatus','filterCcvs'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['filterSite','filterAudit','filterStatus','filterCcvs'].forEach(id => { document.getElementById(id).value=''; });
   applyFilters();
 }
 
 // ── KPIs ──
 function renderKPIs() {
-  const total       = filtered.length;
-  const compliant   = filtered.filter(o => o.conformance_status === 'Compliant').length;
-  const conditional = filtered.filter(o => o.conformance_status === 'Conditional').length;
-  const ncr         = filtered.filter(o => o.conformance_status === 'NCR').length;
-  const open        = filtered.filter(o => o.action_required && o.closeout_status !== 'Closed').length;
-
-  document.getElementById('kpiTotal').textContent       = total;
-  document.getElementById('kpiCompliant').textContent   = compliant;
-  document.getElementById('kpiConditional').textContent = conditional;
-  document.getElementById('kpiNcr').textContent         = ncr;
-  document.getElementById('kpiOpen').textContent        = open;
-
+  const total     = filtered.length;
+  const compliant = filtered.filter(o=>o.conformance_status==='Compliant').length;
+  const cond      = filtered.filter(o=>o.conformance_status==='Conditional').length;
+  const ncr       = filtered.filter(o=>o.conformance_status==='NCR').length;
+  const open      = filtered.filter(o=>o.action_required && o.closeout_status!=='Closed').length;
+  animateCount(document.getElementById('kpiTotal'),     total);
+  animateCount(document.getElementById('kpiCompliant'), compliant);
+  animateCount(document.getElementById('kpiConditional'), cond);
+  animateCount(document.getElementById('kpiNcr'),       ncr);
+  animateCount(document.getElementById('kpiOpen'),      open);
   const cpct = total > 0 ? Math.round(compliant/total*100) : 0;
   document.getElementById('kpiCompliantPct').textContent = `${cpct}% conformance rate`;
-
-  const opct = total > 0 ? Math.round(open/total*100) : 0;
-  document.getElementById('kpiOpenPct').textContent = `${opct}% of observations`;
-
-  const sites = [...new Set(filtered.map(o => o.pims_audits?.site_name).filter(Boolean))];
-  document.getElementById('kpiAuditLabel').textContent = sites.length === 1 ? sites[0] : `${sites.length} sites`;
+  document.getElementById('kpiOpenPct').textContent      = `${total>0?Math.round(open/total*100):0}% of observations`;
+  const sites = [...new Set(filtered.map(o=>o.pims_audits?.site_name).filter(Boolean))];
+  document.getElementById('kpiAuditLabel').textContent   = sites.length===1 ? sites[0] : `${sites.length} sites`;
 }
 
 // ── Charts ──
 function renderCharts() {
-  renderCategoryChart();
-  renderDonutChart();
-}
-
-function renderCategoryChart() {
-  const cats = [...new Set(filtered.map(o => o.ccvs_category).filter(Boolean))].sort();
-  const compliantCounts   = cats.map(c => filtered.filter(o => o.ccvs_category===c && o.conformance_status==='Compliant').length);
-  const conditionalCounts = cats.map(c => filtered.filter(o => o.ccvs_category===c && o.conformance_status==='Conditional').length);
-  const ncrCounts         = cats.map(c => filtered.filter(o => o.ccvs_category===c && o.conformance_status==='NCR').length);
-
-  if (charts.category) charts.category.destroy();
-  const ctx = document.getElementById('chartCategory').getContext('2d');
-  charts.category = new Chart(ctx, {
+  const cats = [...new Set(filtered.map(o=>o.ccvs_category).filter(Boolean))].sort();
+  if (charts.cat) charts.cat.destroy();
+  charts.cat = new Chart(document.getElementById('chartCategory').getContext('2d'), {
     type: 'bar',
     data: {
       labels: cats,
       datasets: [
-        { label: 'Compliant',   data: compliantCounts,   backgroundColor: '#E2EFDA', borderColor: '#375623', borderWidth: 1 },
-        { label: 'Conditional', data: conditionalCounts, backgroundColor: '#FFF2CC', borderColor: '#e6a817', borderWidth: 1 },
-        { label: 'NCR',         data: ncrCounts,         backgroundColor: '#FFE0E0', borderColor: '#C00000', borderWidth: 1 },
+        { label:'Compliant',   data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Compliant').length),   backgroundColor:'#E6FAF4', borderColor:'#00C48C', borderWidth:1.5, borderRadius:4 },
+        { label:'Conditional', data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Conditional').length), backgroundColor:'#FEF3C7', borderColor:'#F59E0B', borderWidth:1.5, borderRadius:4 },
+        { label:'NCR',         data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='NCR').length),         backgroundColor:'#FEE2E2', borderColor:'#EF4444', borderWidth:1.5, borderRadius:4 },
       ]
     },
     options: {
-      responsive: true,
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-      scales: {
-        x: { stacked: true, ticks: { font: { size: 11 } } },
-        y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } }
+      responsive:true,
+      plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'Sora', size:11 }, boxRadius:4, padding:16 } } },
+      scales:{
+        x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ family:'Sora', size:11 } } },
+        y:{ stacked:true, beginAtZero:true, grid:{ color:'rgba(10,22,40,0.05)' }, ticks:{ stepSize:1, font:{ family:'Sora', size:11 } } }
       }
     }
   });
-}
 
-function renderDonutChart() {
-  const compliant   = filtered.filter(o => o.conformance_status==='Compliant').length;
-  const conditional = filtered.filter(o => o.conformance_status==='Conditional').length;
-  const ncr         = filtered.filter(o => o.conformance_status==='NCR').length;
-  const info        = filtered.filter(o => o.conformance_status==='Info').length;
-
+  const c = filtered.filter(o=>o.conformance_status==='Compliant').length;
+  const co= filtered.filter(o=>o.conformance_status==='Conditional').length;
+  const n = filtered.filter(o=>o.conformance_status==='NCR').length;
+  const i = filtered.filter(o=>o.conformance_status==='Info').length;
   if (charts.donut) charts.donut.destroy();
-  const ctx = document.getElementById('chartDonut').getContext('2d');
-  charts.donut = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Compliant', 'Conditional', 'NCR', 'Info'],
-      datasets: [{
-        data: [compliant, conditional, ncr, info],
-        backgroundColor: ['#E2EFDA', '#FFF2CC', '#FFE0E0', '#D6E4F0'],
-        borderColor:     ['#375623', '#e6a817', '#C00000', '#2E75B6'],
-        borderWidth: 2,
-      }]
+  charts.donut = new Chart(document.getElementById('chartDonut').getContext('2d'), {
+    type:'doughnut',
+    data:{
+      labels:['Compliant','Conditional','NCR','Info'],
+      datasets:[{ data:[c,co,n,i], backgroundColor:['#E6FAF4','#FEF3C7','#FEE2E2','#EFF6FF'], borderColor:['#00C48C','#F59E0B','#EF4444','#3B82F6'], borderWidth:2, hoverOffset:6 }]
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
-              const pct = total > 0 ? Math.round(ctx.raw/total*100) : 0;
-              return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
-            }
-          }
-        }
+    options:{
+      responsive:true, cutout:'68%',
+      plugins:{
+        legend:{ position:'bottom', labels:{ font:{ family:'Sora', size:11 }, boxRadius:4, padding:14 } },
+        tooltip:{ callbacks:{ label:(ctx)=>{ const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return ` ${ctx.label}: ${ctx.raw} (${t>0?Math.round(ctx.raw/t*100):0}%)`; } } }
       }
     }
   });
 }
 
-// ── CCVS Monitoring table ──
+// ── CCVS table ──
 function renderCcvsTable() {
   const tbody = document.getElementById('ccvsTableBody');
   tbody.innerHTML = '';
-
-  const codes = [...new Set(filtered.map(o => o.ccvs_code).filter(Boolean))].sort();
+  const codes = [...new Set(filtered.map(o=>o.ccvs_code).filter(Boolean))].sort();
+  if (!codes.length) { tbody.innerHTML='<tr><td colspan="7" class="empty-state">No CCVS data for current filters</td></tr>'; return; }
   codes.forEach(code => {
-    const rows   = filtered.filter(o => o.ccvs_code === code);
-    const cat    = rows[0]?.ccvs_category || '—';
-    const total  = rows.length;
-    const ncr    = rows.filter(o => o.conformance_status==='NCR').length;
-    const cond   = rows.filter(o => o.conformance_status==='Conditional').length;
-    const open   = rows.filter(o => o.action_required && o.closeout_status !== 'Closed').length;
-    const compPct = total > 0 ? Math.round((total - ncr - cond) / total * 100) : 100;
-    const barColor = compPct >= 80 ? '#375623' : compPct >= 60 ? '#e6a817' : '#C00000';
-
+    const rows  = filtered.filter(o=>o.ccvs_code===code);
+    const cat   = rows[0]?.ccvs_category||'—';
+    const total = rows.length;
+    const ncr   = rows.filter(o=>o.conformance_status==='NCR').length;
+    const cond  = rows.filter(o=>o.conformance_status==='Conditional').length;
+    const open  = rows.filter(o=>o.action_required&&o.closeout_status!=='Closed').length;
+    const pct   = total>0 ? Math.round((total-ncr-cond)/total*100) : 100;
+    const col   = pct>=80?'#00C48C':pct>=60?'#F59E0B':'#EF4444';
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${ccvsHtml(code)}</td>
-      <td>${cat}</td>
+      <td style="padding-left:20px">${ccvs(code)}</td>
+      <td style="color:var(--text-muted)">${cat}</td>
       <td style="text-align:center;font-weight:700">${total}</td>
-      <td style="text-align:center">${ncr > 0 ? `<span style="color:var(--red);font-weight:700">${ncr}</span>` : '<span style="color:var(--grey-400)">0</span>'}</td>
-      <td style="text-align:center">${cond > 0 ? `<span style="color:#e6a817;font-weight:700">${cond}</span>` : '<span style="color:var(--grey-400)">0</span>'}</td>
-      <td style="text-align:center">${open > 0 ? `<span style="color:var(--red);font-weight:700">${open}</span>` : '<span style="color:var(--grey-400)">0</span>'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="flex:1;height:6px;background:var(--grey-200);border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${compPct}%;background:${barColor};border-radius:3px"></div>
-          </div>
-          <span style="font-size:12px;font-weight:700;color:${barColor};min-width:36px">${compPct}%</span>
+      <td style="text-align:center">${ncr>0?`<span style="color:var(--red-text);font-weight:700">${ncr}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
+      <td style="text-align:center">${cond>0?`<span style="color:var(--amber-text);font-weight:700">${cond}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
+      <td style="text-align:center">${open>0?`<span style="color:var(--red-text);font-weight:700">${open}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
+      <td style="padding-right:20px">
+        <div class="prog-wrap">
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>
+          <span class="prog-pct" style="color:${col}">${pct}%</span>
         </div>
-      </td>
-    `;
+      </td>`;
     tbody.appendChild(tr);
   });
-
-  if (codes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400);padding:20px">No CCVS data for current filters</td></tr>';
-  }
 }
 
-// ── Open Actions table ──
-function renderActionsTable() {
+// ── Actions table ──
+function renderActions() {
   const tbody = document.getElementById('actionsTableBody');
   tbody.innerHTML = '';
-
-  const actions = filtered.filter(o => o.action_required && o.closeout_status !== 'Closed');
+  const actions = filtered.filter(o=>o.action_required&&o.closeout_status!=='Closed');
   document.getElementById('openActionsCount').textContent = `${actions.length} open`;
-
-  if (actions.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400);padding:20px">No open actions for current filters</td></tr>';
-    return;
-  }
-
-  actions.forEach(obs => {
-    const isNcr = obs.conformance_status === 'NCR';
+  if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
+  actions.forEach(o => {
     const tr = document.createElement('tr');
-    if (isNcr) tr.className = 'row-ncr';
+    if (o.conformance_status==='NCR') tr.className='row-ncr';
     tr.innerHTML = `
-      <td style="font-weight:700">#${obs.seq_no}</td>
-      <td style="font-size:11px;color:var(--grey-400)">${obs.photo_id || '—'}</td>
-      <td>${badgeHtml(obs.conformance_status)}</td>
-      <td>${ccvsHtml(obs.ccvs_code)}</td>
-      <td style="font-size:12px;max-width:280px">${truncate(obs.action_description, 100)}</td>
-      <td style="font-size:12px">${obs.responsible || '—'}</td>
-      <td>${dueHtml(obs.due_category)}</td>
-      <td>${badgeHtml(obs.closeout_status)}</td>
-      <td><button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="openModal('${obs.id}')">Update</button></td>
-    `;
+      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
+      <td style="font-size:11px;color:var(--text-light)">${o.photo_id||'—'}</td>
+      <td>${badge(o.conformance_status)}</td>
+      <td>${ccvs(o.ccvs_code)}</td>
+      <td style="max-width:260px">${trunc(o.action_description,100)}</td>
+      <td style="color:var(--text-muted)">${o.responsible||'—'}</td>
+      <td>${dueLabel(o.due_category)}</td>
+      <td>${badge(o.closeout_status)}</td>
+      <td style="padding-right:20px"><button class="btn-update" onclick="openModal('${o.id}')">Update</button></td>`;
     tbody.appendChild(tr);
   });
+  renderActionsMobile(actions);
 }
 
-// ── All Observations table ──
+// ── All obs table ──
 function renderAllObs() {
   const tbody = document.getElementById('allObsTableBody');
   tbody.innerHTML = '';
   document.getElementById('allObsCount').textContent = `${filtered.length} records`;
-
-  filtered.forEach(obs => {
+  filtered.forEach(o => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-weight:700">#${obs.seq_no}</td>
-      <td style="font-size:11px;color:var(--grey-400)">${obs.photo_id || '—'}</td>
-      <td style="font-size:11px;white-space:nowrap">${obs.observation_date || '—'}</td>
-      <td style="font-size:12px;max-width:320px">${truncate(obs.observation_text, 120)}</td>
-      <td>${badgeHtml(obs.conformance_status)}</td>
-      <td>${ccvsHtml(obs.ccvs_code)}</td>
-      <td style="font-size:12px;max-width:200px">${truncate(obs.action_description, 80)}</td>
-      <td style="font-size:12px">${obs.responsible || '—'}</td>
-      <td style="font-size:11px;color:var(--grey-400);max-width:200px">${truncate(obs.monitoring_note, 80)}</td>
-    `;
+      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
+      <td style="font-size:11px;color:var(--text-light)">${o.photo_id||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${o.observation_date||'—'}</td>
+      <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
+      <td>${badge(o.conformance_status)}</td>
+      <td>${ccvs(o.ccvs_code)}</td>
+      <td style="max-width:180px;color:var(--text-muted)">${trunc(o.action_description,70)}</td>
+      <td style="color:var(--text-muted)">${o.responsible||'—'}</td>
+      <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.monitoring_note,70)}</td>`;
     tbody.appendChild(tr);
   });
+  renderAllObsMobile(filtered);
 }
 
-// ── Close-out modal ──
-function openModal(obsId) {
-  const obs = allObs.find(o => o.id === obsId);
-  if (!obs) return;
-  editingId = obsId;
-
-  document.getElementById('modalObsText').textContent   = obs.observation_text || '—';
-  document.getElementById('modalAction').textContent    = obs.action_description || '—';
-  document.getElementById('modalCcvs').value            = obs.ccvs_code || '—';
-  document.getElementById('modalResponsible').value     = obs.responsible || '—';
-  document.getElementById('modalStatus').value          = obs.closeout_status === 'N/A' ? 'Open' : obs.closeout_status;
-  document.getElementById('modalClosedDate').value      = obs.closed_date || '';
-  document.getElementById('modalClosedBy').value        = obs.closed_by || '';
-  document.getElementById('modalNotes').value           = obs.closeout_notes || '';
-
+// ── Modal ──
+function openModal(id) {
+  const o = allObs.find(x=>x.id===id);
+  if (!o) return;
+  editingId = id;
+  document.getElementById('modalObsText').textContent  = o.observation_text||'—';
+  document.getElementById('modalAction').textContent   = o.action_description||'No action description';
+  document.getElementById('modalCcvs').value           = o.ccvs_code||'—';
+  document.getElementById('modalResponsible').value    = o.responsible||'—';
+  document.getElementById('modalStatus').value         = o.closeout_status==='N/A'?'Open':o.closeout_status;
+  document.getElementById('modalClosedDate').value     = o.closed_date||'';
+  document.getElementById('modalClosedBy').value       = o.closed_by||'';
+  document.getElementById('modalNotes').value          = o.closeout_notes||'';
   document.getElementById('modalOverlay').classList.add('active');
 }
 
@@ -885,66 +1282,300 @@ function closeModal() {
 
 async function saveCloseout() {
   if (!editingId) return;
-  const status     = document.getElementById('modalStatus').value;
-  const closedDate = document.getElementById('modalClosedDate').value || null;
-  const closedBy   = document.getElementById('modalClosedBy').value || null;
-  const notes      = document.getElementById('modalNotes').value || null;
-
+  const payload = {
+    closeout_status: document.getElementById('modalStatus').value,
+    closed_date:     document.getElementById('modalClosedDate').value || null,
+    closed_by:       document.getElementById('modalClosedBy').value   || null,
+    closeout_notes:  document.getElementById('modalNotes').value      || null,
+  };
   try {
-    const { error } = await db
-      .from('pims_observations')
-      .update({ closeout_status: status, closed_date: closedDate, closed_by: closedBy, closeout_notes: notes })
-      .eq('id', editingId);
-
+    const { error } = await db.from('pims_observations').update(payload).eq('id', editingId);
     if (error) throw error;
-
-    // Update local state
-    const idx = allObs.findIndex(o => o.id === editingId);
-    if (idx > -1) {
-      allObs[idx].closeout_status = status;
-      allObs[idx].closed_date     = closedDate;
-      allObs[idx].closed_by       = closedBy;
-      allObs[idx].closeout_notes  = notes;
-    }
-
+    const idx = allObs.findIndex(o=>o.id===editingId);
+    if (idx>-1) Object.assign(allObs[idx], payload);
     closeModal();
     applyFilters();
-  } catch (err) {
-    alert('Save failed: ' + err.message);
-  }
+  } catch(err) { alert('Save failed: ' + err.message); }
 }
 
-// Close modal on overlay click
-document.getElementById('modalOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target===document.getElementById('modalOverlay')) closeModal(); });
 
-// ── Export CSV ──
+// ── Export ──
 function exportCSV() {
-  const headers = ['#','Photo ID','Date','Observation','Status','CCVS Code','CCVS Category','Action Required','Action','Responsible','Due','Monitoring Note','Close-out Status','Closed Date','Closed By','Notes'];
-  const rows = filtered.map(o => [
+  const h = ['#','Photo ID','Date','Observation','Status','CCVS Code','CCVS Category','Action Required','Action','Responsible','Due','Monitoring Note','Close-out','Closed Date','Closed By','Notes'];
+  const rows = filtered.map(o=>[
     o.seq_no, o.photo_id, o.observation_date,
     `"${(o.observation_text||'').replace(/"/g,'""')}"`,
     o.conformance_status, o.ccvs_code, o.ccvs_category,
-    o.action_required ? 'Yes' : 'No',
+    o.action_required?'Yes':'No',
     `"${(o.action_description||'').replace(/"/g,'""')}"`,
     o.responsible, o.due_category,
     `"${(o.monitoring_note||'').replace(/"/g,'""')}"`,
     o.closeout_status, o.closed_date, o.closed_by,
     `"${(o.closeout_notes||'').replace(/"/g,'""')}"`
   ].join(','));
-
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `PIMS_Export_${new Date().toISOString().slice(0,10)}.csv`;
+  const csv  = [h.join(','),...rows].join('\n');
+  const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download:`PIMS_Export_${new Date().toISOString().slice(0,10)}.csv` });
   a.click();
-  URL.revokeObjectURL(url);
 }
 
-// ── Init ──
+
+// ── Mobile helpers ──
+const isMobile = () => window.innerWidth <= 640;
+
+function toggleFilters() {
+  document.getElementById('filtersBar').classList.toggle('open');
+}
+
+function renderActionsMobile(actions) {
+  const el = document.getElementById('actionsMobileCards');
+  if (!el) return;
+  if (!actions.length) {
+    el.innerHTML = '<div class="empty-state">No open actions for current filters</div>';
+    return;
+  }
+  el.innerHTML = actions.map(o => `
+    <div class="m-card${o.conformance_status==='NCR'?' row-ncr':''}">
+      <div class="m-card-top">
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${o.photo_id||''}</span>
+        <div class="m-card-badges">
+          ${badge(o.conformance_status)}
+          ${ccvs(o.ccvs_code)}
+        </div>
+      </div>
+      <div class="m-card-action">${o.action_description||'—'}</div>
+      <div class="m-card-meta">
+        <span class="m-card-meta-item">👤 ${o.responsible||'—'}</span>
+        <span class="m-card-meta-item">${dueLabel(o.due_category)}</span>
+        <span class="m-card-meta-item">${badge(o.closeout_status)}</span>
+      </div>
+      <div class="m-card-bottom">
+        <span></span>
+        <button class="btn-update" style="padding:8px 18px;font-size:12px" onclick="openModal('${o.id}')">Update close-out</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAllObsMobile(obs) {
+  const el = document.getElementById('allObsMobileCards');
+  if (!el) return;
+  if (!obs.length) {
+    el.innerHTML = '<div class="empty-state">No records for current filters</div>';
+    return;
+  }
+  el.innerHTML = obs.map(o => `
+    <div class="m-card">
+      <div class="m-card-top">
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${o.photo_id||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
+        <div class="m-card-badges">
+          ${badge(o.conformance_status)}
+          ${o.ccvs_code ? ccvs(o.ccvs_code) : ''}
+        </div>
+      </div>
+      <div class="m-card-action">${trunc(o.observation_text, 140)}</div>
+      ${o.action_description ? `<div class="m-card-meta"><span class="m-card-meta-item" style="color:var(--red-text)">⚡ ${trunc(o.action_description,80)}</span></div>` : ''}
+      ${o.monitoring_note ? `<div class="m-card-monitoring">${trunc(o.monitoring_note,100)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+    // ── Staging Inbox ──────────────────────────────────────────
+
+    const CONFORMANCE_COLOURS = {
+      Compliant:   { bg: '#dcfce7', color: '#15803d' },
+      Conditional: { bg: '#fef9c3', color: '#854d0e' },
+      NCR:         { bg: '#fee2e2', color: '#991b1b' },
+      Info:        { bg: '#e0e7ff', color: '#3730a3' },
+    };
+
+    async function loadStaging() {
+      const tbody = document.getElementById('staging-tbody');
+      const badge = document.getElementById('staging-badge');
+      tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+
+      const { data, error } = await db
+        .from('pims_staging')
+        .select('*')
+        .order('submitted_at', { ascending: false });
+
+      if (error || !data) {
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
+        return;
+      }
+
+      const pending = data.filter(r => r.review_status !== 'Approved');
+      badge.textContent = pending.length;
+      badge.style.background = pending.length > 0 ? '#f59e0b' : '#22c55e';
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => {
+        const conf   = row.conformance_status || '';
+        const colours = CONFORMANCE_COLOURS[conf] || { bg: '#f1f5f9', color: '#475569' };
+        const approved = row.review_status === 'Approved';
+        return `
+          <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
+              ${row.photo_url
+                ? `<a href="${row.photo_url}" target="_blank" rel="noopener"
+                    style="font-size:0.75rem;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">
+                    📷 <span style="text-decoration:underline;">${row.filename || 'View'}</span>
+                  </a>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;">—</span>'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${row.observation_text || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${row.ccvs_code}</code>` : '—'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px; background:#f8fbff;">
+              ${row.observation_text_enriched
+                ? `<span title="${row.observation_text_enriched.replace(/"/g,'&quot;')}"
+                    style="display:block;font-size:0.75rem;line-height:1.45;color:#1e3a5f;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+                    ${row.observation_text_enriched}
+                  </span>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px; background:#f8fbff;">
+              ${row.legal_reference
+                ? `<span title="${row.legal_reference.replace(/"/g,'&quot;')}"
+                    style="display:block;font-size:0.72rem;line-height:1.45;color:#374151;font-style:italic;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+                    ${row.legal_reference}
+                  </span>`
+                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">—</span>'}
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
+              <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;
+                background:${approved ? '#dcfce7' : '#fef9c3'};
+                color:${approved ? '#15803d' : '#854d0e'};">
+                ${row.review_status || 'Pending'}
+              </span>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <button
+                id="btn-${row.id}"
+                onclick="approveStagingRecord('${row.id}')"
+                ${approved ? 'disabled' : ''}
+                style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:${approved ? '#9ca3af' : '#16a34a'};border:none;
+                  border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
+                ${approved ? '✓ Approved' : '✓ Approve'}
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function approveStagingRecord(stagingId) {
+      const btn = document.getElementById(`btn-${stagingId}`);
+      if (!btn || btn.disabled) return;
+      if (!confirm('Promote this observation to PIMS records?')) return;
+
+      btn.disabled    = true;
+      btn.textContent = 'Approving…';
+
+      try {
+        // 1. Fetch the staging record
+        const { data: rows, error: fetchErr } = await db
+          .from('pims_staging')
+          .select('*')
+          .eq('id', stagingId);
+
+        if (fetchErr || !rows?.length) throw new Error(fetchErr?.message || 'Record not found');
+        const staging = rows[0];
+
+        if (staging.review_status === 'Approved') {
+          btn.textContent = '✓ Approved';
+          btn.style.background = '#9ca3af';
+          return;
+        }
+
+        // 2. Build observation row
+        const COPY_FIELDS = [
+          'audit_id','seq_no','observation_date','observation_text',
+          'filename','photo_url','submitted_by','device_info',
+          'enriched','enriched_at','conformance_status','ccvs_code',
+          'ccvs_category','ccvs_confidence','action_required',
+          'action_description','responsible','due_category','monitoring_note',
+          'observation_text_enriched','legal_reference',
+        ];
+        const obsRow = {};
+        COPY_FIELDS.forEach(f => { obsRow[f] = staging[f]; });
+        obsRow.staging_id   = stagingId;
+        obsRow.review_status = 'Approved';
+        obsRow.approved_by  = 'dashboard';
+        obsRow.approved_at  = new Date().toISOString();
+
+        // 3. Insert into pims_observations
+        const { error: insErr } = await db
+          .from('pims_observations')
+          .insert(obsRow);
+        if (insErr) throw new Error(insErr.message);
+
+        // 4. Mark staging as Approved
+        const { error: updErr } = await db
+          .from('pims_staging')
+          .update({ review_status: 'Approved' })
+          .eq('id', stagingId);
+        if (updErr) console.warn('Staging update failed:', updErr.message);
+
+        // 5. Update UI
+        btn.textContent      = '✓ Approved';
+        btn.style.background = '#9ca3af';
+        btn.style.cursor     = 'not-allowed';
+
+        const statusCell = document.getElementById(`status-${stagingId}`);
+        if (statusCell) statusCell.innerHTML = `
+          <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;
+            font-weight:600;background:#dcfce7;color:#15803d;">Approved</span>`;
+
+        const row = document.getElementById(`staging-row-${stagingId}`);
+        if (row) row.style.opacity = '0.45';
+
+        // Update badge count
+        const badge = document.getElementById('staging-badge');
+        const current = parseInt(badge.textContent) || 0;
+        const newCount = Math.max(0, current - 1);
+        badge.textContent = newCount;
+        badge.style.background = newCount > 0 ? '#f59e0b' : '#22c55e';
+
+        showToast('Record promoted to PIMS observations.', 'success');
+
+      } catch (err) {
+        btn.disabled    = false;
+        btn.textContent = '✓ Approve';
+        showToast(`Error: ${err.message}`, 'error');
+        console.error('approveStagingRecord:', err);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const colours = { success:'#16a34a', warning:'#d97706', error:'#dc2626', info:'#2563eb' };
+      const el = document.createElement('div');
+      el.textContent = message;
+      Object.assign(el.style, {
+        position:'fixed', bottom:'24px', right:'24px', padding:'12px 20px',
+        background: colours[type] || colours.info, color:'#fff',
+        borderRadius:'8px', fontWeight:'600', fontSize:'0.875rem',
+        boxShadow:'0 4px 12px rgba(0,0,0,.2)', zIndex:'9999',
+        maxWidth:'400px', lineHeight:'1.4',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),350); }, 4500);
+    }
+
+    // Load staging on page load
+    loadStaging();
+
+// ── Go ──
 loadData();
 </script>
 </body>
