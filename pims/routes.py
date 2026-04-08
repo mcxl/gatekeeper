@@ -69,8 +69,8 @@ SDG_PIMS_TOKEN      = os.getenv("PIMS_SDG_TOKEN", "")
 # ── Request / Response models ──────────────────────────────────────────────────
 
 class ObservationRequest(BaseModel):
-    audit_ref:        str                    # e.g. "2026-04-10_Gladesville_Units"
-    seq_no:           int                    # observation sequence number
+    audit_ref:        str                    # e.g. "RPD-SSA"
+    seq_no:           Optional[int] = None   # optional — auto-assigned if omitted
     observation_text: str                    # dictated observation
     observation_date: Optional[str] = None  # YYYY-MM-DD, defaults to today
     photo_url:        Optional[str] = None  # Supabase Storage URL
@@ -80,7 +80,7 @@ class ObservationRequest(BaseModel):
 
 class ObservationResponse(BaseModel):
     id:                 str
-    seq_no:             int
+    seq_no:             Optional[int]
     conformance_status: Optional[str]
     ccvs_code:          Optional[str]
     ccvs_category:      Optional[str]
@@ -129,6 +129,42 @@ RULES:
 - If observation is a header, context note, or photo label only, assign "Info" with null ccvs_code
 - ccvs_confidence: High = clear match, Medium = reasonable match, Low = uncertain
 - action_required must be true for NCR and Conditional
+RPD SWMS REFERENCE (use these when assigning ccvs_code and legal_reference):
+
+WAH — Working at Height (WAH-H6, WAH-H9):
+  SWMS: SCAFFOLD v9.0, SWING-STAGE v9.0, EWP v2.0, PAINTING-WORKS v9.0 s3.1-3.4
+  Controls: Full body harness AS/NZS 1891.1; guardrails top and mid-rail; green tag after
+    competent-person inspection; scaffold inspected ≤30-day intervals and after >60 km/h wind;
+    EWP operator EWPA Yellow Card sighted; PSV current and on site before each shift
+  Legal: WHS Regulation 2017 cl 228–244 (HRCW falls); SafeWork NSW COP: Managing Risks of Falls at Workplaces
+
+EWP — Elevated Work Platform (WAH-H6):
+  SWMS: EWP v2.0 Steps 1.4, 1.6, 1.8, 1.10; PAINTING-WORKS v9.0 s3.4
+  Controls: PSV on site; EWPA Yellow Card recorded; pre-start checklist signed before each shift;
+    harness connected at all times on platform; rescue plan for incapacitated operator at height
+  Legal: WHS Regulation 2017 cl 223–226; SafeWork NSW COP: Plant and Structures
+
+SILICA — Silica Dust (SIL-H6, SIL-H9):
+  SWMS: REMEDIAL-WORKS v9.0 Steps 10, 11, 13, 14, 17, 18, 19, 24; PAINTING-WORKS v9.0 s2.8, 2.9
+  Controls: Wet suppression OR on-tool HEPA extraction before any silica work commences;
+    P2 respirator AS/NZS 1716 fit-checked and worn; exclusion zone for adjacent workers and residents;
+    balcony dust seal in place for occupied units; no dry grinding or cutting without controls
+  Legal: WHS Regulation 2017 cl 407; SafeWork NSW COP: Managing Risks of Silica s2.3
+
+CHEMICALS — Hazardous Chemicals (CHM-M3, CHM-H6):
+  SWMS: REMEDIAL-WORKS v9.0 Step 20; PAINTING-WORKS v9.0 s2.10; PAINTING-WORKS v9.0 s2.6 (lead)
+  Controls: SDS on site for all products; chemical-resistant gloves; P2/P3 respirator for
+    isocyanates and solvent-based products; ventilation before applying VOC products;
+    spill kit 110% capacity of largest container; flammable storage compliant
+  Legal: WHS Regulation 2017 cl 332–361; SafeWork NSW COP: Managing Risks of Hazardous Chemicals
+
+SWING STAGE — Suspended Scaffold (WAH-H6, WAH-H9):
+  SWMS: SWING-STAGE v9.0 Steps 2.1–2.10
+  Controls: Engineer-certified design on site; two-rope system (working + safety independently anchored);
+    rope grab adjusted per worker before descending; anemometer in use — suspend >40 km/h;
+    emergency lowering operable from ground; suspension trauma rescue plan rehearsed
+  Legal: WHS Regulation 2017 cl 228–244; AS/NZS 1576 (suspended scaffolding)
+
 - Return ONLY valid JSON. No commentary, no markdown fences."""
 
 
