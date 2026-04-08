@@ -9,9 +9,16 @@ Auth: X-PIMS-Token header checked against env var per client.
 
 Each endpoint:
     1. Validates token
-    2. Calls Claude Haiku to enrich the observation
-    3. Writes enriched record to client Supabase pims_staging table
-    4. Returns enrichment result
+    2. Saves raw observation to Supabase immediately (with auto seq_no)
+    3. Returns 200 to client instantly
+    4. Enriches via Claude Haiku in background and patches staging record
+
+Codex fixes applied:
+    P1 — Approval promoted with conflict guard (no duplicate rows)
+    P1 — Staging patch failure now raises, not just logs
+    P2 — get_or_create_audit uses upsert to eliminate race window
+    P2 — approve/list routes guard on missing Supabase key
+    P2 — seq_no auto-assigned from max existing seq_no for audit
 """
 
 from __future__ import annotations
@@ -23,7 +30,7 @@ from datetime import date, datetime
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
@@ -32,12 +39,17 @@ router = APIRouter(prefix="/pims", tags=["pims"])
 
 # ── Environment ────────────────────────────────────────────────────────────────
 
-ANTHROPIC_API_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # RPD Supabase
-RPD_SUPABASE_URL    = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodni.supabase.co")
-RPD_SUPABASE_KEY    = os.getenv("RPD_SUPABASE_ANON_KEY", "")
-RPD_PIMS_TOKEN      = os.getenv("PIMS_RPD_TOKEN", "")
+RPD_SUPABASE_URL  = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodni.supabase.co")
+RPD_SUPABASE_KEY  = os.getenv("RPD_SUPABASE_ANON_KEY", "")
+RPD_PIMS_TOKEN    = os.getenv("PIMS_RPD_TOKEN", "")
+
+# SD Group Supabase (future)
+SDG_SUPABASE_URL  = os.getenv("SDG_SUPABASE_URL", "")
+SDG_SUPABASE_KEY  = os.getenv("SDG_SUPABASE_ANON_KEY", "")
+SDG_PIMS_TOKEN    = os.getenv("PIMS_SDG_TOKEN", "")
 
 VALID_CCVS = {
     "WAH-H6", "WAH-H9",
@@ -61,22 +73,17 @@ STAGING_COPY_FIELDS = [
     "observation_text_enriched", "legal_reference",
 ]
 
-# SD Group Supabase (future)
-SDG_SUPABASE_URL    = os.getenv("SDG_SUPABASE_URL", "")
-SDG_SUPABASE_KEY    = os.getenv("SDG_SUPABASE_ANON_KEY", "")
-SDG_PIMS_TOKEN      = os.getenv("PIMS_SDG_TOKEN", "")
-
 # ── Request / Response models ──────────────────────────────────────────────────
 
 class ObservationRequest(BaseModel):
-    audit_ref:        str                    # e.g. "RPD-SSA"
-    seq_no:           Optional[int] = None   # optional — auto-assigned if omitted
-    observation_text: str                    # dictated observation
-    observation_date: Optional[str] = None  # YYYY-MM-DD, defaults to today
-    photo_url:        Optional[str] = None  # Supabase Storage URL
-    filename:         Optional[str] = None  # original photo filename
-    submitted_by:     Optional[str] = None  # auditor name
-    device_info:      Optional[str] = None  # "iPhone 15 Pro"
+    audit_ref:        str                   # e.g. "RPD-SSA"
+    seq_no:           Optional[int] = None  # optional — auto-assigned if omitted
+    observation_text: str                   # dictated observation
+    observation_date: Optional[str] = None # YYYY-MM-DD or timestamp, defaults to today
+    photo_url:        Optional[str] = None # Supabase Storage public URL
+    filename:         Optional[str] = None # original photo filename
+    submitted_by:     Optional[str] = None # auditor name
+    device_info:      Optional[str] = None # e.g. "iPhone 15 Pro"
 
 class ObservationResponse(BaseModel):
     id:                 str
@@ -202,42 +209,92 @@ async def enrich_observation(observation_text: str) -> dict:
         raise
 
 
+async def enrich_and_update(
+    supabase_url: str,
+    supabase_key: str,
+    record_id: str,
+    observation_text: str,
+) -> None:
+    """Background task — enrich observation and patch the staging record."""
+    try:
+        enrichment = await enrich_observation(observation_text)
+    except Exception as e:
+        log.error(f"Background enrichment failed for {record_id}: {e}")
+        return
+
+    headers = {
+        "apikey":        supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type":  "application/json",
+        "Prefer":        "return=minimal",
+    }
+    patch = {
+        "conformance_status":        enrichment.get("conformance_status"),
+        "ccvs_code":                 enrichment.get("ccvs_code"),
+        "ccvs_category":             enrichment.get("ccvs_category"),
+        "ccvs_confidence":           enrichment.get("ccvs_confidence"),
+        "action_required":           enrichment.get("action_required", False),
+        "action_description":        enrichment.get("action_description"),
+        "responsible":               enrichment.get("responsible"),
+        "due_category":              enrichment.get("due_category", "N/A"),
+        "monitoring_note":           enrichment.get("monitoring_note"),
+        "observation_text_enriched": enrichment.get("observation_text_enriched"),
+        "legal_reference":           enrichment.get("legal_reference"),
+        "enriched":                  True,
+        "enriched_at":               datetime.utcnow().isoformat(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.patch(
+                f"{supabase_url}/rest/v1/pims_staging",
+                headers=headers,
+                params={"id": f"eq.{record_id}"},
+                json=patch,
+            )
+            if r.status_code not in (200, 204):
+                log.error(f"Background patch failed {r.status_code}: {r.text}")
+            else:
+                log.info(f"Background enrichment complete for {record_id}")
+    except Exception as e:
+        log.error(f"Background patch exception for {record_id}: {e}")
+
+
 # ── Supabase helpers ───────────────────────────────────────────────────────────
+
+def _supabase_headers(supabase_key: str, prefer: str = "return=representation") -> dict:
+    """Build standard Supabase REST headers."""
+    return {
+        "apikey":        supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type":  "application/json",
+        "Prefer":        prefer,
+    }
+
 
 async def get_or_create_audit(
     supabase_url: str,
     supabase_key: str,
     audit_ref: str,
 ) -> str:
-    """Return existing audit id or create a new audit record."""
-    headers = {
-        "apikey":        supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
-        "Content-Type":  "application/json",
-        "Prefer":        "return=representation",
-    }
+    """
+    Return existing audit id or create a new audit record.
+    Uses upsert with on_conflict=audit_ref to eliminate race window (Codex P2).
+    """
+    today = date.today().isoformat()
+    parts = audit_ref.split("_", 1)
+    audit_date = parts[0] if len(parts[0]) == 10 else today
+    site_name  = parts[1].replace("_", " ") if len(parts) > 1 else audit_ref
+
+    headers = _supabase_headers(
+        supabase_key,
+        prefer="return=representation,resolution=merge-duplicates",
+    )
+
     async with httpx.AsyncClient(timeout=15) as client:
-        # Check if audit exists
-        r = await client.get(
+        r = await client.post(
             f"{supabase_url}/rest/v1/pims_audits",
             headers=headers,
-            params={"audit_ref": f"eq.{audit_ref}", "select": "id"},
-        )
-        r.raise_for_status()
-        existing = r.json()
-        if existing:
-            return existing[0]["id"]
-
-        # Create new audit
-        today = date.today().isoformat()
-        # Parse date from audit_ref (YYYY-MM-DD_SiteName)
-        parts = audit_ref.split("_", 1)
-        audit_date = parts[0] if len(parts[0]) == 10 else today
-        site_name  = parts[1].replace("_", " ") if len(parts) > 1 else audit_ref
-
-        r2 = await client.post(
-            f"{supabase_url}/rest/v1/pims_audits",
-            headers=headers,
+            params={"on_conflict": "audit_ref"},
             json={
                 "audit_ref":  audit_ref,
                 "site_name":  site_name,
@@ -245,8 +302,36 @@ async def get_or_create_audit(
                 "auditor":    "Alan Richardson",
             },
         )
-        r2.raise_for_status()
-        return r2.json()[0]["id"]
+        r.raise_for_status()
+        return r.json()[0]["id"]
+
+
+async def next_seq_no(
+    supabase_url: str,
+    supabase_key: str,
+    audit_id: str,
+) -> int:
+    """
+    Return max(seq_no) + 1 for the given audit, or 1 if none exist.
+    Fixes Codex P2 — seq_no auto-assignment.
+    """
+    headers = _supabase_headers(supabase_key, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.get(
+            f"{supabase_url}/rest/v1/pims_staging",
+            headers=headers,
+            params={
+                "audit_id": f"eq.{audit_id}",
+                "select":   "seq_no",
+                "order":    "seq_no.desc",
+                "limit":    "1",
+            },
+        )
+        r.raise_for_status()
+        rows = r.json()
+        if rows and rows[0].get("seq_no") is not None:
+            return rows[0]["seq_no"] + 1
+        return 1
 
 
 async def insert_staging(
@@ -255,25 +340,21 @@ async def insert_staging(
     audit_id: str,
     request: ObservationRequest,
     enrichment: dict,
+    seq_no: int,
 ) -> str:
-    """Insert enriched observation into pims_staging. Returns record id."""
-    headers = {
-        "apikey":        supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
-        "Content-Type":  "application/json",
-        "Prefer":        "return=representation",
-    }
+    """Insert observation into pims_staging. Returns record id."""
+    headers = _supabase_headers(supabase_key)
     record = {
         "audit_id":           audit_id,
-        "seq_no":             request.seq_no,
+        "seq_no":             seq_no,
         "photo_url":          request.photo_url,
         "filename":           request.filename,
         "observation_date":   (request.observation_date or "")[:10] or date.today().isoformat(),
         "observation_text":   request.observation_text,
         "submitted_by":       request.submitted_by,
         "device_info":        request.device_info,
-        "enriched":           True,
-        "enriched_at":        datetime.utcnow().isoformat(),
+        "enriched":           False,
+        "enriched_at":        None,
         "conformance_status": enrichment.get("conformance_status"),
         "ccvs_code":          enrichment.get("ccvs_code"),
         "ccvs_category":      enrichment.get("ccvs_category"),
@@ -307,6 +388,7 @@ async def _handle_observation(
     supabase_key: str,
     expected_token: str,
     token: str,
+    background_tasks: BackgroundTasks,
 ) -> ObservationResponse:
     """Shared handler for all client observation endpoints."""
     if not expected_token or token != expected_token:
@@ -315,39 +397,49 @@ async def _handle_observation(
     if not supabase_key:
         raise HTTPException(status_code=503, detail="Supabase not configured for this client")
 
-    try:
-        enrichment = await enrich_observation(request.observation_text)
-    except Exception as e:
-        log.error(f"Haiku enrichment failed: {e}")
-        enrichment = {
-            "conformance_status": None,
-            "ccvs_code":          None,
-            "ccvs_category":      None,
-            "ccvs_confidence":    "Low",
-            "action_required":    False,
-            "action_description": None,
-            "responsible":        None,
-            "due_category":       "N/A",
-            "monitoring_note":    None,
-        }
+    # Empty enrichment placeholder — Haiku runs in background
+    empty_enrichment = {
+        "conformance_status":        None,
+        "ccvs_code":                 None,
+        "ccvs_category":             None,
+        "ccvs_confidence":           None,
+        "action_required":           False,
+        "action_description":        None,
+        "responsible":               None,
+        "due_category":              "N/A",
+        "monitoring_note":           None,
+        "observation_text_enriched": None,
+        "legal_reference":           None,
+    }
 
     try:
         audit_id = await get_or_create_audit(supabase_url, supabase_key, request.audit_ref)
-        record_id = await insert_staging(supabase_url, supabase_key, audit_id, request, enrichment)
+        # Auto-assign seq_no if not provided (Codex P2)
+        seq_no = request.seq_no if request.seq_no is not None else await next_seq_no(supabase_url, supabase_key, audit_id)
+        record_id = await insert_staging(supabase_url, supabase_key, audit_id, request, empty_enrichment, seq_no)
     except Exception as e:
         log.error(f"Supabase insert failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to save observation")
 
+    # Enrich in background after response is returned to client
+    background_tasks.add_task(
+        enrich_and_update,
+        supabase_url=supabase_url,
+        supabase_key=supabase_key,
+        record_id=record_id,
+        observation_text=request.observation_text,
+    )
+
     return ObservationResponse(
         id=                 record_id,
-        seq_no=             request.seq_no,
-        conformance_status= enrichment.get("conformance_status"),
-        ccvs_code=          enrichment.get("ccvs_code"),
-        ccvs_category=      enrichment.get("ccvs_category"),
-        ccvs_confidence=    enrichment.get("ccvs_confidence"),
-        action_required=    enrichment.get("action_required", False),
-        action_description= enrichment.get("action_description"),
-        monitoring_note=    enrichment.get("monitoring_note"),
+        seq_no=             seq_no,
+        conformance_status= "Pending",
+        ccvs_code=          None,
+        ccvs_category=      None,
+        ccvs_confidence=    None,
+        action_required=    False,
+        action_description= None,
+        monitoring_note=    "Enrichment running in background",
         review_status=      "Pending",
     )
 
@@ -355,30 +447,34 @@ async def _handle_observation(
 @router.post("/observation/rpd", response_model=ObservationResponse)
 async def rpd_observation(
     request: ObservationRequest,
+    background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
     """Receive a field observation for RPD and enrich with CCVS codes."""
     return await _handle_observation(
-        request=       request,
-        supabase_url=  RPD_SUPABASE_URL,
-        supabase_key=  RPD_SUPABASE_KEY,
-        expected_token=RPD_PIMS_TOKEN,
-        token=         x_pims_token,
+        request=          request,
+        supabase_url=     RPD_SUPABASE_URL,
+        supabase_key=     RPD_SUPABASE_KEY,
+        expected_token=   RPD_PIMS_TOKEN,
+        token=            x_pims_token,
+        background_tasks= background_tasks,
     )
 
 
 @router.post("/observation/sdgroup", response_model=ObservationResponse)
 async def sdgroup_observation(
     request: ObservationRequest,
+    background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
     """Receive a field observation for SD Group and enrich with CCVS codes."""
     return await _handle_observation(
-        request=       request,
-        supabase_url=  SDG_SUPABASE_URL,
-        supabase_key=  SDG_SUPABASE_KEY,
-        expected_token=SDG_PIMS_TOKEN,
-        token=         x_pims_token,
+        request=          request,
+        supabase_url=     SDG_SUPABASE_URL,
+        supabase_key=     SDG_SUPABASE_KEY,
+        expected_token=   SDG_PIMS_TOKEN,
+        token=            x_pims_token,
+        background_tasks= background_tasks,
     )
 
 
@@ -387,20 +483,20 @@ async def approve_staging_rpd(
     staging_id: str,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
+    # Codex P2 — guard on missing Supabase key
     if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
+    if not RPD_SUPABASE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
 
-    headers = {
-        "apikey":        RPD_SUPABASE_KEY,
-        "Authorization": f"Bearer {RPD_SUPABASE_KEY}",
-        "Content-Type":  "application/json",
-        "Prefer":        "return=representation",
-    }
+    headers_repr    = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=representation")
+    headers_minimal = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=minimal")
 
     async with httpx.AsyncClient(timeout=15) as client:
+        # Fetch staging record
         r = await client.get(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
-            headers=headers,
+            headers=headers_repr,
             params={"id": f"eq.{staging_id}", "select": "*"},
         )
         r.raise_for_status()
@@ -426,25 +522,42 @@ async def approve_staging_rpd(
             "approved_at":   now_utc,
         })
 
+        # Codex P1 — use conflict guard to prevent duplicate promoted rows
         r2 = await client.post(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
-            headers=headers,
+            headers={**headers_repr, "Prefer": "return=representation,resolution=ignore-duplicates"},
+            params={"on_conflict": "staging_id"},
             json=obs_row,
         )
         if r2.status_code not in (200, 201):
             log.error(f"pims_observations insert failed: {r2.status_code} {r2.text}")
             raise HTTPException(status_code=500, detail=f"Failed to insert observation: {r2.text}")
 
-        new_obs = r2.json()[0]
+        new_obs = r2.json()
+        if not new_obs:
+            # Row already existed — fetch it
+            r_existing = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers_repr,
+                params={"staging_id": f"eq.{staging_id}", "select": "*"},
+            )
+            r_existing.raise_for_status()
+            new_obs = r_existing.json()
+        new_obs = new_obs[0] if isinstance(new_obs, list) else new_obs
 
+        # Codex P1 — fail hard if staging patch fails, don't just log
         r3 = await client.patch(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
-            headers={**headers, "Prefer": "return=minimal"},
+            headers=headers_minimal,
             params={"id": f"eq.{staging_id}"},
             json={"review_status": "Approved"},
         )
         if r3.status_code not in (200, 204):
-            log.warning(f"pims_staging status update failed for {staging_id}: {r3.status_code} {r3.text}")
+            log.error(f"pims_staging status update failed for {staging_id}: {r3.status_code} {r3.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Observation promoted but staging status update failed: {r3.text}",
+            )
 
         ccvs = staging.get("ccvs_code")
         response = {
@@ -466,11 +579,11 @@ async def list_observations_rpd(
     if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
 
-    headers = {
-        "apikey":        RPD_SUPABASE_KEY,
-        "Authorization": f"Bearer {RPD_SUPABASE_KEY}",
-        "Content-Type":  "application/json",
-    }
+    # Codex P2 — guard on missing Supabase key
+    if not RPD_SUPABASE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers = _supabase_headers(RPD_SUPABASE_KEY, prefer="return=representation")
     params = {
         "review_status": "eq.Approved",
         "order":         "approved_at.desc",
