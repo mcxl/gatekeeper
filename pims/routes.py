@@ -58,6 +58,7 @@ STAGING_COPY_FIELDS = [
     "enriched", "enriched_at", "conformance_status", "ccvs_code",
     "ccvs_category", "ccvs_confidence", "action_required",
     "action_description", "responsible", "due_category", "monitoring_note",
+    "observation_text_enriched", "legal_reference",
 ]
 
 # SD Group Supabase (future)
@@ -104,7 +105,9 @@ Given a field observation from a site safety audit, return a JSON object with:
   "action_description": short plain-English action required or null,
   "responsible": "PC" | "Subcontractor" | "Inspector" | null,
   "due_category": "Immediate" | "Next audit" | "Ongoing" | "N/A",
-  "monitoring_note": what to verify at next audit or null
+  "monitoring_note": what to verify at next audit or null,
+  "observation_text_enriched": a professional rewrite of the observation in plain Australian English, suitable for a formal WHS audit report. 2-3 sentences. Must include the hazard, the finding, and the implication,
+  "legal_reference": the single most relevant NSW legal reference — WHS Act 2011, WHS Regulation 2017 clause, or SafeWork NSW Code of Practice section. Format: "WHS Regulation 2017 cl 54" or "SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2". Null if Info status
 }
 
 APPROVED CCVS CODES (use only these exact strings):
@@ -142,7 +145,7 @@ async def enrich_observation(observation_text: str) -> dict:
                 },
                 json={
                     "model":      "claude-haiku-4-5",
-                    "max_tokens": 512,
+                    "max_tokens": 768,
                     "system":     ENRICHMENT_SYSTEM,
                     "messages": [
                         {"role": "user", "content": f"Observation: {observation_text}"}
@@ -244,6 +247,8 @@ async def insert_staging(
         "responsible":        enrichment.get("responsible"),
         "due_category":       enrichment.get("due_category", "N/A"),
         "monitoring_note":    enrichment.get("monitoring_note"),
+        "observation_text_enriched": enrichment.get("observation_text_enriched"),
+        "legal_reference":           enrichment.get("legal_reference"),
         "review_status":      "Pending",
     }
     async with httpx.AsyncClient(timeout=15) as client:
