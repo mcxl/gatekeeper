@@ -469,6 +469,7 @@ async def _handle_observation(
     )
 
     # Upload photo in background if base64 provided
+    print(f"[GATE] photo_base64 present={bool(request.photo_base64)} len={len(request.photo_base64) if request.photo_base64 else 0} filename={request.filename}", flush=True)
     if request.photo_base64 and request.filename:
         background_tasks.add_task(
             upload_photo_background,
