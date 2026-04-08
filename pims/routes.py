@@ -11,19 +11,13 @@ Each endpoint:
     1. Validates token
     2. Saves raw observation to Supabase immediately (with auto seq_no)
     3. Returns 200 to client instantly
-    4. Enriches via Claude Haiku in background and patches staging record
-
-Codex fixes applied:
-    P1 — Approval promoted with conflict guard (no duplicate rows)
-    P1 — Staging patch failure now raises, not just logs
-    P2 — get_or_create_audit uses upsert to eliminate race window
-    P2 — approve/list routes guard on missing Supabase key
-    P2 — seq_no auto-assigned from max existing seq_no for audit
-    FIX — All server-side Supabase calls use service role key
+    4. Enriches via Claude Haiku in background
+    5. Uploads photo to Supabase Storage in background if photo_base64 provided
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -85,6 +79,7 @@ class ObservationRequest(BaseModel):
     observation_date: Optional[str] = None
     photo_url:        Optional[str] = None
     filename:         Optional[str] = None
+    photo_base64:     Optional[str] = None  # base64 encoded photo from RPD Synch
     submitted_by:     Optional[str] = None
     device_info:      Optional[str] = None
 
@@ -257,6 +252,55 @@ async def enrich_and_update(
         log.error(f"Background patch exception for {record_id}: {e}")
 
 
+async def upload_photo_background(
+    supabase_url: str,
+    supabase_service_key: str,
+    record_id: str,
+    filename: str,
+    photo_base64: str,
+    audit_ref: str,
+) -> None:
+    """Background task — decode base64 photo and upload to Supabase Storage."""
+    try:
+        photo_bytes = base64.b64decode(photo_base64)
+    except Exception as e:
+        log.error(f"Base64 decode failed for {record_id}: {e}")
+        return
+
+    storage_path = f"{audit_ref}/{filename}"
+    storage_url  = f"{supabase_url}/storage/v1/object/pims-photos/{storage_path}"
+    public_url   = f"{supabase_url}/storage/v1/object/public/pims-photos/{storage_path}"
+
+    headers = {
+        "apikey":        supabase_service_key,
+        "Authorization": f"Bearer {supabase_service_key}",
+        "Content-Type":  "image/jpeg",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.put(storage_url, headers=headers, content=photo_bytes)
+            if r.status_code not in (200, 201):
+                log.error(f"Photo upload failed {r.status_code}: {r.text}")
+                return
+            log.info(f"Photo uploaded for {record_id}: {storage_path}")
+
+            # Patch staging record with photo_url
+            patch_headers = _supabase_headers(supabase_service_key, prefer="return=minimal")
+            r2 = await client.patch(
+                f"{supabase_url}/rest/v1/pims_staging",
+                headers=patch_headers,
+                params={"id": f"eq.{record_id}"},
+                json={"photo_url": public_url},
+            )
+            if r2.status_code not in (200, 204):
+                log.error(f"photo_url patch failed {r2.status_code}: {r2.text}")
+            else:
+                log.info(f"photo_url updated for {record_id}")
+    except Exception as e:
+        log.error(f"Photo upload exception for {record_id}: {e}")
+
+
 # ── Supabase helpers ───────────────────────────────────────────────────────────
 
 def _supabase_headers(supabase_key: str, prefer: str = "return=representation") -> dict:
@@ -274,10 +318,7 @@ async def get_or_create_audit(
     supabase_service_key: str,
     audit_ref: str,
 ) -> str:
-    """
-    Return existing audit id or create a new audit record.
-    Uses upsert with service role key to eliminate race window.
-    """
+    """Return existing audit id or create via upsert (race-safe)."""
     today = date.today().isoformat()
     parts = audit_ref.split("_", 1)
     audit_date = parts[0] if len(parts[0]) == 10 else today
@@ -413,6 +454,7 @@ async def _handle_observation(
         log.error(f"Supabase insert failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to save observation")
 
+    # Enrich in background
     background_tasks.add_task(
         enrich_and_update,
         supabase_url=supabase_url,
@@ -420,6 +462,18 @@ async def _handle_observation(
         record_id=record_id,
         observation_text=request.observation_text,
     )
+
+    # Upload photo in background if base64 provided
+    if request.photo_base64 and request.filename:
+        background_tasks.add_task(
+            upload_photo_background,
+            supabase_url=supabase_url,
+            supabase_service_key=supabase_service_key,
+            record_id=record_id,
+            filename=request.filename,
+            photo_base64=request.photo_base64,
+            audit_ref=request.audit_ref,
+        )
 
     return ObservationResponse(
         id=                 record_id,
