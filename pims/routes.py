@@ -261,19 +261,15 @@ async def upload_photo_background(
     audit_ref: str,
 ) -> None:
     """Background task — decode base64 photo and upload to Supabase Storage."""
-    print(f"[UPLOAD] TASK FIRED record={record_id} filename={filename} b64_len={len(photo_base64)} audit_ref={audit_ref}", flush=True)
     try:
         photo_bytes = base64.b64decode(photo_base64)
-        print(f"[UPLOAD] Decoded OK bytes={len(photo_bytes)}", flush=True)
     except Exception as e:
-        print(f"[UPLOAD] Base64 decode FAILED record={record_id} error={e}", flush=True)
         log.error(f"Base64 decode failed for {record_id}: {e}")
         return
 
     storage_path = f"{audit_ref}/{filename}"
     storage_url  = f"{supabase_url}/storage/v1/object/pims-photos/{storage_path}"
     public_url   = f"{supabase_url}/storage/v1/object/public/pims-photos/{storage_path}"
-    print(f"[UPLOAD] Attempting PUT {storage_url}", flush=True)
 
     headers = {
         "apikey":        supabase_service_key,
@@ -284,7 +280,6 @@ async def upload_photo_background(
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.put(storage_url, headers=headers, content=photo_bytes)
-            print(f"[UPLOAD] PUT response status={r.status_code} body={r.text[:200]}", flush=True)
             if r.status_code not in (200, 201):
                 log.error(f"Photo upload failed {r.status_code}: {r.text}")
                 return
@@ -469,7 +464,6 @@ async def _handle_observation(
     )
 
     # Upload photo in background if base64 provided
-    print(f"[GATE] photo_base64 present={bool(request.photo_base64)} len={len(request.photo_base64) if request.photo_base64 else 0} filename={request.filename}", flush=True)
     if request.photo_base64 and request.filename:
         background_tasks.add_task(
             upload_photo_background,
