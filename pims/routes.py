@@ -293,7 +293,9 @@ async def insert_staging(
             headers=headers,
             json=record,
         )
-        r.raise_for_status()
+        if r.status_code not in (200, 201):
+            log.error(f"Supabase staging insert error {r.status_code}: {r.text}")
+            r.raise_for_status()
         return r.json()[0]["id"]
 
 
