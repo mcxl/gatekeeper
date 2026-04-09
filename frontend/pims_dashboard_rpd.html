@@ -584,6 +584,78 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
   font-size: 13px;
 }
 
+/* ── Needs-review amber border ── */
+table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+
+/* ── Staging / Live toggle button ── */
+.btn-staging {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: all var(--transition);
+}
+.btn-staging.is-staging { background: var(--amber-bg); color: var(--amber-text); }
+.btn-staging.is-live    { background: var(--green-bg); color: var(--green-text); cursor: default; }
+
+/* ── Inline editable cell ── */
+.inline-edit {
+  font-family: var(--font);
+  font-size: 12px;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  color: var(--text-primary);
+  width: 100%;
+  transition: border-color var(--transition), background var(--transition);
+  cursor: text;
+}
+.inline-edit:hover { border-color: var(--border-mid); background: var(--surface); }
+.inline-edit:focus { outline: none; border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(0,87,255,0.08); }
+
+/* ── Needs-review badge ── */
+.badge-review { background: var(--amber-bg); color: var(--amber-text); }
+
+/* ── Expandable text ── */
+.expand-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.expand-text.expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* ── Staging filter toggle group ── */
+.filter-pills { display: flex; gap: 0; border: 1.5px solid var(--border-mid); border-radius: var(--r-sm); overflow: hidden; }
+.filter-pill {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border: none;
+  background: white;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.filter-pill:not(:last-child) { border-right: 1px solid var(--border-mid); }
+.filter-pill.active { background: var(--blue); color: white; }
+.filter-pill:hover:not(.active) { background: var(--blue-light); color: var(--blue); }
+
 /* ── Responsive ── */
 @media (max-width: 1000px) {
   .kpi-row    { grid-template-columns: repeat(3,1fr); }
@@ -835,6 +907,15 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All Categories</option></select>
     </div>
     <div class="divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">View</span>
+      <div class="filter-pills" id="filterStagingPills">
+        <button class="filter-pill" data-val="" onclick="setStagingFilter('')">All</button>
+        <button class="filter-pill active" data-val="staging" onclick="setStagingFilter('staging')">Staging only</button>
+        <button class="filter-pill" data-val="live" onclick="setStagingFilter('live')">Live only</button>
+      </div>
+    </div>
+    <div class="divider"></div>
     <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
   </div>
 </div>
@@ -956,13 +1037,19 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         <thead>
           <tr>
             <th style="padding-left:20px">#</th>
-            <th>Photo</th>
-            <th>Date</th>
+            <th>Staging</th>
+            <th>Review</th>
+            <th>Site Address</th>
+            <th>Audit Date</th>
             <th>Observation</th>
             <th>Status</th>
             <th>CCVS</th>
             <th>Action</th>
-            <th>Responsible</th>
+            <th>Recommendation</th>
+            <th>Legal Ref</th>
+            <th>Photo Refs</th>
+            <th>Source PDF</th>
+            <th>Prepared By</th>
             <th style="padding-right:20px">Monitoring Note</th>
           </tr>
         </thead>
@@ -1057,6 +1144,7 @@ function esc(s) {
 
 // ── State ──
 let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
+let currentStagingFilter = 'staging'; // default: show staging only
 
 // ── Helpers ──
 function badge(status) {
@@ -1096,7 +1184,7 @@ async function loadData() {
   try {
     const [aRes, oRes] = await Promise.all([
       db.from('pims_audits').select('*').order('audit_date', { ascending: false }),
-      db.from('pims_observations').select('*, pims_audits(site_name,audit_date,audit_ref,principal_contractor)').order('seq_no'),
+      db.from('pims_observations').select('*, pims_audits!left(site_name,audit_date,audit_ref,principal_contractor)').order('created_at', { ascending: false }),
     ]);
     if (aRes.error) throw aRes.error;
     if (oRes.error) throw oRes.error;
@@ -1124,9 +1212,22 @@ function populateFilters() {
   const siteEl  = document.getElementById('filterSite');
   const auditEl = document.getElementById('filterAudit');
   const ccvsEl  = document.getElementById('filterCcvs');
-  [...new Set(allAudits.map(a=>a.site_name))].sort().forEach(s => siteEl.appendChild(new Option(s,s)));
+  // Combine audit site_name and flat-import site_address
+  const sites = new Set([
+    ...allAudits.map(a=>a.site_name),
+    ...allObs.map(o=>o.site_address).filter(Boolean),
+  ]);
+  [...sites].sort().forEach(s => siteEl.appendChild(new Option(s,s)));
   allAudits.forEach(a => auditEl.appendChild(new Option(`${a.site_name} — ${a.audit_date}`, a.id)));
   [...new Set(allObs.map(o=>o.ccvs_category).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
+}
+
+function setStagingFilter(val) {
+  currentStagingFilter = val;
+  document.querySelectorAll('#filterStagingPills .filter-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.val === val);
+  });
+  applyFilters();
 }
 
 function applyFilters() {
@@ -1135,10 +1236,12 @@ function applyFilters() {
   const status = document.getElementById('filterStatus').value;
   const cat    = document.getElementById('filterCcvs').value;
   filtered = allObs.filter(o => {
-    if (site   && o.pims_audits?.site_name !== site) return false;
+    if (site   && o.pims_audits?.site_name !== site && o.site_address !== site) return false;
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
     if (cat    && o.ccvs_category !== cat) return false;
+    if (currentStagingFilter === 'staging' && o.staging !== true) return false;
+    if (currentStagingFilter === 'live'    && o.staging !== false) return false;
     return true;
   });
   renderKPIs();
@@ -1276,25 +1379,92 @@ function renderActions() {
 }
 
 // ── All obs table ──
+function fmtDateDMY(iso) {
+  if (!iso) return '—';
+  const parts = iso.split('-');
+  if (parts.length !== 3) return esc(iso);
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
 function renderAllObs() {
   const tbody = document.getElementById('allObsTableBody');
   tbody.innerHTML = '';
   document.getElementById('allObsCount').textContent = `${filtered.length} records`;
   filtered.forEach(o => {
     const tr = document.createElement('tr');
+    if (o.conformance_status==='NCR') tr.classList.add('row-ncr');
+    if (o.needs_review) tr.classList.add('row-review');
+
+    const stagingBtn = o.staging
+      ? `<button class="btn-staging is-staging" onclick="promoteRow('${o.id}',this)">Staging</button>`
+      : `<span class="btn-staging is-live">Live</span>`;
+
+    const reviewBadge = o.needs_review
+      ? `<span class="badge badge-review">Review</span>`
+      : '';
+
+    const pdfName = o.source_pdf ? esc(o.source_pdf.replace(/^.*[\\/]/, '')) : '—';
+
     tr.innerHTML = `
-      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
-      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id)||'—'}</td>
-      <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${o.observation_date||'—'}</td>
+      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
+      <td>${stagingBtn}</td>
+      <td>${reviewBadge}</td>
+      <td style="min-width:160px">
+        <input class="inline-edit" type="text" value="${esc(o.site_address||'')}"
+          data-id="${o.id}" data-field="site_address"
+          onblur="patchField(this)" placeholder="—">
+      </td>
+      <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.audit_date || o.observation_date)}</td>
       <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code)}</td>
       <td style="max-width:180px;color:var(--text-muted)">${trunc(o.action_description,70)}</td>
-      <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
+      <td style="max-width:200px">${o.recommendation ? `<div class="expand-text" onclick="this.classList.toggle('expanded')">${esc(o.recommendation)}</div>` : '<span style="color:var(--text-light)">—</span>'}</td>
+      <td style="font-size:11px;color:var(--text-muted);max-width:160px">${esc(o.legal_ref)||'—'}</td>
+      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_refs)||'—'}</td>
+      <td style="font-size:11px;color:var(--text-light);max-width:180px" title="${pdfName}">${trunc(pdfName,30)}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${esc(o.prepared_by)||'—'}</td>
       <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.monitoring_note,70)}</td>`;
     tbody.appendChild(tr);
   });
   renderAllObsMobile(filtered);
+}
+
+// ── Inline PATCH helpers ──
+async function patchField(input) {
+  const id = input.dataset.id;
+  const field = input.dataset.field;
+  const val = input.value.trim() || null;
+  // Find original value
+  const obs = allObs.find(o => o.id === id);
+  if (!obs || obs[field] === val) return; // no change
+  try {
+    const { error } = await db.from('pims_observations').update({ [field]: val }).eq('id', id);
+    if (error) throw error;
+    obs[field] = val;
+    input.style.borderColor = 'var(--green)';
+    setTimeout(() => { input.style.borderColor = 'transparent'; }, 1200);
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+    input.value = obs[field] || '';
+  }
+}
+
+async function promoteRow(id, btn) {
+  if (!confirm('Promote this observation to live? This cannot be undone.')) return;
+  try {
+    const { error } = await db.from('pims_observations').update({ staging: false }).eq('id', id);
+    if (error) throw error;
+    const obs = allObs.find(o => o.id === id);
+    if (obs) obs.staging = false;
+    btn.className = 'btn-staging is-live';
+    btn.textContent = 'Live';
+    btn.onclick = null;
+    btn.style.cursor = 'default';
+    showToast('Observation promoted to live.', 'success');
+  } catch(err) {
+    alert('Promote failed: ' + err.message);
+  }
 }
 
 // ── Modal ──
