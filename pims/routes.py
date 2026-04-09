@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hmac
 import json
 import logging
 import os
 import urllib.parse
 import uuid as _uuid_mod
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from io import BytesIO
 from typing import Optional
 
@@ -35,13 +36,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
-from fastapi import APIRouter, BackgroundTasks, Cookie, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Cookie, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from PIL import Image as PILImage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.pims_auth import COOKIE_NAME, verify_session_cookie
 
@@ -98,13 +99,13 @@ STAGING_COPY_FIELDS = [
 # ── Request / Response models ──────────────────────────────────────────────────
 
 class ObservationRequest(BaseModel):
-    audit_ref:        str
+    audit_ref:        str = Field(..., max_length=100, pattern=r"^[A-Za-z0-9_\-]+$")
     seq_no:           Optional[int] = None
-    observation_text: str
+    observation_text: str = Field(..., max_length=2000)
     observation_date: Optional[str] = None
     photo_url:        Optional[str] = None
     filename:         Optional[str] = None
-    photo_base64:     Optional[str] = None  # base64 encoded photo from RPD Synch
+    photo_base64:     Optional[str] = Field(default=None, max_length=20_000_000)
     submitted_by:     Optional[str] = None
     device_info:      Optional[str] = None
 
@@ -205,7 +206,7 @@ SWING STAGE — Suspended Scaffold (WAH-H6, WAH-H9):
 async def enrich_observation(observation_text: str) -> dict:
     """Call Claude Haiku to classify and enrich a PIMS observation."""
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -230,7 +231,11 @@ async def enrich_observation(observation_text: str) -> dict:
                 if text.startswith("json"):
                     text = text[4:]
             text = text.strip()
-            return json.loads(text)
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError as e:
+                log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
+                return {}
     except Exception as e:
         log.error(f"Haiku enrichment failed: {type(e).__name__}: {e}")
         raise
@@ -263,7 +268,7 @@ async def enrich_and_update(
         "observation_text_enriched": enrichment.get("observation_text_enriched"),
         "legal_reference":           enrichment.get("legal_reference"),
         "enriched":                  True,
-        "enriched_at":               datetime.utcnow().isoformat(),
+        "enriched_at":               datetime.now(timezone.utc).isoformat(),
     }
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -408,9 +413,10 @@ async def insert_staging(
 ) -> str:
     """Insert observation into pims_staging. Returns record id."""
     headers = _supabase_headers(supabase_service_key)
+    current_seq_no = seq_no
     record = {
         "audit_id":           audit_id,
-        "seq_no":             seq_no,
+        "seq_no":             current_seq_no,
         "photo_url":          request.photo_url,
         "filename":           request.filename,
         "observation_date":   (request.observation_date or "")[:10] or date.today().isoformat(),
@@ -433,15 +439,28 @@ async def insert_staging(
         "review_status":      "Pending",
     }
     async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(
-            f"{supabase_url}/rest/v1/pims_staging",
-            headers=headers,
-            json=record,
-        )
-        if r.status_code not in (200, 201):
+        for _attempt in range(3):
+            r = await client.post(
+                f"{supabase_url}/rest/v1/pims_staging",
+                headers=headers,
+                json=record,
+            )
+            if r.status_code in (200, 201):
+                return r.json()[0]["id"]
+            if r.status_code == 409:
+                current_seq_no = await next_seq_no(
+                    supabase_url,
+                    supabase_service_key,
+                    audit_id,
+                )
+                record["seq_no"] = current_seq_no
+                continue
             log.error(f"Supabase staging insert error {r.status_code}: {r.text}")
             r.raise_for_status()
-        return r.json()[0]["id"]
+        raise HTTPException(
+            status_code=409,
+            detail="seq_no conflict — could not allocate unique sequence number.",
+        )
 
 
 # ── Route handlers ─────────────────────────────────────────────────────────────
@@ -455,7 +474,7 @@ async def _handle_observation(
     background_tasks: BackgroundTasks,
 ) -> ObservationResponse:
     """Shared handler for all client observation endpoints."""
-    if not expected_token or token != expected_token:
+    if not expected_token or not hmac.compare_digest(token, expected_token):
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
 
     if not supabase_url:
@@ -463,6 +482,8 @@ async def _handle_observation(
 
     if not supabase_service_key:
         raise HTTPException(status_code=503, detail="Supabase service key not configured")
+    if request.photo_base64 and len(request.photo_base64) > 20_000_000:
+        raise HTTPException(status_code=413, detail="photo_base64 exceeds maximum allowed size.")
 
     empty_enrichment = {
         "conformance_status":        None,
@@ -523,13 +544,14 @@ async def _handle_observation(
 
 @router.post("/observation/rpd", response_model=ObservationResponse)
 async def rpd_observation(
-    request: ObservationRequest,
+    request: Request,
+    payload: ObservationRequest,
     background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
     """Receive a field observation for RPD and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              request,
+        request=              payload,
         supabase_url=         RPD_SUPABASE_URL,
         supabase_service_key= RPD_SUPABASE_SERVICE_KEY,
         expected_token=       RPD_PIMS_TOKEN,
@@ -540,13 +562,14 @@ async def rpd_observation(
 
 @router.post("/observation/sdgroup", response_model=ObservationResponse)
 async def sdgroup_observation(
-    request: ObservationRequest,
+    request: Request,
+    payload: ObservationRequest,
     background_tasks: BackgroundTasks,
     x_pims_token: str = Header(..., alias="X-PIMS-Token"),
 ):
     """Receive a field observation for SD Group and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              request,
+        request=              payload,
         supabase_url=         SDG_SUPABASE_URL,
         supabase_service_key= SDG_SUPABASE_SERVICE_KEY,
         expected_token=       SDG_PIMS_TOKEN,
@@ -557,6 +580,7 @@ async def sdgroup_observation(
 
 @router.post("/staging/{staging_id}/approve")
 async def approve_staging_rpd(
+    request: Request,
     staging_id: str,
     pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
 ):
@@ -592,7 +616,7 @@ async def approve_staging_rpd(
         if not staging.get("observation_text"):
             raise HTTPException(status_code=422, detail="Cannot approve a record with no observation_text.")
 
-        now_utc = datetime.utcnow().isoformat()
+        now_utc = datetime.now(timezone.utc).isoformat()
         obs_row = {field: staging.get(field) for field in STAGING_COPY_FIELDS}
         obs_row.update({
             "staging_id":    staging_id,
@@ -609,7 +633,10 @@ async def approve_staging_rpd(
         )
         if r2.status_code not in (200, 201):
             log.error(f"pims_observations insert failed: {r2.status_code} {r2.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to insert observation: {r2.text}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to promote observation. Contact administrator.",
+            )
 
         new_obs = r2.json()
         if not new_obs:
@@ -632,7 +659,7 @@ async def approve_staging_rpd(
             log.error(f"pims_staging status update failed for {staging_id}: {r3.status_code} {r3.text}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Observation promoted but staging status update failed: {r3.text}",
+                detail="Observation promoted but status update failed. Contact administrator.",
             )
 
         ccvs = staging.get("ccvs_code")
@@ -818,7 +845,8 @@ def _add_footer(section):
 
 @router.post("/staging/rpd/docx")
 async def download_staging_docx(
-    request: StagingExportRequest,
+    request: Request,
+    payload: StagingExportRequest,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     if not verify_session_cookie(pims_sess):
@@ -826,7 +854,7 @@ async def download_staging_docx(
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
-    rows = await _fetch_staging_rows(request.ids)
+    rows = await _fetch_staging_rows(payload.ids)
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found.")
 
@@ -920,7 +948,8 @@ async def download_staging_docx(
 
 @router.post("/staging/rpd/xlsx")
 async def download_staging_xlsx(
-    request: StagingExportRequest,
+    request: Request,
+    payload: StagingExportRequest,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     if not verify_session_cookie(pims_sess):
@@ -928,7 +957,7 @@ async def download_staging_xlsx(
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
-    rows = await _fetch_staging_rows(request.ids)
+    rows = await _fetch_staging_rows(payload.ids)
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found.")
 
@@ -1046,21 +1075,34 @@ async def download_staging_xlsx(
 
 @router.get("/observations/rpd")
 async def list_observations_rpd(
-    x_pims_token: str = Header(..., alias="X-PIMS-Token"),
+    request: Request,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
     audit_id: str | None = None,
+    limit: int = 500,
+    offset: int = 0,
 ):
-    if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid PIMS token")
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL:
         raise HTTPException(status_code=503, detail="Supabase URL not configured")
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase service key not configured")
+    if audit_id and not _is_uuid(audit_id):
+        raise HTTPException(status_code=422, detail="Invalid audit_id format.")
+    if limit < 1:
+        raise HTTPException(status_code=422, detail="limit must be >= 1.")
+    if offset < 0:
+        raise HTTPException(status_code=422, detail="offset must be >= 0.")
+
+    limit = min(limit, 1000)
 
     headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     params = {
         "review_status": "eq.Approved",
         "order":         "approved_at.desc",
         "select":        "*",
+        "limit":         str(limit),
+        "offset":        str(offset),
     }
     if audit_id:
         params["audit_id"] = f"eq.{audit_id}"

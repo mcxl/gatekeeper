@@ -48,6 +48,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
@@ -178,6 +179,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src https://fonts.gstatic.com https://fonts.googleapis.com; "
             "img-src 'self' data: https://nebdpofqglfyfyqqodni.supabase.co; "
             "connect-src 'self' https://o4511019411177472.ingest.us.sentry.io https://*.supabase.co; "
+            "frame-ancestors 'none'; "
             "worker-src 'none';"
         )
         return response
@@ -1902,6 +1904,24 @@ _LOGIN_HTML = _login_html_msg()
 
 from pims.routes import router as pims_router
 app.include_router(pims_router)
+
+
+def _apply_route_limit(path: str, method: str, rate: str) -> None:
+    for route in app.routes:
+        if isinstance(route, APIRoute) and route.path == path and method in route.methods:
+            limited_endpoint = limiter.limit(rate)(route.endpoint)
+            route.endpoint = limited_endpoint
+            route.dependant.call = limited_endpoint
+            return
+    logger.warning("Rate limit target route not found: %s %s", method, path)
+
+
+_apply_route_limit("/pims/observation/rpd", "POST", "30/minute")
+_apply_route_limit("/pims/staging/{staging_id}/approve", "POST", "60/minute")
+_apply_route_limit("/pims/observations/rpd", "GET", "60/minute")
+_apply_route_limit("/pims/staging/rpd/docx", "POST", "10/minute")
+_apply_route_limit("/pims/staging/rpd/xlsx", "POST", "10/minute")
+
 app.include_router(v1)
 
 

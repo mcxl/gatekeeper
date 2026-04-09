@@ -1339,18 +1339,31 @@ async function saveCloseout() {
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target===document.getElementById('modalOverlay')) closeModal(); });
 
 // ── Export ──
+function csvField(val) {
+  const s = String(val == null ? '' : val);
+  const safe = s.match(/^[=+\-@]/) ? "'" + s : s;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+
 function exportCSV() {
   const h = ['#','Photo ID','Date','Observation','Status','CCVS Code','CCVS Category','Action Required','Action','Responsible','Due','Monitoring Note','Close-out','Closed Date','Closed By','Notes'];
   const rows = filtered.map(o=>[
-    o.seq_no, o.photo_id, o.observation_date,
-    `"${(o.observation_text||'').replace(/"/g,'""')}"`,
-    o.conformance_status, o.ccvs_code, o.ccvs_category,
-    o.action_required?'Yes':'No',
-    `"${(o.action_description||'').replace(/"/g,'""')}"`,
-    o.responsible, o.due_category,
-    `"${(o.monitoring_note||'').replace(/"/g,'""')}"`,
-    o.closeout_status, o.closed_date, o.closed_by,
-    `"${(o.closeout_notes||'').replace(/"/g,'""')}"`
+    csvField(o.seq_no),
+    csvField(o.photo_id),
+    csvField(o.observation_date),
+    csvField(o.observation_text),
+    csvField(o.conformance_status),
+    csvField(o.ccvs_code),
+    csvField(o.ccvs_category),
+    csvField(o.action_required ? 'Yes' : 'No'),
+    csvField(o.action_description),
+    csvField(o.responsible),
+    csvField(o.due_category),
+    csvField(o.monitoring_note),
+    csvField(o.closeout_status),
+    csvField(o.closed_date),
+    csvField(o.closed_by),
+    csvField(o.closeout_notes)
   ].join(','));
   const csv  = [h.join(','),...rows].join('\n');
   const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download:`PIMS_Export_${new Date().toISOString().slice(0,10)}.csv` });
@@ -1421,6 +1434,7 @@ function renderAllObsMobile(obs) {
     // ── Staging Inbox ──────────────────────────────────────────
 
     let stagingData = []; // cache for XLSX export
+    let _stagingLoading = false;
 
     const CONFORMANCE_COLOURS = {
       Compliant:   { bg: '#dcfce7', color: '#15803d' },
@@ -1500,10 +1514,15 @@ function renderAllObsMobile(obs) {
       );
     }
     async function loadStaging() {
+      if (_stagingLoading) return;
+      _stagingLoading = true;
+      const refreshBtn = document.querySelector('[onclick="loadStaging()"]');
+      if (refreshBtn) refreshBtn.disabled = true;
       const tbody = document.getElementById('staging-tbody');
       const badge = document.getElementById('staging-badge');
       tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
+      try {
       const { data, error } = await db
         .from('pims_staging')
         .select('*')
@@ -1588,6 +1607,10 @@ function renderAllObsMobile(obs) {
             </td>
           </tr>`;
       }).join('');
+      } finally {
+        _stagingLoading = false;
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
     }
 
     async function approveStagingRecord(stagingId) {
