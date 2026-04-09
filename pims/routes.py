@@ -17,16 +17,33 @@ Each endpoint:
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
 import os
+import urllib.parse
+import uuid as _uuid_mod
 from datetime import date, datetime
+from io import BytesIO
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
+import openpyxl
+from docx import Document as DocxDocument
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
+from fastapi import APIRouter, BackgroundTasks, Cookie, Header, HTTPException
+from fastapi.responses import StreamingResponse
+from openpyxl.drawing.image import Image as XLImage
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from PIL import Image as PILImage
 from pydantic import BaseModel
+
+from api.pims_auth import COOKIE_NAME, verify_session_cookie
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +64,14 @@ SDG_SUPABASE_URL         = os.getenv("SDG_SUPABASE_URL", "")
 SDG_SUPABASE_KEY         = os.getenv("SDG_SUPABASE_ANON_KEY", "")
 SDG_SUPABASE_SERVICE_KEY = os.getenv("SDG_SUPABASE_SERVICE_KEY", "")
 SDG_PIMS_TOKEN           = os.getenv("PIMS_SDG_TOKEN", "")
+
+MAX_ROWS = 100
+IMAGE_TIMEOUT = httpx.Timeout(5.0, connect=3.0, read=5.0)
+# 5.0 = default for write + pool; connect and read set explicitly.
+IMAGE_CONCURRENCY = 5
+MAX_IMG_BYTES = 10 * 1024 * 1024  # 10 MB hard cap per image
+_ALLOWED_IMG_HOST = "nebdpofqglfyfyqqodni.supabase.co"
+_ALLOWED_IMG_PREFIX = "/storage/v1/object/public/pims-photos/"
 
 VALID_CCVS = {
     "WAH-H6", "WAH-H9",
@@ -94,6 +119,10 @@ class ObservationResponse(BaseModel):
     action_description: Optional[str]
     monitoring_note:    Optional[str]
     review_status:      str
+
+
+class StagingExportRequest(BaseModel):
+    ids: list[str]
 
 # ── Haiku enrichment ───────────────────────────────────────────────────────────
 
@@ -609,6 +638,403 @@ async def approve_staging_rpd(
             response["ccvs_warning"] = f"CCVS code '{ccvs}' is not in the approved RPD taxonomy."
 
         return response
+
+
+def _is_uuid(val) -> bool:
+    try:
+        _uuid_mod.UUID(str(val))
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _validate_uuids(ids: list) -> list[str]:
+    bad = [i for i in ids if not _is_uuid(i)]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Invalid UUID(s): {bad[:5]}")
+    return [str(i) for i in ids]
+
+
+def _is_allowed_url(url) -> bool:
+    if not url:
+        return False
+    try:
+        p = urllib.parse.urlparse(url)
+        return (
+            p.scheme == "https"
+            and p.netloc == _ALLOWED_IMG_HOST
+            and p.path.startswith(_ALLOWED_IMG_PREFIX)
+        )
+    except Exception:
+        return False
+
+
+async def _fetch_staging_rows(ids: list[str]) -> list[dict]:
+    if not ids:
+        raise HTTPException(status_code=422, detail="Select at least one row to export.")
+    if len(ids) > MAX_ROWS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Export limit is {MAX_ROWS} rows. {len(ids)} requested.",
+        )
+
+    safe = _validate_uuids(ids)
+    headers_sb = _supabase_headers(RPD_SUPABASE_SERVICE_KEY)
+    params = {
+        "select": "*",
+        "order": "seq_no.asc",
+        "id": f"in.({','.join(safe)})",
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers=headers_sb,
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json()
+
+
+async def _fetch_images(urls: list) -> list:
+    sem = asyncio.Semaphore(IMAGE_CONCURRENCY)
+
+    async def _one(url) -> bytes | None:
+        if not _is_allowed_url(url):
+            if url:
+                log.warning(f"Blocked non-allowlisted URL: {url}")
+            return None
+        async with sem:
+            try:
+                async with httpx.AsyncClient(timeout=IMAGE_TIMEOUT) as c:
+                    r = await c.get(url)
+                if r.status_code != 200:
+                    log.warning(f"Image fetch {r.status_code}: {url}")
+                    return None
+
+                ct = r.headers.get("content-type", "").split(";")[0].strip().lower()
+                if ct not in {"image/jpeg", "image/png", "image/webp"}:
+                    log.warning(f"Rejected content-type '{ct}': {url}")
+                    return None
+
+                cl = r.headers.get("content-length")
+                if cl:
+                    try:
+                        if int(cl) > MAX_IMG_BYTES:
+                            log.warning(f"Rejected oversized image (Content-Length={cl}): {url}")
+                            return None
+                    except (ValueError, TypeError):
+                        pass
+
+                content = r.content
+                if len(content) > MAX_IMG_BYTES:
+                    log.warning(f"Rejected oversized image ({len(content)} bytes): {url}")
+                    return None
+                return content
+            except Exception as e:
+                log.warning(f"Image fetch failed: {e}")
+                return None
+
+    return list(await asyncio.gather(*[_one(u) for u in urls]))
+
+
+def _drun(para, text, bold=False, italic=False, size_pt=9, color_hex=None):
+    run = para.add_run(text)
+    run.font.name = "Aptos"
+    run.bold = bold
+    run.italic = italic
+    run.font.size = Pt(size_pt)
+    if color_hex:
+        run.font.color.rgb = RGBColor(
+            int(color_hex[0:2], 16),
+            int(color_hex[2:4], 16),
+            int(color_hex[4:6], 16),
+        )
+    return run
+
+
+def _set_fill(cell, hex_color):
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), hex_color)
+    tcPr.append(shd)
+
+
+def _add_footer(section):
+    footer = section.footer
+    para = footer.paragraphs[0]
+    para.clear()
+    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    run_co = para.add_run(
+        "Robertson’s Remedial and Painting Pty Ltd"
+        "  ·  Photographic Inspection Register"
+    )
+    run_co.font.name = "Aptos"
+    run_co.font.size = Pt(7)
+    run_co.font.color.rgb = RGBColor(0x6B, 0x7A, 0x99)
+
+    para.add_run("\t")
+
+    for label, field in [("Page ", " PAGE "), (" of ", None), ("", " NUMPAGES ")]:
+        if label:
+            r = para.add_run(label)
+            r.font.name = "Aptos"
+            r.font.size = Pt(7)
+            r.font.color.rgb = RGBColor(0x6B, 0x7A, 0x99)
+        if field:
+            for ftype, fval in [("begin", None), (None, field), ("end", None)]:
+                run = para.add_run()
+                run.font.name = "Aptos"
+                run.font.size = Pt(7)
+                run.font.color.rgb = RGBColor(0x6B, 0x7A, 0x99)
+                if ftype:
+                    fc = OxmlElement("w:fldChar")
+                    fc.set(qn("w:fldCharType"), ftype)
+                    run._r.append(fc)
+                else:
+                    it = OxmlElement("w:instrText")
+                    it.set(qn("xml:space"), "preserve")
+                    it.text = fval
+                    run._r.append(it)
+
+    pPr = para._p.get_or_add_pPr()
+    tabs = OxmlElement("w:tabs")
+    tab = OxmlElement("w:tab")
+    tab.set(qn("w:val"), "right")
+    tab.set(qn("w:pos"), "9026")
+    tabs.append(tab)
+    pPr.append(tabs)
+
+
+@router.post("/staging/rpd/docx")
+async def download_staging_docx(
+    request: StagingExportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    rows = await _fetch_staging_rows(request.ids)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found.")
+
+    images = await _fetch_images([r.get("photo_url") for r in rows])
+
+    doc = DocxDocument()
+    section = doc.sections[0]
+    section.top_margin = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+    section.left_margin = Cm(1.8)
+    section.right_margin = Cm(1.8)
+    doc.styles["Normal"].font.name = "Aptos"
+    doc.styles["Normal"].font.size = Pt(9)
+    _add_footer(section)
+
+    col_w = [400, 1000, 2500, 3526, 800, 800]
+    headers = ["#", "Date", "Photo", "Observation", "CCVS", "Conformance"]
+
+    table = doc.add_table(rows=1, cols=6)
+    table.style = "Table Grid"
+    tbl = table._tbl
+    grid = OxmlElement("w:tblGrid")
+    for w in col_w:
+        gc = OxmlElement("w:gridCol")
+        gc.set(qn("w:w"), str(w))
+        grid.append(gc)
+    tbl.insert(0, grid)
+
+    for i, cell in enumerate(table.rows[0].cells):
+        _set_fill(cell, "0A1628")
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _drun(p, headers[i], bold=True, color_hex="FFFFFF")
+
+    for i, (row_data, img_bytes) in enumerate(zip(rows, images)):
+        dr = table.add_row()
+        cells = dr.cells
+
+        cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _drun(cells[0].paragraphs[0], str(row_data.get("seq_no") or i + 1), bold=True)
+
+        _drun(cells[1].paragraphs[0], str(row_data.get("observation_date") or ""))
+
+        if img_bytes:
+            try:
+                pil = PILImage.open(BytesIO(img_bytes)).convert("RGB")
+                pil.thumbnail((300, 300), PILImage.LANCZOS)
+                buf = BytesIO()
+                pil.save(buf, format="JPEG", quality=85)
+                buf.seek(0)
+                cells[2].paragraphs[0].add_run().add_picture(buf, width=Cm(4.0))
+            except Exception as exc:
+                log.warning(f"DOCX PIL embed failed row {row_data.get('id')}: {exc}")
+                _drun(
+                    cells[2].paragraphs[0],
+                    row_data.get("filename") or "Photo unavailable",
+                    size_pt=8,
+                    color_hex="6B7A99",
+                )
+        else:
+            _drun(
+                cells[2].paragraphs[0],
+                row_data.get("filename") or "Photo unavailable",
+                size_pt=8,
+                color_hex="6B7A99",
+            )
+
+        enriched = row_data.get("observation_text_enriched") or ""
+        legal = row_data.get("legal_reference") or ""
+        if enriched:
+            _drun(cells[3].paragraphs[0], enriched, italic=True, size_pt=8, color_hex="1E3A5F")
+        if legal:
+            p_ll = cells[3].add_paragraph()
+            _drun(p_ll, "§ Legal Reference", bold=True, size_pt=8, color_hex="6B7A99")
+            p_lt = cells[3].add_paragraph()
+            _drun(p_lt, legal, italic=True, size_pt=8, color_hex="6B7A99")
+
+        _drun(cells[4].paragraphs[0], row_data.get("ccvs_code") or "—")
+        _drun(cells[5].paragraphs[0], row_data.get("conformance_status") or "—")
+
+    buf_out = BytesIO()
+    doc.save(buf_out)
+    buf_out.seek(0)
+    fname = f"PIMS_Report_{date.today().isoformat()}.docx"
+    return StreamingResponse(
+        buf_out,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
+
+
+@router.post("/staging/rpd/xlsx")
+async def download_staging_xlsx(
+    request: StagingExportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    rows = await _fetch_staging_rows(request.ids)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found.")
+
+    images = await _fetch_images([r.get("photo_url") for r in rows])
+
+    col_names = [
+        "#", "Date", "Finding", "Photo ID", "Photo",
+        "CCVS Code", "Legal Reference", "Conformance Status",
+        "Action Description", "Responsible", "Due Category",
+        "Monitoring Note", "Observation",
+    ]
+    col_widths = [4, 12, 40, 14, 10, 10, 35, 16, 35, 14, 12, 28, 35]
+    blue_cols = {6, 7}
+
+    navy = "0A1628"
+    blue_h = "1E40AF"
+    white = "FFFFFF"
+    border_c = "D1D5DB"
+    text_c = "111827"
+
+    def solid(h):
+        return PatternFill(fill_type="solid", fgColor=h)
+
+    def bdr():
+        s = Side(style="thin", color=border_c)
+        return Border(top=s, left=s, bottom=s, right=s)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Staging"
+
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = 9
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 28
+
+    hdr_font = Font(name="Aptos", bold=True, color=white, size=9)
+    hdr_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    data_font = Font(name="Aptos", size=8.5, color=text_c)
+    data_align = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    for c, name in enumerate(col_names, 1):
+        cell = ws.cell(row=1, column=c, value=name)
+        cell.fill = solid(blue_h if c in blue_cols else navy)
+        cell.font = hdr_font
+        cell.alignment = hdr_align
+        cell.border = bdr()
+
+    for i, (row_data, img_bytes) in enumerate(zip(rows, images)):
+        r_num = i + 2
+        fill = solid("FFFFFF" if i % 2 == 0 else "F4F7FC")
+        ws.row_dimensions[r_num].height = 90
+
+        values = [
+            i + 1,
+            str(row_data.get("observation_date") or ""),
+            row_data.get("observation_text_enriched") or "",
+            row_data.get("filename") or "",
+            None,
+            row_data.get("ccvs_code") or "",
+            row_data.get("legal_reference") or "",
+            row_data.get("conformance_status") or "",
+            row_data.get("action_description") or "",
+            row_data.get("responsible") or "",
+            row_data.get("due_category") or "",
+            row_data.get("monitoring_note") or "",
+            row_data.get("observation_text") or "",
+        ]
+
+        for c, val in enumerate(values, 1):
+            if val is None:
+                continue
+            cell = ws.cell(row=r_num, column=c, value=val)
+            cell.fill = fill
+            cell.font = data_font
+            cell.alignment = data_align
+            cell.border = bdr()
+
+        pc = ws.cell(row=r_num, column=5, value="")
+        pc.fill = fill
+        pc.border = bdr()
+
+        if img_bytes:
+            try:
+                pil = PILImage.open(BytesIO(img_bytes)).convert("RGB")
+                pil.thumbnail((72, 72), PILImage.LANCZOS)
+                buf = BytesIO()
+                pil.save(buf, format="JPEG", quality=85)
+                buf.seek(0)
+                xl_img = XLImage(buf)
+                xl_img.width = 60
+                xl_img.height = 60
+                ws.add_image(xl_img, f"E{r_num}")
+            except Exception as exc:
+                log.warning(f"XLSX PIL embed failed row {row_data.get('id')}: {exc}")
+                pc.value = row_data.get("filename") or "[photo]"
+        else:
+            pc.value = row_data.get("filename") or "[photo]"
+
+    buf_out = BytesIO()
+    wb.save(buf_out)
+    buf_out.seek(0)
+    fname = f"PIMS_Staging_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buf_out,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
 
 
 @router.get("/observations/rpd")

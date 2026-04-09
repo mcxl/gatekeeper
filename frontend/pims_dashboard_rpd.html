@@ -801,6 +801,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <span id="connStatus">Connecting</span>
     </div>
     <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+    <a href="/pims-logout" style="font-size:0.78rem;color:#94a3b8;text-decoration:none;padding:4px 10px;border:1px solid #334155;border-radius:5px;">Sign out</a>
   </div>
 </header>
 
@@ -1002,6 +1003,11 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
           background:#2563eb; border:none; border-radius:6px; cursor:pointer;">
           ⬇ Download XLSX
+        </button>
+        <button onclick="downloadStagingDOCX()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#1e3a5f; border:none; border-radius:6px; cursor:pointer;">
+          ⬇ Download DOCX
         </button>
         <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
       </div>
@@ -1434,41 +1440,53 @@ function renderAllObsMobile(obs) {
       el.textContent = checked > 0 ? `${checked} of ${total} selected` : '';
     }
 
-    function getSelectedRows() {
-      const ids = [...document.querySelectorAll('.staging-cb:checked')].map(c => c.dataset.id);
-      return ids.length > 0 ? stagingData.filter(r => ids.includes(r.id)) : stagingData;
+    function _getExportIds() {
+      const checked = [...document.querySelectorAll('.staging-cb:checked')];
+      if (!checked.length) {
+        alert('Please select at least one row to export.');
+        return null;
+      }
+      return checked.map(cb => cb.dataset.id);
+    }
+
+    async function _stagingExport(endpoint, filename) {
+      const ids = _getExportIds();
+      if (!ids) return;
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        alert('Export failed: ' + err.message);
+      }
     }
 
     function downloadStagingXLSX() {
-      const rows = getSelectedRows();
-      if (!rows.length) { alert('No rows to export.'); return; }
-      const headers = ['#','Date','Observation','Photo ID','CCVS Code','Conformance Status',
-        'Action Required','Action Description','Responsible','Due Category',
-        'Monitoring Note','Enriched Text','Legal Reference','Photo URL','Review Status'];
-      const wsData = [headers, ...rows.map((r,i) => [
-        i+1,
-        r.observation_date || '',
-        r.observation_text || '',
-        r.filename || '',
-        r.ccvs_code || '',
-        r.conformance_status || '',
-        r.action_required ? 'Yes' : 'No',
-        r.action_description || '',
-        r.responsible || '',
-        r.due_category || '',
-        r.monitoring_note || '',
-        r.observation_text_enriched || '',
-        r.legal_reference || '',
-        r.photo_url || '',
-        r.review_status || '',
-      ])];
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [6,12,40,20,12,16,10,30,14,12,30,40,30,50,12].map(w=>({wch:w}));
-      XLSX.utils.book_append_sheet(wb, ws, 'Staging');
-      XLSX.writeFile(wb, `PIMS_Staging_${new Date().toISOString().slice(0,10)}.xlsx`);
+      _stagingExport(
+        '/pims/staging/rpd/xlsx',
+        `PIMS_Staging_${new Date().toISOString().slice(0,10)}.xlsx`
+      );
     }
 
+    function downloadStagingDOCX() {
+      _stagingExport(
+        '/pims/staging/rpd/docx',
+        `PIMS_Report_${new Date().toISOString().slice(0,10)}.docx`
+      );
+    }
     async function loadStaging() {
       const tbody = document.getElementById('staging-tbody');
       const badge = document.getElementById('staging-badge');

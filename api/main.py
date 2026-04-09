@@ -47,7 +47,7 @@ from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
@@ -64,6 +64,15 @@ from slowapi.errors import RateLimitExceeded
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
 from api.procore import router as procore_router
+from api.pims_auth import (
+    COOKIE_NAME,
+    check_env,
+    check_password,
+    clear_session_cookie,
+    make_session_cookie,
+    set_session_cookie,
+    verify_session_cookie,
+)
 from core.api_keys import get_user_or_api_key, log_api_key_usage
 from core.job_state import record_state
 from core.logging_config import get_correlation_id, log_event, set_correlation_id
@@ -276,6 +285,11 @@ async def auth_reset_password(body: AuthResetPassword):
 
 _FRONTEND_DIR = os.path.join(_ROOT, "frontend")
 
+_auth_error = check_env()
+if _auth_error:
+    import sys
+    print(f"[PIMS] FATAL: {_auth_error}", file=sys.stderr)
+
 
 @app.get("/app", response_class=HTMLResponse)
 async def serve_app():
@@ -292,8 +306,47 @@ async def serve_pims():
     return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard.html"))
 
 
+@app.get("/pims-login", response_class=HTMLResponse)
+async def pims_login_page(request: Request):
+    if verify_session_cookie(request.cookies.get(COOKIE_NAME)):
+        return RedirectResponse(url="/pims-rpd", status_code=302)
+    return HTMLResponse(content=_LOGIN_HTML)
+
+
+@app.post("/pims-login")
+@limiter.limit("10/minute")
+async def pims_login_submit(
+    request: Request,
+    response: Response,
+    password: str = Form(...),
+):
+    env_err = check_env()
+    if env_err:
+        return HTMLResponse(
+            content=_login_html_msg(f"Configuration error: {env_err}"),
+            status_code=503,
+        )
+    if not check_password(password):
+        return HTMLResponse(
+            content=_login_html_msg("Incorrect password. Try again."),
+            status_code=401,
+        )
+    resp = RedirectResponse(url="/pims-rpd", status_code=303)
+    set_session_cookie(resp, make_session_cookie())
+    return resp
+
+
+@app.get("/pims-logout")
+async def pims_logout():
+    resp = RedirectResponse(url="/pims-login", status_code=302)
+    clear_session_cookie(resp)
+    return resp
+
+
 @app.get("/pims-rpd", response_class=HTMLResponse)
-async def serve_pims_rpd():
+async def serve_pims_rpd(request: Request):
+    if not verify_session_cookie(request.cookies.get(COOKIE_NAME)):
+        return RedirectResponse(url="/pims-login", status_code=302)
     return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard_rpd.html"))
 
 
@@ -1798,6 +1851,53 @@ async def v1_render_pdf(request: dict, auth: dict = Depends(get_user_or_api_key)
     except Exception as e:
         logger.error(f"v1 render PDF failed:\n{traceback.format_exc()}")
         return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
+
+
+def _login_html_msg(msg: str = "") -> str:
+    err = (
+        f'<p style="color:#f87171;font-size:.82rem;margin-bottom:16px">{msg}</p>'
+        if msg else ""
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIMS - Sign In</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:system-ui,sans-serif;background:#0f172a;
+       display:flex;align-items:center;justify-content:center;min-height:100vh}}
+  .card{{background:#1e293b;border-radius:12px;padding:40px 36px;
+        width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4)}}
+  .logo{{color:#f59e0b;font-size:1.3rem;font-weight:700;margin-bottom:8px}}
+  h1{{color:#f1f5f9;font-size:1.1rem;font-weight:600;margin-bottom:28px}}
+  label{{display:block;color:#94a3b8;font-size:.8rem;margin-bottom:6px}}
+  input{{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #334155;
+        background:#0f172a;color:#f1f5f9;font-size:.95rem;margin-bottom:20px}}
+  input:focus{{outline:2px solid #f59e0b;border-color:transparent}}
+  button{{width:100%;padding:11px;background:#f59e0b;color:#0f172a;
+         font-weight:700;font-size:.95rem;border:none;border-radius:6px;cursor:pointer}}
+  button:hover{{background:#fbbf24}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">AuditCo</div>
+  <h1>PIMS Dashboard - Sign In</h1>
+  {err}
+  <form method="POST" action="/pims-login">
+    <label for="pw">Password</label>
+    <input id="pw" name="password" type="password"
+           placeholder="Enter password" autofocus required>
+    <button type="submit">Sign In -&gt;</button>
+  </form>
+</div>
+</body>
+</html>"""
+
+
+_LOGIN_HTML = _login_html_msg()
 
 
 from pims.routes import router as pims_router
