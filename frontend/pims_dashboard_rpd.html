@@ -1046,16 +1046,25 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── State ──
 let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
 
 // ── Helpers ──
 function badge(status) {
   const map = { Compliant:'compliant', Conditional:'conditional', NCR:'ncr', Info:'info', Open:'open', 'In Progress':'inprogress', Closed:'closed', 'N/A':'na' };
-  return `<span class="badge badge-${map[status]||'na'}">${status||'N/A'}</span>`;
+  return `<span class="badge badge-${map[status]||'na'}">${esc(status || 'N/A')}</span>`;
 }
 function ccvs(code) {
-  return code ? `<span class="ccvs-chip">${code}</span>` : '<span style="color:var(--text-light)">—</span>';
+  return code ? `<span class="ccvs-chip">${esc(code)}</span>` : '<span style="color:var(--text-light)">—</span>';
 }
 function dueLabel(d) {
   if (d==='Immediate') return `<span class="due-immediate">⚡ Immediate</span>`;
@@ -1063,7 +1072,10 @@ function dueLabel(d) {
   if (d==='Ongoing')    return `<span class="due-ongoing">Ongoing</span>`;
   return `<span class="due-na">—</span>`;
 }
-function trunc(t, n=80) { return t && t.length>n ? t.slice(0,n)+'…' : (t||'—'); }
+function trunc(t, n=80) {
+  const s = String(t == null ? '' : t);
+  return esc(s && s.length > n ? s.slice(0, n) + '…' : (s || '—'));
+}
 
 function animateCount(el, target) {
   const start = 0, duration = 600;
@@ -1250,11 +1262,11 @@ function renderActions() {
     if (o.conformance_status==='NCR') tr.className='row-ncr';
     tr.innerHTML = `
       <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
-      <td style="font-size:11px;color:var(--text-light)">${o.photo_id||'—'}</td>
+      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id)||'—'}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code)}</td>
       <td style="max-width:260px">${trunc(o.action_description,100)}</td>
-      <td style="color:var(--text-muted)">${o.responsible||'—'}</td>
+      <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td>${dueLabel(o.due_category)}</td>
       <td>${badge(o.closeout_status)}</td>
       <td style="padding-right:20px"><button class="btn-update" onclick="openModal('${o.id}')">Update</button></td>`;
@@ -1272,13 +1284,13 @@ function renderAllObs() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
-      <td style="font-size:11px;color:var(--text-light)">${o.photo_id||'—'}</td>
+      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id)||'—'}</td>
       <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${o.observation_date||'—'}</td>
       <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code)}</td>
       <td style="max-width:180px;color:var(--text-muted)">${trunc(o.action_description,70)}</td>
-      <td style="color:var(--text-muted)">${o.responsible||'—'}</td>
+      <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.monitoring_note,70)}</td>`;
     tbody.appendChild(tr);
   });
@@ -1369,9 +1381,9 @@ function renderActionsMobile(actions) {
           ${ccvs(o.ccvs_code)}
         </div>
       </div>
-      <div class="m-card-action">${o.action_description||'—'}</div>
+      <div class="m-card-action">${esc(o.action_description)||'—'}</div>
       <div class="m-card-meta">
-        <span class="m-card-meta-item">👤 ${o.responsible||'—'}</span>
+        <span class="m-card-meta-item">👤 ${esc(o.responsible)||'—'}</span>
         <span class="m-card-meta-item">${dueLabel(o.due_category)}</span>
         <span class="m-card-meta-item">${badge(o.closeout_status)}</span>
       </div>
@@ -1513,12 +1525,13 @@ function renderAllObsMobile(obs) {
       }
 
       tbody.innerHTML = data.map(row => {
-        const conf    = row.conformance_status || '';
-        const colours = CONFORMANCE_COLOURS[conf] || { bg: '#f1f5f9', color: '#475569' };
+        const confRaw = row.conformance_status || '';
+        const conf    = esc(confRaw);
+        const colours = CONFORMANCE_COLOURS[confRaw] || { bg: '#f1f5f9', color: '#475569' };
         const approved = row.review_status === 'Approved';
         const thumb = row.photo_url
-          ? `<a href="${row.photo_url}" target="_blank" rel="noopener" title="${row.filename || 'View photo'}">
-               <img src="${row.photo_url}" alt="photo"
+          ? `<a href="${esc(row.photo_url)}" target="_blank" rel="noopener" title="${esc(row.filename) || 'View photo'}">
+               <img src="${esc(row.photo_url)}" alt="photo"
                  style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;display:block;"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
                <span style="display:none;font-size:0.72rem;color:#2563eb;">📷 View</span>
@@ -1532,26 +1545,26 @@ function renderAllObsMobile(obs) {
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">${thumb}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${row.observation_text || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${esc(row.observation_text) || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
-              ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${row.ccvs_code}</code>` : '—'}
+              ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${esc(row.ccvs_code)}</code>` : '—'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
               ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px; background:#f8fbff;">
               ${row.observation_text_enriched
-                ? `<span title="${row.observation_text_enriched.replace(/"/g,'&quot;')}"
+                ? `<span title="${esc(row.observation_text_enriched)}"
                     style="display:block;font-size:0.75rem;line-height:1.45;color:#1e3a5f;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
-                    ${row.observation_text_enriched}
+                    ${esc(row.observation_text_enriched)}
                   </span>`
                 : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px; background:#f8fbff;">
               ${row.legal_reference
-                ? `<span title="${row.legal_reference.replace(/"/g,'&quot;')}"
+                ? `<span title="${esc(row.legal_reference)}"
                     style="display:block;font-size:0.72rem;line-height:1.45;color:#374151;font-style:italic;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
-                    ${row.legal_reference}
+                    ${esc(row.legal_reference)}
                   </span>`
                 : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">—</span>'}
             </td>
@@ -1586,51 +1599,17 @@ function renderAllObsMobile(obs) {
       btn.textContent = 'Approving…';
 
       try {
-        // 1. Fetch the staging record
-        const { data: rows, error: fetchErr } = await db
-          .from('pims_staging')
-          .select('*')
-          .eq('id', stagingId);
-
-        if (fetchErr || !rows?.length) throw new Error(fetchErr?.message || 'Record not found');
-        const staging = rows[0];
-
-        if (staging.review_status === 'Approved') {
-          btn.textContent = '✓ Approved';
-          btn.style.background = '#9ca3af';
-          return;
+        const resp = await fetch(`/pims/staging/${stagingId}/approve`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
         }
 
-        // 2. Build observation row
-        const COPY_FIELDS = [
-          'audit_id','seq_no','observation_date','observation_text',
-          'filename','photo_url','submitted_by','device_info',
-          'enriched','enriched_at','conformance_status','ccvs_code',
-          'ccvs_category','ccvs_confidence','action_required',
-          'action_description','responsible','due_category','monitoring_note',
-          'observation_text_enriched','legal_reference',
-        ];
-        const obsRow = {};
-        COPY_FIELDS.forEach(f => { obsRow[f] = staging[f]; });
-        obsRow.staging_id   = stagingId;
-        obsRow.review_status = 'Approved';
-        obsRow.approved_by  = 'dashboard';
-        obsRow.approved_at  = new Date().toISOString();
-
-        // 3. Insert into pims_observations
-        const { error: insErr } = await db
-          .from('pims_observations')
-          .insert(obsRow);
-        if (insErr) throw new Error(insErr.message);
-
-        // 4. Mark staging as Approved
-        const { error: updErr } = await db
-          .from('pims_staging')
-          .update({ review_status: 'Approved' })
-          .eq('id', stagingId);
-        if (updErr) console.warn('Staging update failed:', updErr.message);
-
-        // 5. Update UI
+        const row = document.getElementById(`staging-row-${stagingId}`);
+        if (row) row.style.opacity = '0.45';
         btn.textContent      = '✓ Approved';
         btn.style.background = '#9ca3af';
         btn.style.cursor     = 'not-allowed';
@@ -1640,23 +1619,17 @@ function renderAllObsMobile(obs) {
           <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;
             font-weight:600;background:#dcfce7;color:#15803d;">Approved</span>`;
 
-        const row = document.getElementById(`staging-row-${stagingId}`);
-        if (row) row.style.opacity = '0.45';
+        const cb = document.querySelector(`.staging-cb[data-id="${stagingId}"]`);
+        if (cb) cb.checked = false;
+        updateSelectCount();
 
-        // Update badge count
-        const badge = document.getElementById('staging-badge');
-        const current = parseInt(badge.textContent) || 0;
-        const newCount = Math.max(0, current - 1);
-        badge.textContent = newCount;
-        badge.style.background = newCount > 0 ? '#f59e0b' : '#22c55e';
-
+        loadStaging();
         showToast('Record promoted to PIMS observations.', 'success');
 
       } catch (err) {
         btn.disabled    = false;
         btn.textContent = '✓ Approve';
-        showToast(`Error: ${err.message}`, 'error');
-        console.error('approveStagingRecord:', err);
+        showToast('Approval failed: ' + err.message, 'error');
       }
     }
 

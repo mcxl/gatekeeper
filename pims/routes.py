@@ -54,7 +54,7 @@ router = APIRouter(prefix="/pims", tags=["pims"])
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # RPD Supabase
-RPD_SUPABASE_URL         = os.getenv("RPD_SUPABASE_URL", "https://nebdpofqglfyfyqqodni.supabase.co")
+RPD_SUPABASE_URL         = os.getenv("RPD_SUPABASE_URL", "")
 RPD_SUPABASE_KEY         = os.getenv("RPD_SUPABASE_ANON_KEY", "")
 RPD_SUPABASE_SERVICE_KEY = os.getenv("RPD_SUPABASE_SERVICE_KEY", "")
 RPD_PIMS_TOKEN           = os.getenv("PIMS_RPD_TOKEN", "")
@@ -458,6 +458,9 @@ async def _handle_observation(
     if not expected_token or token != expected_token:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
 
+    if not supabase_url:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
+
     if not supabase_service_key:
         raise HTTPException(status_code=503, detail="Supabase service key not configured")
 
@@ -555,10 +558,14 @@ async def sdgroup_observation(
 @router.post("/staging/{staging_id}/approve")
 async def approve_staging_rpd(
     staging_id: str,
-    x_pims_token: str = Header(..., alias="X-PIMS-Token"),
+    pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
 ):
-    if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid PIMS token")
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not _is_uuid(staging_id):
+        raise HTTPException(status_code=422, detail="Invalid staging_id format.")
+    if not RPD_SUPABASE_URL:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase service key not configured")
 
@@ -1044,6 +1051,8 @@ async def list_observations_rpd(
 ):
     if not RPD_PIMS_TOKEN or x_pims_token != RPD_PIMS_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid PIMS token")
+    if not RPD_SUPABASE_URL:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase service key not configured")
 

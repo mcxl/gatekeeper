@@ -17,6 +17,56 @@ CREATE TABLE IF NOT EXISTS pims_audits (
     notes           text
 );
 
+-- pims_staging: incoming observations pending review
+CREATE TABLE IF NOT EXISTS public.pims_staging (
+    id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    audit_id                  uuid REFERENCES public.pims_audits(id),
+    seq_no                    integer,
+    observation_date          date,
+    observation_text          text,
+    filename                  text,
+    photo_url                 text,
+    photo_base64              text,
+    submitted_by              text,
+    device_info               text,
+    enriched                  boolean DEFAULT false,
+    enriched_at               timestamptz,
+    conformance_status        text,
+    ccvs_code                 text,
+    ccvs_category             text,
+    ccvs_confidence           text,
+    action_required           boolean DEFAULT false,
+    action_description        text,
+    responsible               text,
+    due_category              text DEFAULT 'N/A',
+    monitoring_note           text,
+    observation_text_enriched text,
+    legal_reference           text,
+    review_status             text DEFAULT 'Pending',
+    submitted_at              timestamptz DEFAULT now()
+);
+
+-- Unique seq_no per audit
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staging_audit_seq
+    ON public.pims_staging(audit_id, seq_no);
+
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_staging_audit_id
+    ON public.pims_staging(audit_id);
+CREATE INDEX IF NOT EXISTS idx_staging_review_status
+    ON public.pims_staging(review_status);
+CREATE INDEX IF NOT EXISTS idx_staging_submitted_at
+    ON public.pims_staging(submitted_at DESC);
+
+-- RLS (basic)
+ALTER TABLE public.pims_staging ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_all_staging" ON public.pims_staging;
+CREATE POLICY "service_role_all_staging" ON public.pims_staging
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_read_staging" ON public.pims_staging;
+CREATE POLICY "anon_read_staging" ON public.pims_staging
+    FOR SELECT TO anon USING (true);
+
 -- One row per PIMS observation
 CREATE TABLE IF NOT EXISTS pims_observations (
     id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
