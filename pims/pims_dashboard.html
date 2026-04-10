@@ -1058,7 +1058,7 @@ async function loadData() {
   try {
     const [aRes, oRes] = await Promise.all([
       db.from('pims_audits').select('*').order('audit_date', { ascending: false }),
-      db.from('pims_observations').select('*, pims_audits(site_name,audit_date,audit_ref,principal_contractor)').order('seq_no'),
+      db.from('pims_observations').select('*, pims_audits!left(site_name,audit_date,audit_ref,principal_contractor)').order('created_at', { ascending: false }),
     ]);
     if (aRes.error) throw aRes.error;
     if (oRes.error) throw oRes.error;
@@ -1097,7 +1097,7 @@ function applyFilters() {
   const status = document.getElementById('filterStatus').value;
   const cat    = document.getElementById('filterCcvs').value;
   filtered = allObs.filter(o => {
-    if (site   && o.pims_audits?.site_name !== site) return false;
+    if (site   && o.pims_audits?.site_name !== site && o.site_address !== site) return false;
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
     if (cat    && o.ccvs_category !== cat) return false;
