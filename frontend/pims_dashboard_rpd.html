@@ -638,23 +638,62 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   overflow: visible;
 }
 
-/* ── Staging filter toggle group ── */
-.filter-pills { display: flex; gap: 0; border: 1.5px solid var(--border-mid); border-radius: var(--r-sm); overflow: hidden; }
-.filter-pill {
-  font-family: var(--font);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 5px 14px;
-  border: none;
+/* ── Top view tabs ── */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px;
+}
+.view-tab {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition: all var(--transition);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
-.filter-pill:not(:last-child) { border-right: 1px solid var(--border-mid); }
-.filter-pill.active { background: var(--blue); color: white; }
-.filter-pill:hover:not(.active) { background: var(--blue-light); color: var(--blue); }
+.view-tab.active {
+  background: var(--blue);
+  color: white;
+}
+.view-tab:hover:not(.active) { background: var(--blue-light); color: var(--blue); }
+.tab-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tab-badge.pending {
+  background: #f59e0b;
+  color: #fff;
+}
+.tab-badge.clear {
+  background: #dcfce7;
+  color: #15803d;
+}
+.kpi-scope-note {
+  margin-top: -2px;
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 600;
+}
 
 /* ── Responsive ── */
 @media (max-width: 1000px) {
@@ -713,6 +752,14 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   .divider { display: none; }
   .btn-ghost { margin: 6px 16px 0; }
   .ml-auto { margin-left: 0; display: none; }
+  .view-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .view-tab {
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
 
   /* KPI — 2 col */
   .kpi-row {
@@ -907,15 +954,6 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All Categories</option></select>
     </div>
     <div class="divider"></div>
-    <div class="filter-group">
-      <span class="filter-label">View</span>
-      <div class="filter-pills" id="filterStagingPills">
-        <button class="filter-pill" data-val="" onclick="setStagingFilter('')">All</button>
-        <button class="filter-pill active" data-val="staging" onclick="setStagingFilter('staging')">Staging only</button>
-        <button class="filter-pill" data-val="live" onclick="setStagingFilter('live')">Live only</button>
-      </div>
-    </div>
-    <div class="divider"></div>
     <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
   </div>
 </div>
@@ -923,8 +961,17 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 <!-- Main -->
 <main class="main">
 
+  <div class="view-tabs" id="viewTabs">
+    <button class="view-tab active" data-tab="live" onclick="setActiveTab('live')">Live Audits</button>
+    <button class="view-tab" data-tab="staging" onclick="setActiveTab('staging')">
+      Staging Review
+      <span id="staging-tab-badge" class="tab-badge pending">0</span>
+    </button>
+    <button class="view-tab" data-tab="historical" onclick="setActiveTab('historical')">Historical</button>
+  </div>
+
   <!-- KPIs -->
-  <div class="kpi-row">
+  <div class="kpi-row" id="live-kpi-row">
     <div class="kpi-card total">
       <div class="kpi-icon">📋</div>
       <div class="kpi-label">Total Observations</div>
@@ -956,9 +1003,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <div class="kpi-sub" id="kpiOpenPct">—</div>
     </div>
   </div>
+  <div class="kpi-scope-note" id="kpi-scope-note">Live audit records only</div>
 
   <!-- Charts -->
-  <div class="charts-row">
+  <div class="charts-row" id="live-charts-row">
     <div class="card">
       <div class="card-header">
         <span class="card-title">Conformance by CCVS Category</span>
@@ -976,7 +1024,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   </div>
 
   <!-- CCVS Monitoring -->
-  <div class="card">
+  <div class="card" id="live-ccvs-card">
     <div class="card-header">
       <span class="card-title">CCVS Monitoring & Measurement</span>
       <span class="card-meta">Click Update on any open action to record close-out</span>
@@ -1000,7 +1048,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   </div>
 
   <!-- Open Actions -->
-  <div class="card">
+  <div class="card" id="live-actions-card">
     <div class="card-header">
       <span class="card-title">Open Actions Register</span>
       <span class="card-meta" id="openActionsCount"></span>
@@ -1027,10 +1075,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   </div>
 
   <!-- All Observations -->
-  <div class="card">
+  <div class="card" id="all-obs-card">
     <div class="card-header">
-      <span class="card-title">All Observations</span>
-      <span class="card-meta" id="allObsCount"></span>
+      <span class="card-title" id="allObsTitle">Live Audit Observations</span>
+      <span class="card-meta" id="allObsCount">Live audit records</span>
     </div>
     <div class="card-body table-wrap dt-desktop" style="padding:0">
       <table class="dt">
@@ -1072,11 +1120,11 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           0
         </span>
       </h2>
-      <span id="staging-chevron" style="font-size:1.1rem; color:#94a3b8; transition:transform 0.2s;">▼</span>
+      <span id="staging-chevron" style="font-size:1.1rem; color:#94a3b8; transition:transform 0.2s; transform:rotate(180deg);">▼</span>
     </div>
 
-    <!-- Collapsible body — hidden by default -->
-    <div id="staging-body" style="display:none; margin-top:14px;">
+    <!-- Collapsible body -->
+    <div id="staging-body" style="display:block; margin-top:14px;">
 
       <!-- Toolbar -->
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
@@ -1144,7 +1192,9 @@ function esc(s) {
 
 // ── State ──
 let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
-let currentStagingFilter = 'staging'; // default: show staging only
+let currentTab = 'live';
+let pendingStagingCount = 0;
+let tabDefaultResolved = false;
 
 // ── Helpers ──
 function badge(status) {
@@ -1222,11 +1272,50 @@ function populateFilters() {
   [...new Set(allObs.map(o=>o.ccvs_category).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
 }
 
-function setStagingFilter(val) {
-  currentStagingFilter = val;
-  document.querySelectorAll('#filterStagingPills .filter-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.val === val);
+function isLiveAuditRecord(o) {
+  return o.staging === false && !o.source_pdf;
+}
+
+function isHistoricalRecord(o) {
+  return o.staging === false && Boolean(o.source_pdf);
+}
+
+function updateTabButtons() {
+  document.querySelectorAll('.view-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === currentTab);
   });
+}
+
+function updateTabSections() {
+  const showLive = currentTab === 'live';
+  const showHistorical = currentTab === 'historical';
+  const showStaging = currentTab === 'staging';
+
+  ['live-kpi-row', 'kpi-scope-note', 'live-charts-row', 'live-ccvs-card', 'live-actions-card']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = showLive ? '' : 'none';
+    });
+
+  const allObsCard = document.getElementById('all-obs-card');
+  if (allObsCard) allObsCard.style.display = (showLive || showHistorical) ? '' : 'none';
+
+  const allObsTitle = document.getElementById('allObsTitle');
+  if (allObsTitle) {
+    allObsTitle.textContent = showHistorical ? 'Historical Register' : 'Live Audit Observations';
+  }
+
+  const stagingSection = document.getElementById('staging-section');
+  if (stagingSection) stagingSection.style.display = showStaging ? '' : 'none';
+}
+
+function setActiveTab(tab, options = {}) {
+  currentTab = tab;
+  updateTabButtons();
+  updateTabSections();
+  if (tab === 'staging' && !options.skipLoad && stagingData.length === 0) {
+    loadStaging();
+  }
   applyFilters();
 }
 
@@ -1235,25 +1324,53 @@ function applyFilters() {
   const audit  = document.getElementById('filterAudit').value;
   const status = document.getElementById('filterStatus').value;
   const cat    = document.getElementById('filterCcvs').value;
-  filtered = allObs.filter(o => {
+  const baseFiltered = allObs.filter(o => {
     if (site   && o.pims_audits?.site_name !== site && o.site_address !== site) return false;
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
     if (cat    && o.ccvs_category !== cat) return false;
-    if (currentStagingFilter === 'staging' && o.staging !== true) return false;
-    if (currentStagingFilter === 'live'    && o.staging !== false) return false;
     return true;
   });
-  renderKPIs();
-  renderCharts();
-  renderCcvsTable();
-  renderActions();
-  renderAllObs();
+
+  const liveOnly = baseFiltered.filter(isLiveAuditRecord);
+  const historicalOnly = baseFiltered.filter(isHistoricalRecord);
+
+  if (currentTab === 'live') {
+    filtered = liveOnly;
+    renderKPIs();
+    renderCharts();
+    renderCcvsTable();
+    renderActions();
+    renderAllObs();
+    return;
+  }
+
+  if (currentTab === 'historical') {
+    filtered = historicalOnly;
+    renderAllObs();
+    return;
+  }
+
+  filtered = [];
 }
 
 function resetFilters() {
   ['filterSite','filterAudit','filterStatus','filterCcvs'].forEach(id => { document.getElementById(id).value=''; });
   applyFilters();
+}
+
+function updateStagingBadges() {
+  const sectionBadge = document.getElementById('staging-badge');
+  if (sectionBadge) {
+    sectionBadge.textContent = pendingStagingCount;
+    sectionBadge.style.background = pendingStagingCount > 0 ? '#f59e0b' : '#16a34a';
+  }
+
+  const tabBadge = document.getElementById('staging-tab-badge');
+  if (tabBadge) {
+    tabBadge.className = `tab-badge ${pendingStagingCount > 0 ? 'pending' : 'clear'}`;
+    tabBadge.textContent = pendingStagingCount > 0 ? String(pendingStagingCount) : '✓';
+  }
 }
 
 // ── KPIs ──
@@ -1395,8 +1512,8 @@ function renderAllObs() {
     if (o.conformance_status==='NCR') tr.classList.add('row-ncr');
     if (o.needs_review) tr.classList.add('row-review');
 
-    const stagingBtn = o.staging
-      ? `<button class="btn-staging is-staging" onclick="promoteRow('${o.id}',this)">Staging</button>`
+    const stagingState = o.staging
+      ? `<span class="btn-staging is-staging">Staging</span>`
       : `<span class="btn-staging is-live">Live</span>`;
 
     const reviewBadge = o.needs_review
@@ -1407,7 +1524,7 @@ function renderAllObs() {
 
     tr.innerHTML = `
       <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
-      <td>${stagingBtn}</td>
+      <td>${stagingState}</td>
       <td>${reviewBadge}</td>
       <td style="min-width:160px">
         <input class="inline-edit" type="text" value="${esc(o.site_address||'')}"
@@ -1447,23 +1564,6 @@ async function patchField(input) {
   } catch(err) {
     alert('Save failed: ' + err.message);
     input.value = obs[field] || '';
-  }
-}
-
-async function promoteRow(id, btn) {
-  if (!confirm('Promote this observation to live? This cannot be undone.')) return;
-  try {
-    const { error } = await db.from('pims_observations').update({ staging: false }).eq('id', id);
-    if (error) throw error;
-    const obs = allObs.find(o => o.id === id);
-    if (obs) obs.staging = false;
-    btn.className = 'btn-staging is-live';
-    btn.textContent = 'Live';
-    btn.onclick = null;
-    btn.style.cursor = 'default';
-    showToast('Observation promoted to live.', 'success');
-  } catch(err) {
-    alert('Promote failed: ' + err.message);
   }
 }
 
@@ -1613,7 +1713,7 @@ function renderAllObsMobile(obs) {
       Info:        { bg: '#e0e7ff', color: '#3730a3' },
     };
 
-    let stagingOpen = false;
+    let stagingOpen = true;
 
     function toggleStaging() {
       stagingOpen = !stagingOpen;
@@ -1689,7 +1789,6 @@ function renderAllObsMobile(obs) {
       const refreshBtn = document.querySelector('[onclick="loadStaging()"]');
       if (refreshBtn) refreshBtn.disabled = true;
       const tbody = document.getElementById('staging-tbody');
-      const badge = document.getElementById('staging-badge');
       tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
       try {
@@ -1705,8 +1804,13 @@ function renderAllObsMobile(obs) {
 
       stagingData = data;
       const pending = data.filter(r => r.review_status !== 'Approved');
-      badge.textContent = pending.length;
-      badge.style.background = pending.length > 0 ? '#f59e0b' : '#22c55e';
+      pendingStagingCount = pending.length;
+      updateStagingBadges();
+
+      if (!tabDefaultResolved) {
+        tabDefaultResolved = true;
+        setActiveTab(pendingStagingCount > 0 ? 'staging' : 'live', { skipLoad: true });
+      }
 
       if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
@@ -1841,11 +1945,18 @@ function renderAllObsMobile(obs) {
       setTimeout(() => { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),350); }, 4500);
     }
 
-    // Load staging on page load
-    loadStaging();
+setActiveTab('live', { skipLoad: true });
+updateStagingBadges();
 
-// ── Go ──
-loadData();
+async function initDashboard() {
+  await Promise.all([loadData(), loadStaging()]);
+  if (!tabDefaultResolved) {
+    tabDefaultResolved = true;
+    setActiveTab('live', { skipLoad: true });
+  }
+}
+
+initDashboard();
 </script>
 </body>
 </html>
