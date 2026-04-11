@@ -1180,7 +1180,6 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
             <thead>
               <tr style="background:#f8fafc; text-align:left;">
-                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">Sel</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Site Address</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Audit Date</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Section</th>
@@ -1189,6 +1188,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Recommendation</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Legal Ref</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Needs Review</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Source PDF</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Promote</th>
               </tr>
             </thead>
@@ -1228,7 +1228,8 @@ let currentTab = 'live';
 let pendingStagingCount = 0;
 let tabDefaultResolved = false;
 const PAGE_SIZE = 25;
-let allObsPage = 1;
+let liveObsPage = 1;
+let historicalObsPage = 1;
 
 // ── Helpers ──
 function badge(status) {
@@ -1350,10 +1351,11 @@ function setActiveTab(tab, options = {}) {
   if (tab === 'staging' && !options.skipLoad && stagingData.length === 0) {
     loadStaging();
   }
-  applyFilters();
+  applyFilters({ resetPages: false });
 }
 
-function applyFilters() {
+function applyFilters(options = {}) {
+  const { resetPages = true } = options;
   const site   = document.getElementById('filterSite').value;
   const audit  = document.getElementById('filterAudit').value;
   const status = document.getElementById('filterStatus').value;
@@ -1368,10 +1370,13 @@ function applyFilters() {
 
   const liveOnly = baseFiltered.filter(isLiveAuditRecord);
   const historicalOnly = baseFiltered.filter(isHistoricalRecord);
+  if (resetPages) {
+    liveObsPage = 1;
+    historicalObsPage = 1;
+  }
 
   if (currentTab === 'live') {
     filtered = liveOnly;
-    allObsPage = 1;
     renderKPIs();
     renderCharts();
     renderCcvsTable();
@@ -1382,7 +1387,6 @@ function applyFilters() {
 
   if (currentTab === 'historical') {
     filtered = historicalOnly;
-    allObsPage = 1;
     renderAllObs();
     return;
   }
@@ -1540,8 +1544,14 @@ function fmtDateDMY(iso) {
 }
 
 function changeAllObsPage(delta) {
+  const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  allObsPage = Math.min(totalPages, Math.max(1, allObsPage + delta));
+  const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
+  if (currentTab === 'historical') {
+    historicalObsPage = nextPage;
+  } else {
+    liveObsPage = nextPage;
+  }
   renderAllObs();
 }
 
@@ -1556,15 +1566,20 @@ function renderAllObs() {
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  if (allObsPage > totalPages) allObsPage = totalPages;
-  if (allObsPage < 1) allObsPage = 1;
+  const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
+  const safePage = Math.min(totalPages, Math.max(1, currentPage));
+  if (currentTab === 'historical') {
+    historicalObsPage = safePage;
+  } else {
+    liveObsPage = safePage;
+  }
 
-  const start = (allObsPage - 1) * PAGE_SIZE;
+  const start = (safePage - 1) * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
 
-  if (prevBtn) prevBtn.disabled = allObsPage <= 1;
-  if (nextBtn) nextBtn.disabled = allObsPage >= totalPages;
-  if (pageInfo) pageInfo.textContent = `Page ${allObsPage} of ${totalPages} (${total} total rows)`;
+  if (prevBtn) prevBtn.disabled = safePage <= 1;
+  if (nextBtn) nextBtn.disabled = safePage >= totalPages;
+  if (pageInfo) pageInfo.textContent = `Page ${safePage} of ${totalPages} (${total} total rows)`;
   document.getElementById('allObsCount').textContent = `${total} records`;
 
   if (currentTab === 'live') {
@@ -1575,7 +1590,7 @@ function renderAllObs() {
       <th>Observation</th>
       <th>Status</th>
       <th>CCVS</th>
-      <th>Action</th>
+      <th>Action Required</th>
       <th>Responsible</th>
       <th style="padding-right:20px">Monitoring Note</th>`;
   } else {
@@ -1585,8 +1600,11 @@ function renderAllObs() {
       <th>Section</th>
       <th>Observation</th>
       <th>Status</th>
+      <th>CCVS</th>
+      <th>Action</th>
       <th>Recommendation</th>
-      <th style="padding-right:20px">Legal Ref</th>`;
+      <th>Legal Ref</th>
+      <th style="padding-right:20px">Source PDF</th>`;
   }
 
   tbody.innerHTML = '';
@@ -1602,7 +1620,7 @@ function renderAllObs() {
         <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
         <td>${badge(o.conformance_status)}</td>
         <td>${ccvs(o.ccvs_code)}</td>
-        <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,80)}</td>
+        <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
         <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>`;
     } else {
@@ -1612,14 +1630,17 @@ function renderAllObs() {
         <td style="max-width:140px;color:var(--text-muted)">${esc(o.section || o.ccvs_code || o.ccvs_category)||'—'}</td>
         <td style="max-width:340px">${trunc(o.observation_text,140)}</td>
         <td>${badge(o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code)}</td>
+        <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,90)}</td>
         <td style="max-width:240px;color:var(--text-muted)">${trunc(o.recommendation || o.action_description,90)}</td>
-        <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>`;
+        <td style="max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>
+        <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.source_pdf,90)}</td>`;
     }
     tbody.appendChild(tr);
   });
 
   if (!pageRows.length) {
-    const colspan = currentTab === 'live' ? 9 : 7;
+    const colspan = currentTab === 'live' ? 9 : 10;
     tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">No records for current filters</td></tr>`;
   }
 
@@ -1787,7 +1808,9 @@ function renderAllObsMobile(obs) {
     let stagingPdfRows = [];
     let stagingFieldPage = 1;
     let stagingPdfPage = 1;
+    let stagingPdfGroupExpanded = {};
     let _stagingLoading = false;
+    let _bulkPromoteInProgress = false;
 
     const CONFORMANCE_COLOURS = {
       Compliant:   { bg: '#dcfce7', color: '#15803d' },
@@ -1812,6 +1835,55 @@ function renderAllObsMobile(obs) {
       const hasPdfMarkers = row.recommendation || row.legal_ref || row.section || row.prepared_by;
       const hasCaptureMarkers = row.photo_url || row.filename || row.photo_base64 || row.seq_no;
       return Boolean(hasPdfMarkers) && !hasCaptureMarkers;
+    }
+
+    function pdfGroupKey(row) {
+      const site = String(row.site_address || '').trim();
+      return site || '__NO_SITE__';
+    }
+
+    function pdfDateIso(row) {
+      const raw = (row.audit_date || row.observation_date || '').slice(0, 10);
+      return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+    }
+
+    function buildPdfGroups(rows) {
+      const map = new Map();
+      rows.forEach(row => {
+        const key = pdfGroupKey(row);
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            site: key === '__NO_SITE__' ? '' : key,
+            isNoSite: key === '__NO_SITE__',
+            rows: [],
+            count: 0,
+            earliest: '',
+            latest: '',
+          });
+        }
+        const group = map.get(key);
+        group.rows.push(row);
+        group.count += 1;
+        const iso = pdfDateIso(row);
+        if (iso) {
+          if (!group.earliest || iso < group.earliest) group.earliest = iso;
+          if (!group.latest || iso > group.latest) group.latest = iso;
+        }
+      });
+      const groups = Array.from(map.values())
+        .sort((a, b) => {
+          if (a.isNoSite && !b.isNoSite) return 1;
+          if (!a.isNoSite && b.isNoSite) return -1;
+          if (b.count !== a.count) return b.count - a.count;
+          return a.site.localeCompare(b.site);
+        });
+      const orderedRows = groups.flatMap(g => g.rows);
+      return { groups, orderedRows };
+    }
+
+    function isGroupExpandable(groupRowsOnPage) {
+      return groupRowsOnPage && groupRowsOnPage.length > 0;
     }
 
     function toggleSelectAll(cb) {
@@ -1976,37 +2048,88 @@ function renderAllObsMobile(obs) {
       const tbody = document.getElementById('staging-pdf-tbody');
       const count = document.getElementById('staging-pdf-count');
       if (!tbody) return;
-      if (count) count.textContent = `${stagingPdfRows.length} rows`;
+      const pendingRows = stagingPdfRows.filter(r => r.review_status !== 'Approved').length;
+      if (count) count.textContent = `${pendingRows} rows pending review`;
 
-      const totalPages = Math.max(1, Math.ceil(stagingPdfRows.length / PAGE_SIZE));
+      const { groups, orderedRows } = buildPdfGroups(stagingPdfRows);
+      const totalRows = orderedRows.length;
+      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
       if (stagingPdfPage > totalPages) stagingPdfPage = totalPages;
+      if (stagingPdfPage < 1) stagingPdfPage = 1;
       const start = (stagingPdfPage - 1) * PAGE_SIZE;
-      const rows = stagingPdfRows.slice(start, start + PAGE_SIZE);
+      const pageRows = orderedRows.slice(start, start + PAGE_SIZE);
 
-      if (!rows.length) {
+      if (!pageRows.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;">No PDF import rows.</td></tr>';
-        _setPager('stagingPdf', stagingPdfPage, stagingPdfRows.length);
+        _setPager('stagingPdf', stagingPdfPage, totalRows);
         return;
       }
 
-      const grouped = rows.reduce((acc, row) => {
-        const key = (row.site_address || '').trim() || 'No site address';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(row);
-        return acc;
-      }, {});
+      const validKeys = new Set(groups.map(g => g.key));
+      Object.keys(stagingPdfGroupExpanded).forEach(key => {
+        if (!validKeys.has(key)) delete stagingPdfGroupExpanded[key];
+      });
+      groups.forEach(g => {
+        if (stagingPdfGroupExpanded[g.key] === undefined) stagingPdfGroupExpanded[g.key] = false;
+      });
+
+      const pageByGroup = new Map();
+      pageRows.forEach(row => {
+        const key = pdfGroupKey(row);
+        if (!pageByGroup.has(key)) pageByGroup.set(key, []);
+        pageByGroup.get(key).push(row);
+      });
 
       const html = [];
-      Object.keys(grouped).sort().forEach(site => {
-        const group = grouped[site];
-        html.push(`<tr><td colspan="10" style="padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;color:#334155;">${esc(site)} (${group.length})</td></tr>`);
-        group.forEach(row => {
+      groups.forEach(group => {
+        const groupRowsOnPage = pageByGroup.get(group.key);
+        if (!isGroupExpandable(groupRowsOnPage)) return;
+
+        const encodedKey = encodeURIComponent(group.key);
+        const expanded = Boolean(stagingPdfGroupExpanded[group.key]);
+        const pendingInGroup = group.rows.filter(r => r.review_status !== 'Approved').length;
+        const noSite = group.isNoSite;
+        const promoteGroupDisabled = noSite || pendingInGroup === 0;
+        const groupLabel = noSite
+          ? `No site address (${group.count} rows)`
+          : `${esc(group.site)} (${group.count} observations)`;
+        const rangeText = group.earliest
+          ? `${fmtDateDMY(group.earliest)} – ${fmtDateDMY(group.latest || group.earliest)}`
+          : 'No dates';
+
+        html.push(`
+          <tr>
+            <td colspan="10" style="padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <button onclick="togglePdfGroup('${encodedKey}')"
+                  style="border:none;background:transparent;cursor:pointer;font-weight:700;color:#334155;padding:0;text-align:left;">
+                  ${expanded ? '▼' : '▶'} ${groupLabel}
+                </button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:0.72rem;color:#64748b;">${rangeText}</span>
+                  <button
+                    onclick="promotePdfGroup('${encodedKey}')"
+                    ${promoteGroupDisabled ? 'disabled' : ''}
+                    title="${promoteGroupDisabled ? (noSite ? 'Enter site address before promoting' : 'No pending rows in this group') : 'Promote all pending rows in this group'}"
+                    style="padding:3px 10px;font-size:0.72rem;font-weight:700;color:#fff;border:none;border-radius:5px;
+                      background:${promoteGroupDisabled ? '#94a3b8' : '#2563eb'};
+                      cursor:${promoteGroupDisabled ? 'not-allowed' : 'pointer'};">
+                    Promote All
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>`);
+
+        if (!expanded) return;
+
+        groupRowsOnPage.forEach(row => {
           const approved = row.review_status === 'Approved';
+          const hasSiteAddress = String(row.site_address || '').trim().length > 0;
+          const canPromote = !approved && hasSiteAddress;
+          const legalRefDisplay = row.legal_ref || row.legal_reference;
           html.push(`
             <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
-              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
-                <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="updateSelectCount()" ${approved ? 'disabled' : ''}>
-              </td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; min-width:180px;">
                 <input class="inline-edit" type="text" value="${esc(row.site_address || '')}"
                   data-id="${row.id}" data-field="site_address"
@@ -2017,24 +2140,69 @@ function renderAllObsMobile(obs) {
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:320px;">${trunc(row.observation_text, 140)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${badge(row.conformance_status)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.recommendation || row.action_description, 90)}</td>
-              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:180px;">${trunc(row.legal_ref || row.legal_reference, 70)}</td>
-              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.needs_review ? '<span class="badge badge-review">Review</span>' : '—'}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:180px;">${trunc(legalRefDisplay, 70)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+                ${row.needs_review ? '<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:#fef3c7;color:#92400e;">Needs review</span>' : '—'}
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.source_pdf, 90)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
                 <button
                   id="btn-${row.id}"
                   onclick="approveStagingRecord('${row.id}')"
-                  ${approved ? 'disabled' : ''}
+                  ${canPromote ? '' : 'disabled'}
+                  title="${canPromote ? 'Promote this row' : (!hasSiteAddress ? 'Enter site address before promoting' : 'Already approved')}"
                   style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
-                    background:${approved ? '#9ca3af' : '#16a34a'};border:none;
-                    border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
+                    background:${canPromote ? '#16a34a' : '#9ca3af'};border:none;
+                    border-radius:5px;cursor:${canPromote ? 'pointer' : 'not-allowed'};">
                   ${approved ? '✓ Approved' : '✓ Promote'}
                 </button>
               </td>
             </tr>`);
         });
       });
+
       tbody.innerHTML = html.join('');
-      _setPager('stagingPdf', stagingPdfPage, stagingPdfRows.length);
+      _setPager('stagingPdf', stagingPdfPage, totalRows);
+    }
+
+    function togglePdfGroup(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      stagingPdfGroupExpanded[key] = !stagingPdfGroupExpanded[key];
+      renderStagingPdfRows();
+    }
+
+    async function promotePdfGroup(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      if (key === '__NO_SITE__') {
+        showToast('Enter site address before promoting this group.', 'warning');
+        return;
+      }
+      const candidates = stagingPdfRows.filter(
+        r => pdfGroupKey(r) === key && r.review_status !== 'Approved'
+      );
+      if (!candidates.length) {
+        showToast('No pending rows to promote in this group.', 'info');
+        return;
+      }
+      if (!confirm(`Promote ${candidates.length} row(s) for ${key}?`)) return;
+
+      _bulkPromoteInProgress = true;
+      let successCount = 0;
+      for (const row of candidates) {
+        const ok = await approveStagingRecord(row.id, {
+          skipConfirm: true,
+          skipReload: true,
+          suppressToast: true,
+        });
+        if (ok) successCount += 1;
+      }
+      _bulkPromoteInProgress = false;
+      await loadStaging();
+      const allSucceeded = successCount === candidates.length;
+      showToast(
+        `Promoted ${successCount} of ${candidates.length} row(s) for ${key}.`,
+        allSucceeded ? 'success' : 'warning'
+      );
     }
 
     async function patchStagingField(input) {
@@ -2083,6 +2251,7 @@ function renderAllObsMobile(obs) {
         stagingPdfRows = data.filter(isPdfImportStagingRow);
         stagingFieldPage = 1;
         stagingPdfPage = 1;
+        stagingPdfGroupExpanded = {};
 
         const pending = data.filter(r => r.review_status !== 'Approved');
         pendingStagingCount = pending.length;
@@ -2101,10 +2270,15 @@ function renderAllObsMobile(obs) {
       }
     }
 
-    async function approveStagingRecord(stagingId) {
+    async function approveStagingRecord(stagingId, options = {}) {
+      const {
+        skipConfirm = false,
+        skipReload = false,
+        suppressToast = false,
+      } = options;
       const btn = document.getElementById(`btn-${stagingId}`);
-      if (!btn || btn.disabled) return;
-      if (!confirm('Promote this observation to PIMS records?')) return;
+      if (!btn || btn.disabled) return false;
+      if (!skipConfirm && !confirm('Promote this observation to PIMS records?')) return false;
 
       btn.disabled    = true;
       btn.textContent = 'Approving…';
@@ -2134,13 +2308,21 @@ function renderAllObsMobile(obs) {
         if (cb) cb.checked = false;
         updateSelectCount();
 
-        loadStaging();
-        showToast('Record promoted to PIMS observations.', 'success');
+        if (!skipReload && !_bulkPromoteInProgress) {
+          await loadStaging();
+        }
+        if (!suppressToast) {
+          showToast('Record promoted to PIMS observations.', 'success');
+        }
+        return true;
 
       } catch (err) {
         btn.disabled    = false;
         btn.textContent = '✓ Approve';
-        showToast('Approval failed: ' + err.message, 'error');
+        if (!suppressToast) {
+          showToast('Approval failed: ' + err.message, 'error');
+        }
+        return false;
       }
     }
 
