@@ -287,10 +287,40 @@ async def auth_reset_password(body: AuthResetPassword):
 
 _FRONTEND_DIR = os.path.join(_ROOT, "frontend")
 
+_PIMS_REQUIRED_ENV_VARS = [
+    "RPD_SUPABASE_URL",
+    "RPD_SUPABASE_SERVICE_KEY",
+    "RPD_SUPABASE_ANON_KEY",
+    "PIMS_RPD_TOKEN",
+    "PIMS_SESSION_SECRET",
+    "PIMS_DASHBOARD_PASSWORD",
+    "ANTHROPIC_API_KEY",
+]
+
+
+def _warn_missing_pims_env_vars() -> None:
+    """Log startup warnings for missing env vars used by PIMS flows."""
+    missing: list[str] = []
+    for name in _PIMS_REQUIRED_ENV_VARS:
+        if not os.getenv(name, "").strip():
+            logger.warning(
+                "Startup configuration warning: missing required env var '%s'.",
+                name,
+            )
+            missing.append(name)
+    if missing:
+        logger.warning(
+            "PIMS startup configuration warnings: %d required env var(s) missing: %s",
+            len(missing),
+            ", ".join(missing),
+        )
+
+
+_warn_missing_pims_env_vars()
+
 _auth_error = check_env()
 if _auth_error:
-    import sys
-    print(f"[PIMS] FATAL: {_auth_error}", file=sys.stderr)
+    logger.warning("PIMS auth configuration warning: %s", _auth_error)
 
 
 @app.get("/app", response_class=HTMLResponse)
