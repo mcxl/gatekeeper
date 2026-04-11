@@ -1491,7 +1491,7 @@ function renderCcvsTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding-left:20px">${ccvs(code)}</td>
-      <td style="color:var(--text-muted)">${cat}</td>
+      <td style="color:var(--text-muted)">${esc(cat)}</td>
       <td style="text-align:center;font-weight:700">${total}</td>
       <td style="text-align:center">${ncr>0?`<span style="color:var(--red-text);font-weight:700">${ncr}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
       <td style="text-align:center">${cond>0?`<span style="color:var(--amber-text);font-weight:700">${cond}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
@@ -1737,7 +1737,7 @@ function renderActionsMobile(actions) {
   el.innerHTML = actions.map(o => `
     <div class="m-card${o.conformance_status==='NCR'?' row-ncr':''}">
       <div class="m-card-top">
-        <span class="m-card-seq">#${o.seq_no} &nbsp; ${o.photo_id||''}</span>
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''}</span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
           ${ccvs(o.ccvs_code)}
@@ -1767,7 +1767,7 @@ function renderAllObsMobile(obs) {
   el.innerHTML = obs.map(o => `
     <div class="m-card">
       <div class="m-card-top">
-        <span class="m-card-seq">#${o.seq_no} &nbsp; ${o.photo_id||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
           ${o.ccvs_code ? ccvs(o.ccvs_code) : ''}
