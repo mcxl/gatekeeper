@@ -1083,26 +1083,15 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <div class="card-body table-wrap dt-desktop" style="padding:0">
       <table class="dt">
         <thead>
-          <tr>
-            <th style="padding-left:20px">#</th>
-            <th>Staging</th>
-            <th>Review</th>
-            <th>Site Address</th>
-            <th>Audit Date</th>
-            <th>Observation</th>
-            <th>Status</th>
-            <th>CCVS</th>
-            <th>Action</th>
-            <th>Recommendation</th>
-            <th>Legal Ref</th>
-            <th>Photo Refs</th>
-            <th>Source PDF</th>
-            <th>Prepared By</th>
-            <th style="padding-right:20px">Monitoring Note</th>
-          </tr>
+          <tr id="allObsHeadRow"></tr>
         </thead>
         <tbody id="allObsTableBody"></tbody>
       </table>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 14px;" class="dt-desktop">
+      <button class="btn btn-ghost" id="allObsPrevBtn" onclick="changeAllObsPage(-1)">Prev</button>
+      <span id="allObsPageInfo" style="font-size:0.78rem;color:#64748b;min-width:160px;text-align:center;"></span>
+      <button class="btn btn-ghost" id="allObsNextBtn" onclick="changeAllObsPage(1)">Next</button>
     </div>
     <div class="mobile-cards" id="allObsMobileCards"></div>
   </div>
@@ -1147,29 +1136,72 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
       </div>
 
-      <div style="overflow-x:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-          <thead>
-            <tr style="background:#f8fafc; text-align:left;">
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">
-                <input type="checkbox" id="staging-select-all" onchange="toggleSelectAll(this)" title="Select all">
-              </th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">Photo</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Legal Ref</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
-              <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Action</th>
-            </tr>
-          </thead>
-          <tbody id="staging-tbody">
-            <tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
-          </tbody>
-        </table>
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">Field Captures</h3>
+          <span id="staging-field-count" style="font-size:0.75rem;color:#64748b;"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead>
+              <tr style="background:#f8fafc; text-align:left;">
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">
+                  <input type="checkbox" id="staging-select-all" onchange="toggleSelectAll(this)" title="Select all">
+                </th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">Photo</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Approve</th>
+              </tr>
+            </thead>
+            <tbody id="staging-field-tbody">
+              <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn btn-ghost" onclick="changeStagingFieldPage(-1)" id="stagingFieldPrevBtn">Prev</button>
+          <span id="stagingFieldPageInfo" style="font-size:0.75rem;color:#64748b;min-width:160px;text-align:center;"></span>
+          <button class="btn btn-ghost" onclick="changeStagingFieldPage(1)" id="stagingFieldNextBtn">Next</button>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">PDF Imports (Grouped by Site)</h3>
+          <span id="staging-pdf-count" style="font-size:0.75rem;color:#64748b;"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead>
+              <tr style="background:#f8fafc; text-align:left;">
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">Sel</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Site Address</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Audit Date</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Section</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Recommendation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Legal Ref</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Needs Review</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Promote</th>
+              </tr>
+            </thead>
+            <tbody id="staging-pdf-tbody">
+              <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">No PDF import rows.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn btn-ghost" onclick="changeStagingPdfPage(-1)" id="stagingPdfPrevBtn">Prev</button>
+          <span id="stagingPdfPageInfo" style="font-size:0.75rem;color:#64748b;min-width:160px;text-align:center;"></span>
+          <button class="btn btn-ghost" onclick="changeStagingPdfPage(1)" id="stagingPdfNextBtn">Next</button>
+        </div>
       </div>
     </div>
   </section>
@@ -1195,6 +1227,8 @@ let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
 let currentTab = 'live';
 let pendingStagingCount = 0;
 let tabDefaultResolved = false;
+const PAGE_SIZE = 25;
+let allObsPage = 1;
 
 // ── Helpers ──
 function badge(status) {
@@ -1337,6 +1371,7 @@ function applyFilters() {
 
   if (currentTab === 'live') {
     filtered = liveOnly;
+    allObsPage = 1;
     renderKPIs();
     renderCharts();
     renderCcvsTable();
@@ -1347,6 +1382,7 @@ function applyFilters() {
 
   if (currentTab === 'historical') {
     filtered = historicalOnly;
+    allObsPage = 1;
     renderAllObs();
     return;
   }
@@ -1503,48 +1539,91 @@ function fmtDateDMY(iso) {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function changeAllObsPage(delta) {
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  allObsPage = Math.min(totalPages, Math.max(1, allObsPage + delta));
+  renderAllObs();
+}
+
 function renderAllObs() {
+  const headRow = document.getElementById('allObsHeadRow');
   const tbody = document.getElementById('allObsTableBody');
+  const prevBtn = document.getElementById('allObsPrevBtn');
+  const nextBtn = document.getElementById('allObsNextBtn');
+  const pageInfo = document.getElementById('allObsPageInfo');
+
+  if (!headRow || !tbody) return;
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (allObsPage > totalPages) allObsPage = totalPages;
+  if (allObsPage < 1) allObsPage = 1;
+
+  const start = (allObsPage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(start, start + PAGE_SIZE);
+
+  if (prevBtn) prevBtn.disabled = allObsPage <= 1;
+  if (nextBtn) nextBtn.disabled = allObsPage >= totalPages;
+  if (pageInfo) pageInfo.textContent = `Page ${allObsPage} of ${totalPages} (${total} total rows)`;
+  document.getElementById('allObsCount').textContent = `${total} records`;
+
+  if (currentTab === 'live') {
+    headRow.innerHTML = `
+      <th style="padding-left:20px">Seq</th>
+      <th>Photo</th>
+      <th>Date</th>
+      <th>Observation</th>
+      <th>Status</th>
+      <th>CCVS</th>
+      <th>Action</th>
+      <th>Responsible</th>
+      <th style="padding-right:20px">Monitoring Note</th>`;
+  } else {
+    headRow.innerHTML = `
+      <th style="padding-left:20px">Site Address</th>
+      <th>Audit Date</th>
+      <th>Section</th>
+      <th>Observation</th>
+      <th>Status</th>
+      <th>Recommendation</th>
+      <th style="padding-right:20px">Legal Ref</th>`;
+  }
+
   tbody.innerHTML = '';
-  document.getElementById('allObsCount').textContent = `${filtered.length} records`;
-  filtered.forEach(o => {
+  pageRows.forEach(o => {
     const tr = document.createElement('tr');
     if (o.conformance_status==='NCR') tr.classList.add('row-ncr');
     if (o.needs_review) tr.classList.add('row-review');
-
-    const stagingState = o.staging
-      ? `<span class="btn-staging is-staging">Staging</span>`
-      : `<span class="btn-staging is-live">Live</span>`;
-
-    const reviewBadge = o.needs_review
-      ? `<span class="badge badge-review">Review</span>`
-      : '';
-
-    const pdfName = o.source_pdf ? esc(o.source_pdf.replace(/^.*[\\/]/, '')) : '—';
-
-    tr.innerHTML = `
-      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
-      <td>${stagingState}</td>
-      <td>${reviewBadge}</td>
-      <td style="min-width:160px">
-        <input class="inline-edit" type="text" value="${esc(o.site_address||'')}"
-          data-id="${o.id}" data-field="site_address"
-          onblur="patchField(this)" placeholder="—">
-      </td>
-      <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.audit_date || o.observation_date)}</td>
-      <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
-      <td>${badge(o.conformance_status)}</td>
-      <td>${ccvs(o.ccvs_code)}</td>
-      <td style="max-width:180px;color:var(--text-muted)">${trunc(o.action_description,70)}</td>
-      <td style="max-width:200px">${o.recommendation ? `<div class="expand-text" onclick="this.classList.toggle('expanded')">${esc(o.recommendation)}</div>` : '<span style="color:var(--text-light)">—</span>'}</td>
-      <td style="font-size:11px;color:var(--text-muted);max-width:160px">${esc(o.legal_ref)||'—'}</td>
-      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_refs)||'—'}</td>
-      <td style="font-size:11px;color:var(--text-light);max-width:180px" title="${pdfName}">${trunc(pdfName,30)}</td>
-      <td style="font-size:11px;color:var(--text-muted)">${esc(o.prepared_by)||'—'}</td>
-      <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.monitoring_note,70)}</td>`;
+    if (currentTab === 'live') {
+      tr.innerHTML = `
+        <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
+        <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id || o.filename) || '—'}</td>
+        <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
+        <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
+        <td>${badge(o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code)}</td>
+        <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,80)}</td>
+        <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
+        <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>`;
+    } else {
+      tr.innerHTML = `
+        <td style="padding-left:20px;min-width:160px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
+        <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.audit_date || o.observation_date)}</td>
+        <td style="max-width:140px;color:var(--text-muted)">${esc(o.section || o.ccvs_code || o.ccvs_category)||'—'}</td>
+        <td style="max-width:340px">${trunc(o.observation_text,140)}</td>
+        <td>${badge(o.conformance_status)}</td>
+        <td style="max-width:240px;color:var(--text-muted)">${trunc(o.recommendation || o.action_description,90)}</td>
+        <td style="padding-right:20px;max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>`;
+    }
     tbody.appendChild(tr);
   });
-  renderAllObsMobile(filtered);
+
+  if (!pageRows.length) {
+    const colspan = currentTab === 'live' ? 9 : 7;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">No records for current filters</td></tr>`;
+  }
+
+  renderAllObsMobile(pageRows);
 }
 
 // ── Inline PATCH helpers ──
@@ -1703,7 +1782,11 @@ function renderAllObsMobile(obs) {
 
     // ── Staging Inbox ──────────────────────────────────────────
 
-    let stagingData = []; // cache for XLSX export
+    let stagingData = []; // cache for XLSX/DOCX export
+    let stagingFieldRows = [];
+    let stagingPdfRows = [];
+    let stagingFieldPage = 1;
+    let stagingPdfPage = 1;
     let _stagingLoading = false;
 
     const CONFORMANCE_COLOURS = {
@@ -1722,6 +1805,13 @@ function renderAllObsMobile(obs) {
       body.style.display = stagingOpen ? 'block' : 'none';
       chev.style.transform = stagingOpen ? 'rotate(180deg)' : '';
       if (stagingOpen && stagingData.length === 0) loadStaging();
+    }
+
+    function isPdfImportStagingRow(row) {
+      if (row.source_pdf) return true;
+      const hasPdfMarkers = row.recommendation || row.legal_ref || row.section || row.prepared_by;
+      const hasCaptureMarkers = row.photo_url || row.filename || row.photo_base64 || row.seq_no;
+      return Boolean(hasPdfMarkers) && !hasCaptureMarkers;
     }
 
     function toggleSelectAll(cb) {
@@ -1743,6 +1833,28 @@ function renderAllObsMobile(obs) {
         return null;
       }
       return checked.map(cb => cb.dataset.id);
+    }
+
+    function _setPager(prefix, page, totalRows) {
+      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+      const info = document.getElementById(`${prefix}PageInfo`);
+      const prev = document.getElementById(`${prefix}PrevBtn`);
+      const next = document.getElementById(`${prefix}NextBtn`);
+      if (info) info.textContent = `Page ${page} of ${totalPages} (${totalRows} total rows)`;
+      if (prev) prev.disabled = page <= 1;
+      if (next) next.disabled = page >= totalPages;
+    }
+
+    function changeStagingFieldPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(stagingFieldRows.length / PAGE_SIZE));
+      stagingFieldPage = Math.min(totalPages, Math.max(1, stagingFieldPage + delta));
+      renderStagingFieldRows();
+    }
+
+    function changeStagingPdfPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(stagingPdfRows.length / PAGE_SIZE));
+      stagingPdfPage = Math.min(totalPages, Math.max(1, stagingPdfPage + delta));
+      renderStagingPdfRows();
     }
 
     async function _stagingExport(endpoint, filename) {
@@ -1783,43 +1895,27 @@ function renderAllObsMobile(obs) {
         `PIMS_Report_${new Date().toISOString().slice(0,10)}.docx`
       );
     }
-    async function loadStaging() {
-      if (_stagingLoading) return;
-      _stagingLoading = true;
-      const refreshBtn = document.querySelector('[onclick="loadStaging()"]');
-      if (refreshBtn) refreshBtn.disabled = true;
-      const tbody = document.getElementById('staging-tbody');
-      tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
-      try {
-      const { data, error } = await db
-        .from('pims_staging')
-        .select('*')
-        .order('submitted_at', { ascending: false });
+    function renderStagingFieldRows() {
+      const tbody = document.getElementById('staging-field-tbody');
+      const count = document.getElementById('staging-field-count');
+      if (!tbody) return;
+      if (count) count.textContent = `${stagingFieldRows.length} rows`;
 
-      if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="11" style="padding:20px;text-align:center;color:#ef4444;">Failed to load staging: ${error?.message}</td></tr>`;
+      const totalPages = Math.max(1, Math.ceil(stagingFieldRows.length / PAGE_SIZE));
+      if (stagingFieldPage > totalPages) stagingFieldPage = totalPages;
+      const start = (stagingFieldPage - 1) * PAGE_SIZE;
+      const rows = stagingFieldRows.slice(start, start + PAGE_SIZE);
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;">No field capture rows.</td></tr>';
+        _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
         return;
       }
 
-      stagingData = data;
-      const pending = data.filter(r => r.review_status !== 'Approved');
-      pendingStagingCount = pending.length;
-      updateStagingBadges();
-
-      if (!tabDefaultResolved) {
-        tabDefaultResolved = true;
-        setActiveTab(pendingStagingCount > 0 ? 'staging' : 'live', { skipLoad: true });
-      }
-
-      if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">No staging records found.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = data.map(row => {
+      tbody.innerHTML = rows.map(row => {
         const confRaw = row.conformance_status || '';
-        const conf    = esc(confRaw);
+        const conf = esc(confRaw);
         const colours = CONFORMANCE_COLOURS[confRaw] || { bg: '#f1f5f9', color: '#475569' };
         const approved = row.review_status === 'Approved';
         const thumb = row.photo_url
@@ -1853,14 +1949,6 @@ function renderAllObsMobile(obs) {
                   </span>`
                 : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
             </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px; background:#f8fbff;">
-              ${row.legal_reference
-                ? `<span title="${esc(row.legal_reference)}"
-                    style="display:block;font-size:0.72rem;line-height:1.45;color:#374151;font-style:italic;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
-                    ${esc(row.legal_reference)}
-                  </span>`
-                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">—</span>'}
-            </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
               <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;
                 background:${approved ? '#dcfce7' : '#fef9c3'};
@@ -1881,6 +1969,132 @@ function renderAllObsMobile(obs) {
             </td>
           </tr>`;
       }).join('');
+      _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
+    }
+
+    function renderStagingPdfRows() {
+      const tbody = document.getElementById('staging-pdf-tbody');
+      const count = document.getElementById('staging-pdf-count');
+      if (!tbody) return;
+      if (count) count.textContent = `${stagingPdfRows.length} rows`;
+
+      const totalPages = Math.max(1, Math.ceil(stagingPdfRows.length / PAGE_SIZE));
+      if (stagingPdfPage > totalPages) stagingPdfPage = totalPages;
+      const start = (stagingPdfPage - 1) * PAGE_SIZE;
+      const rows = stagingPdfRows.slice(start, start + PAGE_SIZE);
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;">No PDF import rows.</td></tr>';
+        _setPager('stagingPdf', stagingPdfPage, stagingPdfRows.length);
+        return;
+      }
+
+      const grouped = rows.reduce((acc, row) => {
+        const key = (row.site_address || '').trim() || 'No site address';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(row);
+        return acc;
+      }, {});
+
+      const html = [];
+      Object.keys(grouped).sort().forEach(site => {
+        const group = grouped[site];
+        html.push(`<tr><td colspan="10" style="padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;color:#334155;">${esc(site)} (${group.length})</td></tr>`);
+        group.forEach(row => {
+          const approved = row.review_status === 'Approved';
+          html.push(`
+            <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
+                <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="updateSelectCount()" ${approved ? 'disabled' : ''}>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; min-width:180px;">
+                <input class="inline-edit" type="text" value="${esc(row.site_address || '')}"
+                  data-id="${row.id}" data-field="site_address"
+                  onblur="patchStagingField(this)" placeholder="No site address">
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${fmtDateDMY(row.audit_date || row.observation_date)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${esc(row.section || row.ccvs_code || row.ccvs_category) || '—'}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:320px;">${trunc(row.observation_text, 140)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${badge(row.conformance_status)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.recommendation || row.action_description, 90)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:180px;">${trunc(row.legal_ref || row.legal_reference, 70)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.needs_review ? '<span class="badge badge-review">Review</span>' : '—'}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+                <button
+                  id="btn-${row.id}"
+                  onclick="approveStagingRecord('${row.id}')"
+                  ${approved ? 'disabled' : ''}
+                  style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
+                    background:${approved ? '#9ca3af' : '#16a34a'};border:none;
+                    border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
+                  ${approved ? '✓ Approved' : '✓ Promote'}
+                </button>
+              </td>
+            </tr>`);
+        });
+      });
+      tbody.innerHTML = html.join('');
+      _setPager('stagingPdf', stagingPdfPage, stagingPdfRows.length);
+    }
+
+    async function patchStagingField(input) {
+      const id = input.dataset.id;
+      const field = input.dataset.field;
+      const val = input.value.trim() || null;
+      const row = stagingData.find(r => r.id === id);
+      if (!row || row[field] === val) return;
+      try {
+        const { error } = await db.from('pims_staging').update({ [field]: val }).eq('id', id);
+        if (error) throw error;
+        row[field] = val;
+        input.style.borderColor = 'var(--green)';
+        setTimeout(() => { input.style.borderColor = 'transparent'; }, 1000);
+      } catch (err) {
+        input.value = row[field] || '';
+        showToast('Site address update failed: ' + err.message, 'error');
+      }
+    }
+
+    async function loadStaging() {
+      if (_stagingLoading) return;
+      _stagingLoading = true;
+      const refreshBtn = document.querySelector('[onclick="loadStaging()"]');
+      if (refreshBtn) refreshBtn.disabled = true;
+      const fieldBody = document.getElementById('staging-field-tbody');
+      const pdfBody = document.getElementById('staging-pdf-tbody');
+      if (fieldBody) fieldBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+      if (pdfBody) pdfBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+
+      try {
+        const { data, error } = await db
+          .from('pims_staging')
+          .select('*')
+          .order('submitted_at', { ascending: false });
+
+        if (error || !data) {
+          const msg = `Failed to load staging: ${error?.message || 'Unknown error'}`;
+          if (fieldBody) fieldBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
+          if (pdfBody) pdfBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
+          return;
+        }
+
+        stagingData = data;
+        stagingFieldRows = data.filter(r => !isPdfImportStagingRow(r));
+        stagingPdfRows = data.filter(isPdfImportStagingRow);
+        stagingFieldPage = 1;
+        stagingPdfPage = 1;
+
+        const pending = data.filter(r => r.review_status !== 'Approved');
+        pendingStagingCount = pending.length;
+        updateStagingBadges();
+
+        if (!tabDefaultResolved) {
+          tabDefaultResolved = true;
+          setActiveTab(pendingStagingCount > 0 ? 'staging' : 'live', { skipLoad: true });
+        }
+
+        renderStagingFieldRows();
+        renderStagingPdfRows();
       } finally {
         _stagingLoading = false;
         if (refreshBtn) refreshBtn.disabled = false;
