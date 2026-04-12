@@ -1133,6 +1133,11 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           background:#1e3a5f; border:none; border-radius:6px; cursor:pointer;">
           ⬇ Download DOCX
         </button>
+        <button id="xlsxUploadToolbarBtn" onclick="toggleXlsxUploadPanel()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#F47920; border:none; border-radius:6px; cursor:pointer;">
+          &#8593; Upload XLSX
+        </button>
         <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
       </div>
 
@@ -1171,14 +1176,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         </div>
       </div>
 
-      <div id="xlsx-upload-panel" style="margin-bottom:16px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e2e8f0;">
-          <button id="xlsxUploadToggleBtn" onclick="toggleXlsxUploadPanel()" style="border:none;background:transparent;cursor:pointer;font-size:0.86rem;font-weight:700;color:#1e3a5f;padding:0;">
-            Upload Observations from XLSX
-          </button>
-          <button id="xlsxUploadCloseBtn" onclick="closeXlsxUploadPanel()" style="display:none;border:none;background:transparent;cursor:pointer;font-size:1rem;color:#64748b;padding:0 4px;" title="Close">x</button>
-        </div>
-        <div id="xlsxUploadBody" style="display:none; padding:12px;">
+      <div id="xlsx-upload-panel" style="display:none; margin-bottom:16px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+        <div id="xlsxUploadBody" style="display:block; padding:12px;">
           <div style="margin-bottom:10px;">
             <button onclick="downloadXlsxTemplate()" style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;background:#0f766e;border:none;border-radius:6px;cursor:pointer;">
               Download Template
@@ -2113,25 +2112,19 @@ function renderAllObsMobile(obs) {
 
     function toggleXlsxUploadPanel() {
       _xlsxUploadOpen = !_xlsxUploadOpen;
-      const body = document.getElementById('xlsxUploadBody');
-      const closeBtn = document.getElementById('xlsxUploadCloseBtn');
-      const toggleBtn = document.getElementById('xlsxUploadToggleBtn');
-      if (body) body.style.display = _xlsxUploadOpen ? 'block' : 'none';
-      if (closeBtn) closeBtn.style.display = _xlsxUploadOpen ? 'inline-block' : 'none';
-      if (toggleBtn) toggleBtn.textContent = _xlsxUploadOpen
-        ? 'Hide Upload Observations from XLSX'
-        : 'Upload Observations from XLSX';
+      const panel = document.getElementById('xlsx-upload-panel');
+      const toolbarBtn = document.getElementById('xlsxUploadToolbarBtn');
+      if (panel) panel.style.display = _xlsxUploadOpen ? 'block' : 'none';
+      if (toolbarBtn) toolbarBtn.style.filter = _xlsxUploadOpen ? 'brightness(0.92)' : '';
       if (_xlsxUploadOpen) _xlsxRenderPreview();
     }
 
     function closeXlsxUploadPanel() {
       _xlsxUploadOpen = false;
-      const body = document.getElementById('xlsxUploadBody');
-      const closeBtn = document.getElementById('xlsxUploadCloseBtn');
-      const toggleBtn = document.getElementById('xlsxUploadToggleBtn');
-      if (body) body.style.display = 'none';
-      if (closeBtn) closeBtn.style.display = 'none';
-      if (toggleBtn) toggleBtn.textContent = 'Upload Observations from XLSX';
+      const panel = document.getElementById('xlsx-upload-panel');
+      const toolbarBtn = document.getElementById('xlsxUploadToolbarBtn');
+      if (panel) panel.style.display = 'none';
+      if (toolbarBtn) toolbarBtn.style.filter = '';
     }
 
     function cancelXlsxUpload() {
