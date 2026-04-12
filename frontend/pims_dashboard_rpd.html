@@ -1827,14 +1827,7 @@ function renderAllObsMobile(obs) {
       const chev = document.getElementById('staging-chevron');
       body.style.display = stagingOpen ? 'block' : 'none';
       chev.style.transform = stagingOpen ? 'rotate(180deg)' : '';
-      if (stagingOpen && stagingData.length === 0) loadStaging();
-    }
-
-    function isPdfImportStagingRow(row) {
-      if (row.source_pdf) return true;
-      const hasPdfMarkers = row.recommendation || row.legal_ref || row.section || row.prepared_by;
-      const hasCaptureMarkers = row.photo_url || row.filename || row.photo_base64 || row.seq_no;
-      return Boolean(hasPdfMarkers) && !hasCaptureMarkers;
+      if (stagingOpen && stagingData.length === 0 && stagingPdfRows.length === 0) loadStaging();
     }
 
     function pdfGroupKey(row) {
@@ -2048,7 +2041,7 @@ function renderAllObsMobile(obs) {
       const tbody = document.getElementById('staging-pdf-tbody');
       const count = document.getElementById('staging-pdf-count');
       if (!tbody) return;
-      const pendingRows = stagingPdfRows.filter(r => r.review_status !== 'Approved').length;
+      const pendingRows = stagingPdfRows.filter(r => r.staging !== false).length;
       if (count) count.textContent = `${pendingRows} rows pending review`;
 
       const { groups, orderedRows } = buildPdfGroups(stagingPdfRows);
@@ -2087,7 +2080,7 @@ function renderAllObsMobile(obs) {
 
         const encodedKey = encodeURIComponent(group.key);
         const expanded = Boolean(stagingPdfGroupExpanded[group.key]);
-        const pendingInGroup = group.rows.filter(r => r.review_status !== 'Approved').length;
+        const pendingInGroup = group.rows.filter(r => r.staging !== false).length;
         const noSite = group.isNoSite;
         const promoteGroupDisabled = noSite || pendingInGroup === 0;
         const groupLabel = noSite
@@ -2124,7 +2117,7 @@ function renderAllObsMobile(obs) {
         if (!expanded) return;
 
         groupRowsOnPage.forEach(row => {
-          const approved = row.review_status === 'Approved';
+          const approved = row.staging === false || row.review_status === 'Approved';
           const hasSiteAddress = String(row.site_address || '').trim().length > 0;
           const canPromote = !approved && hasSiteAddress;
           const legalRefDisplay = row.legal_ref || row.legal_reference;
@@ -2148,7 +2141,7 @@ function renderAllObsMobile(obs) {
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
                 <button
                   id="btn-${row.id}"
-                  onclick="approveStagingRecord('${row.id}')"
+                  onclick="approvePdfObservationRow('${row.id}')"
                   ${canPromote ? '' : 'disabled'}
                   title="${canPromote ? 'Promote this row' : (!hasSiteAddress ? 'Enter site address before promoting' : 'Already approved')}"
                   style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
@@ -2178,7 +2171,7 @@ function renderAllObsMobile(obs) {
         return;
       }
       const candidates = stagingPdfRows.filter(
-        r => pdfGroupKey(r) === key && r.review_status !== 'Approved'
+        r => pdfGroupKey(r) === key && r.staging !== false
       );
       if (!candidates.length) {
         showToast('No pending rows to promote in this group.', 'info');
@@ -2189,7 +2182,7 @@ function renderAllObsMobile(obs) {
       _bulkPromoteInProgress = true;
       let successCount = 0;
       for (const row of candidates) {
-        const ok = await approveStagingRecord(row.id, {
+        const ok = await approvePdfObservationRow(row.id, {
           skipConfirm: true,
           skipReload: true,
           suppressToast: true,
@@ -2205,14 +2198,63 @@ function renderAllObsMobile(obs) {
       );
     }
 
+    async function approvePdfObservationRow(observationId, options = {}) {
+      const {
+        skipConfirm = false,
+        skipReload = false,
+        suppressToast = false,
+      } = options;
+      const btn = document.getElementById(`btn-${observationId}`);
+      const hasButton = Boolean(btn);
+      if (hasButton && btn.disabled) return false;
+      if (!skipConfirm && !confirm('Promote this observation to live records?')) return false;
+
+      if (hasButton) {
+        btn.disabled = true;
+        btn.textContent = 'Promoting…';
+      }
+
+      try {
+        const { error } = await db
+          .from('pims_observations')
+          .update({ staging: false })
+          .eq('id', observationId);
+        if (error) throw error;
+
+        if (hasButton) {
+          btn.textContent = '✓ Promoted';
+          btn.style.background = '#9ca3af';
+          btn.style.cursor = 'not-allowed';
+        }
+
+        if (!skipReload && !_bulkPromoteInProgress) {
+          await loadStaging();
+        }
+        if (!suppressToast) {
+          showToast('Record promoted to live observations.', 'success');
+        }
+        return true;
+      } catch (err) {
+        if (hasButton) {
+          btn.disabled = false;
+          btn.textContent = '✓ Promote';
+        }
+        if (!suppressToast) {
+          showToast('Promotion failed: ' + err.message, 'error');
+        }
+        return false;
+      }
+    }
+
     async function patchStagingField(input) {
       const id = input.dataset.id;
       const field = input.dataset.field;
       const val = input.value.trim() || null;
-      const row = stagingData.find(r => r.id === id);
+      const row = stagingData.find(r => r.id === id) || stagingPdfRows.find(r => r.id === id);
       if (!row || row[field] === val) return;
+      const tableName = stagingData.some(r => r.id === id) ? 'pims_staging' : 'pims_observations';
       try {
-        const { error } = await db.from('pims_staging').update({ [field]: val }).eq('id', id);
+        const { error } = await db.from(tableName).update({ [field]: val }).eq('id', id);
         if (error) throw error;
         row[field] = val;
         input.style.borderColor = 'var(--green)';
@@ -2238,6 +2280,12 @@ function renderAllObsMobile(obs) {
           .from('pims_staging')
           .select('*')
           .order('submitted_at', { ascending: false });
+        const { data: pdfObsData, error: pdfObsError } = await db
+          .from('pims_observations')
+          .select('*')
+          .eq('staging', true)
+          .not('source_pdf', 'is', null)
+          .order('audit_date', { ascending: false });
 
         if (error || !data) {
           const msg = `Failed to load staging: ${error?.message || 'Unknown error'}`;
@@ -2245,16 +2293,20 @@ function renderAllObsMobile(obs) {
           if (pdfBody) pdfBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
           return;
         }
+        if (pdfObsError) {
+          console.warn('Failed to load PDF import rows from pims_observations:', pdfObsError.message || pdfObsError);
+        }
 
-        stagingData = data;
-        stagingFieldRows = data.filter(r => !isPdfImportStagingRow(r));
-        stagingPdfRows = data.filter(isPdfImportStagingRow);
+        stagingData = data || [];
+        stagingFieldRows = data || [];
+        stagingPdfRows = pdfObsData || [];
         stagingFieldPage = 1;
         stagingPdfPage = 1;
         stagingPdfGroupExpanded = {};
 
-        const pending = data.filter(r => r.review_status !== 'Approved');
-        pendingStagingCount = pending.length;
+        const pendingField = stagingFieldRows.filter(r => r.review_status !== 'Approved').length;
+        const pendingPdf = stagingPdfRows.filter(r => r.staging !== false).length;
+        pendingStagingCount = pendingField + pendingPdf;
         updateStagingBadges();
 
         if (!tabDefaultResolved) {
