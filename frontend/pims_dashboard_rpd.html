@@ -2001,7 +2001,11 @@ function renderAllObsMobile(obs) {
     }
 
     function onStagingPdfSiteSearch() {
+      const inputVal = document.getElementById('stagingPdfSiteFilter')?.value || '';
       stagingPdfPage = 1;
+      if (!String(inputVal).trim()) {
+        stagingPdfGroupExpanded = {};
+      }
       renderStagingPdfRows();
     }
 
@@ -2574,8 +2578,8 @@ function renderAllObsMobile(obs) {
           ? `${group.count} of ${totalCount}`
           : `${group.count}`;
         const groupLabel = noSite
-          ? `No site address (${countLabel} rows)`
-          : `${esc(group.site)} (${countLabel} observations)`;
+          ? (hasFilters ? `No site address (${countLabel})` : `No site address (${countLabel} rows)`)
+          : (hasFilters ? `${esc(group.site)} (${countLabel})` : `${esc(group.site)} (${countLabel} observations)`);
         const rangeText = group.earliest
           ? `${fmtDateDMY(group.earliest)} – ${fmtDateDMY(group.latest || group.earliest)}`
           : 'No dates';
@@ -2607,7 +2611,7 @@ function renderAllObsMobile(obs) {
         if (!expanded) return;
 
         groupRowsOnPage.forEach(row => {
-          const approved = row.staging === false || row.review_status === 'Approved';
+          const approved = row.staging === false;
           const hasSiteAddress = String(row.site_address || '').trim().length > 0;
           const canPromote = !approved && hasSiteAddress;
           const legalRefDisplay = row.legal_ref || row.legal_reference;
