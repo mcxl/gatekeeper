@@ -1059,13 +1059,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           <tr>
             <th style="padding-left:20px">#</th>
             <th>Photo</th>
+            <th>Site Address</th>
             <th>Status</th>
             <th>CCVS</th>
             <th>Action Required</th>
             <th>Responsible</th>
             <th>Due</th>
-            <th>Close-out</th>
-            <th style="padding-right:20px"></th>
+            <th style="padding-right:20px">Close-out</th>
           </tr>
         </thead>
         <tbody id="actionsTableBody"></tbody>
@@ -1210,6 +1210,16 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
           <div id="xlsxUploadSummary" style="margin-top:8px;font-size:0.75rem;color:#64748b;">
             0 rows detected · 0 skipped · 0 warnings
+          </div>
+
+          <div style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;">
+            <label for="xlsxCurrentAuditToggle" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+              <input id="xlsxCurrentAuditToggle" type="checkbox" onchange="updateXlsxCurrentAuditHint()" style="margin-top:2px;">
+              <span>
+                <div style="font-size:0.78rem;font-weight:700;color:#0f172a;">These are current audit observations</div>
+                <div id="xlsxCurrentAuditHint" style="font-size:0.74rem;color:#64748b;">Historical record (PDF/report import)</div>
+              </span>
+            </label>
           </div>
 
           <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;">
@@ -1587,13 +1597,16 @@ function renderActions() {
     tr.innerHTML = `
       <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
       <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id)||'—'}</td>
+      <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code)}</td>
       <td style="max-width:260px">${trunc(o.action_description,100)}</td>
       <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td>${dueLabel(o.due_category)}</td>
-      <td>${badge(o.closeout_status)}</td>
-      <td style="padding-right:20px"><button class="btn-update" onclick="openModal('${o.id}')">Update</button></td>`;
+      <td style="padding-right:20px;white-space:nowrap;">
+        ${badge(o.closeout_status)}
+        <button class="btn-update" onclick="openModal('${o.id}')" style="margin-left:8px;">Update</button>
+      </td>`;
     tbody.appendChild(tr);
   });
   renderActionsMobile(actions);
@@ -1651,6 +1664,7 @@ function renderAllObs() {
       <th style="padding-left:20px">Seq</th>
       <th>Photo</th>
       <th>Date</th>
+      <th>Site Address</th>
       <th>Observation</th>
       <th>Status</th>
       <th>CCVS</th>
@@ -1681,6 +1695,7 @@ function renderAllObs() {
         <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
         <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id || o.filename) || '—'}</td>
         <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
+        <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
         <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
         <td>${badge(o.conformance_status)}</td>
         <td>${ccvs(o.ccvs_code)}</td>
@@ -1704,7 +1719,7 @@ function renderAllObs() {
   });
 
   if (!pageRows.length) {
-    const colspan = currentTab === 'live' ? 9 : 10;
+    const colspan = currentTab === 'live' ? 10 : 10;
     tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">No records for current filters</td></tr>`;
   }
 
@@ -2100,6 +2115,15 @@ function renderAllObsMobile(obs) {
         : `Upload ${rowCount} row${rowCount === 1 ? '' : 's'} to Staging`;
     }
 
+    function updateXlsxCurrentAuditHint() {
+      const toggle = document.getElementById('xlsxCurrentAuditToggle');
+      const hint = document.getElementById('xlsxCurrentAuditHint');
+      if (!hint) return;
+      hint.textContent = toggle && toggle.checked
+        ? 'Current audit (will appear in Live Audits)'
+        : 'Historical record (PDF/report import)';
+    }
+
     function _xlsxResetState(clearInput = true) {
       _xlsxUploadState = {
         file: null,
@@ -2111,9 +2135,12 @@ function renderAllObsMobile(obs) {
       if (clearInput) {
         const input = document.getElementById('xlsxUploadInput');
         if (input) input.value = '';
+        const toggle = document.getElementById('xlsxCurrentAuditToggle');
+        if (toggle) toggle.checked = false;
       }
       const fileName = document.getElementById('xlsxUploadFileName');
       if (fileName) fileName.textContent = 'No file selected';
+      updateXlsxCurrentAuditHint();
       _xlsxRenderPreview();
     }
 
@@ -2354,6 +2381,9 @@ function renderAllObsMobile(obs) {
       try {
         const formData = new FormData();
         formData.append('file', _xlsxUploadState.file, _xlsxUploadState.file.name);
+        const currentAuditToggle = document.getElementById('xlsxCurrentAuditToggle');
+        const isCurrentAudit = Boolean(currentAuditToggle && currentAuditToggle.checked);
+        formData.append('is_current_audit', isCurrentAudit ? 'true' : 'false');
         const resp = await fetch('/pims/upload/observations', {
           method: 'POST',
           credentials: 'same-origin',

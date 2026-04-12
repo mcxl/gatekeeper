@@ -36,7 +36,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
-from fastapi import APIRouter, BackgroundTasks, Cookie, File, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Cookie, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -1134,6 +1134,7 @@ async def download_staging_xlsx(
 async def upload_observations_xlsx(
     request: Request,
     file: UploadFile = File(...),
+    is_current_audit: bool = Form(False),
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     if not verify_session_cookie(pims_sess):
@@ -1312,7 +1313,9 @@ async def upload_observations_xlsx(
                 "legal_ref": _cell_text(row.get("legal_ref")) or None,
                 "photo_refs": _cell_text(row.get("photo_refs")) or None,
                 "prepared_by": _cell_text(row.get("prepared_by")) or "Alan Richardson",
-                "source_pdf": _cell_text(row.get("source_pdf")) or fallback_source,
+                "source_pdf": None
+                if is_current_audit
+                else (_cell_text(row.get("source_pdf")) or fallback_source),
                 "needs_review": needs_review,
                 "staging": True,
                 "enriched": True,
