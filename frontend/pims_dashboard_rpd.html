@@ -951,7 +951,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     </div>
     <div class="filter-group">
       <span class="filter-label">CCVS</span>
-      <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All Categories</option></select>
+      <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All CCVS</option></select>
     </div>
     <div class="divider"></div>
     <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
@@ -1226,6 +1226,14 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">PDF Imports (Grouped by Site)</h3>
           <span id="staging-pdf-count" style="font-size:0.75rem;color:#64748b;"></span>
         </div>
+        <div style="margin-bottom:8px;">
+          <input
+            id="stagingPdfSiteFilter"
+            type="text"
+            oninput="onStagingPdfSiteSearch()"
+            placeholder="🔍 Filter by site address..."
+            style="width:100%;max-width:420px;padding:7px 10px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;">
+        </div>
         <div style="overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
             <thead>
@@ -1354,7 +1362,7 @@ function populateFilters() {
   ]);
   [...sites].sort().forEach(s => siteEl.appendChild(new Option(s,s)));
   allAudits.forEach(a => auditEl.appendChild(new Option(`${a.site_name} — ${a.audit_date}`, a.id)));
-  [...new Set(allObs.map(o=>o.ccvs_category).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
+  [...new Set(allObs.map(o=>o.ccvs_code).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
 }
 
 function isLiveAuditRecord(o) {
@@ -1414,7 +1422,7 @@ function applyFilters(options = {}) {
     if (site   && o.pims_audits?.site_name !== site && o.site_address !== site) return false;
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
-    if (cat    && o.ccvs_category !== cat) return false;
+    if (cat    && o.ccvs_code !== cat && o.ccvs_category !== cat) return false;
     return true;
   });
 
@@ -1442,10 +1450,16 @@ function applyFilters(options = {}) {
   }
 
   filtered = [];
+  if (resetPages) stagingPdfPage = 1;
+  renderStagingPdfRows();
 }
 
 function resetFilters() {
   ['filterSite','filterAudit','filterStatus','filterCcvs'].forEach(id => { document.getElementById(id).value=''; });
+  const siteInput = document.getElementById('stagingPdfSiteFilter');
+  if (siteInput) siteInput.value = '';
+  stagingPdfPage = 1;
+  stagingPdfGroupExpanded = {};
   applyFilters();
 }
 
@@ -1947,6 +1961,48 @@ function renderAllObsMobile(obs) {
         });
       const orderedRows = groups.flatMap(g => g.rows);
       return { groups, orderedRows };
+    }
+
+    function _getStagingPdfFilters() {
+      const siteSelect = document.getElementById('filterSite')?.value || '';
+      const status = document.getElementById('filterStatus')?.value || '';
+      const ccvs = document.getElementById('filterCcvs')?.value || '';
+      const siteSearch = document.getElementById('stagingPdfSiteFilter')?.value || '';
+      return { siteSelect, status, ccvs, siteSearch };
+    }
+
+    function _hasStagingPdfFilters(filters) {
+      return Boolean(
+        (filters.siteSelect && filters.siteSelect.trim()) ||
+        (filters.status && filters.status.trim()) ||
+        (filters.ccvs && filters.ccvs.trim()) ||
+        (filters.siteSearch && filters.siteSearch.trim())
+      );
+    }
+
+    function _filterStagingPdfRows(rows, filters) {
+      const siteNeedle = String(filters.siteSelect || '').trim().toLowerCase();
+      const siteSearchNeedle = String(filters.siteSearch || '').trim().toLowerCase();
+      const statusNeedle = String(filters.status || '').trim().toLowerCase();
+      const ccvsNeedle = String(filters.ccvs || '').trim().toLowerCase();
+
+      return rows.filter(row => {
+        const site = String(row.site_address || '').toLowerCase();
+        const status = String(row.conformance_status || '').toLowerCase();
+        const ccvsCode = String(row.ccvs_code || '').toLowerCase();
+        const ccvsCategory = String(row.ccvs_category || '').toLowerCase();
+
+        if (siteNeedle && !site.includes(siteNeedle)) return false;
+        if (siteSearchNeedle && !site.includes(siteSearchNeedle)) return false;
+        if (statusNeedle && status !== statusNeedle) return false;
+        if (ccvsNeedle && ccvsCode !== ccvsNeedle && ccvsCategory !== ccvsNeedle) return false;
+        return true;
+      });
+    }
+
+    function onStagingPdfSiteSearch() {
+      stagingPdfPage = 1;
+      renderStagingPdfRows();
     }
 
     function isGroupExpandable(groupRowsOnPage) {
@@ -2456,10 +2512,21 @@ function renderAllObsMobile(obs) {
       const tbody = document.getElementById('staging-pdf-tbody');
       const count = document.getElementById('staging-pdf-count');
       if (!tbody) return;
-      const pendingRows = stagingPdfRows.filter(r => r.staging !== false).length;
-      if (count) count.textContent = `${pendingRows} rows pending review`;
 
-      const { groups, orderedRows } = buildPdfGroups(stagingPdfRows);
+      const filters = _getStagingPdfFilters();
+      const hasFilters = _hasStagingPdfFilters(filters);
+      const filteredRows = _filterStagingPdfRows(stagingPdfRows, filters);
+      const allPendingRows = stagingPdfRows.filter(r => r.staging !== false).length;
+      const pendingRows = filteredRows.filter(r => r.staging !== false).length;
+      if (count) {
+        count.textContent = hasFilters
+          ? `${pendingRows} of ${allPendingRows} rows pending review`
+          : `${pendingRows} rows pending review`;
+      }
+
+      const allGroups = buildPdfGroups(stagingPdfRows).groups;
+      const totalCountByKey = new Map(allGroups.map(g => [g.key, g.count]));
+      const { groups, orderedRows } = buildPdfGroups(filteredRows);
       const totalRows = orderedRows.length;
       const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
       if (stagingPdfPage > totalPages) stagingPdfPage = totalPages;
@@ -2478,7 +2545,11 @@ function renderAllObsMobile(obs) {
         if (!validKeys.has(key)) delete stagingPdfGroupExpanded[key];
       });
       groups.forEach(g => {
-        if (stagingPdfGroupExpanded[g.key] === undefined) stagingPdfGroupExpanded[g.key] = false;
+        if (hasFilters) {
+          stagingPdfGroupExpanded[g.key] = true;
+        } else if (stagingPdfGroupExpanded[g.key] === undefined) {
+          stagingPdfGroupExpanded[g.key] = false;
+        }
       });
 
       const pageByGroup = new Map();
@@ -2498,9 +2569,13 @@ function renderAllObsMobile(obs) {
         const pendingInGroup = group.rows.filter(r => r.staging !== false).length;
         const noSite = group.isNoSite;
         const promoteGroupDisabled = noSite || pendingInGroup === 0;
+        const totalCount = totalCountByKey.get(group.key) || group.count;
+        const countLabel = hasFilters
+          ? `${group.count} of ${totalCount}`
+          : `${group.count}`;
         const groupLabel = noSite
-          ? `No site address (${group.count} rows)`
-          : `${esc(group.site)} (${group.count} observations)`;
+          ? `No site address (${countLabel} rows)`
+          : `${esc(group.site)} (${countLabel} observations)`;
         const rangeText = group.earliest
           ? `${fmtDateDMY(group.earliest)} – ${fmtDateDMY(group.latest || group.earliest)}`
           : 'No dates';
