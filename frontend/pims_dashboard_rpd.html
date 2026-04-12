@@ -1053,6 +1053,14 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       <span class="card-title">Open Actions Register</span>
       <span class="card-meta" id="openActionsCount"></span>
     </div>
+    <div class="dt-desktop" style="padding:12px 14px 0 14px;">
+      <input
+        id="actionsSiteFilterInput"
+        type="text"
+        oninput="onActionsSiteSearch()"
+        placeholder="🔍 Filter by site address..."
+        style="margin-bottom:12px;width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
+    </div>
     <div class="card-body table-wrap dt-desktop" style="padding:0">
       <table class="dt">
         <thead>
@@ -1079,6 +1087,14 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <div class="card-header">
       <span class="card-title" id="allObsTitle">Live Audit Observations</span>
       <span class="card-meta" id="allObsCount">Live audit records</span>
+    </div>
+    <div class="dt-desktop" style="padding:12px 14px 0 14px;">
+      <input
+        id="liveObsSiteFilterInput"
+        type="text"
+        oninput="onLiveObsSiteSearch()"
+        placeholder="🔍 Filter by site address..."
+        style="margin-bottom:12px;width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
     </div>
     <div class="card-body table-wrap dt-desktop" style="padding:0">
       <table class="dt">
@@ -1588,7 +1604,10 @@ function renderCcvsTable() {
 function renderActions() {
   const tbody = document.getElementById('actionsTableBody');
   tbody.innerHTML = '';
-  const actions = filtered.filter(o=>o.action_required&&o.closeout_status!=='Closed');
+  const siteSearch = (document.getElementById('actionsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const actions = filtered
+    .filter(o => o.action_required && o.closeout_status !== 'Closed')
+    .filter(o => !siteSearch || String(o.site_address || '').toLowerCase().includes(siteSearch));
   document.getElementById('openActionsCount').textContent = `${actions.length} open`;
   if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
   actions.forEach(o => {
@@ -1629,13 +1648,26 @@ function fmtDateDMY(iso) {
 
 function changeAllObsPage(delta) {
   const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const liveSiteSearch = (document.getElementById('liveObsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const tableRows = (currentTab === 'live' && liveSiteSearch)
+    ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
+    : filtered;
+  const totalPages = Math.max(1, Math.ceil(tableRows.length / PAGE_SIZE));
   const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
   if (currentTab === 'historical') {
     historicalObsPage = nextPage;
   } else {
     liveObsPage = nextPage;
   }
+  renderAllObs();
+}
+
+function onActionsSiteSearch() {
+  renderActions();
+}
+
+function onLiveObsSiteSearch() {
+  liveObsPage = 1;
   renderAllObs();
 }
 
@@ -1648,7 +1680,11 @@ function renderAllObs() {
 
   if (!headRow || !tbody) return;
 
-  const total = filtered.length;
+  const liveSiteSearch = (document.getElementById('liveObsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const tableRows = (currentTab === 'live' && liveSiteSearch)
+    ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
+    : filtered;
+  const total = tableRows.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
   const safePage = Math.min(totalPages, Math.max(1, currentPage));
@@ -1659,7 +1695,7 @@ function renderAllObs() {
   }
 
   const start = (safePage - 1) * PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + PAGE_SIZE);
+  const pageRows = tableRows.slice(start, start + PAGE_SIZE);
 
   if (prevBtn) prevBtn.disabled = safePage <= 1;
   if (nextBtn) nextBtn.disabled = safePage >= totalPages;
