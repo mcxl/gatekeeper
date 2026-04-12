@@ -1171,6 +1171,57 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
         </div>
       </div>
 
+      <div id="xlsx-upload-panel" style="margin-bottom:16px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e2e8f0;">
+          <button id="xlsxUploadToggleBtn" onclick="toggleXlsxUploadPanel()" style="border:none;background:transparent;cursor:pointer;font-size:0.86rem;font-weight:700;color:#1e3a5f;padding:0;">
+            Upload Observations from XLSX
+          </button>
+          <button id="xlsxUploadCloseBtn" onclick="closeXlsxUploadPanel()" style="display:none;border:none;background:transparent;cursor:pointer;font-size:1rem;color:#64748b;padding:0 4px;" title="Close">x</button>
+        </div>
+        <div id="xlsxUploadBody" style="display:none; padding:12px;">
+          <div style="margin-bottom:10px;">
+            <button onclick="downloadXlsxTemplate()" style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;background:#0f766e;border:none;border-radius:6px;cursor:pointer;">
+              Download Template
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <label for="xlsxUploadInput" style="font-size:0.78rem;font-weight:600;color:#334155;">Choose file:</label>
+            <input id="xlsxUploadInput" type="file" accept=".xlsx" onchange="handleXlsxFileSelect(event)" style="font-size:0.78rem;">
+            <span id="xlsxUploadFileName" style="font-size:0.75rem;color:#64748b;">No file selected</span>
+          </div>
+
+          <div style="margin-bottom:8px;font-size:0.78rem;font-weight:700;color:#1e293b;">Preview (first 10 rows)</div>
+          <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:6px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+              <thead>
+                <tr style="background:#f8fafc;text-align:left;">
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Site Address</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Audit Date</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Observation</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Status</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">CCVS</th>
+                </tr>
+              </thead>
+              <tbody id="xlsxUploadPreviewBody">
+                <tr><td colspan="5" style="padding:12px;text-align:center;color:#94a3b8;">Select an .xlsx file to preview rows.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="xlsxUploadSummary" style="margin-top:8px;font-size:0.75rem;color:#64748b;">
+            0 rows detected · 0 skipped · 0 warnings
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;">
+            <button class="btn btn-ghost" onclick="cancelXlsxUpload()">Cancel</button>
+            <button id="xlsxUploadSubmitBtn" onclick="uploadObservationsXlsx()" disabled style="padding:4px 12px;font-size:0.78rem;font-weight:700;color:#fff;background:#2563eb;border:none;border-radius:6px;cursor:not-allowed;opacity:0.6;">
+              Upload 0 rows to Staging
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:8px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">PDF Imports (Grouped by Site)</h3>
@@ -1811,6 +1862,30 @@ function renderAllObsMobile(obs) {
     let stagingPdfGroupExpanded = {};
     let _stagingLoading = false;
     let _bulkPromoteInProgress = false;
+    let _xlsxUploadOpen = false;
+    let _xlsxUploadUploading = false;
+    let _xlsxUploadState = {
+      file: null,
+      rows: [],
+      skipped: 0,
+      warnings: 0,
+      fatalErrors: [],
+    };
+
+    const XLSX_UPLOAD_MAX_ROWS = 500;
+    const XLSX_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+    const XLSX_REQUIRED_HEADERS = ['site_address', 'audit_date', 'observation_text'];
+    const XLSX_STATUS_MAP = {
+      ncr: 'NCR',
+      compliant: 'Compliant',
+      conditional: 'Conditional',
+      info: 'Info',
+    };
+    const XLSX_VALID_CCVS = new Set([
+      'WAH-H6', 'WAH-H9', 'IRA-H6', 'IRA-H9', 'SIL-H6', 'SIL-H9',
+      'STR-H6', 'STR-H9', 'MOB-H6', 'MOB-M4', 'CHM-M3', 'CHM-H6',
+      'ENE-M4', 'ENE-H6', 'SYS-L1', 'SYS-L2', 'SYS-M3', 'SYS-M4', 'SYS-H6',
+    ]);
 
     const CONFORMANCE_COLOURS = {
       Compliant:   { bg: '#dcfce7', color: '#15803d' },
@@ -1920,6 +1995,353 @@ function renderAllObsMobile(obs) {
       const totalPages = Math.max(1, Math.ceil(stagingPdfRows.length / PAGE_SIZE));
       stagingPdfPage = Math.min(totalPages, Math.max(1, stagingPdfPage + delta));
       renderStagingPdfRows();
+    }
+
+    function _xlsxHeaderKey(value) {
+      return String(value == null ? '' : value).trim().toLowerCase();
+    }
+
+    function _xlsxCellText(value) {
+      return String(value == null ? '' : value).trim();
+    }
+
+    function _xlsxParseDate(value) {
+      if (value == null || value === '') return '';
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toISOString().slice(0, 10);
+      }
+      if (typeof value === 'number') {
+        const parsed = (XLSX && XLSX.SSF && typeof XLSX.SSF.parse_date_code === 'function')
+          ? XLSX.SSF.parse_date_code(value)
+          : null;
+        if (parsed && parsed.y && parsed.m && parsed.d) {
+          const y = String(parsed.y).padStart(4, '0');
+          const m = String(parsed.m).padStart(2, '0');
+          const d = String(parsed.d).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+      }
+      const text = _xlsxCellText(value);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+      if (text.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+      return '';
+    }
+
+    function _xlsxSetUploadButtonState() {
+      const btn = document.getElementById('xlsxUploadSubmitBtn');
+      if (!btn) return;
+      const rowCount = _xlsxUploadState.rows.length;
+      const hasBlockingErrors = _xlsxUploadState.fatalErrors.length > 0;
+      const disabled = _xlsxUploadUploading || !rowCount || hasBlockingErrors;
+      btn.disabled = disabled;
+      btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+      btn.style.opacity = disabled ? '0.6' : '1';
+      btn.textContent = _xlsxUploadUploading
+        ? 'Uploading...'
+        : `Upload ${rowCount} row${rowCount === 1 ? '' : 's'} to Staging`;
+    }
+
+    function _xlsxResetState(clearInput = true) {
+      _xlsxUploadState = {
+        file: null,
+        rows: [],
+        skipped: 0,
+        warnings: 0,
+        fatalErrors: [],
+      };
+      if (clearInput) {
+        const input = document.getElementById('xlsxUploadInput');
+        if (input) input.value = '';
+      }
+      const fileName = document.getElementById('xlsxUploadFileName');
+      if (fileName) fileName.textContent = 'No file selected';
+      _xlsxRenderPreview();
+    }
+
+    function _xlsxRenderPreview() {
+      const body = document.getElementById('xlsxUploadPreviewBody');
+      const summary = document.getElementById('xlsxUploadSummary');
+      if (!body || !summary) return;
+
+      const previewRows = _xlsxUploadState.rows.slice(0, 10);
+      if (!previewRows.length) {
+        body.innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center;color:#94a3b8;">Select an .xlsx file to preview rows.</td></tr>';
+      } else {
+        body.innerHTML = previewRows.map(row => {
+          const observation = row.observation.length > 60
+            ? `${row.observation.slice(0, 60)}...`
+            : row.observation;
+          const statusText = row.status || 'NULL';
+          const ccvsText = row.ccvsCode || 'NULL';
+          const statusHint = row.statusWarning
+            ? `<div style="font-size:0.68rem;color:#64748b;margin-top:2px;">${esc(row.statusWarning)}</div>`
+            : '';
+          const ccvsHint = row.ccvsWarning
+            ? `<div style="font-size:0.68rem;color:#92400e;margin-top:2px;">${esc(row.ccvsWarning)}</div>`
+            : '';
+          const siteHint = row.siteWarning
+            ? `<div style="font-size:0.68rem;color:#92400e;margin-top:2px;">${esc(row.siteWarning)}</div>`
+            : '';
+          return `
+            <tr>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;max-width:220px;">
+                ${esc(row.siteAddress || 'NULL')}
+                ${siteHint}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(row.auditDate)}</td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;max-width:320px;">${esc(observation)}</td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;${row.statusWarning ? 'background:#f8fafc;' : ''}">
+                ${esc(statusText)}
+                ${statusHint}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;${row.ccvsWarning ? 'background:#fef3c7;' : ''}">
+                ${esc(ccvsText)}
+                ${ccvsHint}
+              </td>
+            </tr>`;
+        }).join('');
+      }
+
+      const detected = _xlsxUploadState.rows.length;
+      let summaryText = `${detected} row${detected === 1 ? '' : 's'} detected · ${_xlsxUploadState.skipped} skipped · ${_xlsxUploadState.warnings} warnings`;
+      if (_xlsxUploadState.fatalErrors.length) {
+        summaryText += ` · ${_xlsxUploadState.fatalErrors.length} blocking error${_xlsxUploadState.fatalErrors.length === 1 ? '' : 's'}`;
+      }
+      summary.textContent = summaryText;
+      _xlsxSetUploadButtonState();
+    }
+
+    function toggleXlsxUploadPanel() {
+      _xlsxUploadOpen = !_xlsxUploadOpen;
+      const body = document.getElementById('xlsxUploadBody');
+      const closeBtn = document.getElementById('xlsxUploadCloseBtn');
+      const toggleBtn = document.getElementById('xlsxUploadToggleBtn');
+      if (body) body.style.display = _xlsxUploadOpen ? 'block' : 'none';
+      if (closeBtn) closeBtn.style.display = _xlsxUploadOpen ? 'inline-block' : 'none';
+      if (toggleBtn) toggleBtn.textContent = _xlsxUploadOpen
+        ? 'Hide Upload Observations from XLSX'
+        : 'Upload Observations from XLSX';
+      if (_xlsxUploadOpen) _xlsxRenderPreview();
+    }
+
+    function closeXlsxUploadPanel() {
+      _xlsxUploadOpen = false;
+      const body = document.getElementById('xlsxUploadBody');
+      const closeBtn = document.getElementById('xlsxUploadCloseBtn');
+      const toggleBtn = document.getElementById('xlsxUploadToggleBtn');
+      if (body) body.style.display = 'none';
+      if (closeBtn) closeBtn.style.display = 'none';
+      if (toggleBtn) toggleBtn.textContent = 'Upload Observations from XLSX';
+    }
+
+    function cancelXlsxUpload() {
+      _xlsxResetState();
+      closeXlsxUploadPanel();
+    }
+
+    function downloadXlsxTemplate() {
+      const a = document.createElement('a');
+      a.href = '/static/PIMS_Upload_Template.xlsx';
+      a.download = 'PIMS_Upload_Template.xlsx';
+      a.click();
+    }
+
+    async function handleXlsxFileSelect(event) {
+      const file = event?.target?.files?.[0];
+      _xlsxResetState(false);
+      if (!file) return;
+
+      const fileName = document.getElementById('xlsxUploadFileName');
+      if (fileName) fileName.textContent = file.name;
+
+      if (!file.name.toLowerCase().endsWith('.xlsx')) {
+        showToast('Invalid file type. Please select an .xlsx file.', 'error');
+        return;
+      }
+      if (file.size > XLSX_UPLOAD_MAX_BYTES) {
+        showToast('File exceeds 5MB limit.', 'error');
+        return;
+      }
+
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+        const sheet = wb.Sheets['Observations'];
+        if (!sheet) {
+          throw new Error("Sheet 'Observations' not found");
+        }
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+        const headerRow = rows[2] || [];
+        const headerMap = {};
+        headerRow.forEach((header, idx) => {
+          const key = _xlsxHeaderKey(header);
+          if (key) headerMap[key] = idx;
+        });
+
+        const missing = XLSX_REQUIRED_HEADERS.filter(h => headerMap[h] === undefined);
+        if (missing.length) {
+          throw new Error(`Missing required column(s): ${missing.join(', ')}`);
+        }
+
+        const parsed = [];
+        const fatalErrors = [];
+        let skipped = 0;
+        let warnings = 0;
+
+        for (let i = 4; i < rows.length; i += 1) {
+          const rawRow = Array.isArray(rows[i]) ? rows[i] : [];
+          const get = (name) => rawRow[headerMap[name]];
+
+          const observation = _xlsxCellText(get('observation_text'));
+          if (!observation) {
+            skipped += 1;
+            continue;
+          }
+
+          const auditDate = _xlsxParseDate(get('audit_date'));
+          if (!auditDate) {
+            fatalErrors.push({
+              row: i + 1,
+              field: 'audit_date',
+              message: 'Invalid date format - use YYYY-MM-DD',
+            });
+            continue;
+          }
+
+          const statusRaw = _xlsxCellText(get('conformance_status'));
+          let status = '';
+          let statusWarning = '';
+          if (statusRaw) {
+            status = XLSX_STATUS_MAP[statusRaw.toLowerCase()] || '';
+            if (!status) {
+              fatalErrors.push({
+                row: i + 1,
+                field: 'conformance_status',
+                message: 'Invalid value. Use NCR, Compliant, Conditional, Info, or blank.',
+              });
+              continue;
+            }
+          } else {
+            statusWarning = 'will store as NULL';
+            warnings += 1;
+          }
+
+          const ccvsRaw = _xlsxCellText(get('ccvs_code')).toUpperCase();
+          let ccvsCode = ccvsRaw;
+          let ccvsWarning = '';
+          if (ccvsCode && !XLSX_VALID_CCVS.has(ccvsCode)) {
+            ccvsCode = '';
+            ccvsWarning = 'will store as NULL';
+            warnings += 1;
+          }
+
+          const siteAddress = _xlsxCellText(get('site_address'));
+          let siteWarning = '';
+          if (!siteAddress) {
+            siteWarning = 'enter before promoting';
+            warnings += 1;
+          }
+
+          parsed.push({
+            rowNumber: i + 1,
+            siteAddress,
+            auditDate,
+            observation,
+            status,
+            statusWarning,
+            ccvsCode,
+            ccvsWarning,
+            siteWarning,
+          });
+        }
+
+        if (!parsed.length) {
+          throw new Error('No data rows with observation_text found from row 5 onward');
+        }
+        if (parsed.length > XLSX_UPLOAD_MAX_ROWS) {
+          throw new Error(`Upload limit is ${XLSX_UPLOAD_MAX_ROWS} rows. ${parsed.length} provided.`);
+        }
+
+        _xlsxUploadState = {
+          file,
+          rows: parsed,
+          skipped,
+          warnings,
+          fatalErrors,
+        };
+        _xlsxRenderPreview();
+
+        if (fatalErrors.length) {
+          const first = fatalErrors[0];
+          showToast(
+            `${fatalErrors.length} blocking validation error(s). First: row ${first.row} ${first.field} - ${first.message}`,
+            'error'
+          );
+        }
+      } catch (err) {
+        _xlsxResetState(false);
+        showToast(`Failed to parse XLSX: ${err.message}`, 'error');
+      }
+    }
+
+    async function uploadObservationsXlsx() {
+      if (_xlsxUploadUploading) return;
+      if (!_xlsxUploadState.file || !_xlsxUploadState.rows.length) {
+        showToast('No rows ready for upload.', 'warning');
+        return;
+      }
+      if (_xlsxUploadState.fatalErrors.length) {
+        showToast('Resolve blocking validation errors before upload.', 'error');
+        return;
+      }
+
+      _xlsxUploadUploading = true;
+      _xlsxSetUploadButtonState();
+      try {
+        const formData = new FormData();
+        formData.append('file', _xlsxUploadState.file, _xlsxUploadState.file.name);
+        const resp = await fetch('/pims/upload/observations', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData,
+        });
+        if (!resp.ok) {
+          let msg = `${resp.status}: ${resp.statusText}`;
+          try {
+            const payload = await resp.json();
+            if (payload?.detail) msg = payload.detail;
+          } catch (_ignore) {
+            const text = await resp.text().catch(() => '');
+            if (text) msg = text;
+          }
+          throw new Error(msg);
+        }
+
+        const summary = await resp.json();
+        const inserted = Number(summary.inserted || 0);
+        const skipped = Number(summary.skipped || 0);
+        const flagged = Number(summary.flagged || 0);
+        const errCount = Array.isArray(summary.errors) ? summary.errors.length : 0;
+
+        if (!skipped && !flagged && !errCount) {
+          showToast(`${inserted} row${inserted === 1 ? '' : 's'} uploaded to staging.`, 'success');
+        } else {
+          showToast(
+            `${inserted} inserted, ${skipped} skipped (duplicates), ${flagged} flagged for review${errCount ? `, ${errCount} row error(s)` : ''}.`,
+            'warning'
+          );
+        }
+
+        _xlsxResetState();
+        closeXlsxUploadPanel();
+        await loadStaging();
+      } catch (err) {
+        showToast(`Upload failed: ${err.message}`, 'error');
+      } finally {
+        _xlsxUploadUploading = false;
+        _xlsxSetUploadButtonState();
+      }
     }
 
     async function _stagingExport(endpoint, filename) {
@@ -2392,6 +2814,9 @@ function renderAllObsMobile(obs) {
       document.body.appendChild(el);
       setTimeout(() => { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),350); }, 4500);
     }
+
+_xlsxRenderPreview();
+closeXlsxUploadPanel();
 
 setActiveTab('live', { skipLoad: true });
 updateStagingBadges();
