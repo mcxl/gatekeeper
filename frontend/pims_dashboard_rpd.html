@@ -1596,7 +1596,14 @@ function renderActions() {
     if (o.conformance_status==='NCR') tr.className='row-ncr';
     tr.innerHTML = `
       <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
-      <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id)||'—'}</td>
+      <td style="text-align:center;">
+        ${o.photo_url
+          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
+               <img src="${esc(o.photo_url)}"
+                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+             </a>`
+          : `<span style="color:var(--text-light)">—</span>`}
+      </td>
       <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code)}</td>
@@ -1693,7 +1700,14 @@ function renderAllObs() {
     if (currentTab === 'live') {
       tr.innerHTML = `
         <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
-        <td style="font-size:11px;color:var(--text-light)">${esc(o.photo_id || o.filename) || '—'}</td>
+      <td style="text-align:center;">
+        ${o.photo_url
+          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
+               <img src="${esc(o.photo_url)}"
+                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+             </a>`
+          : `<span style="color:var(--text-light)">—</span>`}
+      </td>
         <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
         <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
