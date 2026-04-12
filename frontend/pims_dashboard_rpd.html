@@ -2835,7 +2835,7 @@ function renderAllObsMobile(obs) {
 
         if (!tabDefaultResolved) {
           tabDefaultResolved = true;
-          setActiveTab(pendingStagingCount > 0 ? 'staging' : 'live', { skipLoad: true });
+      setActiveTab('live', { skipLoad: true });
         }
 
         renderStagingFieldRows();
