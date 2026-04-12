@@ -36,7 +36,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
-from fastapi import APIRouter, BackgroundTasks, Cookie, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Cookie, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -71,8 +71,17 @@ IMAGE_TIMEOUT = httpx.Timeout(5.0, connect=3.0, read=5.0)
 # 5.0 = default for write + pool; connect and read set explicitly.
 IMAGE_CONCURRENCY = 5
 MAX_IMG_BYTES = 10 * 1024 * 1024  # 10 MB hard cap per image
+MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_ROWS = 500
 _ALLOWED_IMG_HOST = "nebdpofqglfyfyqqodni.supabase.co"
 _ALLOWED_IMG_PREFIX = "/storage/v1/object/public/pims-photos/"
+
+VALID_CONFORMANCE_STATUS = {
+    "ncr": "NCR",
+    "compliant": "Compliant",
+    "conditional": "Conditional",
+    "info": "Info",
+}
 
 VALID_CCVS = {
     "WAH-H6", "WAH-H9",
@@ -85,6 +94,17 @@ VALID_CCVS = {
     "SYS-L1", "SYS-L2",
     "SYS-M3", "SYS-M4",
     "SYS-H6",
+}
+
+CCVS_CATEGORY_BY_PREFIX = {
+    "WAH": "Working at Height",
+    "IRA": "Industrial Rope Access",
+    "SIL": "Silica",
+    "STR": "Structural",
+    "MOB": "Mobile Plant",
+    "CHM": "Chemicals",
+    "ENE": "Energy",
+    "SYS": "Systems",
 }
 
 STAGING_COPY_FIELDS = [
@@ -772,6 +792,43 @@ async def _fetch_images(urls: list) -> list:
     return list(await asyncio.gather(*[_one(u) for u in urls]))
 
 
+def _cell_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _parse_upload_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = _cell_text(value).lower()
+    return text in {"true", "1", "yes", "y"}
+
+
+def _parse_upload_date(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = _cell_text(value)
+    if not text:
+        return None
+    candidate = text[:10] if len(text) >= 10 else text
+    try:
+        return date.fromisoformat(candidate).isoformat()
+    except ValueError:
+        return None
+
+
+def _derive_ccvs_category(code: str | None) -> str | None:
+    if not code:
+        return None
+    prefix = code.split("-", 1)[0]
+    return CCVS_CATEGORY_BY_PREFIX.get(prefix)
+
+
 def _drun(para, text, bold=False, italic=False, size_pt=9, color_hex=None):
     run = para.add_run(text)
     run.font.name = "Aptos"
@@ -1071,6 +1128,228 @@ async def download_staging_xlsx(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={fname}"},
     )
+
+
+@router.post("/upload/observations")
+async def upload_observations_xlsx(
+    request: Request,
+    file: UploadFile = File(...),
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not RPD_SUPABASE_URL:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
+
+    filename = _cell_text(file.filename)
+    if not filename.lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Invalid file type - upload a .xlsx file")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > MAX_UPLOAD_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds 5MB limit")
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file - must be a valid .xlsx file",
+        )
+
+    if "Observations" not in wb.sheetnames:
+        raise HTTPException(
+            status_code=422,
+            detail="Sheet 'Observations' not found",
+        )
+
+    ws = wb["Observations"]
+    header_map: dict[str, int] = {}
+    for col_idx, cell in enumerate(ws[3], 1):
+        header = _cell_text(cell.value).lower()
+        if header:
+            header_map[header] = col_idx
+
+    required_headers = {"site_address", "audit_date", "observation_text"}
+    missing = sorted(required_headers - set(header_map))
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Missing required column(s): {', '.join(missing)}",
+        )
+
+    def _cell(row_num: int, col_name: str):
+        col_idx = header_map.get(col_name)
+        if not col_idx:
+            return None
+        return ws.cell(row=row_num, column=col_idx).value
+
+    parsed_rows: list[dict] = []
+    for excel_row in range(5, ws.max_row + 1):
+        observation_text = _cell_text(_cell(excel_row, "observation_text"))
+        if not observation_text:
+            continue
+        parsed_rows.append(
+            {
+                "_row": excel_row,
+                "site_address": _cell(excel_row, "site_address"),
+                "audit_date": _cell(excel_row, "audit_date"),
+                "observation_text": observation_text,
+                "conformance_status": _cell(excel_row, "conformance_status"),
+                "ccvs_code": _cell(excel_row, "ccvs_code"),
+                "ccvs_category": _cell(excel_row, "ccvs_category"),
+                "action_description": _cell(excel_row, "action_description"),
+                "responsible": _cell(excel_row, "responsible"),
+                "due_category": _cell(excel_row, "due_category"),
+                "recommendation": _cell(excel_row, "recommendation"),
+                "monitoring_note": _cell(excel_row, "monitoring_note"),
+                "legal_ref": _cell(excel_row, "legal_ref"),
+                "photo_refs": _cell(excel_row, "photo_refs"),
+                "prepared_by": _cell(excel_row, "prepared_by"),
+                "source_pdf": _cell(excel_row, "source_pdf"),
+                "section": _cell(excel_row, "section"),
+                "needs_review": _cell(excel_row, "needs_review"),
+            }
+        )
+
+    if not parsed_rows:
+        raise HTTPException(
+            status_code=422,
+            detail="No data rows with observation_text found from row 5 onward",
+        )
+    if len(parsed_rows) > MAX_UPLOAD_ROWS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Upload limit is {MAX_UPLOAD_ROWS} rows. {len(parsed_rows)} provided.",
+        )
+
+    headers_repr = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    headers_minimal = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal")
+    inserted = 0
+    skipped = 0
+    flagged = 0
+    errors: list[dict] = []
+    now_utc = datetime.now(timezone.utc).isoformat()
+    fallback_source = filename or "uploaded.xlsx"
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        for row in parsed_rows:
+            row_num = int(row["_row"])
+            observation_text = _cell_text(row.get("observation_text"))
+            audit_date_value = _parse_upload_date(row.get("audit_date"))
+            if not audit_date_value:
+                errors.append(
+                    {
+                        "row": row_num,
+                        "field": "audit_date",
+                        "message": "Invalid date format - use YYYY-MM-DD",
+                    }
+                )
+                continue
+
+            conformance_raw = _cell_text(row.get("conformance_status")).lower()
+            conformance_status = None
+            if conformance_raw:
+                conformance_status = VALID_CONFORMANCE_STATUS.get(conformance_raw)
+                if not conformance_status:
+                    errors.append(
+                        {
+                            "row": row_num,
+                            "field": "conformance_status",
+                            "message": "Invalid value. Use NCR, Compliant, Conditional, Info, or blank.",
+                        }
+                    )
+                    continue
+
+            ccvs_raw = _cell_text(row.get("ccvs_code")).upper()
+            ccvs_invalid = False
+            ccvs_code = ccvs_raw or None
+            if ccvs_code and ccvs_code not in VALID_CCVS:
+                ccvs_code = None
+                ccvs_invalid = True
+
+            ccvs_category = _cell_text(row.get("ccvs_category")) or _cell_text(row.get("section"))
+            if not ccvs_category:
+                ccvs_category = _derive_ccvs_category(ccvs_code)
+            if not ccvs_category:
+                ccvs_category = None
+
+            site_address = _cell_text(row.get("site_address")) or None
+            dup_params = {
+                "select": "id",
+                "limit": "1",
+                "audit_date": f"eq.{audit_date_value}",
+                "observation_text": f"eq.{observation_text}",
+            }
+            dup_params["site_address"] = "is.null" if site_address is None else f"eq.{site_address}"
+            dup_resp = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers_repr,
+                params=dup_params,
+            )
+            dup_resp.raise_for_status()
+            if dup_resp.json():
+                skipped += 1
+                continue
+
+            needs_review = _parse_upload_bool(row.get("needs_review")) or ccvs_invalid
+            insert_row = {
+                "site_address": site_address,
+                "audit_date": audit_date_value,
+                "observation_text": observation_text,
+                "conformance_status": conformance_status,
+                "ccvs_code": ccvs_code,
+                "ccvs_category": ccvs_category,
+                "action_description": _cell_text(row.get("action_description")) or None,
+                "responsible": _cell_text(row.get("responsible")) or None,
+                "due_category": _cell_text(row.get("due_category")) or None,
+                "recommendation": _cell_text(row.get("recommendation")) or None,
+                "monitoring_note": _cell_text(row.get("monitoring_note")) or None,
+                "legal_ref": _cell_text(row.get("legal_ref")) or None,
+                "photo_refs": _cell_text(row.get("photo_refs")) or None,
+                "prepared_by": _cell_text(row.get("prepared_by")) or "Alan Richardson",
+                "source_pdf": _cell_text(row.get("source_pdf")) or fallback_source,
+                "needs_review": needs_review,
+                "staging": True,
+                "enriched": True,
+                "action_required": conformance_status in {"NCR", "Conditional"},
+                "imported_at": now_utc,
+            }
+            insert_resp = await client.post(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers_minimal,
+                json=insert_row,
+            )
+            if insert_resp.status_code not in (200, 201):
+                log.warning(
+                    "Upload insert failed for row %s: %s %s",
+                    row_num,
+                    insert_resp.status_code,
+                    insert_resp.text,
+                )
+                errors.append(
+                    {
+                        "row": row_num,
+                        "field": "row",
+                        "message": "Failed to insert this row.",
+                    }
+                )
+                continue
+
+            inserted += 1
+            if needs_review:
+                flagged += 1
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+        "flagged": flagged,
+        "errors": errors,
+    }
 
 
 @router.get("/observations/rpd")
