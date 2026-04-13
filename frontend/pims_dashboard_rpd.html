@@ -10,7 +10,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -695,6 +694,309 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   font-weight: 600;
 }
 
+.btn-orange {
+  background: #F47920;
+  color: #fff;
+  border: none;
+}
+.btn-orange:hover {
+  background: #e16d18;
+  transform: translateY(-1px);
+}
+
+.manager-board {
+  padding: 0;
+}
+.manager-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.manager-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.manager-period {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.manager-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.period-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.period-btn {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.period-btn.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+.manager-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) minmax(180px, 1fr) minmax(180px, 1fr);
+  gap: 14px;
+  padding: 14px;
+}
+.manager-main,
+.manager-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.manager-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.manager-ccvs-panel {
+  overflow: visible;
+}
+.manager-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.manager-site-table td {
+  font-size: 11px;
+}
+.manager-site-table tr.site-alert td {
+  background: rgba(220, 38, 38, 0.14);
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 12px;
+}
+.metric-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.metric-value {
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+  font-weight: 800;
+  margin-top: 6px;
+}
+.metric-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-light);
+}
+.metric-progress {
+  margin-top: 8px;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--card);
+  overflow: hidden;
+}
+.metric-progress > div {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+  transition: width 0.3s ease;
+}
+.metric-delta {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.delta-good { color: var(--green-text); }
+.delta-bad { color: var(--red-text); }
+.delta-flat { color: var(--text-light); }
+
+.metric-compliance .metric-value {
+  color: var(--green-text);
+}
+.metric-compliance.metric-warn .metric-value,
+.metric-conditional .metric-value {
+  color: var(--amber-text);
+}
+.metric-compliance.metric-bad .metric-value,
+.metric-ncr .metric-value,
+.metric-open .metric-value {
+  color: var(--red-text);
+}
+
+.ccvs-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.ccvs-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+}
+.ccvs-badge-wrap {
+  position: relative;
+}
+.ccvs-code-btn {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.ccvs-code-btn.tone-red { background: var(--red); }
+.ccvs-code-btn.tone-amber { background: var(--amber); }
+.ccvs-code-btn.tone-green { background: var(--green); }
+.ccvs-code-btn.tone-blue { background: var(--blue); }
+
+.ccvs-info-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.45);
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+.ccvs-track {
+  height: 24px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  display: flex;
+}
+.ccvs-seg {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ccvs-seg.ncr { background: var(--red); }
+.ccvs-seg.conditional { background: var(--amber); }
+.ccvs-seg.compliant { background: var(--green); }
+.ccvs-total {
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.ccvs-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  width: 260px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: var(--shadow-md);
+  display: none;
+}
+.ccvs-tooltip.open { display: block; }
+.ccvs-tip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ccvs-tip-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ccvs-tip-pill {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.ccvs-tip-pill.high { background: var(--red-bg); color: var(--red-text); }
+.ccvs-tip-pill.medium { background: var(--amber-bg); color: var(--amber-text); }
+.ccvs-tip-pill.low { background: var(--green-bg); color: var(--green-text); }
+.ccvs-tip-meta {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+.ccvs-tip-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.ccvs-tip-stat {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 6px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ccvs-tip-stat strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.ccvs-tip-line {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.ccvs-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
 /* ── Dark-theme overrides for inline-styled staging/upload blocks ── */
 #staging-section,
 #staging-section h2,
@@ -735,8 +1037,9 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 
 /* ── Responsive ── */
 @media (max-width: 1000px) {
-  .kpi-row    { grid-template-columns: repeat(3,1fr); }
-  .charts-row { grid-template-columns: 1fr; }
+  .manager-grid { grid-template-columns: 1fr; }
+  .manager-side { flex-direction: row; flex-wrap: wrap; }
+  .manager-side .metric-card { flex: 1 1 220px; }
 }
 
 /* ── Mobile (≤640px) ── */
@@ -799,20 +1102,39 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
     font-size: 12px;
   }
 
-  /* KPI — 2 col */
-  .kpi-row {
-    grid-template-columns: repeat(2,1fr);
-    gap: 10px;
+  /* Manager board */
+  .manager-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
-  .kpi-card { padding: 14px 14px 12px; border-radius: var(--r-md); }
-  .kpi-icon { width: 28px; height: 28px; font-size: 13px; margin-bottom: 10px; border-radius: 8px; }
-  .kpi-value { font-size: 28px; letter-spacing: -1.5px; }
-  .kpi-label { font-size: 9px; }
-  .kpi-sub   { font-size: 10px; }
-
-  /* Charts */
-  .charts-row { grid-template-columns: 1fr; gap: 12px; }
-  canvas { max-height: 180px; }
+  .manager-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .period-toggle {
+    width: 100%;
+  }
+  .period-btn {
+    flex: 1 1 0;
+    text-align: center;
+  }
+  .manager-grid {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .manager-side {
+    flex-direction: column;
+  }
+  .metric-value {
+    font-size: 26px;
+  }
+  .ccvs-row {
+    grid-template-columns: 84px 1fr 40px;
+    gap: 8px;
+  }
+  .ccvs-tooltip {
+    width: min(260px, calc(100vw - 56px));
+  }
 
   /* Cards */
   .card { border-radius: var(--r-md); }
@@ -1007,83 +1329,80 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     </button>
     <button class="view-tab" data-tab="historical" onclick="setActiveTab('historical')">Historical</button>
   </div>
-
-  <!-- KPIs -->
-  <div class="kpi-row" id="live-kpi-row">
-    <div class="kpi-card total">
-      <div class="kpi-icon">📋</div>
-      <div class="kpi-label">Total Observations</div>
-      <div class="kpi-value" id="kpiTotal">—</div>
-      <div class="kpi-sub" id="kpiAuditLabel">—</div>
+  <!-- Live Manager Board -->
+  <section class="card manager-board" id="live-manager-board">
+    <div class="manager-head">
+      <div>
+        <div class="manager-title">Live Audit Manager Board</div>
+        <div class="manager-period" id="managerPeriodLabel">Week --</div>
+      </div>
+      <div class="manager-controls">
+        <div class="period-toggle">
+          <button class="period-btn active" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
+          <button class="period-btn" id="periodBtnMonth" onclick="setKpiPeriod('month')">Month</button>
+          <button class="period-btn" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
+        </div>
+        <button class="btn btn-orange" onclick="downloadManagerReport()">Download Report</button>
+      </div>
     </div>
-    <div class="kpi-card compliant">
-      <div class="kpi-icon">✓</div>
-      <div class="kpi-label">Compliant</div>
-      <div class="kpi-value" id="kpiCompliant">—</div>
-      <div class="kpi-sub" id="kpiCompliantPct">—</div>
+    <div class="manager-grid">
+      <div class="manager-main">
+        <div class="manager-panel">
+          <div class="manager-panel-title">Site Breakdown</div>
+          <div class="table-wrap">
+            <table class="dt manager-site-table">
+              <thead>
+                <tr>
+                  <th style="padding-left:14px;">Site Address</th>
+                  <th style="text-align:center;">NCR</th>
+                  <th style="text-align:center;">Conditional</th>
+                  <th style="text-align:center;">Compliant</th>
+                  <th style="text-align:center;padding-right:14px;">Total</th>
+                </tr>
+              </thead>
+              <tbody id="managerSiteBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="manager-panel manager-ccvs-panel">
+          <div class="manager-panel-title">CCVS Monitoring & Measurement</div>
+          <div id="managerCcvsBars" class="ccvs-bars"></div>
+        </div>
+      </div>
+      <div class="manager-side">
+        <div class="metric-card metric-compliance">
+          <div class="metric-label">Compliance Rate</div>
+          <div class="metric-value" id="metricComplianceValue">0%</div>
+          <div class="metric-sub" id="metricComplianceTarget">Target: 85%</div>
+          <div class="metric-progress"><div id="metricComplianceProgress"></div></div>
+          <div class="metric-delta" id="metricComplianceDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Observations</div>
+          <div class="metric-value" id="metricTotalValue">0</div>
+          <div class="metric-delta" id="metricTotalDelta">- 0 vs prev week</div>
+        </div>
+      </div>
+      <div class="manager-side">
+        <div class="metric-card metric-ncr">
+          <div class="metric-label">NCR</div>
+          <div class="metric-value" id="metricNcrValue">0</div>
+          <div class="metric-delta" id="metricNcrDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card metric-open">
+          <div class="metric-label">Open Actions</div>
+          <div class="metric-value" id="metricOpenValue">0</div>
+          <div class="metric-delta" id="metricOpenDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card metric-conditional">
+          <div class="metric-label">Conditional</div>
+          <div class="metric-value" id="metricConditionalValue">0</div>
+          <div class="metric-delta" id="metricConditionalDelta">- 0 vs prev week</div>
+        </div>
+      </div>
     </div>
-    <div class="kpi-card conditional">
-      <div class="kpi-icon">⚡</div>
-      <div class="kpi-label">Conditional</div>
-      <div class="kpi-value" id="kpiConditional">—</div>
-      <div class="kpi-sub">Actions with conditions</div>
-    </div>
-    <div class="kpi-card ncr">
-      <div class="kpi-icon">⚠</div>
-      <div class="kpi-label">Non-Conformances</div>
-      <div class="kpi-value" id="kpiNcr">—</div>
-      <div class="kpi-sub">Require immediate action</div>
-    </div>
-    <div class="kpi-card open">
-      <div class="kpi-icon">🔓</div>
-      <div class="kpi-label">Open Actions</div>
-      <div class="kpi-value" id="kpiOpen">—</div>
-      <div class="kpi-sub" id="kpiOpenPct">—</div>
-    </div>
-  </div>
+  </section>
   <div class="kpi-scope-note" id="kpi-scope-note">Live audit records only</div>
-
-  <!-- Charts -->
-  <div class="charts-row" id="live-charts-row">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Conformance by CCVS Category</span>
-      </div>
-      <div class="card-body"><canvas id="chartCategory"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Status Breakdown</span>
-      </div>
-      <div class="card-body" style="display:flex;align-items:center;justify-content:center">
-        <canvas id="chartDonut"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- CCVS Monitoring -->
-  <div class="card" id="live-ccvs-card">
-    <div class="card-header">
-      <span class="card-title">CCVS Monitoring & Measurement</span>
-      <span class="card-meta">Click Update on any open action to record close-out</span>
-    </div>
-    <div class="card-body table-wrap" style="padding:0">
-      <table class="dt" id="ccvsTable">
-        <thead>
-          <tr>
-            <th style="padding-left:20px">CCVS Code</th>
-            <th>Category</th>
-            <th>Observations</th>
-            <th>NCR</th>
-            <th>Conditional</th>
-            <th>Open Actions</th>
-            <th style="min-width:160px;padding-right:20px">Compliance Rate</th>
-          </tr>
-        </thead>
-        <tbody id="ccvsTableBody"></tbody>
-      </table>
-    </div>
-  </div>
 
   <!-- Open Actions -->
   <div class="card" id="live-actions-card">
@@ -1345,10 +1664,12 @@ function esc(s) {
 }
 
 // ── State ──
-let allAudits = [], allObs = [], filtered = [], charts = {}, editingId = null;
+let allAudits = [], allObs = [], filtered = [], editingId = null;
 let currentTab = 'live';
 let pendingStagingCount = 0;
 let tabDefaultResolved = false;
+let kpiPeriod = 'week';
+let activeCcvsTooltip = null;
 const PAGE_SIZE = 25;
 let liveObsPage = 1;
 let historicalObsPage = 1;
@@ -1358,9 +1679,54 @@ function badge(status) {
   const map = { Compliant:'compliant', Conditional:'conditional', NCR:'ncr', Info:'info', Open:'open', 'In Progress':'inprogress', Closed:'closed', 'N/A':'na' };
   return `<span class="badge badge-${map[status]||'na'}">${esc(status || 'N/A')}</span>`;
 }
-function ccvs(code) {
-  return code ? `<span class="ccvs-chip">${esc(code)}</span>` : '<span style="color:var(--text-light)">—</span>';
+function renderCcvsBadge(code, count = 0, detail = {}) {
+  const normalized = String(code || '').trim();
+  if (!normalized) return '<span style="color:var(--text-light)">—</span>';
+
+  const info = CCVS_INFO[normalized] || {};
+  const ncr = Math.max(0, Number(detail.ncr || 0));
+  const conditional = Math.max(0, Number(detail.conditional || 0));
+  let compliant = Math.max(0, Number(detail.compliant || 0));
+  let total = Math.max(0, Number(count || 0));
+
+  if (!total) total = ncr + conditional + compliant;
+  if (!total) total = 1;
+  if (!compliant && ncr + conditional < total) compliant = total - ncr - conditional;
+
+  const tone = badgeToneForCounts(ncr, conditional, compliant);
+  const risk = riskLevelForCode(normalized, ncr, conditional);
+  const tooltipId = `ccvsTip-${ccvsCodeToId(normalized)}-${Math.random().toString(36).slice(2, 8)}`;
+  const compareLabel = detail.compareLabel || 'period';
+  const category = detail.category || info.category || 'General';
+
+  return `
+    <div class="ccvs-badge-wrap">
+      <button class="ccvs-code-btn tone-${tone}" onclick="toggleCcvsTooltip(event, '${tooltipId}')">
+        ${esc(normalized)} <span class="ccvs-info-dot">i</span>
+      </button>
+      <div class="ccvs-tooltip" id="${tooltipId}">
+        <div class="ccvs-tip-head">
+          <span class="ccvs-tip-code">${esc(normalized)}</span>
+          <span class="ccvs-tip-pill ${riskClass(risk)}">${risk} risk</span>
+        </div>
+        <div class="ccvs-tip-meta">${esc(category)}</div>
+        <div class="ccvs-tip-stats">
+          <div class="ccvs-tip-stat">NCR<strong>${ncr}</strong></div>
+          <div class="ccvs-tip-stat">Cond<strong>${conditional}</strong></div>
+          <div class="ccvs-tip-stat">OK<strong>${compliant}</strong></div>
+        </div>
+        <div class="ccvs-tip-line">${esc(info.description || 'Control code summary for current period activity.')}</div>
+        <div class="ccvs-tip-line"><strong>Key controls:</strong> ${esc(info.controls || 'Apply risk controls, supervision, and verified close-out actions.')}</div>
+        <div class="ccvs-tip-line"><strong>Regulation references:</strong> ${esc(info.regs || 'WHS Act and Regulations relevant to this control.')}</div>
+        <div class="ccvs-tip-meta">Current ${esc(compareLabel)}</div>
+      </div>
+    </div>`;
 }
+
+function ccvs(code) {
+  return renderCcvsBadge(code);
+}
+
 function dueLabel(d) {
   if (d==='Immediate') return `<span class="due-immediate">⚡ Immediate</span>`;
   if (d==='Next audit') return `<span class="due-next">Next audit</span>`;
@@ -1448,7 +1814,7 @@ function updateTabSections() {
   const showHistorical = currentTab === 'historical';
   const showStaging = currentTab === 'staging';
 
-  ['live-kpi-row', 'kpi-scope-note', 'live-charts-row', 'live-ccvs-card', 'live-actions-card']
+  ['live-manager-board', 'kpi-scope-note', 'live-actions-card']
     .forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = showLive ? '' : 'none';
@@ -1499,9 +1865,7 @@ function applyFilters(options = {}) {
 
   if (currentTab === 'live') {
     filtered = liveOnly;
-    renderKPIs();
-    renderCharts();
-    renderCcvsTable();
+    renderManagerBoard();
     renderActions();
     renderAllObs();
     return;
@@ -1542,103 +1906,390 @@ function updateStagingBadges() {
 }
 
 // ── KPIs ──
-function renderKPIs() {
-  const total     = filtered.length;
-  const compliant = filtered.filter(o=>o.conformance_status==='Compliant').length;
-  const cond      = filtered.filter(o=>o.conformance_status==='Conditional').length;
-  const ncr       = filtered.filter(o=>o.conformance_status==='NCR').length;
-  const open      = filtered.filter(o=>o.action_required && o.closeout_status!=='Closed').length;
-  animateCount(document.getElementById('kpiTotal'),     total);
-  animateCount(document.getElementById('kpiCompliant'), compliant);
-  animateCount(document.getElementById('kpiConditional'), cond);
-  animateCount(document.getElementById('kpiNcr'),       ncr);
-  animateCount(document.getElementById('kpiOpen'),      open);
-  const cpct = total > 0 ? Math.round(compliant/total*100) : 0;
-  document.getElementById('kpiCompliantPct').textContent = `${cpct}% conformance rate`;
-  document.getElementById('kpiOpenPct').textContent      = `${total>0?Math.round(open/total*100):0}% of observations`;
-  const sites = [...new Set(filtered.map(o=>o.pims_audits?.site_name).filter(Boolean))];
-  document.getElementById('kpiAuditLabel').textContent   = sites.length===1 ? sites[0] : `${sites.length} sites`;
+const CCVS_INFO = {
+  'WAH-H6': { category: 'Work at Height', description: 'Scaffold, edge and fall exposure control.', controls: 'Certified scaffolds, exclusion zones, compliant anchors.', regs: 'WHS Regs: falls and temporary works.' },
+  'WAH-H9': { category: 'Work at Height', description: 'High-risk edge protection and rescue readiness.', controls: 'Restraint systems, rescue planning, permit checks.', regs: 'WHS Regs: fall prevention and rescue.' },
+  'IRA-H6': { category: 'Industrial Rope Access', description: 'Rope access operations and anchor integrity.', controls: 'IRATA methods, anchor inspection, dual-rope setup.', regs: 'WHS Regs: high-risk work at height.' },
+  'IRA-H9': { category: 'Industrial Rope Access', description: 'Complex rope access with elevated risk profile.', controls: 'Supervisor sign-off, rescue drills, weather hold points.', regs: 'WHS Regs: high-risk access systems.' },
+  'SIL-H6': { category: 'Silica', description: 'Respirable crystalline silica generation controls.', controls: 'Wet-cutting, extraction, fit-tested RPE.', regs: 'WHS Regs: hazardous chemicals and airborne contaminants.' },
+  'SIL-H9': { category: 'Silica', description: 'High-exposure silica task management.', controls: 'Task isolation, exposure monitoring, health surveillance.', regs: 'WHS Regs: silica and worker exposure limits.' },
+  'STR-H6': { category: 'Structural', description: 'Structural stability and temporary support risks.', controls: 'Engineer hold points, shoring verification, load limits.', regs: 'WHS Regs: structural safety and temporary works.' },
+  'STR-H9': { category: 'Structural', description: 'Critical structural defect or instability concerns.', controls: 'Immediate barricade, engineer escalation, stop-work.', regs: 'WHS Regs: principal contractor duties.' },
+  'MOB-H6': { category: 'Mobile Plant', description: 'Plant movement and strike risk in work zones.', controls: 'Spotters, separation, traffic management plan.', regs: 'WHS Regs: powered mobile plant operations.' },
+  'MOB-M4': { category: 'Mobile Plant', description: 'Moderate plant interaction and control checks.', controls: 'Pre-start checks, operator competency, exclusion zones.', regs: 'WHS Regs: plant safety obligations.' },
+  'CHM-M3': { category: 'Chemicals', description: 'Chemical handling and storage control quality.', controls: 'SDS access, labelling, bunding and spill readiness.', regs: 'WHS Regs: hazardous chemical management.' },
+  'CHM-H6': { category: 'Chemicals', description: 'High-risk chemical use or incompatible storage.', controls: 'Segregation, ventilation, PPE and emergency controls.', regs: 'WHS Regs: hazardous substances and incident response.' },
+  'ENE-M4': { category: 'Energy Isolation', description: 'Isolation controls for plant and energy sources.', controls: 'LOTO process, test-for-dead verification.', regs: 'WHS Regs: electrical and stored energy controls.' },
+  'ENE-H6': { category: 'Energy Isolation', description: 'High-risk live energy or inadequate isolation.', controls: 'Isolation authority, permit to work, lock verification.', regs: 'WHS Regs: electrical safety and permit systems.' },
+  'SYS-L1': { category: 'Systems', description: 'Low-risk system conformance observation.', controls: 'Routine checks, record integrity, supervision.', regs: 'WHS Act: primary duty of care.' },
+  'SYS-L2': { category: 'Systems', description: 'Minor systems gap requiring close follow-up.', controls: 'Update procedures, toolbox communication, verification.', regs: 'WHS Act: consultation and training.' },
+  'SYS-M3': { category: 'Systems', description: 'Moderate system weakness affecting control reliability.', controls: 'Management review, corrective action assignment.', regs: 'WHS Act: risk management obligations.' },
+  'SYS-M4': { category: 'Systems', description: 'Material system failure trending toward NCR exposure.', controls: 'Escalation, assurance checks, close-out tracking.', regs: 'WHS Act: officer due diligence duties.' },
+  'SYS-H6': { category: 'Systems', description: 'High-risk control system failure requiring urgent action.', controls: 'Immediate corrective controls and executive escalation.', regs: 'WHS Act and Regulations: critical risk controls.' },
+};
+
+function parseIsoDate(value) {
+  const text = String(value == null ? '' : value).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]) - 1;
+  const d = Number(match[3]);
+  const dt = new Date(y, m, d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-// ── Charts ──
-function renderCharts() {
-  const cats = [...new Set(filtered.map(o=>o.ccvs_category).filter(Boolean))].sort();
-  if (charts.cat) charts.cat.destroy();
-  charts.cat = new Chart(document.getElementById('chartCategory').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: cats,
-      datasets: [
-        { label:'Compliant',   data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Compliant').length),   backgroundColor:'#E6FAF4', borderColor:'#00C48C', borderWidth:1.5, borderRadius:4 },
-        { label:'Conditional', data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='Conditional').length), backgroundColor:'#FEF3C7', borderColor:'#F59E0B', borderWidth:1.5, borderRadius:4 },
-        { label:'NCR',         data: cats.map(c=>filtered.filter(o=>o.ccvs_category===c&&o.conformance_status==='NCR').length),         backgroundColor:'#FEE2E2', borderColor:'#EF4444', borderWidth:1.5, borderRadius:4 },
-      ]
-    },
-    options: {
-      responsive:true,
-      plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'Sora', size:11 }, boxRadius:4, padding:16 } } },
-      scales:{
-        x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ family:'Sora', size:11 } } },
-        y:{ stacked:true, beginAtZero:true, grid:{ color:'rgba(10,22,40,0.05)' }, ticks:{ stepSize:1, font:{ family:'Sora', size:11 } } }
-      }
-    }
-  });
+function addDays(dateObj, days) {
+  const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
-  const c = filtered.filter(o=>o.conformance_status==='Compliant').length;
-  const co= filtered.filter(o=>o.conformance_status==='Conditional').length;
-  const n = filtered.filter(o=>o.conformance_status==='NCR').length;
-  const i = filtered.filter(o=>o.conformance_status==='Info').length;
-  if (charts.donut) charts.donut.destroy();
-  charts.donut = new Chart(document.getElementById('chartDonut').getContext('2d'), {
-    type:'doughnut',
-    data:{
-      labels:['Compliant','Conditional','NCR','Info'],
-      datasets:[{ data:[c,co,n,i], backgroundColor:['#E6FAF4','#FEF3C7','#FEE2E2','#EFF6FF'], borderColor:['#00C48C','#F59E0B','#EF4444','#3B82F6'], borderWidth:2, hoverOffset:6 }]
-    },
-    options:{
-      responsive:true, cutout:'68%',
-      plugins:{
-        legend:{ position:'bottom', labels:{ font:{ family:'Sora', size:11 }, boxRadius:4, padding:14 } },
-        tooltip:{ callbacks:{ label:(ctx)=>{ const t=ctx.dataset.data.reduce((a,b)=>a+b,0); return ` ${ctx.label}: ${ctx.raw} (${t>0?Math.round(ctx.raw/t*100):0}%)`; } } }
-      }
-    }
+function addMonths(dateObj, months) {
+  return new Date(dateObj.getFullYear(), dateObj.getMonth() + months, 1);
+}
+
+function startOfIsoWeek(dateObj) {
+  const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  const day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function getIsoWeekNumber(dateObj) {
+  const tmp = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+}
+
+function formatShortDate(dateObj) {
+  return dateObj.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
+function getPeriodWindow(period, offset = 0) {
+  const now = new Date();
+  if (period === 'month') {
+    const start = addMonths(new Date(now.getFullYear(), now.getMonth(), 1), offset);
+    const end = addMonths(start, 1);
+    return {
+      start,
+      end,
+      label: start.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' }),
+      compareLabel: 'month',
+    };
+  }
+  if (period === 'quarter') {
+    const qMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = addMonths(new Date(now.getFullYear(), qMonth, 1), offset * 3);
+    const end = addMonths(start, 3);
+    const q = Math.floor(start.getMonth() / 3) + 1;
+    return {
+      start,
+      end,
+      label: `Q${q} ${start.getFullYear()}`,
+      compareLabel: 'quarter',
+    };
+  }
+  const thisWeekStart = startOfIsoWeek(now);
+  const start = addDays(thisWeekStart, offset * 7);
+  const end = addDays(start, 7);
+  const weekNo = getIsoWeekNumber(start);
+  const rangeEnd = addDays(end, -1);
+  return {
+    start,
+    end,
+    label: `Week ${weekNo} · ${formatShortDate(start)}-${formatShortDate(rangeEnd)}`,
+    compareLabel: 'week',
+  };
+}
+
+function getRowDate(row) {
+  return parseIsoDate(row.observation_date || row.audit_date);
+}
+
+function rowsForWindow(rows, window) {
+  return rows.filter(row => {
+    const dt = getRowDate(row);
+    return dt && dt >= window.start && dt < window.end;
   });
 }
 
-// ── CCVS table ──
-function renderCcvsTable() {
-  const tbody = document.getElementById('ccvsTableBody');
-  tbody.innerHTML = '';
-  const codes = [...new Set(filtered.map(o=>o.ccvs_code).filter(Boolean))].sort();
-  if (!codes.length) { tbody.innerHTML='<tr><td colspan="7" class="empty-state">No CCVS data for current filters</td></tr>'; return; }
-  codes.forEach(code => {
-    const rows  = filtered.filter(o=>o.ccvs_code===code);
-    const cat   = rows[0]?.ccvs_category||'—';
-    const total = rows.length;
-    const ncr   = rows.filter(o=>o.conformance_status==='NCR').length;
-    const cond  = rows.filter(o=>o.conformance_status==='Conditional').length;
-    const open  = rows.filter(o=>o.action_required&&o.closeout_status!=='Closed').length;
-    const pct   = total>0 ? Math.round((total-ncr-cond)/total*100) : 100;
-    const col   = pct>=80?'#00C48C':pct>=60?'#F59E0B':'#EF4444';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="padding-left:20px">${ccvs(code)}</td>
-      <td style="color:var(--text-muted)">${esc(cat)}</td>
-      <td style="text-align:center;font-weight:700">${total}</td>
-      <td style="text-align:center">${ncr>0?`<span style="color:var(--red-text);font-weight:700">${ncr}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
-      <td style="text-align:center">${cond>0?`<span style="color:var(--amber-text);font-weight:700">${cond}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
-      <td style="text-align:center">${open>0?`<span style="color:var(--red-text);font-weight:700">${open}</span>`:'<span style="color:var(--text-light)">0</span>'}</td>
-      <td style="padding-right:20px">
-        <div class="prog-wrap">
-          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>
-          <span class="prog-pct" style="color:${col}">${pct}%</span>
+function computeLiveMetrics(rows) {
+  const total = rows.length;
+  const compliant = rows.filter(r => r.conformance_status === 'Compliant').length;
+  const conditional = rows.filter(r => r.conformance_status === 'Conditional').length;
+  const ncr = rows.filter(r => r.conformance_status === 'NCR').length;
+  const open = rows.filter(r => r.action_required && r.closeout_status !== 'Closed').length;
+  return { total, compliant, conditional, ncr, open };
+}
+
+function deltaMarkup(currentValue, previousValue, compareLabel, upIsGood = true, asPercent = false) {
+  const delta = currentValue - previousValue;
+  if (delta === 0) {
+    return `<span class="delta-flat">— 0${asPercent ? '%' : ''} vs prev ${compareLabel}</span>`;
+  }
+  const isUp = delta > 0;
+  const isGood = upIsGood ? isUp : !isUp;
+  const cls = isGood ? 'delta-good' : 'delta-bad';
+  const arrow = isUp ? '▲' : '▼';
+  const magnitude = Math.abs(delta);
+  return `<span class="${cls}">${arrow} ${isUp ? '+' : '-'}${magnitude}${asPercent ? '%' : ''} vs prev ${compareLabel}</span>`;
+}
+
+function badgeToneForCounts(ncr, conditional, compliant) {
+  if (ncr > 0) return 'red';
+  if (conditional > 0) return 'amber';
+  if (compliant > 0) return 'green';
+  return 'blue';
+}
+
+function riskLevelForCode(code, ncr, conditional) {
+  if (ncr > 0) return 'High';
+  if (conditional > 0) return 'Medium';
+  if (/-L\d$/i.test(code || '')) return 'Low';
+  if (/-M\d$/i.test(code || '')) return 'Medium';
+  return 'High';
+}
+
+function riskClass(level) {
+  if (level === 'High') return 'high';
+  if (level === 'Medium') return 'medium';
+  return 'low';
+}
+
+function ccvsCodeToId(code) {
+  return String(code || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function setKpiPeriod(period) {
+  if (!['week', 'month', 'quarter'].includes(period)) return;
+  kpiPeriod = period;
+  renderManagerBoard();
+}
+
+function closeCcvsTooltips(exceptId = null) {
+  document.querySelectorAll('.ccvs-tooltip.open').forEach(el => {
+    if (!exceptId || el.id !== exceptId) el.classList.remove('open');
+  });
+  if (!exceptId) activeCcvsTooltip = null;
+}
+
+function toggleCcvsTooltip(event, tooltipId) {
+  if (event) event.stopPropagation();
+  const tip = document.getElementById(tooltipId);
+  if (!tip) return;
+  const willOpen = !tip.classList.contains('open');
+  closeCcvsTooltips(tooltipId);
+  tip.classList.toggle('open', willOpen);
+  if (willOpen) {
+    tip.style.top = '';
+    tip.style.bottom = '';
+    let badge = null;
+    if (event && event.currentTarget && typeof event.currentTarget.closest === 'function') {
+      badge = event.currentTarget.closest('.ccvs-badge-wrap');
+    }
+    if (badge) {
+      const rect = badge.getBoundingClientRect();
+      const tooltipHeight = 220;
+      if (rect.bottom + tooltipHeight > window.innerHeight) {
+        tip.style.top = 'auto';
+        tip.style.bottom = 'calc(100% + 6px)';
+      } else {
+        tip.style.top = 'calc(100% + 6px)';
+        tip.style.bottom = 'auto';
+      }
+    }
+  }
+  activeCcvsTooltip = willOpen ? tooltipId : null;
+}
+
+function buildCcvsSummary(rows) {
+  const map = new Map();
+  rows.forEach(row => {
+    const code = String(row.ccvs_code || '').trim();
+    if (!code) return;
+    if (!map.has(code)) {
+      map.set(code, {
+        code,
+        category: row.ccvs_category || CCVS_INFO[code]?.category || 'General',
+        total: 0,
+        ncr: 0,
+        conditional: 0,
+        compliant: 0,
+      });
+    }
+    const s = map.get(code);
+    s.total += 1;
+    if (row.conformance_status === 'NCR') s.ncr += 1;
+    else if (row.conformance_status === 'Conditional') s.conditional += 1;
+    else if (row.conformance_status === 'Compliant') s.compliant += 1;
+  });
+  return Array.from(map.values()).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code));
+}
+
+function renderCcvsBars(containerId, rows, compareLabel) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const summary = buildCcvsSummary(rows);
+  if (!summary.length) {
+    container.innerHTML = '<div class="ccvs-empty">No CCVS observations for current period.</div>';
+    return;
+  }
+  container.innerHTML = summary.map(item => {
+    const total = item.total || 1;
+    const ncrPct = Math.round((item.ncr / total) * 100);
+    const condPct = Math.round((item.conditional / total) * 100);
+    const compPct = Math.max(0, 100 - ncrPct - condPct);
+    return `
+      <div class="ccvs-row">
+        ${renderCcvsBadge(item.code, item.total, {
+          ncr: item.ncr,
+          conditional: item.conditional,
+          compliant: item.compliant,
+          category: item.category,
+          compareLabel,
+        })}
+        <div class="ccvs-track">
+          ${ncrPct > 0 ? `<div class="ccvs-seg ncr" style="width:${ncrPct}%">${ncrPct >= 18 ? item.ncr : ''}</div>` : ''}
+          ${condPct > 0 ? `<div class="ccvs-seg conditional" style="width:${condPct}%">${condPct >= 18 ? item.conditional : ''}</div>` : ''}
+          ${compPct > 0 ? `<div class="ccvs-seg compliant" style="width:${compPct}%">${compPct >= 18 ? item.compliant : ''}</div>` : ''}
         </div>
-      </td>`;
-    tbody.appendChild(tr);
-  });
+        <div class="ccvs-total">${item.total}</div>
+      </div>`;
+  }).join('');
 }
 
-// ── Actions table ──
+function renderManagerSiteTable(rows) {
+  const tbody = document.getElementById('managerSiteBody');
+  if (!tbody) return;
+  const siteMap = new Map();
+  rows.forEach(row => {
+    const site = String(row.site_address || '').trim() || 'No site address';
+    if (!siteMap.has(site)) {
+      siteMap.set(site, { site, ncr: 0, conditional: 0, compliant: 0, total: 0 });
+    }
+    const s = siteMap.get(site);
+    s.total += 1;
+    if (row.conformance_status === 'NCR') s.ncr += 1;
+    else if (row.conformance_status === 'Conditional') s.conditional += 1;
+    else if (row.conformance_status === 'Compliant') s.compliant += 1;
+  });
+  const rowsOut = Array.from(siteMap.values())
+    .sort((a, b) => b.ncr - a.ncr || b.total - a.total || a.site.localeCompare(b.site));
+  if (!rowsOut.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No live observations in selected period.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rowsOut.map(site => `
+    <tr class="${site.ncr > 0 ? 'site-alert' : ''}">
+      <td style="padding-left:14px;max-width:260px;">${esc(site.site)}</td>
+      <td style="text-align:center;font-weight:700;color:${site.ncr > 0 ? 'var(--red-text)' : 'var(--text-light)'};">${site.ncr}</td>
+      <td style="text-align:center;font-weight:700;color:${site.conditional > 0 ? 'var(--amber-text)' : 'var(--text-light)'};">${site.conditional}</td>
+      <td style="text-align:center;font-weight:700;color:${site.compliant > 0 ? 'var(--green-text)' : 'var(--text-light)'};">${site.compliant}</td>
+      <td style="text-align:center;padding-right:14px;font-weight:700;">${site.total}</td>
+    </tr>
+  `).join('');
+}
+
+function renderManagerBoard() {
+  const currentWindow = getPeriodWindow(kpiPeriod, 0);
+  const previousWindow = getPeriodWindow(kpiPeriod, -1);
+  closeCcvsTooltips();
+  const currentRows = rowsForWindow(filtered, currentWindow);
+  const previousRows = rowsForWindow(filtered, previousWindow);
+  const current = computeLiveMetrics(currentRows);
+  const previous = computeLiveMetrics(previousRows);
+  const currentRate = current.total > 0 ? Math.round((current.compliant / current.total) * 100) : 0;
+  const previousRate = previous.total > 0 ? Math.round((previous.compliant / previous.total) * 100) : 0;
+
+  const periodLabel = document.getElementById('managerPeriodLabel');
+  if (periodLabel) periodLabel.textContent = currentWindow.label;
+  ['Week', 'Month', 'Quarter'].forEach(label => {
+    const period = label.toLowerCase();
+    const btn = document.getElementById(`periodBtn${label}`);
+    if (btn) btn.classList.toggle('active', kpiPeriod === period);
+  });
+
+  renderManagerSiteTable(currentRows);
+  renderCcvsBars('managerCcvsBars', currentRows, currentWindow.compareLabel);
+
+  const complianceCard = document.querySelector('.metric-compliance');
+  if (complianceCard) {
+    complianceCard.classList.remove('metric-warn', 'metric-bad');
+    if (currentRate < 60) complianceCard.classList.add('metric-bad');
+    else if (currentRate < 85) complianceCard.classList.add('metric-warn');
+  }
+
+  const complianceVal = document.getElementById('metricComplianceValue');
+  const complianceTarget = document.getElementById('metricComplianceTarget');
+  const complianceProgress = document.getElementById('metricComplianceProgress');
+  const complianceDelta = document.getElementById('metricComplianceDelta');
+  if (complianceVal) complianceVal.textContent = `${currentRate}%`;
+  if (complianceTarget) complianceTarget.textContent = 'Target: 85%';
+  if (complianceProgress) complianceProgress.style.width = `${Math.min(100, Math.round((currentRate / 85) * 100))}%`;
+  if (complianceDelta) complianceDelta.innerHTML = deltaMarkup(currentRate, previousRate, currentWindow.compareLabel, true, true);
+
+  const totalVal = document.getElementById('metricTotalValue');
+  const totalDelta = document.getElementById('metricTotalDelta');
+  const ncrVal = document.getElementById('metricNcrValue');
+  const ncrDelta = document.getElementById('metricNcrDelta');
+  const openVal = document.getElementById('metricOpenValue');
+  const openDelta = document.getElementById('metricOpenDelta');
+  const condVal = document.getElementById('metricConditionalValue');
+  const condDelta = document.getElementById('metricConditionalDelta');
+
+  if (totalVal) totalVal.textContent = String(current.total);
+  if (totalDelta) totalDelta.innerHTML = deltaMarkup(current.total, previous.total, currentWindow.compareLabel, true);
+  if (ncrVal) ncrVal.textContent = String(current.ncr);
+  if (ncrDelta) ncrDelta.innerHTML = deltaMarkup(current.ncr, previous.ncr, currentWindow.compareLabel, false);
+  if (openVal) openVal.textContent = String(current.open);
+  if (openDelta) openDelta.innerHTML = deltaMarkup(current.open, previous.open, currentWindow.compareLabel, false);
+  if (condVal) condVal.textContent = String(current.conditional);
+  if (condDelta) condDelta.innerHTML = deltaMarkup(current.conditional, previous.conditional, currentWindow.compareLabel, false);
+}
+
+function downloadManagerReport() {
+  const currentWindow = getPeriodWindow(kpiPeriod, 0);
+  const currentRows = rowsForWindow(filtered, currentWindow);
+  const metrics = computeLiveMetrics(currentRows);
+  const complianceRate = metrics.total > 0 ? Math.round((metrics.compliant / metrics.total) * 100) : 0;
+  const siteMap = new Map();
+  currentRows.forEach(row => {
+    const site = String(row.site_address || '').trim() || 'No site address';
+    if (!siteMap.has(site)) siteMap.set(site, { site, ncr: 0, conditional: 0, compliant: 0, total: 0 });
+    const s = siteMap.get(site);
+    s.total += 1;
+    if (row.conformance_status === 'NCR') s.ncr += 1;
+    else if (row.conformance_status === 'Conditional') s.conditional += 1;
+    else if (row.conformance_status === 'Compliant') s.compliant += 1;
+  });
+  const ccvsSummary = buildCcvsSummary(currentRows);
+  const lines = [
+    'Period,' + currentWindow.label,
+    `Total Observations,${metrics.total}`,
+    `Compliance Rate,${complianceRate}%`,
+    `NCR,${metrics.ncr}`,
+    `Conditional,${metrics.conditional}`,
+    `Open Actions,${metrics.open}`,
+    '',
+    'Site Address,NCR,Conditional,Compliant,Total',
+    ...Array.from(siteMap.values())
+      .sort((a, b) => b.ncr - a.ncr || b.total - a.total || a.site.localeCompare(b.site))
+      .map(s => `${csvField(s.site)},${s.ncr},${s.conditional},${s.compliant},${s.total}`),
+    '',
+    'CCVS Code,Category,NCR,Conditional,Compliant,Total',
+    ...ccvsSummary.map(c => `${csvField(c.code)},${csvField(c.category)},${c.ncr},${c.conditional},${c.compliant},${c.total}`),
+  ];
+  const csv = lines.join('\n');
+  const stamp = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `PIMS_Manager_Report_${kpiPeriod}_${stamp}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 function renderActions() {
   const tbody = document.getElementById('actionsTableBody');
   tbody.innerHTML = '';
@@ -1874,6 +2525,7 @@ async function saveCloseout() {
 }
 
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target===document.getElementById('modalOverlay')) closeModal(); });
+document.addEventListener('click', e => { if (!e.target.closest('.ccvs-badge-wrap')) closeCcvsTooltips(); });
 
 // ── Export ──
 function csvField(val) {
