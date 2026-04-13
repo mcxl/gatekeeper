@@ -1496,7 +1496,7 @@ async def download_rpd_report(
         "select": (
             "id,seq_no,site_address,observation_date,audit_date,observation_text,"
             "conformance_status,ccvs_code,action_required,action_description,"
-            "responsible,due_category,monitoring_note,closeout_status,source_pdf,"
+            "responsible,due_category,monitoring_note,source_pdf,"
             "staging,review_status"
         ),
         "review_status": "eq.Approved",
@@ -1512,7 +1512,14 @@ async def download_rpd_report(
             headers=headers,
             params=params,
         )
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except Exception:
+            log.error("Supabase report query failed: %s %s", r.status_code, r.text)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Database query failed: {r.text[:200]}",
+            )
         rows = r.json()
 
     current_rows: list[dict] = []
@@ -1591,7 +1598,7 @@ async def download_rpd_report(
 
     open_actions = [
         row for row in current_rows
-        if row.get("action_required") and (row.get("closeout_status") or "").strip().lower() != "closed"
+        if row.get("action_required")
     ]
     action_headers = [
         "#",
