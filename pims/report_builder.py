@@ -361,8 +361,14 @@ def build_manager_report_xlsx(data: dict) -> bytes:
     ws2 = wb.create_sheet("Open Actions")
     ws3 = wb.create_sheet("KPI Summary")
     _build_sheet1(ws1, data)
+    ws1.sheet_view.showGridLines = False
+    ws1.data_validations.dataValidation = []
     _build_sheet2(ws2, data)
+    ws2.sheet_view.showGridLines = False
+    ws2.data_validations.dataValidation = []
     _build_sheet3(ws3, data)
+    ws3.sheet_view.showGridLines = False
+    ws3.data_validations.dataValidation = []
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
