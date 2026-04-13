@@ -41,6 +41,8 @@ from fastapi.responses import StreamingResponse
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.page import PageMargins
+from openpyxl.worksheet.protection import SheetProtection
 from PIL import Image as PILImage
 from pydantic import BaseModel, Field
 
@@ -888,18 +890,573 @@ def _metrics(rows: list[dict]) -> dict[str, int]:
     compliant = sum(1 for r in rows if r.get("conformance_status") == "Compliant")
     conditional = sum(1 for r in rows if r.get("conformance_status") == "Conditional")
     ncr = sum(1 for r in rows if r.get("conformance_status") == "NCR")
-    open_actions = sum(
-        1
-        for r in rows
-        if r.get("action_required") and (r.get("closeout_status") or "").strip().lower() != "closed"
-    )
+    total = len(rows)
+    open_actions = sum(1 for r in rows if r.get("action_required"))
+    compliance_rate = round((compliant / total) * 100) if total else 0
     return {
-        "total": len(rows),
+        "total": total,
         "compliant": compliant,
         "conditional": conditional,
         "ncr": ncr,
         "open_actions": open_actions,
+        "compliance_rate": compliance_rate,
     }
+
+
+def _build_site_rows(rows: list[dict]) -> list[dict]:
+    grouped: dict[str, dict] = {}
+    for row in rows:
+        site = _cell_text(row.get("site_address")) or "No site address"
+        item = grouped.setdefault(
+            site,
+            {"site_address": site, "ncr": 0, "conditional": 0, "compliant": 0, "total": 0},
+        )
+        item["total"] += 1
+        status = _cell_text(row.get("conformance_status"))
+        if status == "NCR":
+            item["ncr"] += 1
+        elif status == "Conditional":
+            item["conditional"] += 1
+        elif status == "Compliant":
+            item["compliant"] += 1
+    return sorted(
+        grouped.values(),
+        key=lambda r: (-r["ncr"], -r["total"], str(r["site_address"]).lower()),
+    )
+
+
+def _build_ccvs_rows(rows: list[dict]) -> list[dict]:
+    grouped: dict[str, dict] = {}
+    for row in rows:
+        code = _cell_text(row.get("ccvs_code")).upper()
+        if not code:
+            continue
+        category = _cell_text(row.get("ccvs_category")) or _derive_ccvs_category(code) or "General"
+        item = grouped.setdefault(
+            code,
+            {
+                "ccvs_code": code,
+                "category": category,
+                "ncr": 0,
+                "conditional": 0,
+                "compliant": 0,
+                "total": 0,
+                "compliance_rate": 0,
+            },
+        )
+        item["total"] += 1
+        status = _cell_text(row.get("conformance_status"))
+        if status == "NCR":
+            item["ncr"] += 1
+        elif status == "Conditional":
+            item["conditional"] += 1
+        elif status == "Compliant":
+            item["compliant"] += 1
+
+    output = []
+    for item in grouped.values():
+        total = item["total"] or 0
+        item["compliance_rate"] = round((item["compliant"] / total) * 100) if total else 0
+        output.append(item)
+    return sorted(
+        output,
+        key=lambda r: (-r["ncr"], -r["total"], str(r["ccvs_code"]).lower()),
+    )
+
+
+def _build_open_actions(rows: list[dict]) -> list[dict]:
+    actions = []
+    for row in rows:
+        if not row.get("action_required"):
+            continue
+        actions.append(
+            {
+                "seq_no": row.get("seq_no") or "",
+                "site_address": _cell_text(row.get("site_address")) or "No site address",
+                "audit_date": _parse_upload_date(row.get("observation_date") or row.get("audit_date")) or "",
+                "conformance_status": _cell_text(row.get("conformance_status")) or "",
+                "ccvs_code": _cell_text(row.get("ccvs_code")) or "",
+                "action_description": _cell_text(row.get("action_description")) or "",
+                "responsible": _cell_text(row.get("responsible")) or "",
+                "due_category": _cell_text(row.get("due_category")) or "",
+                "monitoring_note": _cell_text(row.get("monitoring_note")) or "",
+                "observation_text": _cell_text(row.get("observation_text")) or "",
+            }
+        )
+    return actions
+
+
+def generate_manager_report(
+    period_label: str,
+    current: dict,
+    previous: dict,
+    site_rows: list[dict],
+    ccvs_rows: list[dict],
+    open_actions: list[dict],
+) -> BytesIO:
+    NAVY = "0A1628"
+    ORANGE = "F47920"
+    BLUE = "1E3A5F"
+    RED = "DC2626"
+    AMBER = "D97706"
+    GREEN = "16A34A"
+    LIGHT = "F8FAFC"
+    LIGHT2 = "EEF3F8"
+    WHITE = "FFFFFF"
+    RED_BG = "FEE2E2"
+    AMB_BG = "FEF3C7"
+    GRN_BG = "DCFCE7"
+    DARK = "111827"
+    MUTED = "64748B"
+    BORDER = "D1DCE8"
+
+    def f(h):
+        return PatternFill("solid", fgColor=h)
+
+    def fn(h, bold=False, sz=10):
+        return Font(name="Arial", bold=bold, color=h, size=sz)
+
+    thin = Side(style="thin", color=BORDER)
+    med = Side(style="medium", color="8896A5")
+
+    def bdr():
+        return Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def bdr_med():
+        return Border(left=med, right=med, top=med, bottom=med)
+
+    ctr = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    lft = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    rgt = Alignment(horizontal="right", vertical="center", wrap_text=True)
+
+    def apply_page_setup(ws):
+        ws.sheet_view.showGridLines = False
+        ws.page_setup.orientation = "landscape"
+        ws.page_setup.paperSize = 9
+        ws.page_setup.fitToPage = True
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 1
+        ws.page_margins = PageMargins(left=0.35, right=0.35, top=0.4, bottom=0.4)
+        ws.protection = SheetProtection(
+            password="Password",
+            sheet=True,
+            selectLockedCells=True,
+            selectUnlockedCells=True,
+            formatCells=False,
+            formatColumns=False,
+            formatRows=False,
+            insertColumns=False,
+            insertRows=False,
+            deleteColumns=False,
+            deleteRows=False,
+            sort=False,
+            autoFilter=False,
+        )
+
+    wb = openpyxl.Workbook()
+    ws_dashboard = wb.active
+    ws_dashboard.title = "Manager Dashboard"
+    ws_actions = wb.create_sheet("Open Actions")
+    ws_kpi = wb.create_sheet("KPI Summary")
+
+    # Sheet 1 - Manager Dashboard
+    dashboard_widths = [1.5, 20, 9, 9, 8, 8, 8, 8, 10, 2, 9, 18, 7, 7, 7, 7, 10, 1.5]
+    for idx, width in enumerate(dashboard_widths, 1):
+        ws_dashboard.column_dimensions[get_column_letter(idx)].width = width
+
+    dashboard_row_heights = {
+        1: 5, 2: 26, 3: 18, 4: 14, 5: 5,
+        6: 4, 7: 13, 8: 24, 9: 4, 10: 12, 11: 6,
+        12: 16, 13: 14,
+    }
+    for row_idx, height in dashboard_row_heights.items():
+        ws_dashboard.row_dimensions[row_idx].height = height
+
+    for r_idx in range(1, 6):
+        for c_idx in range(1, 19):
+            ws_dashboard.cell(row=r_idx, column=c_idx).fill = f(NAVY)
+
+    ws_dashboard.merge_cells("B2:H3")
+    ws_dashboard["B2"] = "PIMS RPD — Manager Report"
+    ws_dashboard["B2"].font = fn(WHITE, bold=True, sz=15)
+    ws_dashboard["B2"].alignment = lft
+
+    ws_dashboard.merge_cells("K2:Q3")
+    ws_dashboard["K2"] = period_label
+    ws_dashboard["K2"].font = fn(ORANGE, bold=True, sz=13)
+    ws_dashboard["K2"].alignment = rgt
+
+    ws_dashboard.merge_cells("B4:H4")
+    ws_dashboard["B4"] = "Robertson's Remedial and Painting  ·  AuditCo WHS Consultancy"
+    ws_dashboard["B4"].font = fn("94A3B8", sz=8)
+    ws_dashboard["B4"].alignment = lft
+
+    def draw_card(c1, c2, label, value, sub, accent_col, bg):
+        for col_idx in range(c1, c2 + 1):
+            ws_dashboard.cell(row=6, column=col_idx).fill = f(accent_col)
+            ws_dashboard.cell(row=6, column=col_idx).border = bdr()
+            ws_dashboard.cell(row=7, column=col_idx).fill = f(bg)
+            ws_dashboard.cell(row=7, column=col_idx).border = bdr()
+            ws_dashboard.cell(row=8, column=col_idx).fill = f(bg)
+            ws_dashboard.cell(row=8, column=col_idx).border = bdr()
+            ws_dashboard.cell(row=9, column=col_idx).fill = f(bg)
+            ws_dashboard.cell(row=9, column=col_idx).border = bdr()
+            ws_dashboard.cell(row=10, column=col_idx).fill = f(bg)
+            ws_dashboard.cell(row=10, column=col_idx).border = bdr()
+            ws_dashboard.cell(row=11, column=col_idx).fill = f(bg)
+            ws_dashboard.cell(row=11, column=col_idx).border = bdr()
+
+        if c2 > c1:
+            ws_dashboard.merge_cells(start_row=6, start_column=c1, end_row=6, end_column=c2)
+            ws_dashboard.merge_cells(start_row=7, start_column=c1, end_row=7, end_column=c2)
+            ws_dashboard.merge_cells(start_row=8, start_column=c1, end_row=8, end_column=c2)
+            ws_dashboard.merge_cells(start_row=9, start_column=c1, end_row=9, end_column=c2)
+            ws_dashboard.merge_cells(start_row=10, start_column=c1, end_row=10, end_column=c2)
+            ws_dashboard.merge_cells(start_row=11, start_column=c1, end_row=11, end_column=c2)
+
+        top = ws_dashboard.cell(row=7, column=c1, value=label)
+        top.font = fn(MUTED, sz=8)
+        top.alignment = ctr
+        val = ws_dashboard.cell(row=8, column=c1, value=value)
+        val.font = fn(accent_col, bold=True, sz=22)
+        val.alignment = ctr
+        subc = ws_dashboard.cell(row=10, column=c1, value=sub)
+        subc.font = fn(MUTED, sz=8)
+        subc.alignment = ctr
+
+    draw_card(
+        2,
+        2,
+        "Total observations",
+        current.get("total", 0),
+        f"{current.get('total', 0) - previous.get('total', 0):+d} vs prev",
+        BLUE,
+        LIGHT,
+    )
+    draw_card(
+        3,
+        3,
+        "NCR",
+        current.get("ncr", 0),
+        f"{current.get('ncr', 0) - previous.get('ncr', 0):+d} vs prev",
+        RED,
+        RED_BG,
+    )
+    draw_card(
+        4,
+        4,
+        "Conditional",
+        current.get("conditional", 0),
+        f"{current.get('conditional', 0) - previous.get('conditional', 0):+d} vs prev",
+        AMBER,
+        AMB_BG,
+    )
+    draw_card(
+        9,
+        9,
+        "Open actions",
+        current.get("open_actions", 0),
+        f"{current.get('open_actions', 0) - previous.get('open_actions', 0):+d} vs prev",
+        BLUE,
+        LIGHT2,
+    )
+    draw_card(
+        16,
+        17,
+        "Compliance rate",
+        f"{current.get('compliance_rate', 0)}%",
+        "Target: 85%",
+        GREEN,
+        GRN_BG,
+    )
+
+    ws_dashboard.merge_cells("B12:H12")
+    ws_dashboard["B12"] = "Site Breakdown"
+    ws_dashboard["B12"].fill = f(BLUE)
+    ws_dashboard["B12"].font = fn(WHITE, bold=True, sz=9)
+    ws_dashboard["B12"].alignment = ctr
+    ws_dashboard["B12"].border = bdr_med()
+
+    ws_dashboard["I12"] = "Open Actions"
+    ws_dashboard["I12"].fill = f(BLUE)
+    ws_dashboard["I12"].font = fn(WHITE, bold=True, sz=9)
+    ws_dashboard["I12"].alignment = ctr
+    ws_dashboard["I12"].border = bdr_med()
+
+    ws_dashboard.merge_cells("K12:Q12")
+    ws_dashboard["K12"] = "CCVS Monitoring & Measurement"
+    ws_dashboard["K12"].fill = f(BLUE)
+    ws_dashboard["K12"].font = fn(WHITE, bold=True, sz=9)
+    ws_dashboard["K12"].alignment = ctr
+    ws_dashboard["K12"].border = bdr_med()
+
+    ws_dashboard.merge_cells("B13:D13")
+    ws_dashboard["B13"] = "Site Address"
+    ws_dashboard["E13"] = "NCR"
+    ws_dashboard["F13"] = "Conditional"
+    ws_dashboard["G13"] = "Compliant"
+    ws_dashboard["H13"] = "Total"
+    ws_dashboard["I13"] = "Count"
+    ws_dashboard["K13"] = "Code"
+    ws_dashboard["L13"] = "Category"
+    ws_dashboard["M13"] = "NCR"
+    ws_dashboard["N13"] = "Cond"
+    ws_dashboard["O13"] = "Comp"
+    ws_dashboard["P13"] = "Total"
+    ws_dashboard["Q13"] = "Rate"
+
+    for col in ("B", "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "Q"):
+        cell = ws_dashboard[f"{col}13"]
+        cell.fill = f(BLUE)
+        cell.font = fn(WHITE, bold=True, sz=9)
+        cell.alignment = ctr
+        cell.border = bdr()
+
+    site_0 = site_rows[0] if site_rows else {"site_address": "", "ncr": 0, "conditional": 0, "compliant": 0, "total": 0}
+    ws_dashboard.merge_cells("B14:D14")
+    ws_dashboard["B14"] = site_0["site_address"]
+    ws_dashboard["B14"].fill = f(LIGHT)
+    ws_dashboard["B14"].font = fn(DARK, sz=9)
+    ws_dashboard["B14"].alignment = lft
+    ws_dashboard["B14"].border = bdr()
+
+    ws_dashboard["E14"] = site_0["ncr"]
+    ws_dashboard["E14"].fill = f(RED_BG)
+    ws_dashboard["E14"].font = fn(RED, bold=True, sz=11)
+    ws_dashboard["F14"] = site_0["conditional"]
+    ws_dashboard["F14"].fill = f(AMB_BG)
+    ws_dashboard["F14"].font = fn(AMBER, bold=True, sz=11)
+    ws_dashboard["G14"] = site_0["compliant"]
+    ws_dashboard["G14"].fill = f(GRN_BG)
+    ws_dashboard["G14"].font = fn(GREEN, bold=True, sz=11)
+    ws_dashboard["H14"] = site_0["total"]
+    ws_dashboard["H14"].fill = f(LIGHT)
+    ws_dashboard["H14"].font = fn(BLUE, bold=True, sz=11)
+    for col in ("E", "F", "G", "H"):
+        ws_dashboard[f"{col}14"].alignment = ctr
+        ws_dashboard[f"{col}14"].border = bdr()
+
+    ws_dashboard["I14"] = current.get("open_actions", 0)
+    ws_dashboard["I14"].fill = f(RED_BG)
+    ws_dashboard["I14"].font = fn(RED, bold=True, sz=16)
+    ws_dashboard["I14"].alignment = ctr
+    ws_dashboard["I14"].border = bdr()
+
+    action_rows = open_actions[:6]
+    for i, action in enumerate(action_rows, start=15):
+        status = _cell_text(action.get("conformance_status"))
+        sc = RED if status == "NCR" else AMBER
+        ws_dashboard[f"I{i}"] = f"#{_cell_text(action.get('seq_no'))} {_cell_text(action.get('ccvs_code'))}".strip()
+        ws_dashboard[f"I{i}"].fill = f(sc)
+        ws_dashboard[f"I{i}"].font = fn(WHITE, bold=True, sz=9)
+        ws_dashboard[f"I{i}"].alignment = ctr
+        ws_dashboard[f"I{i}"].border = bdr()
+
+    for i, row in enumerate(ccvs_rows):
+        r = 14 + i
+        bg = LIGHT if i % 2 == 0 else WHITE
+        ncr = int(row.get("ncr") or 0)
+        conditional = int(row.get("conditional") or 0)
+        compliant = int(row.get("compliant") or 0)
+        total = int(row.get("total") or 0)
+        rate = int(row.get("compliance_rate") or 0)
+        badge_col = RED if ncr > 0 else (AMBER if conditional > 0 else GREEN)
+        rate_col = RED if rate < 60 else (AMBER if rate < 85 else GREEN)
+
+        ws_dashboard[f"K{r}"] = _cell_text(row.get("ccvs_code"))
+        ws_dashboard[f"K{r}"].fill = f(badge_col)
+        ws_dashboard[f"K{r}"].font = fn(WHITE, bold=True, sz=9)
+        ws_dashboard[f"K{r}"].alignment = ctr
+        ws_dashboard[f"K{r}"].border = bdr()
+
+        ws_dashboard[f"L{r}"] = _cell_text(row.get("category"))
+        ws_dashboard[f"L{r}"].fill = f(bg)
+        ws_dashboard[f"L{r}"].font = fn(DARK, sz=9)
+        ws_dashboard[f"L{r}"].alignment = lft
+        ws_dashboard[f"L{r}"].border = bdr()
+
+        ws_dashboard[f"M{r}"] = ncr
+        ws_dashboard[f"N{r}"] = conditional
+        ws_dashboard[f"O{r}"] = compliant
+        ws_dashboard[f"P{r}"] = total
+        for col in ("M", "N", "O", "P"):
+            cell = ws_dashboard[f"{col}{r}"]
+            cell.fill = f(bg)
+            cell.font = fn(DARK, sz=10)
+            cell.alignment = ctr
+            cell.border = bdr()
+
+        ws_dashboard[f"Q{r}"] = f"{rate}%"
+        ws_dashboard[f"Q{r}"].fill = f(bg)
+        ws_dashboard[f"Q{r}"].font = fn(rate_col, bold=True, sz=10)
+        ws_dashboard[f"Q{r}"].alignment = ctr
+        ws_dashboard[f"Q{r}"].border = bdr()
+
+    max_data_row = max(
+        14,
+        14 + (len(ccvs_rows) - 1 if ccvs_rows else 0),
+        14 + len(action_rows),
+    )
+    for r in range(14, max_data_row + 1):
+        ws_dashboard.row_dimensions[r].height = 14
+
+    footer_row = max_data_row + 2
+    ws_dashboard.merge_cells(start_row=footer_row, start_column=2, end_row=footer_row, end_column=17)
+    ws_dashboard.cell(
+        row=footer_row,
+        column=2,
+        value=(
+            "Live audit records only  ·  staging=FALSE AND source_pdf IS NULL  ·  "
+            "Generated by PIMS RPD — AuditCo WHS Consultancy"
+        ),
+    )
+    ws_dashboard.cell(row=footer_row, column=2).font = Font(name="Arial", italic=True, size=8, color=MUTED)
+    ws_dashboard.cell(row=footer_row, column=2).alignment = lft
+
+    apply_page_setup(ws_dashboard)
+
+    # Sheet 2 - Open Actions
+    actions_widths = [1.5, 5, 28, 10, 10, 10, 36, 14, 12, 28, 1.5]
+    for idx, width in enumerate(actions_widths, 1):
+        ws_actions.column_dimensions[get_column_letter(idx)].width = width
+
+    for r_idx in range(1, 5):
+        for c_idx in range(1, 12):
+            ws_actions.cell(row=r_idx, column=c_idx).fill = f(NAVY)
+
+    ws_actions.merge_cells("B2:H3")
+    ws_actions["B2"] = f"Open Actions Register — {period_label}"
+    ws_actions["B2"].font = fn(WHITE, bold=True, sz=14)
+    ws_actions["B2"].alignment = lft
+
+    ws_actions.merge_cells("I2:J3")
+    ws_actions["I2"] = f"{len(open_actions)} open actions"
+    ws_actions["I2"].font = fn(RED, bold=True, sz=11)
+    ws_actions["I2"].alignment = rgt
+
+    ws_actions.row_dimensions[6].height = 16
+    headers = ["#", "Site Address", "Date", "Status", "CCVS", "Action Required", "Responsible", "Due", "Monitoring Note"]
+    for idx, title in enumerate(headers, start=2):
+        cell = ws_actions.cell(row=6, column=idx, value=title)
+        cell.fill = f(BLUE)
+        cell.font = fn(WHITE, bold=True, sz=9)
+        cell.alignment = ctr
+        cell.border = bdr_med()
+
+    for i, action in enumerate(open_actions, start=7):
+        ws_actions.row_dimensions[i].height = 40
+        status = _cell_text(action.get("conformance_status"))
+        due = _cell_text(action.get("due_category"))
+        bg = RED_BG if status == "NCR" else AMB_BG
+        sc = RED if status == "NCR" else AMBER
+        dc = RED if due == "Immediate" else AMBER
+
+        row_values = [
+            _cell_text(action.get("seq_no")),
+            _cell_text(action.get("site_address")),
+            _cell_text(action.get("audit_date")),
+            status,
+            _cell_text(action.get("ccvs_code")),
+            _cell_text(action.get("action_description")),
+            _cell_text(action.get("responsible")),
+            due,
+            _cell_text(action.get("monitoring_note")),
+        ]
+        for col_idx, val in enumerate(row_values, start=2):
+            cell = ws_actions.cell(row=i, column=col_idx, value=val)
+            cell.fill = f(bg)
+            cell.border = bdr()
+            if col_idx == 2:
+                cell.font = fn(NAVY, bold=True, sz=9)
+                cell.alignment = ctr
+            elif col_idx in (5, 6):
+                cell.fill = f(sc)
+                cell.font = fn(WHITE, bold=True, sz=9)
+                cell.alignment = ctr
+            elif col_idx == 9:
+                cell.font = fn(dc, bold=True, sz=9)
+                cell.alignment = ctr
+            elif col_idx in (4, 8):
+                cell.font = fn(DARK, sz=9)
+                cell.alignment = ctr
+            else:
+                cell.font = fn(DARK, sz=9)
+                cell.alignment = lft
+
+    apply_page_setup(ws_actions)
+
+    # Sheet 3 - KPI Summary
+    kpi_widths = [1.5, 28, 14, 14, 12, 16, 1.5]
+    for idx, width in enumerate(kpi_widths, 1):
+        ws_kpi.column_dimensions[get_column_letter(idx)].width = width
+
+    for r_idx in range(1, 5):
+        for c_idx in range(1, 8):
+            ws_kpi.cell(row=r_idx, column=c_idx).fill = f(NAVY)
+
+    ws_kpi.merge_cells("B2:F3")
+    ws_kpi["B2"] = f"KPI Summary — {period_label}"
+    ws_kpi["B2"].font = fn(WHITE, bold=True, sz=14)
+    ws_kpi["B2"].alignment = lft
+
+    ws_kpi.row_dimensions[6].height = 16
+    for idx, title in enumerate(["Metric", "Current", "Previous", "Delta", "Status"], start=2):
+        cell = ws_kpi.cell(row=6, column=idx, value=title)
+        cell.fill = f(BLUE)
+        cell.font = fn(WHITE, bold=True, sz=9)
+        cell.alignment = ctr
+        cell.border = bdr_med()
+
+    metrics = [
+        ("Total observations", "total", GREEN),
+        ("Compliance rate", "compliance_rate", GREEN),
+        ("NCR", "ncr", RED),
+        ("Conditional", "conditional", AMBER),
+        ("Open actions", "open_actions", RED),
+    ]
+    for i, (label, key, status_col) in enumerate(metrics):
+        r = 7 + i
+        ws_kpi.row_dimensions[r].height = 18
+        bg = LIGHT if i % 2 == 0 else WHITE
+        curr = int(current.get(key, 0) or 0)
+        prev = int(previous.get(key, 0) or 0)
+        delta = curr - prev
+        curr_val = f"{curr}%" if key == "compliance_rate" else curr
+        prev_val = f"{prev}%" if key == "compliance_rate" else prev
+
+        ws_kpi.cell(row=r, column=2, value=label)
+        ws_kpi.cell(row=r, column=3, value=curr_val)
+        ws_kpi.cell(row=r, column=4, value=prev_val)
+        ws_kpi.cell(row=r, column=5, value=delta)
+        ws_kpi.cell(row=r, column=6, value=f"▲ {delta:+d}")
+
+        ws_kpi.cell(row=r, column=2).font = fn(BLUE, bold=True, sz=10)
+        ws_kpi.cell(row=r, column=3).font = fn(DARK, sz=10)
+        ws_kpi.cell(row=r, column=4).font = fn(DARK, sz=10)
+        ws_kpi.cell(row=r, column=5).font = fn(DARK, sz=10)
+        ws_kpi.cell(row=r, column=6).font = fn(status_col, bold=True, sz=10)
+
+        ws_kpi.cell(row=r, column=2).alignment = lft
+        ws_kpi.cell(row=r, column=3).alignment = ctr
+        ws_kpi.cell(row=r, column=4).alignment = ctr
+        ws_kpi.cell(row=r, column=5).alignment = ctr
+        ws_kpi.cell(row=r, column=6).alignment = ctr
+
+        for c in range(2, 7):
+            ws_kpi.cell(row=r, column=c).fill = f(bg)
+            ws_kpi.cell(row=r, column=c).border = bdr()
+
+    ws_kpi.merge_cells("B13:F13")
+    ws_kpi["B13"] = "Live audit records only  ·  staging=FALSE AND source_pdf IS NULL"
+    ws_kpi["B13"].font = Font(name="Arial", italic=True, size=8, color=MUTED)
+    ws_kpi["B13"].alignment = lft
+
+    apply_page_setup(ws_kpi)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
 
 
 def _drun(para, text, bold=False, italic=False, size_pt=9, color_hex=None):
@@ -1489,7 +2046,7 @@ async def download_rpd_report(
     if period not in {"week", "month", "quarter"}:
         raise HTTPException(status_code=422, detail="period must be one of: week, month, quarter")
 
-    start, end, prev_start, prev_end, period_label, compare_label = _period_window(period)
+    start, end, prev_start, prev_end, period_label, _ = _period_window(period)
 
     headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     params = {
@@ -1534,116 +2091,18 @@ async def download_rpd_report(
 
     current = _metrics(current_rows)
     previous = _metrics(previous_rows)
-    current_rate = round((current["compliant"] / current["total"]) * 100) if current["total"] else 0
-    previous_rate = round((previous["compliant"] / previous["total"]) * 100) if previous["total"] else 0
+    site_rows = _build_site_rows(current_rows)
+    ccvs_rows = _build_ccvs_rows(current_rows)
+    open_actions = _build_open_actions(current_rows)
 
-    wb = openpyxl.Workbook()
-    ws_kpi = wb.active
-    ws_kpi.title = "KPI Summary"
-    ws_actions = wb.create_sheet("Open Actions")
-
-    header_fill = PatternFill(fill_type="solid", fgColor="0A1628")
-    header_font = Font(name="Aptos", bold=True, color="FFFFFF", size=10)
-    value_font = Font(name="Aptos", size=10, color="111827")
-    metric_font = Font(name="Aptos", bold=True, size=10, color="1E3A5F")
-    align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
-    border = Border(
-        left=Side(style="thin", color="D1D5DB"),
-        right=Side(style="thin", color="D1D5DB"),
-        top=Side(style="thin", color="D1D5DB"),
-        bottom=Side(style="thin", color="D1D5DB"),
+    buf = generate_manager_report(
+        period_label=period_label,
+        current=current,
+        previous=previous,
+        site_rows=site_rows,
+        ccvs_rows=ccvs_rows,
+        open_actions=open_actions,
     )
-
-    ws_kpi["A1"] = "PIMS RPD Manager Report"
-    ws_kpi["A1"].font = Font(name="Aptos", bold=True, size=14, color="0A1628")
-    ws_kpi["A2"] = f"Period: {period_label}"
-    ws_kpi["A2"].font = Font(name="Aptos", size=10, color="1E3A5F")
-    ws_kpi.merge_cells("A1:D1")
-    ws_kpi.merge_cells("A2:D2")
-
-    headers_kpi = ["Metric", "Current", "Previous", f"Delta vs prev {compare_label}"]
-    for c, name in enumerate(headers_kpi, 1):
-        cell = ws_kpi.cell(row=4, column=c, value=name)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = align_left
-        cell.border = border
-
-    metric_rows = [
-        ("Total observations", current["total"], previous["total"]),
-        ("Compliance rate (%)", current_rate, previous_rate),
-        ("NCR", current["ncr"], previous["ncr"]),
-        ("Conditional", current["conditional"], previous["conditional"]),
-        ("Open actions", current["open_actions"], previous["open_actions"]),
-    ]
-    for r_idx, (name, curr, prev) in enumerate(metric_rows, 5):
-        ws_kpi.cell(row=r_idx, column=1, value=name).font = metric_font
-        ws_kpi.cell(row=r_idx, column=2, value=curr).font = value_font
-        ws_kpi.cell(row=r_idx, column=3, value=prev).font = value_font
-        ws_kpi.cell(row=r_idx, column=4, value=curr - prev).font = value_font
-        for c in range(1, 5):
-            cell = ws_kpi.cell(row=r_idx, column=c)
-            cell.alignment = align_left
-            cell.border = border
-
-    ws_kpi["A11"] = "Live records only (staging=false and source_pdf IS NULL)"
-    ws_kpi["A11"].font = Font(name="Aptos", size=9, italic=True, color="64748B")
-    ws_kpi.merge_cells("A11:D11")
-
-    ws_kpi.column_dimensions["A"].width = 32
-    ws_kpi.column_dimensions["B"].width = 16
-    ws_kpi.column_dimensions["C"].width = 16
-    ws_kpi.column_dimensions["D"].width = 24
-
-    open_actions = [
-        row for row in current_rows
-        if row.get("action_required")
-    ]
-    action_headers = [
-        "#",
-        "Site Address",
-        "Date",
-        "Status",
-        "CCVS",
-        "Action Required",
-        "Responsible",
-        "Due",
-        "Monitoring Note",
-        "Observation",
-    ]
-    for c, name in enumerate(action_headers, 1):
-        cell = ws_actions.cell(row=1, column=c, value=name)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = align_left
-        cell.border = border
-
-    for r_idx, row in enumerate(open_actions, 2):
-        values = [
-            row.get("seq_no") or "",
-            row.get("site_address") or "",
-            _parse_upload_date(row.get("observation_date") or row.get("audit_date")) or "",
-            row.get("conformance_status") or "",
-            row.get("ccvs_code") or "",
-            row.get("action_description") or "",
-            row.get("responsible") or "",
-            row.get("due_category") or "",
-            row.get("monitoring_note") or "",
-            row.get("observation_text") or "",
-        ]
-        for c, val in enumerate(values, 1):
-            cell = ws_actions.cell(row=r_idx, column=c, value=val)
-            cell.font = value_font
-            cell.alignment = align_left
-            cell.border = border
-
-    col_widths = [6, 32, 14, 14, 12, 34, 16, 14, 28, 44]
-    for idx, width in enumerate(col_widths, 1):
-        ws_actions.column_dimensions[get_column_letter(idx)].width = width
-
-    buf = BytesIO()
-    wb.save(buf)
-    buf.seek(0)
     filename = f"PIMS_RPD_Report_{period}_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
         buf,
