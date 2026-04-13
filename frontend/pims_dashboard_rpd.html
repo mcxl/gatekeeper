@@ -38,7 +38,8 @@
   --card:        #1E293B;
   --border:      #2E3D52;
   --border-mid:  #2E3D52;
-  --text-primary:#E2E8F0;
+  --text-primary:#F1F5F9;
+  --text-secondary:#CBD5E1;
   --text-muted:  #94A3B8;
   --text-light:  #94A3B8;
   --font:        'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -58,6 +59,7 @@ body {
   font-family: var(--font);
   background: #0F172A;
   color: var(--text-primary);
+  font-size: 14px;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
@@ -159,7 +161,7 @@ body::before {
 .filter-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -320,13 +322,13 @@ body::before {
 }
 .card-title {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
+  font-weight: 500;
+  color: #F1F5F9;
   letter-spacing: -0.2px;
 }
 .card-meta {
   font-size: 11px;
-  color: var(--text-light);
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
@@ -359,7 +361,7 @@ table.dt td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
-  color: var(--text-primary);
+  color: #E2E8F0;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -655,7 +657,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   border: none;
   border-radius: var(--r-sm);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition);
   white-space: nowrap;
@@ -690,7 +692,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 .kpi-scope-note {
   margin-top: -2px;
   font-size: 11px;
-  color: var(--text-light);
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
@@ -722,7 +724,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 }
 .manager-period {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 .manager-controls {
@@ -742,7 +744,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   font-family: var(--font);
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: transparent;
   border: none;
   padding: 7px 12px;
@@ -780,7 +782,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -802,7 +804,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .metric-value {
   font-size: 32px;
@@ -1006,6 +1008,21 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 #staging-section span,
 #staging-section p {
   color: var(--text-primary) !important;
+}
+#staging-section td {
+  color: #E2E8F0 !important;
+}
+#staging-section h2,
+#staging-section h3 {
+  color: #F1F5F9 !important;
+  font-weight: 500 !important;
+}
+#actionsSiteFilterInput,
+#liveObsSiteFilterInput,
+#stagingPdfSiteFilter {
+  background: var(--card) !important;
+  color: #E2E8F0 !important;
+  border-color: var(--border) !important;
 }
 #staging-section table thead tr {
   background: var(--surface) !important;
@@ -1679,14 +1696,27 @@ function badge(status) {
   const map = { Compliant:'compliant', Conditional:'conditional', NCR:'ncr', Info:'info', Open:'open', 'In Progress':'inprogress', Closed:'closed', 'N/A':'na' };
   return `<span class="badge badge-${map[status]||'na'}">${esc(status || 'N/A')}</span>`;
 }
-function renderCcvsBadge(code, count = 0, detail = {}) {
+function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
   const normalized = String(code || '').trim();
   if (!normalized) return '<span style="color:var(--text-light)">—</span>';
 
   const info = CCVS_INFO[normalized] || {};
-  const ncr = Math.max(0, Number(detail.ncr || 0));
-  const conditional = Math.max(0, Number(detail.conditional || 0));
+  const conformanceStatus = typeof conformanceStatusOrCount === 'string'
+    ? conformanceStatusOrCount
+    : null;
+  const count = typeof conformanceStatusOrCount === 'number'
+    ? conformanceStatusOrCount
+    : Number(detail.total || 0);
+
+  let ncr = Math.max(0, Number(detail.ncr || 0));
+  let conditional = Math.max(0, Number(detail.conditional || 0));
   let compliant = Math.max(0, Number(detail.compliant || 0));
+  if (!ncr && !conditional && !compliant && conformanceStatus) {
+    const status = String(conformanceStatus).trim().toLowerCase();
+    if (status === 'ncr') ncr = 1;
+    else if (status === 'conditional') conditional = 1;
+    else if (status === 'compliant') compliant = 1;
+  }
   let total = Math.max(0, Number(count || 0));
 
   if (!total) total = ncr + conditional + compliant;
@@ -1723,8 +1753,8 @@ function renderCcvsBadge(code, count = 0, detail = {}) {
     </div>`;
 }
 
-function ccvs(code) {
-  return renderCcvsBadge(code);
+function ccvs(code, conformanceStatus = null) {
+  return renderCcvsBadge(code, conformanceStatus);
 }
 
 function dueLabel(d) {
@@ -2139,8 +2169,8 @@ function renderCcvsBars(containerId, rows, compareLabel) {
   }
   container.innerHTML = summary.map(item => {
     const total = item.total || 1;
-    const ncrPct = Math.round((item.ncr / total) * 100);
-    const condPct = Math.round((item.conditional / total) * 100);
+    const ncrPct = (item.ncr / total) * 100;
+    const condPct = (item.conditional / total) * 100;
     const compPct = Math.max(0, 100 - ncrPct - condPct);
     return `
       <div class="ccvs-row">
@@ -2152,9 +2182,9 @@ function renderCcvsBars(containerId, rows, compareLabel) {
           compareLabel,
         })}
         <div class="ccvs-track">
-          ${ncrPct > 0 ? `<div class="ccvs-seg ncr" style="width:${ncrPct}%">${ncrPct >= 18 ? item.ncr : ''}</div>` : ''}
-          ${condPct > 0 ? `<div class="ccvs-seg conditional" style="width:${condPct}%">${condPct >= 18 ? item.conditional : ''}</div>` : ''}
-          ${compPct > 0 ? `<div class="ccvs-seg compliant" style="width:${compPct}%">${compPct >= 18 ? item.compliant : ''}</div>` : ''}
+          ${ncrPct > 0 ? `<div class="ccvs-seg ncr" style="width:${ncrPct.toFixed(4)}%">${ncrPct >= 18 ? item.ncr : ''}</div>` : ''}
+          ${condPct > 0 ? `<div class="ccvs-seg conditional" style="width:${condPct.toFixed(4)}%">${condPct >= 18 ? item.conditional : ''}</div>` : ''}
+          ${compPct > 0 ? `<div class="ccvs-seg compliant" style="width:${compPct.toFixed(4)}%">${compPct >= 18 ? item.compliant : ''}</div>` : ''}
         </div>
         <div class="ccvs-total">${item.total}</div>
       </div>`;
@@ -2250,45 +2280,26 @@ function renderManagerBoard() {
   if (condDelta) condDelta.innerHTML = deltaMarkup(current.conditional, previous.conditional, currentWindow.compareLabel, false);
 }
 
-function downloadManagerReport() {
-  const currentWindow = getPeriodWindow(kpiPeriod, 0);
-  const currentRows = rowsForWindow(filtered, currentWindow);
-  const metrics = computeLiveMetrics(currentRows);
-  const complianceRate = metrics.total > 0 ? Math.round((metrics.compliant / metrics.total) * 100) : 0;
-  const siteMap = new Map();
-  currentRows.forEach(row => {
-    const site = String(row.site_address || '').trim() || 'No site address';
-    if (!siteMap.has(site)) siteMap.set(site, { site, ncr: 0, conditional: 0, compliant: 0, total: 0 });
-    const s = siteMap.get(site);
-    s.total += 1;
-    if (row.conformance_status === 'NCR') s.ncr += 1;
-    else if (row.conformance_status === 'Conditional') s.conditional += 1;
-    else if (row.conformance_status === 'Compliant') s.compliant += 1;
-  });
-  const ccvsSummary = buildCcvsSummary(currentRows);
-  const lines = [
-    'Period,' + currentWindow.label,
-    `Total Observations,${metrics.total}`,
-    `Compliance Rate,${complianceRate}%`,
-    `NCR,${metrics.ncr}`,
-    `Conditional,${metrics.conditional}`,
-    `Open Actions,${metrics.open}`,
-    '',
-    'Site Address,NCR,Conditional,Compliant,Total',
-    ...Array.from(siteMap.values())
-      .sort((a, b) => b.ncr - a.ncr || b.total - a.total || a.site.localeCompare(b.site))
-      .map(s => `${csvField(s.site)},${s.ncr},${s.conditional},${s.compliant},${s.total}`),
-    '',
-    'CCVS Code,Category,NCR,Conditional,Compliant,Total',
-    ...ccvsSummary.map(c => `${csvField(c.code)},${csvField(c.category)},${c.ncr},${c.conditional},${c.compliant},${c.total}`),
-  ];
-  const csv = lines.join('\n');
-  const stamp = new Date().toISOString().slice(0, 10);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `PIMS_Manager_Report_${kpiPeriod}_${stamp}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+async function downloadManagerReport() {
+  try {
+    const resp = await fetch(`/pims/report/rpd?period=${encodeURIComponent(kpiPeriod)}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+    });
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => resp.statusText);
+      throw new Error(`${resp.status}: ${detail}`);
+    }
+    const blob = await resp.blob();
+    const stamp = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `PIMS_Manager_Report_${kpiPeriod}_${stamp}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    showToast('Report download failed: ' + err.message, 'error');
+  }
 }
 function renderActions() {
   const tbody = document.getElementById('actionsTableBody');
@@ -2314,7 +2325,7 @@ function renderActions() {
       </td>
       <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
-      <td>${ccvs(o.ccvs_code)}</td>
+      <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
       <td style="max-width:260px">${trunc(o.action_description,100)}</td>
       <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td>${dueLabel(o.due_category)}</td>
@@ -2437,7 +2448,7 @@ function renderAllObs() {
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
         <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
         <td>${badge(o.conformance_status)}</td>
-        <td>${ccvs(o.ccvs_code)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
         <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>`;
@@ -2448,7 +2459,7 @@ function renderAllObs() {
         <td style="max-width:140px;color:var(--text-muted)">${esc(o.section || o.ccvs_code || o.ccvs_category)||'—'}</td>
         <td style="max-width:340px">${trunc(o.observation_text,140)}</td>
         <td>${badge(o.conformance_status)}</td>
-        <td>${ccvs(o.ccvs_code)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,90)}</td>
         <td style="max-width:240px;color:var(--text-muted)">${trunc(o.recommendation || o.action_description,90)}</td>
         <td style="max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>
@@ -2580,7 +2591,7 @@ function renderActionsMobile(actions) {
         <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''}</span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
-          ${ccvs(o.ccvs_code)}
+          ${ccvs(o.ccvs_code, o.conformance_status)}
         </div>
       </div>
       <div class="m-card-action">${esc(o.action_description)||'—'}</div>
@@ -2610,7 +2621,7 @@ function renderAllObsMobile(obs) {
         <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
-          ${o.ccvs_code ? ccvs(o.ccvs_code) : ''}
+          ${o.ccvs_code ? ccvs(o.ccvs_code, o.conformance_status) : ''}
         </div>
       </div>
       <div class="m-card-action">${trunc(o.observation_text, 140)}</div>
@@ -3675,3 +3686,4 @@ initDashboard();
 </script>
 </body>
 </html>
+

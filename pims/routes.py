@@ -25,7 +25,7 @@ import logging
 import os
 import urllib.parse
 import uuid as _uuid_mod
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from typing import Optional
 
@@ -829,6 +829,79 @@ def _derive_ccvs_category(code: str | None) -> str | None:
     return CCVS_CATEGORY_BY_PREFIX.get(prefix)
 
 
+def _period_window(period: str) -> tuple[date, date, date, date, str, str]:
+    today = date.today()
+    if period == "month":
+        start = date(today.year, today.month, 1)
+        if today.month == 12:
+            end = date(today.year + 1, 1, 1)
+        else:
+            end = date(today.year, today.month + 1, 1)
+        if start.month == 1:
+            prev_start = date(start.year - 1, 12, 1)
+        else:
+            prev_start = date(start.year, start.month - 1, 1)
+        prev_end = start
+        return start, end, prev_start, prev_end, start.strftime("%B %Y"), "month"
+
+    if period == "quarter":
+        q_start_month = ((today.month - 1) // 3) * 3 + 1
+        start = date(today.year, q_start_month, 1)
+        if q_start_month == 10:
+            end = date(today.year + 1, 1, 1)
+        else:
+            end = date(today.year, q_start_month + 3, 1)
+        if q_start_month == 1:
+            prev_start = date(today.year - 1, 10, 1)
+        else:
+            prev_start = date(today.year, q_start_month - 3, 1)
+        prev_end = start
+        q_no = ((q_start_month - 1) // 3) + 1
+        return start, end, prev_start, prev_end, f"Q{q_no} {start.year}", "quarter"
+
+    # Default: week (ISO Monday-Sunday)
+    start = today - timedelta(days=today.weekday())
+    end = start + timedelta(days=7)
+    prev_start = start - timedelta(days=7)
+    prev_end = start
+    iso_week = start.isocalendar().week
+    end_label = end - timedelta(days=1)
+    label = (
+        f"Week {iso_week} · {start.day} {start.strftime('%b')} {start.year}"
+        f" to {end_label.day} {end_label.strftime('%b')} {end_label.year}"
+    )
+    return start, end, prev_start, prev_end, label, "week"
+
+
+def _row_obs_date(row: dict) -> date | None:
+    raw = row.get("observation_date") or row.get("audit_date")
+    parsed = _parse_upload_date(raw)
+    if not parsed:
+        return None
+    try:
+        return date.fromisoformat(parsed)
+    except ValueError:
+        return None
+
+
+def _metrics(rows: list[dict]) -> dict[str, int]:
+    compliant = sum(1 for r in rows if r.get("conformance_status") == "Compliant")
+    conditional = sum(1 for r in rows if r.get("conformance_status") == "Conditional")
+    ncr = sum(1 for r in rows if r.get("conformance_status") == "NCR")
+    open_actions = sum(
+        1
+        for r in rows
+        if r.get("action_required") and (r.get("closeout_status") or "").strip().lower() != "closed"
+    )
+    return {
+        "total": len(rows),
+        "compliant": compliant,
+        "conditional": conditional,
+        "ncr": ncr,
+        "open_actions": open_actions,
+    }
+
+
 def _drun(para, text, bold=False, italic=False, size_pt=9, color_hex=None):
     run = para.add_run(text)
     run.font.name = "Aptos"
@@ -1397,3 +1470,177 @@ async def list_observations_rpd(
         )
         r.raise_for_status()
         return r.json()
+
+
+@router.get("/report/rpd")
+async def download_rpd_report(
+    request: Request,
+    period: str = "week",
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
+
+    period = (period or "week").strip().lower()
+    if period not in {"week", "month", "quarter"}:
+        raise HTTPException(status_code=422, detail="period must be one of: week, month, quarter")
+
+    start, end, prev_start, prev_end, period_label, compare_label = _period_window(period)
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    params = {
+        "select": (
+            "id,seq_no,site_address,observation_date,audit_date,observation_text,"
+            "conformance_status,ccvs_code,action_required,action_description,"
+            "responsible,due_category,monitoring_note,closeout_status,source_pdf,"
+            "staging,review_status"
+        ),
+        "review_status": "eq.Approved",
+        "staging": "eq.false",
+        "source_pdf": "is.null",
+        "order": "approved_at.desc",
+        "limit": "5000",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params=params,
+        )
+        r.raise_for_status()
+        rows = r.json()
+
+    current_rows: list[dict] = []
+    previous_rows: list[dict] = []
+    for row in rows:
+        row_date = _row_obs_date(row)
+        if not row_date:
+            continue
+        if start <= row_date < end:
+            current_rows.append(row)
+        elif prev_start <= row_date < prev_end:
+            previous_rows.append(row)
+
+    current = _metrics(current_rows)
+    previous = _metrics(previous_rows)
+    current_rate = round((current["compliant"] / current["total"]) * 100) if current["total"] else 0
+    previous_rate = round((previous["compliant"] / previous["total"]) * 100) if previous["total"] else 0
+
+    wb = openpyxl.Workbook()
+    ws_kpi = wb.active
+    ws_kpi.title = "KPI Summary"
+    ws_actions = wb.create_sheet("Open Actions")
+
+    header_fill = PatternFill(fill_type="solid", fgColor="0A1628")
+    header_font = Font(name="Aptos", bold=True, color="FFFFFF", size=10)
+    value_font = Font(name="Aptos", size=10, color="111827")
+    metric_font = Font(name="Aptos", bold=True, size=10, color="1E3A5F")
+    align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    border = Border(
+        left=Side(style="thin", color="D1D5DB"),
+        right=Side(style="thin", color="D1D5DB"),
+        top=Side(style="thin", color="D1D5DB"),
+        bottom=Side(style="thin", color="D1D5DB"),
+    )
+
+    ws_kpi["A1"] = "PIMS RPD Manager Report"
+    ws_kpi["A1"].font = Font(name="Aptos", bold=True, size=14, color="0A1628")
+    ws_kpi["A2"] = f"Period: {period_label}"
+    ws_kpi["A2"].font = Font(name="Aptos", size=10, color="1E3A5F")
+    ws_kpi.merge_cells("A1:D1")
+    ws_kpi.merge_cells("A2:D2")
+
+    headers_kpi = ["Metric", "Current", "Previous", f"Delta vs prev {compare_label}"]
+    for c, name in enumerate(headers_kpi, 1):
+        cell = ws_kpi.cell(row=4, column=c, value=name)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = align_left
+        cell.border = border
+
+    metric_rows = [
+        ("Total observations", current["total"], previous["total"]),
+        ("Compliance rate (%)", current_rate, previous_rate),
+        ("NCR", current["ncr"], previous["ncr"]),
+        ("Conditional", current["conditional"], previous["conditional"]),
+        ("Open actions", current["open_actions"], previous["open_actions"]),
+    ]
+    for r_idx, (name, curr, prev) in enumerate(metric_rows, 5):
+        ws_kpi.cell(row=r_idx, column=1, value=name).font = metric_font
+        ws_kpi.cell(row=r_idx, column=2, value=curr).font = value_font
+        ws_kpi.cell(row=r_idx, column=3, value=prev).font = value_font
+        ws_kpi.cell(row=r_idx, column=4, value=curr - prev).font = value_font
+        for c in range(1, 5):
+            cell = ws_kpi.cell(row=r_idx, column=c)
+            cell.alignment = align_left
+            cell.border = border
+
+    ws_kpi["A11"] = "Live records only (staging=false and source_pdf IS NULL)"
+    ws_kpi["A11"].font = Font(name="Aptos", size=9, italic=True, color="64748B")
+    ws_kpi.merge_cells("A11:D11")
+
+    ws_kpi.column_dimensions["A"].width = 32
+    ws_kpi.column_dimensions["B"].width = 16
+    ws_kpi.column_dimensions["C"].width = 16
+    ws_kpi.column_dimensions["D"].width = 24
+
+    open_actions = [
+        row for row in current_rows
+        if row.get("action_required") and (row.get("closeout_status") or "").strip().lower() != "closed"
+    ]
+    action_headers = [
+        "#",
+        "Site Address",
+        "Date",
+        "Status",
+        "CCVS",
+        "Action Required",
+        "Responsible",
+        "Due",
+        "Monitoring Note",
+        "Observation",
+    ]
+    for c, name in enumerate(action_headers, 1):
+        cell = ws_actions.cell(row=1, column=c, value=name)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = align_left
+        cell.border = border
+
+    for r_idx, row in enumerate(open_actions, 2):
+        values = [
+            row.get("seq_no") or "",
+            row.get("site_address") or "",
+            _parse_upload_date(row.get("observation_date") or row.get("audit_date")) or "",
+            row.get("conformance_status") or "",
+            row.get("ccvs_code") or "",
+            row.get("action_description") or "",
+            row.get("responsible") or "",
+            row.get("due_category") or "",
+            row.get("monitoring_note") or "",
+            row.get("observation_text") or "",
+        ]
+        for c, val in enumerate(values, 1):
+            cell = ws_actions.cell(row=r_idx, column=c, value=val)
+            cell.font = value_font
+            cell.alignment = align_left
+            cell.border = border
+
+    col_widths = [6, 32, 14, 14, 12, 34, 16, 14, 28, 44]
+    for idx, width in enumerate(col_widths, 1):
+        ws_actions.column_dimensions[get_column_letter(idx)].width = width
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"PIMS_RPD_Report_{period}_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
