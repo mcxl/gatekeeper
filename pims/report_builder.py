@@ -186,7 +186,7 @@ def _build_sheet1(ws, data):
         _c(ws, f"{col}14", lbl, BLUE, bold=True, size=9)
 
     site = sites[0] if sites else {"address": "", "ncr": 0, "conditional": 0, "compliant": 0, "total": 0}
-    site_comp_pct = site.get("compliance_pct", 0.0)
+    site_comp_pct = (site["compliant"] / site["total"]) if site["total"] else 0.0
     _merge(ws, "B15:C15", site.get("address",""), LIGHT, bold=False, size=9, font_color=MID, halign="left")
     _c(ws, "D15", site["ncr"],         RED_BG, bold=True, size=11, font_color=RED,   halign="center")
     _c(ws, "E15", site["conditional"], AMB_BG, bold=True, size=11, font_color=AMBER, halign="center")
@@ -200,13 +200,13 @@ def _build_sheet1(ws, data):
         r  = 15 + i
         bg = ccvs_bg[i]
         badge_fill = _ccvs_badge_color(row_data["ncr"], row_data["conditional"])
-        _c(ws, f"I{r}", row_data["code"],     badge_fill, bold=True,  size=9, font_color=WHITE, halign="center")
+        _c(ws, f"I{r}", row_data["ccvs_code"], badge_fill, bold=True,  size=9, font_color=WHITE, halign="center")
         _c(ws, f"J{r}", row_data["category"], bg,         bold=False, size=9, font_color=MID,   halign="left")
         _c(ws, f"K{r}", row_data["ncr"],         bg, bold=False, size=9, font_color=MID, halign="center")
         _c(ws, f"L{r}", row_data["conditional"], bg, bold=False, size=9, font_color=MID, halign="center")
         _c(ws, f"M{r}", row_data["compliant"],   bg, bold=False, size=9, font_color=MID, halign="center")
         _c(ws, f"N{r}", row_data["total"],       bg, bold=False, size=9, font_color=MID, halign="center")
-        ccvs_pct = row_data.get("compliance_pct", 0.0)
+        ccvs_pct = row_data.get("compliance_rate", 0) / 100
         _c(ws, f"P{r}", f"{int(ccvs_pct*100)}%", bg, bold=True, size=10,
            font_color=_compliance_color(ccvs_pct), halign="center")
 
