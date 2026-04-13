@@ -1499,7 +1499,6 @@ async def download_rpd_report(
             "responsible,due_category,monitoring_note,source_pdf,"
             "staging,review_status"
         ),
-        "review_status": "eq.Approved",
         "staging": "eq.false",
         "source_pdf": "is.null",
         "order": "approved_at.desc",
