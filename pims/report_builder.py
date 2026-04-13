@@ -185,9 +185,9 @@ def _build_sheet1(ws, data):
     for col, lbl in [("I","Code"),("J","Category"),("K","NCR"),("L","Cond"),("M","Comp"),("N","Total")]:
         _c(ws, f"{col}14", lbl, BLUE, bold=True, size=9)
 
-    site = sites[0] if sites else {"address": "", "ncr": 0, "conditional": 0, "compliant": 0, "total": 0}
+    site = sites[0] if sites else {"site_address": "", "ncr": 0, "conditional": 0, "compliant": 0, "total": 0}
     site_comp_pct = (site["compliant"] / site["total"]) if site["total"] else 0.0
-    _merge(ws, "B15:C15", site.get("address",""), LIGHT, bold=False, size=9, font_color=MID, halign="left")
+    _merge(ws, "B15:C15", site.get("site_address",""), LIGHT, bold=False, size=9, font_color=MID, halign="left")
     _c(ws, "D15", site["ncr"],         RED_BG, bold=True, size=11, font_color=RED,   halign="center")
     _c(ws, "E15", site["conditional"], AMB_BG, bold=True, size=11, font_color=AMBER, halign="center")
     _c(ws, "F15", site["compliant"],   GRN_BG, bold=True, size=11, font_color=GREEN, halign="center")
@@ -221,19 +221,19 @@ def _build_sheet1(ws, data):
 
     for i, act in enumerate(actions[:4]):
         r      = 24 + i
-        status = act.get("status", "NCR")
+        status = act.get("conformance_status", "NCR")
         if status == "NCR":
             row_bg, badge_bg, due_col = RED_BG, RED, RED
         elif status in ("Conditional", "Cond"):
             row_bg, badge_bg, due_col = AMB_BG, AMBER, AMBER
         else:
             row_bg, badge_bg, due_col = GRN_BG, GREEN, GREEN
-        _c(ws, f"B{r}", str(act.get("obs_id","")),        row_bg,   bold=True,  size=9, font_color=DARK, halign="center")
-        _c(ws, f"C{r}", act.get("ccvs_code",""),           badge_bg, bold=True,  size=9, font_color=WHITE)
-        _c(ws, f"D{r}", status,                             badge_bg, bold=True,  size=9, font_color=WHITE)
-        _merge(ws, f"E{r}:L{r}", act.get("action_text",""),  row_bg, bold=False, size=9, font_color=MID, halign="left")
-        _merge(ws, f"M{r}:N{r}", act.get("responsible",""),   row_bg, bold=False, size=9, font_color=MID, halign="center")
-        _c(ws, f"P{r}", act.get("due",""),                 row_bg,   bold=True,  size=9, font_color=due_col, halign="center")
+        _c(ws, f"B{r}", str(act.get("seq_no","")),              row_bg,   bold=True,  size=9, font_color=DARK, halign="center")
+        _c(ws, f"C{r}", act.get("ccvs_code",""),                 badge_bg, bold=True,  size=9, font_color=WHITE)
+        _c(ws, f"D{r}", status,                                   badge_bg, bold=True,  size=9, font_color=WHITE)
+        _merge(ws, f"E{r}:L{r}", act.get("action_description",""), row_bg, bold=False, size=9, font_color=MID, halign="left")
+        _merge(ws, f"M{r}:N{r}", act.get("responsible",""),        row_bg, bold=False, size=9, font_color=MID, halign="center")
+        _c(ws, f"P{r}", act.get("due_category",""),              row_bg,   bold=True,  size=9, font_color=due_col, halign="center")
 
     _merge(ws, "B29:P29", "Live audit records only  ·  staging=FALSE AND source_pdf=FALSE",
            None, bold=False, size=8, font_color=MUTED, halign="left")
@@ -272,22 +272,22 @@ def _build_sheet2(ws, data):
     for i, act in enumerate(actions):
         r      = 7 + i
         ws.row_dimensions[r].height = 36.0
-        status = act.get("status", "NCR")
+        status = act.get("conformance_status", "NCR")
         if status == "NCR":
             row_bg, badge_bg, due_col = RED_BG, RED, RED
         elif status in ("Conditional", "Cond"):
             row_bg, badge_bg, due_col = AMB_BG, AMBER, AMBER
         else:
             row_bg, badge_bg, due_col = GRN_BG, GREEN, GREEN
-        _c(ws, f"B{r}", str(act.get("obs_id","")),        row_bg,   bold=True,  size=9, font_color=DARK, halign="center")
-        _c(ws, f"C{r}", act.get("site",""),                row_bg,   bold=False, size=9, font_color=MID,  halign="left")
-        _c(ws, f"D{r}", act.get("date",""),                row_bg,   bold=False, size=9, font_color=MID,  halign="center")
-        _c(ws, f"E{r}", status,                             badge_bg, bold=True,  size=9, font_color=WHITE)
-        _c(ws, f"F{r}", act.get("action_text",""),         row_bg,   bold=False, size=9, font_color=MID,  halign="left")
-        _c(ws, f"G{r}", act.get("responsible",""),         row_bg,   bold=False, size=9, font_color=MID,  halign="center")
-        _c(ws, f"H{r}", act.get("due",""),                 row_bg,   bold=True,  size=9, font_color=due_col, halign="center")
-        _c(ws, f"I{r}", act.get("monitoring_note",""),     row_bg,   bold=False, size=9, font_color=MID,  halign="left")
-        _c(ws, f"J{r}", act.get("observation",""),         row_bg,   bold=False, size=9, font_color=MID,  halign="left")
+        _c(ws, f"B{r}", str(act.get("seq_no","")),            row_bg,   bold=True,  size=9, font_color=DARK, halign="center")
+        _c(ws, f"C{r}", act.get("site_address",""),            row_bg,   bold=False, size=9, font_color=MID,  halign="left")
+        _c(ws, f"D{r}", act.get("audit_date",""),              row_bg,   bold=False, size=9, font_color=MID,  halign="center")
+        _c(ws, f"E{r}", status,                                 badge_bg, bold=True,  size=9, font_color=WHITE)
+        _c(ws, f"F{r}", act.get("action_description",""),     row_bg,   bold=False, size=9, font_color=MID,  halign="left")
+        _c(ws, f"G{r}", act.get("responsible",""),             row_bg,   bold=False, size=9, font_color=MID,  halign="center")
+        _c(ws, f"H{r}", act.get("due_category",""),            row_bg,   bold=True,  size=9, font_color=due_col, halign="center")
+        _c(ws, f"I{r}", act.get("monitoring_note",""),         row_bg,   bold=False, size=9, font_color=MID,  halign="left")
+        _c(ws, f"J{r}", act.get("observation_text",""),    row_bg,   bold=False, size=9, font_color=MID,  halign="left")
 
     _sheet_page_setup(ws)
 
