@@ -18,30 +18,30 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --navy:        #0A1628;
-  --navy-80:     rgba(10,22,40,0.80);
-  --blue:        #0057FF;
-  --blue-light:  #E8F0FF;
-  --blue-mid:    #3B82F6;
-  --green:       #00C48C;
-  --green-bg:    #E6FAF4;
-  --green-text:  #006B4F;
-  --amber:       #F59E0B;
-  --amber-bg:    #FEF3C7;
-  --amber-text:  #92400E;
-  --red:         #EF4444;
-  --red-bg:      #FEE2E2;
-  --red-text:    #991B1B;
-  --info-bg:     #EFF6FF;
-  --info-text:   #1D4ED8;
-  --white:       #FFFFFF;
-  --surface:     #F4F7FC;
-  --card:        #FFFFFF;
-  --border:      rgba(10,22,40,0.08);
-  --border-mid:  rgba(10,22,40,0.14);
-  --text-primary:#0A1628;
-  --text-muted:  #6B7A99;
-  --text-light:  #A0ABBE;
+  --navy:        #0F172A;
+  --navy-80:     rgba(15,23,42,0.88);
+  --blue:        #1E3A5F;
+  --blue-light:  #162032;
+  --blue-mid:    #2E6DA4;
+  --green:       #16a34a;
+  --green-bg:    rgba(22,163,74,0.18);
+  --green-text:  #86efac;
+  --amber:       #d97706;
+  --amber-bg:    rgba(217,119,6,0.2);
+  --amber-text:  #fbbf24;
+  --red:         #dc2626;
+  --red-bg:      rgba(220,38,38,0.2);
+  --red-text:    #fca5a5;
+  --info-bg:     rgba(46,109,164,0.2);
+  --info-text:   #2E6DA4;
+  --white:       #F1F5F9;
+  --surface:     #162032;
+  --card:        #1E293B;
+  --border:      #2E3D52;
+  --border-mid:  #2E3D52;
+  --text-primary:#E2E8F0;
+  --text-muted:  #94A3B8;
+  --text-light:  #94A3B8;
   --font:        'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
   --r-sm:        8px;
   --r-md:        14px;
@@ -57,7 +57,7 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font);
-  background: var(--surface);
+  background: #0F172A;
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -145,7 +145,7 @@ body::before {
   position: sticky;
   top: 60px;
   z-index: 100;
-  background: rgba(244,247,252,0.92);
+  background: rgba(15,23,42,0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -174,7 +174,7 @@ body::before {
   border-radius: var(--r-sm);
   padding: 5px 28px 5px 10px;
   color: var(--text-primary);
-  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B7A99' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
   -webkit-appearance: none;
   cursor: pointer;
   min-width: 140px;
@@ -200,17 +200,17 @@ body::before {
   color: var(--text-muted);
   border: 1.5px solid var(--border-mid);
 }
-.btn-ghost:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.btn-ghost:hover { border-color: var(--blue); color: var(--white); background: rgba(30,58,95,0.35); }
 
 .btn-primary {
   background: var(--blue);
   color: white;
-  box-shadow: 0 2px 8px rgba(0,87,255,0.25);
+  box-shadow: 0 2px 8px rgba(30,58,95,0.4);
 }
-.btn-primary:hover { background: #0044CC; box-shadow: 0 4px 14px rgba(0,87,255,0.35); transform: translateY(-1px); }
+.btn-primary:hover { background: #295488; box-shadow: 0 4px 14px rgba(30,58,95,0.5); transform: translateY(-1px); }
 
 .btn-success { background: var(--green); color: white; }
-.btn-success:hover { background: #00A878; transform: translateY(-1px); }
+.btn-success:hover { background: #15803d; transform: translateY(-1px); }
 
 .ml-auto { margin-left: auto; }
 
@@ -365,10 +365,10 @@ table.dt td {
   line-height: 1.5;
 }
 table.dt tbody tr { transition: background var(--transition); }
-table.dt tbody tr:hover td { background: var(--blue-light); }
+table.dt tbody tr:hover td { background: rgba(30,58,95,0.35); }
 table.dt tbody tr:last-child td { border-bottom: none; }
-table.dt tbody tr.row-ncr td { background: #fff8f8; }
-table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
+table.dt tbody tr.row-ncr td { background: rgba(220,38,38,0.12); }
+table.dt tbody tr.row-ncr:hover td { background: rgba(220,38,38,0.2); }
 
 /* ── Badges ── */
 .badge {
@@ -424,7 +424,7 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
   padding: 5px 12px;
   border-radius: var(--r-sm);
   border: 1.5px solid var(--border-mid);
-  background: white;
+  background: var(--surface);
   color: var(--blue);
   cursor: pointer;
   transition: all var(--transition);
@@ -433,7 +433,7 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
   background: var(--blue);
   color: white;
   border-color: var(--blue);
-  box-shadow: 0 2px 8px rgba(0,87,255,0.25);
+  box-shadow: 0 2px 8px rgba(30,58,95,0.4);
 }
 
 /* ── Modal ── */
@@ -449,7 +449,7 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
 .modal-overlay.active { display: flex; }
 
 .modal {
-  background: white;
+  background: var(--card);
   border-radius: var(--r-xl);
   width: 520px;
   max-width: 95vw;
@@ -518,14 +518,14 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
   border-radius: var(--r-sm);
   padding: 9px 12px;
   color: var(--text-primary);
-  background: white;
+  background: var(--card);
   transition: border-color var(--transition);
   width: 100%;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(0,87,255,0.08);
+  box-shadow: 0 0 0 3px rgba(30,58,95,0.4);
 }
 .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .form-input:disabled { background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
@@ -616,7 +616,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   cursor: text;
 }
 .inline-edit:hover { border-color: var(--border-mid); background: var(--surface); }
-.inline-edit:focus { outline: none; border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(0,87,255,0.08); }
+.inline-edit:focus { outline: none; border-color: var(--blue); background: var(--card); box-shadow: 0 0 0 3px rgba(30,58,95,0.4); }
 
 /* ── Needs-review badge ── */
 .badge-review { background: var(--amber-bg); color: var(--amber-text); }
@@ -643,7 +643,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   display: flex;
   align-items: center;
   gap: 8px;
-  background: white;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 6px;
@@ -668,7 +668,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   background: var(--blue);
   color: white;
 }
-.view-tab:hover:not(.active) { background: var(--blue-light); color: var(--blue); }
+.view-tab:hover:not(.active) { background: rgba(30,58,95,0.35); color: var(--white); }
 .tab-badge {
   min-width: 20px;
   height: 20px;
@@ -685,14 +685,52 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   color: #fff;
 }
 .tab-badge.clear {
-  background: #dcfce7;
-  color: #15803d;
+  background: rgba(22,163,74,0.22);
+  color: #86efac;
 }
 .kpi-scope-note {
   margin-top: -2px;
   font-size: 11px;
   color: var(--text-light);
   font-weight: 600;
+}
+
+/* ── Dark-theme overrides for inline-styled staging/upload blocks ── */
+#staging-section,
+#staging-section h2,
+#staging-section h3,
+#staging-section td,
+#staging-section th,
+#staging-section span,
+#staging-section p {
+  color: var(--text-primary) !important;
+}
+#staging-section table thead tr {
+  background: var(--surface) !important;
+}
+#staging-section table th,
+#staging-section table td {
+  border-color: var(--border) !important;
+}
+#staging-section input,
+#staging-section select,
+#staging-section textarea {
+  background: var(--card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+#staging-section input::placeholder,
+#staging-section textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+#staging-section code {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+#xlsx-upload-panel,
+#xlsxUploadBody {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
 }
 
 /* ── Responsive ── */

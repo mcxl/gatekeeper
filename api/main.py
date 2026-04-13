@@ -1898,19 +1898,19 @@ def _login_html_msg(msg: str = "") -> str:
 <title>PIMS - Sign In</title>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:system-ui,sans-serif;background:#0f172a;
+  body{{font-family:system-ui,sans-serif;background:#0F172A;color:#E2E8F0;
        display:flex;align-items:center;justify-content:center;min-height:100vh}}
-  .card{{background:#1e293b;border-radius:12px;padding:40px 36px;
+  .card{{background:#1E293B;border-radius:12px;padding:40px 36px;
         width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4)}}
-  .logo{{color:#f59e0b;font-size:1.3rem;font-weight:700;margin-bottom:8px}}
-  h1{{color:#f1f5f9;font-size:1.1rem;font-weight:600;margin-bottom:28px}}
-  label{{display:block;color:#94a3b8;font-size:.8rem;margin-bottom:6px}}
-  input{{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #334155;
-        background:#0f172a;color:#f1f5f9;font-size:.95rem;margin-bottom:20px}}
-  input:focus{{outline:2px solid #f59e0b;border-color:transparent}}
-  button{{width:100%;padding:11px;background:#f59e0b;color:#0f172a;
+  .logo{{color:#F47920;font-size:1.3rem;font-weight:700;margin-bottom:8px}}
+  h1{{color:#F1F5F9;font-size:1.1rem;font-weight:600;margin-bottom:28px}}
+  label{{display:block;color:#94A3B8;font-size:.8rem;margin-bottom:6px}}
+  input{{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #2E3D52;
+        background:#1E293B;color:#E2E8F0;font-size:.95rem;margin-bottom:20px}}
+  input:focus{{outline:2px solid #F47920;border-color:transparent}}
+  button{{width:100%;padding:11px;background:#F47920;color:#0f172a;
          font-weight:700;font-size:.95rem;border:none;border-radius:6px;cursor:pointer}}
-  button:hover{{background:#fbbf24}}
+  button:hover{{background:#f59e0b}}
 </style>
 </head>
 <body>
