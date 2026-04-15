@@ -3262,10 +3262,10 @@ function renderAllObsMobile(obs) {
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
               ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
             </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px; background:#f8fbff;">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px;">
               ${row.observation_text_enriched
                 ? `<span title="${esc(row.observation_text_enriched)}"
-                    style="display:block;font-size:0.75rem;line-height:1.45;color:#1e3a5f;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+                    style="display:block;font-size:0.75rem;line-height:1.45;color:#334155;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
                     ${esc(row.observation_text_enriched)}
                   </span>`
                 : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
