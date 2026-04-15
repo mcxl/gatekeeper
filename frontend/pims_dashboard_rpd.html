@@ -1549,7 +1549,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
-                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">Enriched Text</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#eff6ff; color:#1d4ed8;">AI Summary</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Approve</th>
               </tr>
@@ -3636,7 +3636,7 @@ function renderAllObsMobile(obs) {
         updateSelectCount();
 
         if (!skipReload && !_bulkPromoteInProgress) {
-          await loadStaging();
+          await Promise.all([loadData(), loadStaging()]);
         }
         if (!suppressToast) {
           showToast('Record promoted to PIMS observations.', 'success');
