@@ -111,7 +111,7 @@ CCVS_CATEGORY_BY_PREFIX = {
 }
 
 STAGING_COPY_FIELDS = [
-    "audit_id", "seq_no", "observation_date", "observation_text",
+    "audit_id", "site_address", "seq_no", "observation_date", "observation_text",
     "filename", "photo_url", "submitted_by", "device_info",
     "enriched", "enriched_at", "conformance_status", "ccvs_code",
     "ccvs_category", "ccvs_confidence", "action_required",
