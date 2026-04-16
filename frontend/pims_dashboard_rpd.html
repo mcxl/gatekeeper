@@ -1209,10 +1209,12 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 }
 
 /* Hide mobile-only elements on desktop */
-.filter-toggle  { display: none; }
-.filters-inner  { display: contents; }
-.mobile-cards   { display: none; }
-.header-export  { display: none; }
+@media (min-width: 641px) {
+  .filter-toggle  { display: none; }
+  .filters-inner  { display: contents; }
+  .mobile-cards   { display: none; }
+  .header-export  { display: none; }
+}
 </style>
 </head>
 <body>

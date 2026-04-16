@@ -712,10 +712,12 @@ table.dt tbody tr.row-ncr:hover td { background: #fee2e2; }
 }
 
 /* Hide mobile-only elements on desktop */
-.filter-toggle  { display: none; }
-.filters-inner  { display: contents; }
-.mobile-cards   { display: none; }
-.header-export  { display: none; }
+@media (min-width: 641px) {
+  .filter-toggle  { display: none; }
+  .filters-inner  { display: contents; }
+  .mobile-cards   { display: none; }
+  .header-export  { display: none; }
+}
 </style>
 </head>
 <body>
