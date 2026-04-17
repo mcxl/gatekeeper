@@ -699,8 +699,8 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   font-weight: 700;
 }
 .tab-badge.pending {
-  background: #f59e0b;
-  color: #fff;
+  background: #fef9c3;
+  color: #713f12;
 }
 .tab-badge.clear {
   background: rgba(22,163,74,0.22);
@@ -1022,7 +1022,7 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 #staging-section h3,
 #staging-section td,
 #staging-section th,
-#staging-section span,
+#staging-section span:not(.field-badge),
 #staging-section p {
   color: var(--text-primary) !important;
 }
@@ -1511,9 +1511,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <div onclick="toggleStaging()" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
       <h2 style="margin:0; font-size:1.05rem;">
         📥 Staging Inbox
-        <span id="staging-badge" style="
-          display:inline-block; margin-left:8px; padding:2px 9px;
-          background:#f59e0b; color:#fff; border-radius:12px;
+        <span id="staging-badge" class="field-badge field-badge-pending" style="
+          margin-left:8px; padding:2px 9px;
           font-size:0.75rem; font-weight:700; vertical-align:middle;">
           0
         </span>
@@ -1573,7 +1572,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
-                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">AI Summary</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Finding</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Approve</th>
               </tr>
@@ -1949,7 +1948,8 @@ function updateStagingBadges() {
   const sectionBadge = document.getElementById('staging-badge');
   if (sectionBadge) {
     sectionBadge.textContent = pendingStagingCount;
-    sectionBadge.style.background = pendingStagingCount > 0 ? '#f59e0b' : '#16a34a';
+    sectionBadge.classList.toggle('field-badge-pending',  pendingStagingCount > 0);
+    sectionBadge.classList.toggle('field-badge-approved', pendingStagingCount === 0);
   }
 
   const tabBadge = document.getElementById('staging-tab-badge');
@@ -3426,7 +3426,7 @@ function renderAllObsMobile(obs) {
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.recommendation || row.action_description, 90)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:180px;">${trunc(legalRefDisplay, 70)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
-                ${row.needs_review ? '<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:#fef3c7;color:#92400e;">Needs review</span>' : '—'}
+                ${row.needs_review ? '<span class="field-badge field-badge-pending">Needs review</span>' : '—'}
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.source_pdf, 90)}</td>
               <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
