@@ -646,6 +646,8 @@ async def approve_staging_rpd(
             "review_status": "Approved",
             "approved_by":   "dashboard",
             "approved_at":   now_utc,
+            "staging":       False,
+            "needs_review":  False,
         })
 
         r2 = await client.post(
