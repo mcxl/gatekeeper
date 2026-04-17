@@ -391,6 +391,23 @@ table.dt tbody tr.row-ncr:hover td { background: rgba(220,38,38,0.2); }
 .badge-closed      { background: var(--green-bg);  color: var(--green-text); }
 .badge-na          { background: var(--surface);   color: var(--text-light); }
 
+/* ── Field Captures pills (light-theme, AA contrast) ── */
+.field-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.field-badge-compliant,
+.field-badge-approved    { background: #dcfce7; color: #14532d; }
+.field-badge-conditional,
+.field-badge-pending     { background: #fef9c3; color: #713f12; }
+.field-badge-ncr,
+.field-badge-rejected    { background: #fee2e2; color: #7f1d1d; }
+.field-badge-info        { background: #e0e7ff; color: #1e1b4b; }
+.field-badge-na          { background: #f1f5f9; color: #334155; }
+
 /* ── CCVS code chip ── */
 .ccvs-chip {
   display: inline-flex;
@@ -1538,6 +1555,11 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
           <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">Field Captures</h3>
           <span id="staging-field-count" style="font-size:0.75rem;color:#64748b;"></span>
         </div>
+        <div class="period-toggle" style="margin-bottom:8px;">
+          <button class="period-btn active" id="stagingFieldFilterPending"  onclick="setStagingFieldFilter('Pending')">Pending</button>
+          <button class="period-btn"        id="stagingFieldFilterApproved" onclick="setStagingFieldFilter('Approved')">Approved</button>
+          <button class="period-btn"        id="stagingFieldFilterAll"      onclick="setStagingFieldFilter('All')">All</button>
+        </div>
         <div style="overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
             <thead>
@@ -2638,6 +2660,7 @@ function renderAllObsMobile(obs) {
     let stagingData = []; // cache for XLSX/DOCX export
     let stagingFieldRows = [];
     let stagingPdfRows = [];
+    let stagingFieldFilter = 'Pending';
     let stagingFieldPage = 1;
     let stagingPdfPage = 1;
     let stagingPdfGroupExpanded = {};
@@ -2667,13 +2690,6 @@ function renderAllObsMobile(obs) {
       'STR-H6', 'STR-H9', 'MOB-H6', 'MOB-M4', 'CHM-M3', 'CHM-H6',
       'ENE-M4', 'ENE-H6', 'SYS-L1', 'SYS-L2', 'SYS-M3', 'SYS-M4', 'SYS-H6',
     ]);
-
-    const CONFORMANCE_COLOURS = {
-      Compliant:   { bg: '#dcfce7', color: '#15803d' },
-      Conditional: { bg: '#fef9c3', color: '#854d0e' },
-      NCR:         { bg: '#fee2e2', color: '#991b1b' },
-      Info:        { bg: '#e0e7ff', color: '#3730a3' },
-    };
 
     let stagingOpen = true;
 
@@ -3239,7 +3255,7 @@ function renderAllObsMobile(obs) {
       tbody.innerHTML = rows.map(row => {
         const confRaw = row.conformance_status || '';
         const conf = esc(confRaw);
-        const colours = CONFORMANCE_COLOURS[confRaw] || { bg: '#f1f5f9', color: '#475569' };
+        const confClass = confRaw ? `field-badge-${confRaw.toLowerCase()}` : 'field-badge-na';
         const approved = row.review_status === 'Approved';
         const thumb = row.photo_url
           ? `<a href="${esc(row.photo_url)}" target="_blank" rel="noopener" title="${esc(row.filename) || 'View photo'}">
@@ -3262,7 +3278,7 @@ function renderAllObsMobile(obs) {
               ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${esc(row.ccvs_code)}</code>` : '—'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
-              ${conf ? `<span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;background:${colours.bg};color:${colours.color};">${conf}</span>` : '—'}
+              ${conf ? `<span class="field-badge ${confClass}">${conf}</span>` : '—'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px;">
               ${row.observation_text_enriched
@@ -3273,9 +3289,7 @@ function renderAllObsMobile(obs) {
                 : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
-              <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;
-                background:${approved ? '#dcfce7' : '#fef9c3'};
-                color:${approved ? '#15803d' : '#854d0e'};">
+              <span class="field-badge field-badge-${(row.review_status || 'Pending').toLowerCase()}">
                 ${row.review_status || 'Pending'}
               </span>
             </td>
@@ -3542,6 +3556,17 @@ function renderAllObsMobile(obs) {
       }
     }
 
+    async function setStagingFieldFilter(filter) {
+      if (!['Pending', 'Approved', 'All'].includes(filter)) return;
+      stagingFieldFilter = filter;
+      ['Pending', 'Approved', 'All'].forEach(f => {
+        const btn = document.getElementById('stagingFieldFilter' + f);
+        if (btn) btn.classList.toggle('active', f === filter);
+      });
+      stagingFieldPage = 1;
+      await loadStaging();
+    }
+
     async function loadStaging() {
       if (_stagingLoading) return;
       _stagingLoading = true;
@@ -3553,10 +3578,11 @@ function renderAllObsMobile(obs) {
       if (pdfBody) pdfBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
       try {
-        const { data, error } = await db
-          .from('pims_staging')
-          .select('*')
-          .order('submitted_at', { ascending: false });
+        let fieldQuery = db.from('pims_staging').select('*');
+        if (stagingFieldFilter === 'Pending' || stagingFieldFilter === 'Approved') {
+          fieldQuery = fieldQuery.eq('review_status', stagingFieldFilter);
+        }
+        const { data, error } = await fieldQuery.order('submitted_at', { ascending: false });
         const { data: pdfObsData, error: pdfObsError } = await db
           .from('pims_observations')
           .select('*')
