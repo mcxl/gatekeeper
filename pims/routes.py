@@ -699,6 +699,61 @@ async def approve_staging_rpd(
         return response
 
 
+@router.post("/observation/{observation_id}/send-to-staging")
+async def send_observation_to_staging_rpd(
+    request: Request,
+    observation_id: str,
+    pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not _is_uuid(observation_id):
+        raise HTTPException(status_code=422, detail="Invalid observation_id format.")
+    if not RPD_SUPABASE_URL:
+        raise HTTPException(status_code=503, detail="Supabase URL not configured")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase service key not configured")
+
+    headers_repr    = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    headers_minimal = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal")
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers_repr,
+            params={"id": f"eq.{observation_id}", "select": "id,staging_id"},
+        )
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"Observation {observation_id} not found.")
+
+        staging_id = rows[0].get("staging_id")
+        if not staging_id:
+            raise HTTPException(status_code=400, detail="Cannot send back: row did not originate from staging")
+
+        r2 = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers=headers_minimal,
+            params={"id": f"eq.{staging_id}"},
+            json={"review_status": "Pending", "reviewed_at": None, "reviewed_by": None, "review_notes": None},
+        )
+        if r2.status_code not in (200, 204):
+            log.error(f"pims_staging recall reset failed for {staging_id}: {r2.status_code} {r2.text}")
+            raise HTTPException(status_code=500, detail="Failed to reset staging record. Contact administrator.")
+
+        r3 = await client.delete(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers_minimal,
+            params={"id": f"eq.{observation_id}"},
+        )
+        if r3.status_code not in (200, 204):
+            log.error(f"pims_observations delete failed for {observation_id}: {r3.status_code} {r3.text}")
+            raise HTTPException(status_code=500, detail="Staging reset but observation delete failed. Contact administrator.")
+
+        return {"ok": True, "staging_id": staging_id}
+
+
 def _is_uuid(val) -> bool:
     try:
         _uuid_mod.UUID(str(val))

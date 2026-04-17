@@ -2437,7 +2437,8 @@ function renderAllObs() {
       <th>CCVS</th>
       <th>Action Required</th>
       <th>Responsible</th>
-      <th style="padding-right:20px">Monitoring Note</th>`;
+      <th>Monitoring Note</th>
+      <th style="padding-right:20px"></th>`;
   } else {
     headRow.innerHTML = `
       <th style="padding-left:20px">Site Address</th>
@@ -2475,7 +2476,8 @@ function renderAllObs() {
         <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
-        <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>`;
+        <td style="max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>
+        <td style="padding-right:20px;">${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">↩ Send back</button>` : ''}</td>`;
     } else {
       tr.innerHTML = `
         <td style="padding-left:20px;min-width:160px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
@@ -2493,7 +2495,7 @@ function renderAllObs() {
   });
 
   if (!pageRows.length) {
-    const colspan = currentTab === 'live' ? 10 : 10;
+    const colspan = currentTab === 'live' ? 11 : 10;
     tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">No records for current filters</td></tr>`;
   }
 
@@ -3622,6 +3624,23 @@ function renderAllObsMobile(obs) {
       } finally {
         _stagingLoading = false;
         if (refreshBtn) refreshBtn.disabled = false;
+      }
+    }
+
+    async function sendObservationToStaging(observationId) {
+      if (!confirm('Send this row back to Staging Review for editing?')) return;
+      try {
+        const resp = await fetch(`/pims/observation/${observationId}/send-to-staging`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        await Promise.all([loadData(), loadStaging()]);
+      } catch (err) {
+        alert('Send back failed: ' + err.message);
       }
     }
 
