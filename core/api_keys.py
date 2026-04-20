@@ -21,12 +21,12 @@ from core.auth import get_optional_user
 logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
 def _supabase_headers() -> dict:
     return {
-        "apikey": SUPABASE_ANON_KEY,
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Content-Type": "application/json",
     }
 
@@ -37,7 +37,7 @@ async def validate_api_key(key: str) -> dict | None:
     Returns {"key_id", "name", "user_id", "active"} if valid and active.
     Returns None if not found or inactive.
     """
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         logger.debug("Supabase not configured — API key validation skipped")
         return None
 
@@ -74,7 +74,7 @@ async def log_api_key_usage(
     success: bool,
 ) -> None:
     """Insert a row into Supabase api_key_usage. Fire-and-forget — never blocks."""
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         return
 
     async def _insert():
