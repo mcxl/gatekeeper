@@ -50,8 +50,7 @@ async def _cleanup_orphaned_jobs() -> None:
         cutoff = (datetime.now(timezone.utc) - timedelta(seconds=ORPHAN_THRESHOLD_SECONDS)).isoformat()
 
         headers = {
-            "apikey": os.getenv("SUPABASE_ANON_KEY", ""),
-            "Authorization": f"Bearer {service_key}",
+            "apikey": service_key,
             "Content-Type": "application/json",
             "Prefer": "return=representation",
         }

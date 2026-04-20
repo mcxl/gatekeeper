@@ -50,3 +50,19 @@ src/__pycache__/
 db/gatekeeper.db
 *.zip
 *.tar.gz
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Local MCP config (contains access tokens)
+.mcp.json
+
+# Generated analysis / validator outputs
+src/outputs/
+data/overnight_*.txt
+data/*_analysis.jsonl
+
+# Malformed path-literal directories (accidental creates)
+C:Users*/

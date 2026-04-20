@@ -330,7 +330,6 @@ async def upload_photo_background(
 
     headers = {
         "apikey":        supabase_service_key,
-        "Authorization": f"Bearer {supabase_service_key}",
         "Content-Type":  "image/jpeg",
     }
 
@@ -361,10 +360,14 @@ async def upload_photo_background(
 # â”€â”€ Supabase helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _supabase_headers(supabase_key: str, prefer: str = "return=representation") -> dict:
-    """Build standard Supabase REST headers."""
+    """Build standard Supabase REST headers.
+
+    Only sends `apikey`. New-format sb_secret_/sb_publishable_ keys are
+    rejected when passed via `Authorization: Bearer` — the gateway forwards
+    it to Postgres which rejects it as a non-JWT.
+    """
     return {
         "apikey":        supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
         "Content-Type":  "application/json",
         "Prefer":        prefer,
     }

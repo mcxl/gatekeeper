@@ -27,7 +27,6 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 def _supabase_headers() -> dict:
     return {
         "apikey": SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
         "Content-Type": "application/json",
     }
 
