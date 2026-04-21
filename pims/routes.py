@@ -1806,12 +1806,15 @@ async def download_staging_xlsx(
         hc.border = bdr()
         ws_up.column_dimensions[get_column_letter(c)].width = 22
 
+    today_iso = date.today().isoformat()
     for i, row_data in enumerate(rows):
         r_num = i + 5
         legal_ref_val = row_data.get("legal_ref") or row_data.get("legal_reference") or ""
+        audit_date_val = row_data.get("audit_date") or row_data.get("observation_date") or today_iso
+        audit_date_str = str(audit_date_val)[:10]
         values = {
             "site_address": row_data.get("site_address") or "",
-            "audit_date": str(row_data.get("audit_date") or row_data.get("observation_date") or ""),
+            "audit_date": audit_date_str,
             "observation_text": row_data.get("observation_text") or "",
             "observation_text_enriched": row_data.get("observation_text_enriched") or "",
             "conformance_status": row_data.get("conformance_status") or "",
