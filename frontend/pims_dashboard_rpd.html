@@ -3339,7 +3339,7 @@ function renderAllObsMobile(obs) {
                 ${row.review_status || 'Pending'}
               </span>
             </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;white-space:nowrap;">
               <button
                 id="btn-${row.id}"
                 onclick="approveStagingRecord('${row.id}')"
@@ -3348,6 +3348,13 @@ function renderAllObsMobile(obs) {
                   background:${approved ? '#9ca3af' : '#16a34a'};border:none;
                   border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
                 ${approved ? '✓ Approved' : '✓ Approve'}
+              </button>
+              <button
+                onclick="deleteStagingRecord('${row.id}')"
+                title="Delete this staging row"
+                style="margin-left:6px;padding:4px 10px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:#dc2626;border:none;border-radius:5px;cursor:pointer;">
+                🗑
               </button>
             </td>
           </tr>`;
@@ -3687,6 +3694,26 @@ function renderAllObsMobile(obs) {
         await Promise.all([loadData(), loadStaging()]);
       } catch (err) {
         alert('Send back failed: ' + err.message);
+      }
+    }
+
+    async function deleteStagingRecord(stagingId) {
+      if (!confirm('Delete this staging row? This cannot be undone.')) return;
+      try {
+        const resp = await fetch(`/pims/staging/${stagingId}/delete`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        selectedStagingIds.delete(stagingId);
+        stagingFieldRows = stagingFieldRows.filter(r => r.id !== stagingId);
+        renderStagingFieldRows();
+        showToast('Staging row deleted.', 'success');
+      } catch (err) {
+        showToast('Delete failed: ' + (err.message || err), 'error');
       }
     }
 

@@ -620,6 +620,34 @@ async def sdgroup_observation(
     )
 
 
+@router.post("/staging/{staging_id}/delete")
+async def delete_staging_row(
+    staging_id: str,
+    request: Request,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    _uuid_re = re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        re.IGNORECASE,
+    )
+    if not _uuid_re.match(staging_id):
+        raise HTTPException(status_code=400, detail="Invalid id")
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.delete(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal"),
+            params={"id": f"eq.{staging_id}"},
+        )
+        if r.status_code not in (200, 204):
+            log.error(f"Staging delete failed {staging_id}: {r.status_code} {r.text}")
+            raise HTTPException(status_code=500, detail="Delete failed")
+    return {"ok": True, "id": staging_id}
+
+
 @router.post("/staging/{staging_id}/approve")
 async def approve_staging_rpd(
     request: Request,
