@@ -2433,7 +2433,7 @@ function renderAllObs() {
       <th>Photo</th>
       <th>Date</th>
       <th>Site Address</th>
-      <th>Observation</th>
+      <th>Finding</th>
       <th>Status</th>
       <th>CCVS</th>
       <th>Action Required</th>
@@ -2472,7 +2472,7 @@ function renderAllObs() {
       </td>
         <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
-        <td style="max-width:300px">${trunc(o.observation_text,120)}</td>
+        <td style="max-width:300px" title="${esc(o.observation_text || '')}">${trunc(o.observation_text_enriched || o.observation_text, 120)}</td>
         <td>${badge(o.conformance_status)}</td>
         <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
