@@ -2351,7 +2351,7 @@ function renderActions() {
       <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
-      <td style="max-width:260px">${trunc(o.action_description,100)}</td>
+      <td style="max-width:420px;white-space:normal;line-height:1.4;">${esc(o.action_description || '—')}</td>
       <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td>${dueLabel(o.due_category)}</td>
       <td style="padding-right:20px;white-space:nowrap;">
