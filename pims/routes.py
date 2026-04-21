@@ -1807,6 +1807,16 @@ async def download_staging_xlsx(
         ws_up.column_dimensions[get_column_letter(c)].width = 22
 
     today_iso = date.today().isoformat()
+
+    def _safe_status(raw) -> str:
+        if not raw:
+            return ""
+        s = str(raw).strip()
+        if s.upper() == "NCR":
+            return "NCR"
+        t = s.title()
+        return t if t in {"Compliant", "Conditional", "Info"} else ""
+
     for i, row_data in enumerate(rows):
         r_num = i + 5
         legal_ref_val = row_data.get("legal_ref") or row_data.get("legal_reference") or ""
@@ -1817,7 +1827,7 @@ async def download_staging_xlsx(
             "audit_date": audit_date_str,
             "observation_text": row_data.get("observation_text") or "",
             "observation_text_enriched": row_data.get("observation_text_enriched") or "",
-            "conformance_status": row_data.get("conformance_status") or "",
+            "conformance_status": _safe_status(row_data.get("conformance_status")),
             "ccvs_code": row_data.get("ccvs_code") or "",
             "ccvs_category": row_data.get("ccvs_category") or "",
             "action_description": row_data.get("action_description") or "",
