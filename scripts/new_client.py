@@ -333,6 +333,47 @@ def run_supabase_bootstrap(url: str, service_key: str, name: str, ref: str) -> N
 # ---------------------------------------------------------------------------
 
 
+def preflight(slug: str, short: str) -> None:
+    """Read all three sources, verify every abort condition, touch nothing.
+
+    If this returns without calling die(), the three patch_* functions are
+    safe to run in sequence — the anchors exist and nothing conflicts.
+    """
+    short_upper = short.upper()
+    dest_html = REPO / "frontend" / f"pims_dashboard_{slug}.html"
+    if dest_html.exists():
+        die(f"{dest_html} already exists; rerun after removing it or pick a different --slug")
+
+    routes_src, _, _ = _read_preserve_bom(ROUTES)
+    if f"{short_upper}_SUPABASE_URL" in routes_src:
+        die(f"pims/routes.py already references {short_upper}_SUPABASE_URL -- client exists")
+    if 'SDG_PIMS_TOKEN           = os.getenv("PIMS_SDG_TOKEN", "")' not in routes_src:
+        die(f"could not find SDG env anchor in {ROUTES}")
+
+    main_src, _, _ = _read_preserve_bom(MAIN)
+    if f'"/pims-{slug}"' in main_src:
+        die(f"api/main.py already defines /pims-{slug} route")
+    if "async def serve_pims_rpd(" not in main_src:
+        die("could not find serve_pims_rpd in api/main.py")
+    tail = '    return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})\n'
+    idx = main_src.find("async def serve_pims_rpd(")
+    if main_src.find(tail, idx) == -1:
+        die("could not find end of serve_pims_rpd body in api/main.py")
+
+    dash_src, _, _ = _read_preserve_bom(DASHBOARD_SRC)
+    if LEGACY_JWT_RE.search(dash_src):
+        die(
+            "source template frontend/pims_dashboard_rpd.html still contains a "
+            "legacy JWT literal. Fix the template first so it uses "
+            "__SUPABASE_URL__ / __SUPABASE_ANON__ placeholders."
+        )
+    if "__SUPABASE_URL__" not in dash_src or "__SUPABASE_ANON__" not in dash_src:
+        die(
+            "source template is missing __SUPABASE_URL__ / __SUPABASE_ANON__ "
+            "placeholders -- scaffold would produce a non-functional dashboard."
+        )
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--slug", required=True, help="lowercase slug, e.g. 'abc' (URL path + filename)")
@@ -344,11 +385,7 @@ def main() -> None:
     args = p.parse_args()
 
     validate(args)
-
-    # Idempotency-ish: check nothing is half-written before we start.
-    dest_html = REPO / "frontend" / f"pims_dashboard_{args.slug}.html"
-    if dest_html.exists():
-        die(f"{dest_html} already exists; rerun after removing it or pick a different --slug")
+    preflight(slug=args.slug, short=args.short)
 
     patch_routes(slug=args.slug, short=args.short, name=args.name)
     patch_main(slug=args.slug, short=args.short)
@@ -371,9 +408,12 @@ def main() -> None:
 
     print()
     print(f"[done] scaffold complete for client '{args.name}' (slug={args.slug}, short={args.short}).")
-    print(f"       still manual: Step 2 (Railway env vars), Step 6 (deploy),")
-    print(f"       Step 7 (dashboard test), Step 8 (Snap shortcut), Step 9 (Snap test),")
-    print(f"       Step 10 (Cowork project). Required Railway env vars:")
+    print(f"       still manual (v3 step numbers):")
+    print(f"         Step 2 (Railway env vars), Step 4 (Supabase bootstrap SQL),")
+    print(f"         Step 5 (deploy), Step 6 (dashboard test),")
+    print(f"         Step 7 (Snap shortcut), Step 8 (Snap test),")
+    print(f"         Step 9 (Cowork project).")
+    print(f"       Required Railway env vars:")
     print(f"         {args.short.upper()}_SUPABASE_URL")
     print(f"         {args.short.upper()}_SUPABASE_ANON_KEY")
     print(f"         {args.short.upper()}_SUPABASE_SERVICE_KEY")
