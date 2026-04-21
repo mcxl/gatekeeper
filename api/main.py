@@ -335,7 +335,12 @@ async def serve_dashboard():
 
 @app.get("/pims", response_class=HTMLResponse)
 async def serve_pims():
-    return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard.html"))
+    path = os.path.join(_FRONTEND_DIR, "pims_dashboard.html")
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    content = content.replace("__SUPABASE_URL__", os.getenv("RPD_SUPABASE_URL", ""))
+    content = content.replace("__SUPABASE_ANON__", os.getenv("RPD_SUPABASE_ANON_KEY", ""))
+    return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/pims-login", response_class=HTMLResponse)
@@ -379,7 +384,12 @@ async def pims_logout():
 async def serve_pims_rpd(request: Request):
     if not verify_session_cookie(request.cookies.get(COOKIE_NAME)):
         return RedirectResponse(url="/pims-login", status_code=302)
-    return _html_response(os.path.join(_FRONTEND_DIR, "pims_dashboard_rpd.html"))
+    path = os.path.join(_FRONTEND_DIR, "pims_dashboard_rpd.html")
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    content = content.replace("__SUPABASE_URL__", os.getenv("RPD_SUPABASE_URL", ""))
+    content = content.replace("__SUPABASE_ANON__", os.getenv("RPD_SUPABASE_ANON_KEY", ""))
+    return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/ra", response_class=HTMLResponse)
