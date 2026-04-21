@@ -2160,6 +2160,100 @@ async def reenrich_staging(
     return {"queued": queued, "total_null_rows": len(rows)}
 
 
+async def _reenrich_obs_preserving(
+    supabase_url: str,
+    supabase_service_key: str,
+    record_id: str,
+    observation_text: str,
+) -> None:
+    """Null-only re-enrich for pims_observations."""
+    try:
+        enrichment = await enrich_observation(observation_text)
+    except Exception as e:
+        log.error(f"Reenrich obs failed for {record_id}: {e}")
+        return
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{supabase_url}/rest/v1/pims_observations",
+            headers=_supabase_headers(supabase_service_key),
+            params={"id": f"eq.{record_id}", "select": "*"},
+        )
+        if r.status_code != 200 or not r.json():
+            log.error(f"Reenrich obs fetch failed {record_id}: {r.status_code}")
+            return
+        current = r.json()[0]
+
+        fields = {
+            "conformance_status":        enrichment.get("conformance_status"),
+            "ccvs_code":                 enrichment.get("ccvs_code"),
+            "ccvs_category":             enrichment.get("ccvs_category"),
+            "action_description":        enrichment.get("action_description"),
+            "responsible":               enrichment.get("responsible"),
+            "due_category":              enrichment.get("due_category"),
+            "monitoring_note":           enrichment.get("monitoring_note"),
+            "observation_text_enriched": enrichment.get("observation_text_enriched"),
+            "legal_reference":           enrichment.get("legal_reference"),
+        }
+        patch = {k: v for k, v in fields.items()
+                 if v is not None and v != "" and (current.get(k) is None or current.get(k) == "")}
+        if not patch:
+            return
+        headers_min = _supabase_headers(supabase_service_key, prefer="return=minimal")
+        pr = await client.patch(
+            f"{supabase_url}/rest/v1/pims_observations",
+            headers=headers_min,
+            params={"id": f"eq.{record_id}"},
+            json=patch,
+        )
+        if pr.status_code not in (200, 204):
+            log.error(f"Reenrich obs patch failed {record_id}: {pr.status_code} {pr.text}")
+        else:
+            log.info(f"Reenriched obs {record_id}: {list(patch.keys())}")
+
+
+@router.post("/observations/rpd/reenrich-live")
+async def reenrich_live_observations(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY),
+            params={
+                "select": "id,observation_text",
+                "staging": "eq.false",
+                "source_pdf": "is.null",
+                "observation_text_enriched": "is.null",
+            },
+        )
+        r.raise_for_status()
+        rows = r.json()
+
+    queued = 0
+    for row in rows:
+        obs = _cell_text(row.get("observation_text"))
+        if not obs:
+            continue
+        background_tasks.add_task(
+            _reenrich_obs_preserving,
+            RPD_SUPABASE_URL,
+            RPD_SUPABASE_SERVICE_KEY,
+            row["id"],
+            obs,
+        )
+        queued += 1
+
+    return {"queued": queued, "total_null_rows": len(rows)}
+
+
 @router.get("/observations/rpd")
 async def list_observations_rpd(
     request: Request,
