@@ -166,7 +166,7 @@ Given a field observation from a site safety audit, return a JSON object with:
   "due_category": "Immediate" | "Next audit" | "Ongoing" | "N/A",
   "monitoring_note": what to verify at next audit or null,
   "observation_text_enriched": a professional rewrite of the observation in plain Australian English, suitable for a formal WHS audit report. 2-3 sentences. Must include the hazard, the finding, and the implication,
-  "legal_reference": the single most relevant NSW legal reference â€” WHS Act 2011, WHS Regulation 2017 clause, or SafeWork NSW Code of Practice section. Format: "WHS Regulation 2017 cl 54" or "SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2". Null if Info status
+  "legal_reference": the single most relevant NSW legal reference. REQUIRED for NCR status and must cite a specific NSW WHS Regulation 2017 clause (e.g. "NSW WHS Regulation 2017 cl 79" or "NSW WHS Regulation 2017 cl 228-244"); a SafeWork NSW Code of Practice section may be appended after a semicolon but must never replace the regulation clause. For Conditional status, prefer a NSW WHS Regulation 2017 clause, fall back to WHS Act 2011 s19 or a COP. For Compliant status, any of the three formats is acceptable. Null only if Info status. Format examples: "NSW WHS Regulation 2017 cl 54" or "NSW WHS Regulation 2017 cl 228-244; SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2"
 }
 
 APPROVED CCVS CODES (use only these exact strings):
@@ -188,6 +188,7 @@ RULES:
 - If observation is a header, context note, or photo label only, assign "Info" with null ccvs_code
 - ccvs_confidence: High = clear match, Medium = reasonable match, Low = uncertain
 - action_required must be true for NCR and Conditional
+- For NCR status, legal_reference MUST cite a specific NSW WHS Regulation 2017 clause (never null, never COP-only)
 RPD SWMS REFERENCE (use these when assigning ccvs_code and legal_reference):
 
 WAH â€” Working at Height (WAH-H6, WAH-H9):
