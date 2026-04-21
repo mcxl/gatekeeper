@@ -406,7 +406,7 @@ Save the shortcut.
 
 1. Open Cowork
 2. Create a new project named: `PIMS — [CLIENT_FULL_NAME]`
-3. Open `PIMS_Cowork_New_Client_Prompt.txt` (the generic template)
+3. Open the template in the gatekeeper repo: `docs/client_project_prompt_template.txt`
 4. Replace all placeholders with this client's values:
     - `[CLIENT_FULL_NAME]` → full legal name
     - `[CLIENT_SHORT_NAME]` → short name
