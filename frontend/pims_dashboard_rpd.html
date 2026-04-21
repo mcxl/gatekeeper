@@ -1568,6 +1568,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
                 </th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Site Address</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">Photo</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
                 <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
@@ -1578,7 +1579,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
               </tr>
             </thead>
             <tbody id="staging-field-tbody">
-              <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
+              <tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
             </tbody>
           </table>
         </div>
@@ -3212,15 +3213,19 @@ function renderAllObsMobile(obs) {
 
         const summary = await resp.json();
         const inserted = Number(summary.inserted || 0);
+        const updated = Number(summary.updated || 0);
         const skipped = Number(summary.skipped || 0);
         const flagged = Number(summary.flagged || 0);
         const errCount = Array.isArray(summary.errors) ? summary.errors.length : 0;
 
         if (!skipped && !flagged && !errCount) {
-          showToast(`${inserted} row${inserted === 1 ? '' : 's'} uploaded to staging.`, 'success');
+          showToast(
+            `${inserted} inserted, ${updated} updated.`,
+            'success'
+          );
         } else {
           showToast(
-            `${inserted} inserted, ${skipped} skipped (duplicates), ${flagged} flagged for review${errCount ? `, ${errCount} row error(s)` : ''}.`,
+            `${inserted} inserted, ${updated} updated, ${skipped} skipped (duplicates), ${flagged} flagged for review${errCount ? `, ${errCount} row error(s)` : ''}.`,
             'warning'
           );
         }
@@ -3287,7 +3292,7 @@ function renderAllObsMobile(obs) {
       const rows = stagingFieldRows.slice(start, start + PAGE_SIZE);
 
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;">No field capture rows.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="padding:16px;text-align:center;color:#94a3b8;">No field capture rows.</td></tr>';
         _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
         return;
       }
@@ -3312,6 +3317,7 @@ function renderAllObsMobile(obs) {
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px;">${esc(row.site_address) || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">${thumb}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${esc(row.observation_text) || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
@@ -3616,7 +3622,7 @@ function renderAllObsMobile(obs) {
       if (refreshBtn) refreshBtn.disabled = true;
       const fieldBody = document.getElementById('staging-field-tbody');
       const pdfBody = document.getElementById('staging-pdf-tbody');
-      if (fieldBody) fieldBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+      if (fieldBody) fieldBody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
       if (pdfBody) pdfBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
 
       try {
@@ -3634,7 +3640,7 @@ function renderAllObsMobile(obs) {
 
         if (error || !data) {
           const msg = `Failed to load staging: ${error?.message || 'Unknown error'}`;
-          if (fieldBody) fieldBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
+          if (fieldBody) fieldBody.innerHTML = `<tr><td colspan="11" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
           if (pdfBody) pdfBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
           return;
         }

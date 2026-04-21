@@ -24,6 +24,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import urllib.parse
 import uuid as _uuid_mod
 from datetime import date, datetime, timedelta, timezone
@@ -1677,19 +1678,7 @@ async def download_staging_xlsx(
     if not rows:
         raise HTTPException(status_code=404, detail="No rows found.")
 
-    images = await _fetch_images([r.get("photo_url") for r in rows])
-
-    col_names = [
-        "#", "Date", "Finding", "Photo ID", "Photo",
-        "CCVS Code", "Legal Reference", "Conformance Status",
-        "Action Description", "Responsible", "Due Category",
-        "Monitoring Note", "Observation",
-    ]
-    col_widths = [4, 12, 40, 14, 10, 10, 35, 16, 35, 14, 12, 28, 35]
-    blue_cols = {6, 7}
-
     navy = "0A1628"
-    blue_h = "1E40AF"
     white = "FFFFFF"
     border_c = "D1D5DB"
     text_c = "111827"
@@ -1701,110 +1690,47 @@ async def download_staging_xlsx(
         s = Side(style="thin", color=border_c)
         return Border(top=s, left=s, bottom=s, right=s)
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Staging"
-
-    ws.page_setup.orientation = "landscape"
-    ws.page_setup.paperSize = 9
-    ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 0
-    ws.sheet_properties.pageSetUpPr.fitToPage = True
-
-    for i, w in enumerate(col_widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-    ws.row_dimensions[1].height = 28
-
     hdr_font = Font(name="Aptos", bold=True, color=white, size=9)
     hdr_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     data_font = Font(name="Aptos", size=8.5, color=text_c)
-    data_align = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-    for c, name in enumerate(col_names, 1):
-        cell = ws.cell(row=1, column=c, value=name)
-        cell.fill = solid(blue_h if c in blue_cols else navy)
-        cell.font = hdr_font
-        cell.alignment = hdr_align
-        cell.border = bdr()
-
-    for i, (row_data, img_bytes) in enumerate(zip(rows, images)):
-        r_num = i + 2
-        fill = solid("FFFFFF" if i % 2 == 0 else "F4F7FC")
-        ws.row_dimensions[r_num].height = 90
-
-        values = [
-            i + 1,
-            str(row_data.get("observation_date") or ""),
-            row_data.get("observation_text_enriched") or "",
-            row_data.get("filename") or "",
-            None,
-            row_data.get("ccvs_code") or "",
-            row_data.get("legal_reference") or "",
-            row_data.get("conformance_status") or "",
-            row_data.get("action_description") or "",
-            row_data.get("responsible") or "",
-            row_data.get("due_category") or "",
-            row_data.get("monitoring_note") or "",
-            row_data.get("observation_text") or "",
-        ]
-
-        for c, val in enumerate(values, 1):
-            if val is None:
-                continue
-            cell = ws.cell(row=r_num, column=c, value=val)
-            cell.fill = fill
-            cell.font = data_font
-            cell.alignment = data_align
-            cell.border = bdr()
-
-        pc = ws.cell(row=r_num, column=5, value="")
-        pc.fill = fill
-        pc.border = bdr()
-
-        if img_bytes:
-            try:
-                pil = PILImage.open(BytesIO(img_bytes)).convert("RGB")
-                pil.thumbnail((72, 72), PILImage.LANCZOS)
-                buf = BytesIO()
-                pil.save(buf, format="JPEG", quality=85)
-                buf.seek(0)
-                xl_img = XLImage(buf)
-                xl_img.width = 60
-                xl_img.height = 60
-                ws.add_image(xl_img, f"E{r_num}")
-            except Exception as exc:
-                log.warning(f"XLSX PIL embed failed row {row_data.get('id')}: {exc}")
-                pc.value = row_data.get("filename") or "[photo]"
-        else:
-            pc.value = row_data.get("filename") or "[photo]"
 
     upload_headers = [
-        "site_address", "audit_date", "observation_text",
+        "id", "site_address", "audit_date", "observation_text",
         "observation_text_enriched", "conformance_status",
         "ccvs_code", "ccvs_category", "action_description",
         "responsible", "due_category", "recommendation",
         "monitoring_note", "legal_ref", "photo_refs",
         "prepared_by", "source_pdf", "section", "needs_review",
     ]
-    ws_up = wb.create_sheet("Observations")
-    ws_up.cell(
+    header_widths = {
+        "id": 38, "site_address": 28, "audit_date": 12,
+        "observation_text": 42, "observation_text_enriched": 42,
+    }
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Observations"
+
+    ws.cell(
         row=1, column=1,
         value=(
-            "Fill in 'site_address' for each row (and edit any other fields) "
-            "then re-upload this file via the Upload Observations button. "
-            "Do not rename this sheet or move the header row."
+            "Edit site_address, observation_text (Observation) and "
+            "observation_text_enriched (Finding) then re-upload. Rows with "
+            "an 'id' value will UPDATE the existing staging row; rows "
+            "without an id will be inserted as new observations. Do not "
+            "rename this sheet or move the header row."
         ),
     )
-    ws_up.cell(row=1, column=1).font = Font(name="Aptos", bold=True, size=10)
-    ws_up.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(upload_headers))
+    ws.cell(row=1, column=1).font = Font(name="Aptos", bold=True, size=10)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(upload_headers))
 
     for c, name in enumerate(upload_headers, 1):
-        hc = ws_up.cell(row=3, column=c, value=name)
-        hc.font = Font(name="Aptos", bold=True, color=white, size=9)
+        hc = ws.cell(row=3, column=c, value=name)
+        hc.font = hdr_font
         hc.fill = solid(navy)
         hc.alignment = hdr_align
         hc.border = bdr()
-        ws_up.column_dimensions[get_column_letter(c)].width = 22
+        ws.column_dimensions[get_column_letter(c)].width = header_widths.get(name, 22)
 
     today_iso = date.today().isoformat()
 
@@ -1823,6 +1749,7 @@ async def download_staging_xlsx(
         audit_date_val = row_data.get("audit_date") or row_data.get("observation_date") or today_iso
         audit_date_str = str(audit_date_val)[:10]
         values = {
+            "id": row_data.get("id") or "",
             "site_address": row_data.get("site_address") or "",
             "audit_date": audit_date_str,
             "observation_text": row_data.get("observation_text") or "",
@@ -1843,7 +1770,7 @@ async def download_staging_xlsx(
             "needs_review": row_data.get("needs_review") if row_data.get("needs_review") is not None else "",
         }
         for c, name in enumerate(upload_headers, 1):
-            cell = ws_up.cell(row=r_num, column=c, value=values.get(name, ""))
+            cell = ws.cell(row=r_num, column=c, value=values.get(name, ""))
             cell.font = data_font
             cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             cell.border = bdr()
@@ -1926,6 +1853,7 @@ async def upload_observations_xlsx(
         parsed_rows.append(
             {
                 "_row": excel_row,
+                "id": _cell(excel_row, "id"),
                 "site_address": _cell(excel_row, "site_address"),
                 "audit_date": _cell(excel_row, "audit_date"),
                 "observation_text": observation_text,
@@ -1960,11 +1888,17 @@ async def upload_observations_xlsx(
     headers_repr = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     headers_minimal = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal")
     inserted = 0
+    updated = 0
     skipped = 0
     flagged = 0
     errors: list[dict] = []
     now_utc = datetime.now(timezone.utc).isoformat()
     fallback_source = filename or "uploaded.xlsx"
+
+    _uuid_re = re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        re.IGNORECASE,
+    )
 
     async with httpx.AsyncClient(timeout=20) as client:
         for row in parsed_rows:
@@ -2009,6 +1943,43 @@ async def upload_observations_xlsx(
                 ccvs_category = None
 
             site_address = _cell_text(row.get("site_address")) or None
+            row_id = _cell_text(row.get("id")) or ""
+
+            if row_id and _uuid_re.match(row_id):
+                patch_body = {
+                    "site_address": site_address,
+                    "observation_text": observation_text,
+                    "observation_text_enriched": _cell_text(row.get("observation_text_enriched")) or None,
+                    "conformance_status": conformance_status,
+                    "ccvs_code": ccvs_code,
+                    "ccvs_category": ccvs_category,
+                    "action_description": _cell_text(row.get("action_description")) or None,
+                    "responsible": _cell_text(row.get("responsible")) or None,
+                    "due_category": _cell_text(row.get("due_category")) or None,
+                    "recommendation": _cell_text(row.get("recommendation")) or None,
+                    "monitoring_note": _cell_text(row.get("monitoring_note")) or None,
+                    "legal_reference": _cell_text(row.get("legal_ref")) or None,
+                }
+                patch_resp = await client.patch(
+                    f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+                    headers=headers_minimal,
+                    params={"id": f"eq.{row_id}"},
+                    json=patch_body,
+                )
+                if patch_resp.status_code not in (200, 204):
+                    log.warning(
+                        "Upload staging PATCH failed for row %s id=%s: %s %s",
+                        row_num, row_id, patch_resp.status_code, patch_resp.text,
+                    )
+                    errors.append({
+                        "row": row_num,
+                        "field": "id",
+                        "message": "Failed to update staging row.",
+                    })
+                    continue
+                updated += 1
+                continue
+
             dup_params = {
                 "select": "id",
                 "limit": "1",
@@ -2078,6 +2049,7 @@ async def upload_observations_xlsx(
 
     return {
         "inserted": inserted,
+        "updated": updated,
         "skipped": skipped,
         "flagged": flagged,
         "errors": errors,
