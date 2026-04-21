@@ -2212,6 +2212,84 @@ async def _reenrich_obs_preserving(
             log.info(f"Reenriched obs {record_id}: {list(patch.keys())}")
 
 
+async def _reenrich_obs_force_finding(
+    supabase_url: str,
+    supabase_service_key: str,
+    record_id: str,
+    observation_text: str,
+) -> None:
+    """NCR refresh: force-overwrite Finding and legal_reference only."""
+    try:
+        enrichment = await enrich_observation(observation_text)
+    except Exception as e:
+        log.error(f"NCR reenrich failed {record_id}: {e}")
+        return
+
+    new_enriched = enrichment.get("observation_text_enriched")
+    new_legal = enrichment.get("legal_reference")
+    patch = {}
+    if new_enriched:
+        patch["observation_text_enriched"] = new_enriched
+    if new_legal:
+        patch["legal_reference"] = new_legal
+    if not patch:
+        return
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        pr = await client.patch(
+            f"{supabase_url}/rest/v1/pims_observations",
+            headers=_supabase_headers(supabase_service_key, prefer="return=minimal"),
+            params={"id": f"eq.{record_id}"},
+            json=patch,
+        )
+        if pr.status_code not in (200, 204):
+            log.error(f"NCR reenrich patch failed {record_id}: {pr.status_code} {pr.text}")
+        else:
+            log.info(f"NCR reenriched {record_id}: {list(patch.keys())}")
+
+
+@router.post("/observations/rpd/reenrich-ncr")
+async def reenrich_live_ncr(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY),
+            params={
+                "select": "id,observation_text",
+                "staging": "eq.false",
+                "source_pdf": "is.null",
+                "conformance_status": "eq.NCR",
+            },
+        )
+        r.raise_for_status()
+        rows = r.json()
+
+    queued = 0
+    for row in rows:
+        obs = _cell_text(row.get("observation_text"))
+        if not obs:
+            continue
+        background_tasks.add_task(
+            _reenrich_obs_force_finding,
+            RPD_SUPABASE_URL,
+            RPD_SUPABASE_SERVICE_KEY,
+            row["id"],
+            obs,
+        )
+        queued += 1
+
+    return {"queued": queued, "total_ncr_rows": len(rows)}
+
+
 @router.post("/observations/rpd/reenrich-live")
 async def reenrich_live_observations(
     request: Request,
