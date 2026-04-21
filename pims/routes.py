@@ -1778,6 +1778,63 @@ async def download_staging_xlsx(
         else:
             pc.value = row_data.get("filename") or "[photo]"
 
+    upload_headers = [
+        "site_address", "audit_date", "observation_text",
+        "observation_text_enriched", "conformance_status",
+        "ccvs_code", "ccvs_category", "action_description",
+        "responsible", "due_category", "recommendation",
+        "monitoring_note", "legal_ref", "photo_refs",
+        "prepared_by", "source_pdf", "section", "needs_review",
+    ]
+    ws_up = wb.create_sheet("Observations")
+    ws_up.cell(
+        row=1, column=1,
+        value=(
+            "Fill in 'site_address' for each row (and edit any other fields) "
+            "then re-upload this file via the Upload Observations button. "
+            "Do not rename this sheet or move the header row."
+        ),
+    )
+    ws_up.cell(row=1, column=1).font = Font(name="Aptos", bold=True, size=10)
+    ws_up.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(upload_headers))
+
+    for c, name in enumerate(upload_headers, 1):
+        hc = ws_up.cell(row=3, column=c, value=name)
+        hc.font = Font(name="Aptos", bold=True, color=white, size=9)
+        hc.fill = solid(navy)
+        hc.alignment = hdr_align
+        hc.border = bdr()
+        ws_up.column_dimensions[get_column_letter(c)].width = 22
+
+    for i, row_data in enumerate(rows):
+        r_num = i + 5
+        legal_ref_val = row_data.get("legal_ref") or row_data.get("legal_reference") or ""
+        values = {
+            "site_address": row_data.get("site_address") or "",
+            "audit_date": str(row_data.get("audit_date") or row_data.get("observation_date") or ""),
+            "observation_text": row_data.get("observation_text") or "",
+            "observation_text_enriched": row_data.get("observation_text_enriched") or "",
+            "conformance_status": row_data.get("conformance_status") or "",
+            "ccvs_code": row_data.get("ccvs_code") or "",
+            "ccvs_category": row_data.get("ccvs_category") or "",
+            "action_description": row_data.get("action_description") or "",
+            "responsible": row_data.get("responsible") or "",
+            "due_category": row_data.get("due_category") or "",
+            "recommendation": row_data.get("recommendation") or "",
+            "monitoring_note": row_data.get("monitoring_note") or "",
+            "legal_ref": legal_ref_val,
+            "photo_refs": row_data.get("photo_refs") or row_data.get("filename") or "",
+            "prepared_by": row_data.get("prepared_by") or "",
+            "source_pdf": row_data.get("source_pdf") or "",
+            "section": row_data.get("section") or "",
+            "needs_review": row_data.get("needs_review") if row_data.get("needs_review") is not None else "",
+        }
+        for c, name in enumerate(upload_headers, 1):
+            cell = ws_up.cell(row=r_num, column=c, value=values.get(name, ""))
+            cell.font = data_font
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            cell.border = bdr()
+
     buf_out = BytesIO()
     wb.save(buf_out)
     buf_out.seek(0)
