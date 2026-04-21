@@ -257,10 +257,24 @@ async def enrich_observation(observation_text: str) -> dict:
                     text = text[4:]
             text = text.strip()
             try:
-                return json.loads(text)
+                parsed = json.loads(text)
             except json.JSONDecodeError as e:
                 log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
                 return {}
+            if (
+                parsed.get("conformance_status") == "NCR"
+                and parsed.get("observation_text_enriched")
+                and parsed.get("legal_reference")
+                and "WHS Regulation 2017" not in parsed["observation_text_enriched"]
+            ):
+                tail = parsed["legal_reference"].split(";")[0].strip()
+                if not tail.lower().startswith("nsw "):
+                    tail = "NSW " + tail
+                parsed["observation_text_enriched"] = (
+                    parsed["observation_text_enriched"].rstrip().rstrip(".")
+                    + f" (breach of {tail})."
+                )
+            return parsed
     except Exception as e:
         log.error(f"Haiku enrichment failed: {type(e).__name__}: {e}")
         raise
