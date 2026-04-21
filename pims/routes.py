@@ -165,7 +165,7 @@ Given a field observation from a site safety audit, return a JSON object with:
   "responsible": "PC" | "Subcontractor" | "Inspector" | null,
   "due_category": "Immediate" | "Next audit" | "Ongoing" | "N/A",
   "monitoring_note": what to verify at next audit or null,
-  "observation_text_enriched": a professional rewrite of the observation in plain Australian English, suitable for a formal WHS audit report. 2-3 sentences. Must include the hazard, the finding, and the implication,
+  "observation_text_enriched": a professional rewrite of the observation in plain Australian English, suitable for a formal WHS audit report. 2-3 sentences. Must include the hazard, the finding, and the implication. For NCR status, the enriched text MUST also cite the specific NSW WHS Regulation 2017 clause inline (e.g. "...breaching NSW WHS Regulation 2017 cl 37.") in addition to populating legal_reference,
   "legal_reference": the single most relevant NSW legal reference. REQUIRED for NCR status and must cite a specific NSW WHS Regulation 2017 clause (e.g. "NSW WHS Regulation 2017 cl 79" or "NSW WHS Regulation 2017 cl 228-244"); a SafeWork NSW Code of Practice section may be appended after a semicolon but must never replace the regulation clause. For Conditional status, prefer a NSW WHS Regulation 2017 clause, fall back to WHS Act 2011 s19 or a COP. For Compliant status, any of the three formats is acceptable. Null only if Info status. Format examples: "NSW WHS Regulation 2017 cl 54" or "NSW WHS Regulation 2017 cl 228-244; SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2"
 }
 
