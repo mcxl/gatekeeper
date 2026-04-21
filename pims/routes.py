@@ -2227,6 +2227,11 @@ async def _reenrich_obs_force_finding(
 
     new_enriched = enrichment.get("observation_text_enriched")
     new_legal = enrichment.get("legal_reference")
+    if new_enriched and new_legal and "WHS Regulation 2017" not in new_enriched:
+        tail = new_legal.split(";")[0].strip()
+        if not tail.lower().startswith("nsw "):
+            tail = "NSW " + tail
+        new_enriched = new_enriched.rstrip().rstrip(".") + f" (breach of {tail})."
     patch = {}
     if new_enriched:
         patch["observation_text_enriched"] = new_enriched
