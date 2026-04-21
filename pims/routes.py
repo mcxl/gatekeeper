@@ -1946,20 +1946,24 @@ async def upload_observations_xlsx(
             row_id = _cell_text(row.get("id")) or ""
 
             if row_id and _uuid_re.match(row_id):
-                patch_body = {
+                candidate_patch = {
                     "site_address": site_address,
                     "observation_text": observation_text,
-                    "observation_text_enriched": _cell_text(row.get("observation_text_enriched")) or None,
+                    "observation_text_enriched": _cell_text(row.get("observation_text_enriched")),
                     "conformance_status": conformance_status,
                     "ccvs_code": ccvs_code,
                     "ccvs_category": ccvs_category,
-                    "action_description": _cell_text(row.get("action_description")) or None,
-                    "responsible": _cell_text(row.get("responsible")) or None,
-                    "due_category": _cell_text(row.get("due_category")) or None,
-                    "recommendation": _cell_text(row.get("recommendation")) or None,
-                    "monitoring_note": _cell_text(row.get("monitoring_note")) or None,
-                    "legal_reference": _cell_text(row.get("legal_ref")) or None,
+                    "action_description": _cell_text(row.get("action_description")),
+                    "responsible": _cell_text(row.get("responsible")),
+                    "due_category": _cell_text(row.get("due_category")),
+                    "recommendation": _cell_text(row.get("recommendation")),
+                    "monitoring_note": _cell_text(row.get("monitoring_note")),
+                    "legal_reference": _cell_text(row.get("legal_ref")),
                 }
+                patch_body = {k: v for k, v in candidate_patch.items() if v not in (None, "")}
+                if not patch_body:
+                    skipped += 1
+                    continue
                 patch_resp = await client.patch(
                     f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
                     headers=headers_minimal,
