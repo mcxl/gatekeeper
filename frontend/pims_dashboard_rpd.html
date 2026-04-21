@@ -2799,25 +2799,63 @@ function renderAllObsMobile(obs) {
       return groupRowsOnPage && groupRowsOnPage.length > 0;
     }
 
+    const selectedStagingIds = new Set();
+
+    function _eligibleStagingIds() {
+      return (stagingFieldRows || [])
+        .filter(r => r && r.id && r.review_status !== 'Approved')
+        .map(r => r.id);
+    }
+
     function toggleSelectAll(cb) {
-      document.querySelectorAll('.staging-cb').forEach(c => c.checked = cb.checked);
+      if (cb.checked) {
+        _eligibleStagingIds().forEach(id => selectedStagingIds.add(id));
+      } else {
+        selectedStagingIds.clear();
+      }
+      document.querySelectorAll('.staging-cb').forEach(c => {
+        if (!c.disabled) c.checked = cb.checked;
+      });
       updateSelectCount();
     }
 
+    function onStagingRowToggle(cb) {
+      const id = cb.dataset.id;
+      if (!id) return;
+      if (cb.checked) selectedStagingIds.add(id);
+      else selectedStagingIds.delete(id);
+      updateSelectCount();
+    }
+
+    function applyStagingSelectionToDom() {
+      document.querySelectorAll('.staging-cb').forEach(c => {
+        if (!c.disabled) c.checked = selectedStagingIds.has(c.dataset.id);
+      });
+      const selAll = document.getElementById('staging-select-all');
+      if (selAll) {
+        const eligible = _eligibleStagingIds();
+        selAll.checked = eligible.length > 0 && eligible.every(id => selectedStagingIds.has(id));
+      }
+    }
+
     function updateSelectCount() {
-      const total = document.querySelectorAll('.staging-cb').length;
-      const checked = document.querySelectorAll('.staging-cb:checked').length;
+      const eligible = new Set(_eligibleStagingIds());
+      for (const id of [...selectedStagingIds]) {
+        if (!eligible.has(id)) selectedStagingIds.delete(id);
+      }
+      const total = eligible.size;
+      const checked = selectedStagingIds.size;
       const el = document.getElementById('staging-select-count');
-      el.textContent = checked > 0 ? `${checked} of ${total} selected` : '';
+      if (el) el.textContent = checked > 0 ? `${checked} of ${total} selected (all pages)` : '';
+      applyStagingSelectionToDom();
     }
 
     function _getExportIds() {
-      const checked = [...document.querySelectorAll('.staging-cb:checked')];
-      if (!checked.length) {
+      if (!selectedStagingIds.size) {
         alert('Please select at least one row to export.');
         return null;
       }
-      return checked.map(cb => cb.dataset.id);
+      return Array.from(selectedStagingIds);
     }
 
     function _setPager(prefix, page, totalRows) {
@@ -3270,7 +3308,7 @@ function renderAllObsMobile(obs) {
         return `
           <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
-              <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="updateSelectCount()" ${approved ? 'disabled' : ''}>
+              <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="onStagingRowToggle(this)" ${approved ? 'disabled' : ''}>
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
@@ -3309,6 +3347,8 @@ function renderAllObsMobile(obs) {
           </tr>`;
       }).join('');
       _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
+      applyStagingSelectionToDom();
+      updateSelectCount();
     }
 
     function renderStagingPdfRows() {

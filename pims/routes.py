@@ -69,7 +69,7 @@ SDG_SUPABASE_KEY         = os.getenv("SDG_SUPABASE_ANON_KEY", "")
 SDG_SUPABASE_SERVICE_KEY = os.getenv("SDG_SUPABASE_SERVICE_KEY", "")
 SDG_PIMS_TOKEN           = os.getenv("PIMS_SDG_TOKEN", "")
 
-MAX_ROWS = 100
+MAX_ROWS = 500
 IMAGE_TIMEOUT = httpx.Timeout(5.0, connect=3.0, read=5.0)
 # 5.0 = default for write + pool; connect and read set explicitly.
 IMAGE_CONCURRENCY = 5
