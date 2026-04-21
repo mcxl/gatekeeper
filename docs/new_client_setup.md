@@ -11,10 +11,10 @@ if you change one, change the other in the same commit.
 
 **Alignment.** This document is aligned to `pims/routes.py`,
 `api/main.py`, `pims/pims_migration.sql`, and
-`scripts/new_client.py` at commit **ef73114** (2026-04-21).
-v3 supersedes v2 (d841b44) because the scaffold now automates Steps 1
-(partly), 3, 4, 5 of v2 into a single command. See the changelog at
-the bottom.
+`scripts/new_client.py` at commit **bb89f03** (2026-04-21, scaffold
+preflight + v3 step numbers). v3 supersedes v2 (d841b44) because the
+scaffold now automates Steps 1 (partly), 3, 4, 5 of v2 into a single
+command. See the changelog at the bottom.
 
 ---
 
@@ -177,15 +177,24 @@ added to `pims/routes.py` manually by copying from the RPD
 implementations. The initial dashboard works fine without them — the
 buttons will 404 until the handlers exist.
 
-**Scaffold safety aborts** (no files touched on abort):
-- `--ref` fails the regex → aborts with "invalid audit_ref."
+**Scaffold safety aborts** (no files touched on abort — `preflight()`
+reads every source and verifies every condition before any write):
+- `--ref` fails the regex → aborts with a message naming the bad
+  value and the pattern.
 - An env-var prefix already exists (`[CLIENT]_SUPABASE_URL` in
-  `routes.py`) → aborts with "client already registered." Rename or
-  use `--force` if you genuinely intend to overwrite (not recommended).
-- A route `/pims-[slug]` already exists in `main.py` → aborts as above.
+  `routes.py`) → aborts with `pims/routes.py already references
+  [CLIENT]_SUPABASE_URL -- client exists`. Pick a different `--short`
+  or remove the earlier registration manually; the scaffold does not
+  provide a `--force` override — silently overwriting a registered
+  client is the kind of footgun it deliberately refuses.
+- A route `/pims-[slug]` already exists in `main.py` → aborts with
+  `api/main.py already defines /pims-[slug] route`.
+- A dashboard file `frontend/pims_dashboard_[slug].html` already
+  exists → aborts with `... already exists; refusing to overwrite`.
 - `frontend/pims_dashboard_rpd.html` contains a literal JWT (the
-  placeholders were replaced) → aborts with "source template
-  contaminated" to prevent regressing the 2026-04-21 Legacy API key
+  placeholders were replaced) → aborts with `source template
+  frontend/pims_dashboard_rpd.html still contains a legacy JWT
+  literal`. Prevents regressing the 2026-04-21 Legacy API key
   incident.
 
 **Line endings:** the scaffold preserves BOM + CRLF on the edited
@@ -193,7 +202,9 @@ files, so `git diff` stays small and the commit doesn't rewrite every
 line. Relevant on Windows.
 
 **Self-check:** Is Step 3 complete? Did the scaffold exit cleanly and
-list four things modified/created? Did you copy the SQL it printed?
+list three things modified/created (`pims/routes.py`, `api/main.py`,
+`frontend/pims_dashboard_[slug].html`)? Did you copy the SQL it
+printed?
 
 ---
 
@@ -240,7 +251,7 @@ return true?
     git push
     ```
 
-   `git status` should show four changed files:
+   `git status` should show three changed files:
    `pims/routes.py`, `api/main.py`, and the new
    `frontend/pims_dashboard_[slug].html`.
 
@@ -465,6 +476,19 @@ and match the `_handle_observation` signature exactly.
 ---
 
 ## Changelog
+
+**v3.1 — 2026-04-21, aligned to commit bb89f03 (cross-check fixes):**
+
+- Step 3 abort messages now quote the scaffold's actual strings
+  verbatim; removed the fictional `--force` flag reference.
+- Fixed off-by-one: scaffold lists three items modified/created, not
+  four (Step 3 self-check and Step 5 `git status` count).
+- Scaffold's final "still manual" banner now uses v3 step numbers, so
+  terminal output matches this document.
+- Preflight: the scaffold now reads every source and verifies every
+  abort condition before any write, so "no files touched on abort" is
+  actually true even when the conflict is in `api/main.py` or the
+  template.
 
 **v3 — 2026-04-21, aligned to commit ef73114 (scaffold shipped):**
 
