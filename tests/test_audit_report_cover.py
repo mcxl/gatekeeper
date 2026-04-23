@@ -109,6 +109,34 @@ def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
     assert found_prep, "Prepared by row not located"
 
 
+def test_cover_has_no_photo_scaffold_table(checklist_xlsx):
+    """The shipped template ships a 'Photo N' scaffold table on the cover
+    that leaks layout artwork between the summary and Part A. _populate_cover
+    removes any table whose first cell starts with 'Photo '."""
+    if not TEMPLATE_PATH.exists():
+        pytest.skip("shipped template not present")
+    site = arpt.SiteData(
+        address="12 Example St, Sydney NSW 2000",
+        project_value=500_000,
+        client="Acme Construction Pty Ltd",
+        prepared_by="J. Auditor",
+        inspection_datetime="23 Apr 2026 09:00 AEST",
+        summary_text="Routine quarterly audit.",
+        observations=[],
+        open_actions=[],
+    )
+    buf = arpt.build_audit_report_docx([site], checklist_xlsx_path=checklist_xlsx)
+    buf.seek(0)
+    doc = Document(buf)
+    for t in doc.tables:
+        if not t.rows:
+            continue
+        first = t.rows[0].cells[0].text.strip().lower()
+        assert not first.startswith("photo "), (
+            f"scaffold 'Photo' table not removed: first cell = {first!r}"
+        )
+
+
 def test_multi_site_cover_uses_multiple_sites_label(checklist_xlsx):
     if not TEMPLATE_PATH.exists():
         pytest.skip("shipped template not present")

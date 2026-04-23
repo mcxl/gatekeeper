@@ -594,6 +594,27 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
             continue
         _delete_paragraph(p)
 
+    # --- Delete stray "Photo N" scaffold tables --------------------
+    # The shipped template contains single-row "Photo N" placeholder
+    # tables that are designer layout scaffolds — unpopulated in the
+    # live render and visually bleed artwork between the summary and
+    # Part A. Drop any table whose first cell starts with "Photo ".
+    # (The rendered checklist blocks from _checklist_row_block do not
+    # have "Photo " as their first cell, so they are not affected.)
+    removed_scaffold = 0
+    for table in list(doc.tables):
+        if not table.rows:
+            continue
+        first_cell_text = table.rows[0].cells[0].text.strip()
+        if first_cell_text.lower().startswith("photo "):
+            tbl = table._element
+            parent = tbl.getparent()
+            if parent is not None:
+                parent.remove(tbl)
+                removed_scaffold += 1
+    if removed_scaffold == 0:
+        log.warning("No scaffold 'Photo N' table found on cover to remove")
+
 
 # ---------------------------------------------------------------------------
 # DOCX build
