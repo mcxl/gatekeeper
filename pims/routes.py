@@ -2520,8 +2520,53 @@ async def download_rpd_report(
 # ─────────────────────────────────────────────────────────────────────────────
 
 class AuditReportRequest(BaseModel):
-    site_addresses: list[str] = Field(..., min_items=1)
+    site_ids: list[str] = Field(..., min_length=1, max_length=50)
     summary_text: Optional[str] = None
+
+
+async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
+    """Fetch sites by canonical UUID. Returns rows with id, address_raw,
+    project_value, client_name."""
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    id_filter = "(" + ",".join(ids) + ")"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value,client_name",
+                "id": f"in.{id_filter}",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+
+@router.get("/sites/eligible")
+async def list_eligible_sites(
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """List sites eligible for audit-report generation: active=true AND
+    project_value is not null, ordered by address_raw."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value",
+                "active": "eq.true",
+                "project_value": "not.is.null",
+                "order": "address_raw.asc",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
 
 
 @router.post("/audit-report/rpd")
@@ -2549,34 +2594,24 @@ async def generate_audit_report_rpd(
     if not xlsx_path.exists():
         raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
 
-    addresses = [a.strip() for a in body.site_addresses if a and a.strip()]
-    if not addresses:
-        raise HTTPException(status_code=422, detail="site_addresses required")
+    ids = _validate_uuids(body.site_ids)
+    if not ids:
+        raise HTTPException(status_code=422, detail="site_ids required")
 
+    site_rows = await _fetch_sites_by_id(ids)
+    if not site_rows:
+        raise HTTPException(status_code=404, detail="No matching sites")
+    missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
+    if missing_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sites missing project_value: {', '.join(missing_value)}",
+        )
+
+    addresses = [s["address_raw"] for s in site_rows if s.get("address_raw")]
+    addr_filter = "(" + ",".join(f'"{a}"' for a in addresses) + ")"
     headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     async with httpx.AsyncClient(timeout=30) as client:
-        # Fetch sites
-        addr_filter = "(" + ",".join(f'"{a}"' for a in addresses) + ")"
-        sr = await client.get(
-            f"{RPD_SUPABASE_URL}/rest/v1/sites",
-            headers=headers,
-            params={
-                "select": "id,address_raw,project_value",
-                "address_raw": f"in.{addr_filter}",
-            },
-        )
-        sr.raise_for_status()
-        site_rows = sr.json()
-        if not site_rows:
-            raise HTTPException(status_code=404, detail="No matching sites")
-        missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
-        if missing_value:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Sites missing project_value: {', '.join(missing_value)}",
-            )
-
-        # Fetch observations per site
         or_ = await client.get(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
             headers=headers,

@@ -2573,7 +2573,7 @@ function csvField(val) {
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
-function openAuditReportModal() {
+async function openAuditReportModal() {
   let modal = document.getElementById('auditReportModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -2583,6 +2583,7 @@ function openAuditReportModal() {
       <div style="background:#fff;padding:24px;border-radius:8px;min-width:420px;max-width:90vw;max-height:80vh;overflow:auto;color:#111;">
         <h3 style="margin-top:0;">Generate Audit Report</h3>
         <p style="font-size:13px;color:#555;">Select one or more sites:</p>
+        <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
         <select id="auditReportSites" multiple size="10" style="width:100%;padding:6px;"></select>
         <p style="font-size:13px;color:#555;margin-top:12px;">Optional summary text:</p>
         <textarea id="auditReportSummary" rows="3" style="width:100%;padding:6px;"></textarea>
@@ -2593,28 +2594,46 @@ function openAuditReportModal() {
       </div>`;
     document.body.appendChild(modal);
   }
-  const src = document.getElementById('filterSite');
   const tgt = document.getElementById('auditReportSites');
+  const err = document.getElementById('auditReportError');
   tgt.innerHTML = '';
-  Array.from(src.options).forEach(opt => {
-    if (!opt.value) return;
-    const o = document.createElement('option');
-    o.value = opt.value;
-    o.textContent = opt.textContent;
-    tgt.appendChild(o);
-  });
+  err.style.display = 'none';
+  err.textContent = '';
+  try {
+    const resp = await fetch('/pims/sites/eligible', { credentials: 'include' });
+    if (!resp.ok) {
+      err.textContent = 'Failed to load eligible sites (' + resp.status + ').';
+      err.style.display = 'block';
+      return;
+    }
+    const sites = await resp.json();
+    if (!Array.isArray(sites) || sites.length === 0) {
+      err.textContent = 'No eligible sites found (need active=true and a project_value).';
+      err.style.display = 'block';
+      return;
+    }
+    sites.forEach(site => {
+      const o = document.createElement('option');
+      o.value = site.id;
+      o.textContent = site.address_raw;
+      tgt.appendChild(o);
+    });
+  } catch (e) {
+    err.textContent = 'Failed to load eligible sites: ' + e.message;
+    err.style.display = 'block';
+  }
 }
 
 async function submitAuditReport() {
   const sel = document.getElementById('auditReportSites');
-  const addresses = Array.from(sel.selectedOptions).map(o => o.value);
-  if (!addresses.length) { alert('Select at least one site.'); return; }
+  const site_ids = Array.from(sel.selectedOptions).map(o => o.value);
+  if (!site_ids.length) { alert('Select at least one site.'); return; }
   const summary = document.getElementById('auditReportSummary').value || null;
   const resp = await fetch('/pims/audit-report/rpd', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({site_addresses: addresses, summary_text: summary}),
+    body: JSON.stringify({site_ids: site_ids, summary_text: summary}),
   });
   if (!resp.ok) {
     const txt = await resp.text();
