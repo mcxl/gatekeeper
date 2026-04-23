@@ -1,7 +1,6 @@
 import io
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.worksheet.page import PageMargins
 
 NAVY    = "FF0A1628"
@@ -167,7 +166,7 @@ def _build_sheet1(ws, data):
                 arrow_txt = f"▲ +{str(delta).lstrip('+')}" if d_val >= 0 else f"▼ {delta}"
             else:
                 arrow_txt = f"▲ +{int(d_val)}" if d_val >= 0 else f"▼ {int(d_val)}"
-        except:
+        except (ValueError, TypeError):
             arrow_txt = delta
         _c(ws, f"I{r}", metric,    bg, bold=True,  size=10, font_color=DARK, halign="left")
         _c(ws, f"J{r}", cur,       bg, bold=False, size=10, font_color=MID,  halign="center")

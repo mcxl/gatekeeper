@@ -13,16 +13,6 @@ Human review is mandatory. Safe Method does not make approval decisions.
 from __future__ import annotations
 
 import difflib
-from datetime import datetime, timezone
-from typing import Optional
-
-from core.procore.prescreen_reviewer import resolve_workflow_state
-from core.procore.review_store import find_previous_artifact
-from core.procore.webhook_handler import (
-    ALLOWED_STATUSES,
-    ALLOWED_WORKFLOW_STATES,
-    REVIEW_DISCLAIMER,
-)
 
 COMPARISON_DISCLAIMER = (
     "This comparison is system-generated and requires qualified human review "
@@ -257,7 +247,6 @@ def compare_reviews(
         summary_parts.append(f"{len(still_open)} still open")
     if new_issues:
         summary_parts.append(f"{len(new_issues)} new")
-    comparison_text = ", ".join(summary_parts) if summary_parts else "no issues in either version"
 
     return {
         "comparison_version": "1.0",

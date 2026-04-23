@@ -698,7 +698,6 @@ def _build_risk_register(hazards: list[dict], phase_groups: list[dict],
 def _build_scope_summary(description: str, classification: dict) -> str:
     """Build a concise scope summary from description and classification."""
     job_type = classification.get("job_type", "construction")
-    modifiers = classification.get("scope_modifiers", [])
 
     _JT_LABELS = {
         "civil_infrastructure": "Civil infrastructure construction",

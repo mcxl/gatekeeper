@@ -11,7 +11,6 @@ import difflib
 import hashlib
 import json
 from io import BytesIO
-from typing import Optional
 
 
 def extract_swms_table_text(file_bytes: bytes) -> list[dict]:

@@ -18,8 +18,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.procore.webhook_handler import (
-    ALLOWED_STATUSES,
-    ALLOWED_WORKFLOW_STATES,
     MAX_REQUIRED_AMENDMENTS,
     REVIEW_DISCLAIMER,
 )
