@@ -2542,6 +2542,58 @@ async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
         return r.json()
 
 
+_OBS_PAGE_SIZE = 1000
+_OBS_MAX_PAGES = 50  # 50,000 rows per site hard cap
+
+
+async def _fetch_observations_for_site(site_id: str) -> list[dict]:
+    """Paginate observations for a single site via PostgREST Range headers.
+
+    Returns all approved, non-staging, non-PDF-sourced observations ordered by
+    observation_date.asc. A WHS audit document must not silently drop findings,
+    so the single-request cap in the previous implementation is unsafe — loop
+    until a page comes back short. Hard-cap at 50 pages (50,000 rows) to prevent
+    a runaway query from hanging the request.
+    """
+    base_headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    params = {
+        "select": (
+            "seq_no,site_address,observation_text,observation_text_enriched,"
+            "conformance_status,ccvs_code,ccvs_category,action_required,"
+            "action_description,responsible,due_category,photo_id"
+        ),
+        "site_id": f"eq.{site_id}",
+        "staging": "eq.false",
+        "source_pdf": "is.null",
+        "review_status": "eq.Approved",
+        "order": "observation_date.asc",
+    }
+    out: list[dict] = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for page in range(_OBS_MAX_PAGES):
+            start = page * _OBS_PAGE_SIZE
+            end = start + _OBS_PAGE_SIZE - 1
+            headers = {**base_headers, "Range-Unit": "items", "Range": f"{start}-{end}"}
+            r = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers,
+                params=params,
+            )
+            r.raise_for_status()
+            batch = r.json()
+            out.extend(batch)
+            if len(batch) < _OBS_PAGE_SIZE:
+                return out
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Observation pagination exceeded {_OBS_MAX_PAGES} pages "
+                f"({_OBS_MAX_PAGES * _OBS_PAGE_SIZE} rows) for site {site_id}; "
+                "refusing to emit a potentially truncated audit report."
+            ),
+        )
+
+
 @router.get("/sites/eligible")
 async def list_eligible_sites(
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
@@ -2608,38 +2660,12 @@ async def generate_audit_report_rpd(
             detail=f"Sites missing project_value: {', '.join(missing_value)}",
         )
 
-    addresses = [s["address_raw"] for s in site_rows if s.get("address_raw")]
-    addr_filter = "(" + ",".join(f'"{a}"' for a in addresses) + ")"
-    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
-    async with httpx.AsyncClient(timeout=30) as client:
-        or_ = await client.get(
-            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
-            headers=headers,
-            params={
-                "select": (
-                    "seq_no,site_address,observation_text,observation_text_enriched,"
-                    "conformance_status,ccvs_code,ccvs_category,action_required,"
-                    "action_description,responsible,due_category,photo_id"
-                ),
-                "site_address": f"in.{addr_filter}",
-                "staging": "eq.false",
-                "limit": "5000",
-            },
-        )
-        or_.raise_for_status()
-        obs_rows = or_.json()
-
-    obs_by_site: dict[str, list[dict]] = {}
-    for o in obs_rows:
-        obs_by_site.setdefault(o.get("site_address") or "", []).append(o)
-
     sites_data: list[SiteData] = []
     for s in site_rows:
-        addr = s.get("address_raw") or ""
-        obs = obs_by_site.get(addr, [])
+        obs = await _fetch_observations_for_site(s["id"])
         open_actions = [o for o in obs if o.get("action_required")]
         sites_data.append(SiteData(
-            address=addr,
+            address=s.get("address_raw") or "",
             project_value=s.get("project_value"),
             summary_text=body.summary_text or "",
             observations=obs,
