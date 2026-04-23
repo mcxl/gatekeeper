@@ -2515,3 +2515,108 @@ async def download_rpd_report(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generate Audit Report (.docx) per selected sites
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AuditReportRequest(BaseModel):
+    site_addresses: list[str] = Field(..., min_items=1)
+    summary_text: Optional[str] = None
+
+
+@router.post("/audit-report/rpd")
+async def generate_audit_report_rpd(
+    body: AuditReportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    # Import lazily so missing template/xlsx errors fail fast at request time,
+    # not at module import.
+    from pims.audit_report_docx import (
+        TEMPLATE_PATH,
+        PIMS_DIR,
+        SiteData,
+        build_audit_report_docx,
+    )
+
+    xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
+    if not xlsx_path.exists():
+        raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
+
+    addresses = [a.strip() for a in body.site_addresses if a and a.strip()]
+    if not addresses:
+        raise HTTPException(status_code=422, detail="site_addresses required")
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Fetch sites
+        addr_filter = "(" + ",".join(f'"{a}"' for a in addresses) + ")"
+        sr = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value",
+                "address_raw": f"in.{addr_filter}",
+            },
+        )
+        sr.raise_for_status()
+        site_rows = sr.json()
+        if not site_rows:
+            raise HTTPException(status_code=404, detail="No matching sites")
+        missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
+        if missing_value:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Sites missing project_value: {', '.join(missing_value)}",
+            )
+
+        # Fetch observations per site
+        or_ = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params={
+                "select": (
+                    "seq_no,site_address,observation_text,observation_text_enriched,"
+                    "conformance_status,ccvs_code,ccvs_category,action_required,"
+                    "action_description,responsible,due_category,photo_id"
+                ),
+                "site_address": f"in.{addr_filter}",
+                "staging": "eq.false",
+                "limit": "5000",
+            },
+        )
+        or_.raise_for_status()
+        obs_rows = or_.json()
+
+    obs_by_site: dict[str, list[dict]] = {}
+    for o in obs_rows:
+        obs_by_site.setdefault(o.get("site_address") or "", []).append(o)
+
+    sites_data: list[SiteData] = []
+    for s in site_rows:
+        addr = s.get("address_raw") or ""
+        obs = obs_by_site.get(addr, [])
+        open_actions = [o for o in obs if o.get("action_required")]
+        sites_data.append(SiteData(
+            address=addr,
+            project_value=s.get("project_value"),
+            summary_text=body.summary_text or "",
+            observations=obs,
+            open_actions=open_actions,
+        ))
+
+    buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
+    filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
