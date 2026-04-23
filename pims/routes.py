@@ -2631,48 +2631,59 @@ async def generate_audit_report_rpd(
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
-    # Import lazily so missing template/xlsx errors fail fast at request time,
-    # not at module import.
-    from pims.audit_report_docx import (
-        TEMPLATE_PATH,
-        PIMS_DIR,
-        SiteData,
-        build_audit_report_docx,
-    )
-
-    xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
-    if not TEMPLATE_PATH.exists():
-        raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
-    if not xlsx_path.exists():
-        raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
-
-    ids = _validate_uuids(body.site_ids)
-    if not ids:
-        raise HTTPException(status_code=422, detail="site_ids required")
-
-    site_rows = await _fetch_sites_by_id(ids)
-    if not site_rows:
-        raise HTTPException(status_code=404, detail="No matching sites")
-    missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
-    if missing_value:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Sites missing project_value: {', '.join(missing_value)}",
+    # TEMP debug wrapper — surface the underlying exception in Railway logs.
+    # Remove once the pilot 500 is diagnosed.
+    try:
+        # Import lazily so missing template/xlsx errors fail fast at request time,
+        # not at module import.
+        from pims.audit_report_docx import (
+            TEMPLATE_PATH,
+            PIMS_DIR,
+            SiteData,
+            build_audit_report_docx,
         )
 
-    sites_data: list[SiteData] = []
-    for s in site_rows:
-        obs = await _fetch_observations_for_site(s["id"])
-        open_actions = [o for o in obs if o.get("action_required")]
-        sites_data.append(SiteData(
-            address=s.get("address_raw") or "",
-            project_value=s.get("project_value"),
-            summary_text=body.summary_text or "",
-            observations=obs,
-            open_actions=open_actions,
-        ))
+        xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
+        if not TEMPLATE_PATH.exists():
+            raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
+        if not xlsx_path.exists():
+            raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
 
-    buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
+        ids = _validate_uuids(body.site_ids)
+        if not ids:
+            raise HTTPException(status_code=422, detail="site_ids required")
+
+        site_rows = await _fetch_sites_by_id(ids)
+        if not site_rows:
+            raise HTTPException(status_code=404, detail="No matching sites")
+        missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
+        if missing_value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sites missing project_value: {', '.join(missing_value)}",
+            )
+
+        sites_data: list[SiteData] = []
+        for s in site_rows:
+            obs = await _fetch_observations_for_site(s["id"])
+            open_actions = [o for o in obs if o.get("action_required")]
+            sites_data.append(SiteData(
+                address=s.get("address_raw") or "",
+                project_value=s.get("project_value"),
+                summary_text=body.summary_text or "",
+                observations=obs,
+                open_actions=open_actions,
+            ))
+
+        buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("audit-report failure")
+        raise HTTPException(
+            status_code=500,
+            detail=f"{type(e).__name__}: {e}",
+        )
     filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
     return StreamingResponse(
         buf,
