@@ -708,14 +708,36 @@ def _append_site(
     # Part B
     _page_break(doc)
     _h(doc, "Part B — Site Safety Inspection Checklist", size=13)
+
+    matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
     for row in checklist:
-        matched_obs: dict | None = None
+        row_matches: list[dict] = []
         for obs in site.observations:
             cand, _ = match_observation(obs, [row])
             if cand is row:
-                matched_obs = obs
-                break
-        _checklist_row_block(doc, row, matched_obs)
+                row_matches.append(obs)
+        matches_by_row.append((row, row_matches))
+
+    has_duplicates = any(len(m) > 1 for _, m in matches_by_row)
+    if has_duplicates:
+        _p(
+            doc,
+            "Note: multiple observations are rendered against the same "
+            "criterion where applicable.",
+            size=9,
+        )
+
+    for row, row_matches in matches_by_row:
+        if not row_matches:
+            _checklist_row_block(doc, row, None)
+            continue
+        if len(row_matches) > 1:
+            log.debug(
+                "Rendering %d observations against checklist row %s / %s",
+                len(row_matches), row.category, row.criteria,
+            )
+        for obs in row_matches:
+            _checklist_row_block(doc, row, obs)
 
 
 def build_audit_report_docx(

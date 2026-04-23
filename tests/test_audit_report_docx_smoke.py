@@ -92,6 +92,71 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
     assert "All workers have completed required inductions and training." in full_text
 
 
+def test_duplicate_ccvs_code_renders_one_block_per_observation(
+    checklist_xlsx, template_docx,
+):
+    """Phase C: two observations sharing a ccvs_code must each get their own
+    rendered checklist block. Previously the renderer broke after the first
+    match and silently dropped subsequent observations against the same row."""
+    sites = [arpt.SiteData(
+        address="Dup Test St",
+        project_value=500_000,
+        client="Acme",
+        prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT",
+        summary_text="S",
+        observations=[
+            {
+                "seq_no": 1,
+                "photo_url": "PHOTO_ONE",
+                "observation_text_enriched": "First dup finding distinctive alpha.",
+                "conformance_status": "NCR",
+                "ccvs_code": "WAH-H6",
+            },
+            {
+                "seq_no": 2,
+                "photo_url": "PHOTO_TWO",
+                "observation_text_enriched": "Second dup finding distinctive beta.",
+                "conformance_status": "Conditional",
+                "ccvs_code": "WAH-H6",
+            },
+        ],
+        open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites,
+        checklist_xlsx_path=checklist_xlsx,
+        template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+
+    alpha_tables = []
+    beta_tables = []
+    for ti, t in enumerate(doc.tables):
+        joined = "\n".join(cell.text for row in t.rows for cell in row.cells)
+        if "distinctive alpha" in joined:
+            alpha_tables.append(ti)
+        if "distinctive beta" in joined:
+            beta_tables.append(ti)
+
+    assert len(alpha_tables) == 1, f"first obs not rendered exactly once: {alpha_tables}"
+    assert len(beta_tables) == 1, f"second obs not rendered exactly once: {beta_tables}"
+    assert alpha_tables != beta_tables, "both observations landed in the same table"
+
+    # Each block carries its own photo marker.
+    alpha_text = "\n".join(
+        cell.text for row in doc.tables[alpha_tables[0]].rows for cell in row.cells
+    )
+    beta_text = "\n".join(
+        cell.text for row in doc.tables[beta_tables[0]].rows for cell in row.cells
+    )
+    assert "PHOTO_ONE" in alpha_text
+    assert "PHOTO_TWO" in beta_text
+    assert "PHOTO_TWO" not in alpha_text
+    assert "PHOTO_ONE" not in beta_text
+
+
 def test_no_checklist_block_has_duplicate_header_text(checklist_xlsx, template_docx):
     """Regression guard: the header row of a _checklist_row_block must be
     [category, 'Result']. No row 0 produced by this code path should have
