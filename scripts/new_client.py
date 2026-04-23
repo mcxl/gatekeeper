@@ -413,7 +413,7 @@ def main() -> None:
     print(f"         Step 5 (deploy), Step 6 (dashboard test),")
     print(f"         Step 7 (Snap shortcut), Step 8 (Snap test),")
     print(f"         Step 9 (Cowork project).")
-    print(f"       Required Railway env vars:")
+    print("       Required Railway env vars:")
     print(f"         {args.short.upper()}_SUPABASE_URL")
     print(f"         {args.short.upper()}_SUPABASE_ANON_KEY")
     print(f"         {args.short.upper()}_SUPABASE_SERVICE_KEY")

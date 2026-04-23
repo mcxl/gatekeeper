@@ -189,7 +189,7 @@ class TestCredibilityFloor:
         """Simulate coordinator assembly with a specific credibility result."""
         from core.reviewer_agent import (
             AgentFinding, ReviewerResult,
-            OVERALL_STATUS_BELOW_DRAFT, OVERALL_STATUS_STRONG_DRAFT,
+            OVERALL_STATUS_STRONG_DRAFT,
             RECOMMENDED_ACTION_TARGETED,
             HARD_FAIL_THRESHOLD_FULL_REWORK,
             _CRED_PROMPT,
@@ -208,7 +208,6 @@ class TestCredibilityFloor:
     def test_cred_fail_floors_to_below(self):
         status = self._make_result_with_cred_fail(
             "FAIL", ["unsupported council permit in live task"])
-        from core.reviewer_agent import OVERALL_STATUS_BELOW_DRAFT
         assert status == OVERALL_STATUS_BELOW_DRAFT
 
     def test_cred_pass_does_not_floor(self):
