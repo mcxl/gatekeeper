@@ -62,7 +62,7 @@ def import_pims(xlsx_path: str, dry_run: bool = False):
     pc         = input("  Principal contractor [SD Group]: ").strip() or "SD Group"
     audit_date = input("  Audit date [2026-02-26]: ").strip() or "2026-02-26"
     auditor    = input("  Auditor name: ").strip() or "Unknown"
-    audit_ref  = input(f"  Audit ref [Unitas-2026-02-26]: ").strip() or "Unitas-2026-02-26"
+    audit_ref  = input("  Audit ref [Unitas-2026-02-26]: ").strip() or "Unitas-2026-02-26"
 
     audit_row = {
         "audit_ref":            audit_ref,
@@ -125,7 +125,7 @@ def import_pims(xlsx_path: str, dry_run: bool = False):
         print(f"  Inserted {inserted}/{len(batch)}...")
 
     print(f"\n✓ Done. {inserted} observations imported.")
-    print(f"✓ Open pims_dashboard.html in your browser to view the dashboard.")
+    print("✓ Open pims_dashboard.html in your browser to view the dashboard.")
 
 
 if __name__ == "__main__":

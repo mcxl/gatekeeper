@@ -8,10 +8,7 @@ Does not infer HRCW, CCVS, risk ratings, or responsibilities.
 
 from __future__ import annotations
 
-import json
-import os
 import re
-from dataclasses import asdict
 from typing import Optional
 
 from core.intake_extractor import ExtractionResult

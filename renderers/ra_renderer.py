@@ -178,7 +178,6 @@ def _render_ra_supplementary_sections(
     building_context = classification.get("building_context", "new")
     modifiers = set(classification.get("scope_modifiers", []))
     hrcw_flags = inference.get("hrcw_flags", {})
-    phase_groups = inference.get("phase_groups", [])
 
     # —— Section 6: Assumptions ————————————————————————————————————————————
     _add_heading(doc, "6. Assumptions")
@@ -541,6 +540,7 @@ def render_ra_document(
             "edge protection first", "r.291-303", "r.305", "r.211-240",
             "emergency contacts", "guardrails preferred",
         ]
+
         def _is_suppressed(note: str) -> bool:
             nl = note.lower()
             return any(t in nl for t in _SUPPRESSED_TERMS)

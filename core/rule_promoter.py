@@ -18,7 +18,6 @@ from core.pattern_detector import (
     RuleCandidate,
     load_candidates,
     _update_candidate_status,
-    _CANDIDATES_FILE,
 )
 
 log = logging.getLogger(__name__)
@@ -62,8 +61,8 @@ def _build_proposal(candidate: RuleCandidate) -> PromotionProposal:
         f"2. Add check for defect_family='{candidate.defect_family}', "
         f"check_name='{candidate.check_name}', job_type='{candidate.job_type}'",
         f"3. Rule text: {candidate.suggested_rule_text}",
-        f"4. Run pytest to confirm no regressions",
-        f"5. Run regression runner on affected streams",
+        "4. Run pytest to confirm no regressions",
+        "5. Run regression runner on affected streams",
     ]
 
     # Build patch stub based on target

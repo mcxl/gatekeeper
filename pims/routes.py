@@ -40,11 +40,9 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from fastapi import APIRouter, BackgroundTasks, Cookie, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
-from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
-from openpyxl.worksheet.protection import SheetProtection
 from PIL import Image as PILImage
 from pydantic import BaseModel, Field
 
@@ -571,16 +569,16 @@ async def _handle_observation(
         )
 
     return ObservationResponse(
-        id=                 record_id,
-        seq_no=             seq_no,
-        conformance_status= "Pending",
-        ccvs_code=          None,
-        ccvs_category=      None,
-        ccvs_confidence=    None,
-        action_required=    False,
-        action_description= None,
-        monitoring_note=    "Enrichment running in background",
-        review_status=      "Pending",
+        id=record_id,
+        seq_no=seq_no,
+        conformance_status="Pending",
+        ccvs_code=None,
+        ccvs_category=None,
+        ccvs_confidence=None,
+        action_required=False,
+        action_description=None,
+        monitoring_note="Enrichment running in background",
+        review_status="Pending",
     )
 
 
@@ -593,12 +591,12 @@ async def rpd_observation(
 ):
     """Receive a field observation for RPD and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              payload,
-        supabase_url=         RPD_SUPABASE_URL,
-        supabase_service_key= RPD_SUPABASE_SERVICE_KEY,
-        expected_token=       RPD_PIMS_TOKEN,
-        token=                x_pims_token,
-        background_tasks=     background_tasks,
+        request=payload,
+        supabase_url=RPD_SUPABASE_URL,
+        supabase_service_key=RPD_SUPABASE_SERVICE_KEY,
+        expected_token=RPD_PIMS_TOKEN,
+        token=x_pims_token,
+        background_tasks=background_tasks,
     )
 
 
@@ -611,12 +609,12 @@ async def sdgroup_observation(
 ):
     """Receive a field observation for SD Group and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              payload,
-        supabase_url=         SDG_SUPABASE_URL,
-        supabase_service_key= SDG_SUPABASE_SERVICE_KEY,
-        expected_token=       SDG_PIMS_TOKEN,
-        token=                x_pims_token,
-        background_tasks=     background_tasks,
+        request=payload,
+        supabase_url=SDG_SUPABASE_URL,
+        supabase_service_key=SDG_SUPABASE_SERVICE_KEY,
+        expected_token=SDG_PIMS_TOKEN,
+        token=x_pims_token,
+        background_tasks=background_tasks,
     )
 
 
@@ -2513,5 +2511,171 @@ async def download_rpd_report(
     return Response(
         content=xlsx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generate Audit Report (.docx) per selected sites
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AuditReportRequest(BaseModel):
+    site_ids: list[str] = Field(..., min_length=1, max_length=50)
+    summary_text: Optional[str] = None
+
+
+async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
+    """Fetch sites by canonical UUID. Returns rows with id, address_raw,
+    project_value, client_name."""
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    id_filter = "(" + ",".join(ids) + ")"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value,client_name",
+                "id": f"in.{id_filter}",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+
+_OBS_PAGE_SIZE = 1000
+_OBS_MAX_PAGES = 50  # 50,000 rows per site hard cap
+
+
+async def _fetch_observations_for_site(site_id: str) -> list[dict]:
+    """Paginate observations for a single site via PostgREST Range headers.
+
+    Returns all approved, non-staging, non-PDF-sourced observations ordered by
+    observation_date.asc. A WHS audit document must not silently drop findings,
+    so the single-request cap in the previous implementation is unsafe — loop
+    until a page comes back short. Hard-cap at 50 pages (50,000 rows) to prevent
+    a runaway query from hanging the request.
+    """
+    base_headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    params = {
+        "select": (
+            "seq_no,site_address,observation_text,observation_text_enriched,"
+            "conformance_status,ccvs_code,ccvs_category,action_required,"
+            "action_description,responsible,due_category,photo_id"
+        ),
+        "site_id": f"eq.{site_id}",
+        "staging": "eq.false",
+        "source_pdf": "is.null",
+        "review_status": "eq.Approved",
+        "order": "observation_date.asc",
+    }
+    out: list[dict] = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for page in range(_OBS_MAX_PAGES):
+            start = page * _OBS_PAGE_SIZE
+            end = start + _OBS_PAGE_SIZE - 1
+            headers = {**base_headers, "Range-Unit": "items", "Range": f"{start}-{end}"}
+            r = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers,
+                params=params,
+            )
+            r.raise_for_status()
+            batch = r.json()
+            out.extend(batch)
+            if len(batch) < _OBS_PAGE_SIZE:
+                return out
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Observation pagination exceeded {_OBS_MAX_PAGES} pages "
+                f"({_OBS_MAX_PAGES * _OBS_PAGE_SIZE} rows) for site {site_id}; "
+                "refusing to emit a potentially truncated audit report."
+            ),
+        )
+
+
+@router.get("/sites/eligible")
+async def list_eligible_sites(
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """List sites eligible for audit-report generation: active=true AND
+    project_value is not null, ordered by address_raw."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value",
+                "active": "eq.true",
+                "project_value": "not.is.null",
+                "order": "address_raw.asc",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+
+@router.post("/audit-report/rpd")
+async def generate_audit_report_rpd(
+    body: AuditReportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    # Import lazily so missing template/xlsx errors fail fast at request time,
+    # not at module import.
+    from pims.audit_report_docx import (
+        TEMPLATE_PATH,
+        PIMS_DIR,
+        SiteData,
+        build_audit_report_docx,
+    )
+
+    xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
+    if not xlsx_path.exists():
+        raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
+
+    ids = _validate_uuids(body.site_ids)
+    if not ids:
+        raise HTTPException(status_code=422, detail="site_ids required")
+
+    site_rows = await _fetch_sites_by_id(ids)
+    if not site_rows:
+        raise HTTPException(status_code=404, detail="No matching sites")
+    missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
+    if missing_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sites missing project_value: {', '.join(missing_value)}",
+        )
+
+    sites_data: list[SiteData] = []
+    for s in site_rows:
+        obs = await _fetch_observations_for_site(s["id"])
+        open_actions = [o for o in obs if o.get("action_required")]
+        sites_data.append(SiteData(
+            address=s.get("address_raw") or "",
+            project_value=s.get("project_value"),
+            summary_text=body.summary_text or "",
+            observations=obs,
+            open_actions=open_actions,
+        ))
+
+    buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
+    filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

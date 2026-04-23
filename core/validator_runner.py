@@ -31,7 +31,6 @@ if _ROOT not in sys.path:
 
 from src.issue_gate import (
     CheckResult,
-    Classification,
     GateResult,
     Stage,
     run_issue_gate,

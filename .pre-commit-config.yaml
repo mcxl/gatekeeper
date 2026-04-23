@@ -1,0 +1,19 @@
+# REQUIRED setup after clone (one-time, per working tree):
+#   pip install pre-commit flake8
+#   pre-commit install
+# The second command writes .git/hooks/pre-commit. Without it this config
+# is inert — committing this YAML alone does NOT activate the hook.
+# Runs on every `git commit` and blocks if flake8 fails.
+# Uses the system flake8 (language: system) to avoid pre-commit building
+# its own venv — sidesteps a Windows permission issue with the default
+# repo-based flake8 install. Config honours the repo's .flake8 file.
+repos:
+  - repo: local
+    hooks:
+      - id: flake8
+        name: flake8
+        entry: python -m flake8
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: ["."]

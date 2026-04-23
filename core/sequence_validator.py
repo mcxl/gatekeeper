@@ -9,7 +9,6 @@ Never raises — errors return a safe fallback.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 log = logging.getLogger(__name__)
 

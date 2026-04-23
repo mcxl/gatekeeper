@@ -296,7 +296,6 @@ async def generate_swms(
     from vocab.standards_registry import (
         get_verified_standards,
         validate_standard_citations,
-        strip_unverified_citations,
     )
     verified_refs = get_verified_standards(
         jurisdiction=jurisdiction,

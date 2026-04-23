@@ -26,6 +26,10 @@ patch_*.py
 *.docx
 !src/Safe_Method_SWMS_Template_V1.docx
 !src/_SWMS-RPD-TASK-260318-V10_TEMPLATE.docx
+!pims/audit_report_template.docx
+
+# PIMS audit-report runtime cache
+pims/data/
 *.pdf
 real_job_*.docx
 real_job_*.pdf
@@ -66,3 +70,4 @@ data/*_analysis.jsonl
 
 # Malformed path-literal directories (accidental creates)
 C:Users*/
+.venv-test/

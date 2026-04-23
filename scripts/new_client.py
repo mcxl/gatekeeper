@@ -307,11 +307,6 @@ def bootstrap_sql(name: str, ref: str, site_name: str) -> str:
 
 
 def run_supabase_bootstrap(url: str, service_key: str, name: str, ref: str) -> None:
-    try:
-        import httpx
-    except ImportError:
-        die("httpx not installed; cannot run --supabase-* bootstrap")
-
     sql = bootstrap_sql(name=name, ref=ref, site_name=name)
     # Supabase doesn't expose raw SQL over PostgREST. The operator has two
     # realistic options: supabase_mcp.apply_migration, or paste into the SQL
@@ -408,12 +403,12 @@ def main() -> None:
 
     print()
     print(f"[done] scaffold complete for client '{args.name}' (slug={args.slug}, short={args.short}).")
-    print(f"       still manual (v3 step numbers):")
-    print(f"         Step 2 (Railway env vars), Step 4 (Supabase bootstrap SQL),")
-    print(f"         Step 5 (deploy), Step 6 (dashboard test),")
-    print(f"         Step 7 (Snap shortcut), Step 8 (Snap test),")
-    print(f"         Step 9 (Cowork project).")
-    print(f"       Required Railway env vars:")
+    print("       still manual (v3 step numbers):")
+    print("         Step 2 (Railway env vars), Step 4 (Supabase bootstrap SQL),")
+    print("         Step 5 (deploy), Step 6 (dashboard test),")
+    print("         Step 7 (Snap shortcut), Step 8 (Snap test),")
+    print("         Step 9 (Cowork project).")
+    print("       Required Railway env vars:")
     print(f"         {args.short.upper()}_SUPABASE_URL")
     print(f"         {args.short.upper()}_SUPABASE_ANON_KEY")
     print(f"         {args.short.upper()}_SUPABASE_SERVICE_KEY")
