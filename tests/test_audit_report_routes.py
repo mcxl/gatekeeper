@@ -214,6 +214,59 @@ def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkey
         assert s.inspection_datetime == "23 Apr 2026 09:00 AEDT"
 
 
+def _happy_path_with_datetime(patched_routes, monkeypatch, dt_string: str) -> list:
+    captured: dict = {}
+
+    async def fake_fetch_sites(_ids):
+        return [{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "address_raw": "1 A St", "project_value": 300_000,
+            "client_name": "Client A",
+        }]
+
+    async def fake_fetch_obs(_site_id):
+        return []
+
+    def fake_build(sites_data, **_kw):
+        captured["sites"] = list(sites_data)
+        from io import BytesIO
+        return BytesIO(b"PK\x03\x04")
+
+    monkeypatch.setattr(patched_routes, "_fetch_sites_by_id", fake_fetch_sites)
+    monkeypatch.setattr(patched_routes, "_fetch_observations_for_site", fake_fetch_obs)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda _c: True)
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
+    from pims import audit_report_docx as arpt
+    monkeypatch.setattr(arpt, "build_audit_report_docx", fake_build)
+
+    req = patched_routes.AuditReportRequest(
+        site_ids=["11111111-1111-1111-1111-111111111111"],
+        prepared_by="J. Auditor",
+        inspection_datetime=dt_string,
+    )
+    asyncio.run(patched_routes.generate_audit_report_rpd(req, pims_sess="valid"))
+    return captured["sites"]
+
+
+def test_inspection_datetime_winter_returns_AEST(patched_routes, monkeypatch):
+    """Backend must accept a winter-dated string that carries the AEST suffix
+    (the frontend's en-AU + timeZoneName:'short' derives AEST in July)."""
+    sites = _happy_path_with_datetime(
+        patched_routes, monkeypatch, "15 Jul 2026, 10:00 AEST"
+    )
+    assert sites[0].inspection_datetime.endswith("AEST")
+
+
+def test_inspection_datetime_summer_returns_AEDT(patched_routes, monkeypatch):
+    """Backend must accept a summer-dated string that carries the AEDT suffix
+    (the frontend's en-AU + timeZoneName:'short' derives AEDT in January)."""
+    sites = _happy_path_with_datetime(
+        patched_routes, monkeypatch, "15 Jan 2026, 10:00 AEDT"
+    )
+    assert sites[0].inspection_datetime.endswith("AEDT")
+
+
 def test_fetch_sends_constant_select_to_supabase(patched_routes, monkeypatch):
     """Belt-and-braces: the outgoing request uses the constant verbatim,
     so the schema assertions above actually guard the live call."""

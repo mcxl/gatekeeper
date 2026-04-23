@@ -1369,14 +1369,14 @@ async function submitAuditReport() {
   if (!prepared_by) { show('Prepared by is required.'); return; }
   const dtRaw = document.getElementById('auditReportInspectionDatetime').value;
   if (!dtRaw) { show('Date of inspection is required.'); return; }
-  // Format as "DD MMM YYYY HH:mm AEDT". TODO: the "AEDT" suffix is
-  // incorrect during AEST (standard time); revisit when we wire a
-  // timezone-aware formatter.
+  // en-AU locale with timeZoneName: 'short' emits AEDT during daylight
+  // saving and AEST outside it, derived from the selected datetime.
   const dt = new Date(dtRaw);
   const inspection_datetime = dt.toLocaleString('en-AU', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: false,
-  }) + ' AEDT';
+    timeZoneName: 'short',
+  });
   const summary = document.getElementById('auditReportSummary').value || null;
   const resp = await fetch('/pims/audit-report/rpd', {
     method: 'POST',
