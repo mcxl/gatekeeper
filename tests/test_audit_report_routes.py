@@ -127,6 +127,93 @@ class _CaptureClient:
         return _FakeResp([])
 
 
+def test_request_model_rejects_missing_prepared_by(patched_routes):
+    """Pydantic 422: prepared_by is required and must be non-empty."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        patched_routes.AuditReportRequest(
+            site_ids=["11111111-1111-1111-1111-111111111111"],
+            inspection_datetime="23 Apr 2026 09:00 AEDT",
+        )
+    with pytest.raises(ValidationError):
+        patched_routes.AuditReportRequest(
+            site_ids=["11111111-1111-1111-1111-111111111111"],
+            prepared_by="",
+            inspection_datetime="23 Apr 2026 09:00 AEDT",
+        )
+
+
+def test_request_model_rejects_missing_inspection_datetime(patched_routes):
+    """Pydantic 422: inspection_datetime is required and must be non-empty."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        patched_routes.AuditReportRequest(
+            site_ids=["11111111-1111-1111-1111-111111111111"],
+            prepared_by="J. Auditor",
+        )
+    with pytest.raises(ValidationError):
+        patched_routes.AuditReportRequest(
+            site_ids=["11111111-1111-1111-1111-111111111111"],
+            prepared_by="J. Auditor",
+            inspection_datetime="",
+        )
+
+
+def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkeypatch):
+    """Happy path: prepared_by and inspection_datetime from the request
+    reach every constructed SiteData."""
+    captured: dict = {}
+
+    async def fake_fetch_sites(_ids):
+        return [
+            {"id": "11111111-1111-1111-1111-111111111111",
+             "address_raw": "1 A St", "project_value": 300_000,
+             "client_name": "Client A"},
+            {"id": "22222222-2222-2222-2222-222222222222",
+             "address_raw": "2 B St", "project_value": 300_000,
+             "client_name": "Client A"},
+        ]
+
+    async def fake_fetch_obs(_site_id):
+        return []
+
+    def fake_build(sites_data, **_kw):
+        captured["sites"] = list(sites_data)
+        from io import BytesIO
+        return BytesIO(b"PK\x03\x04")
+
+    monkeypatch.setattr(patched_routes, "_fetch_sites_by_id", fake_fetch_sites)
+    monkeypatch.setattr(patched_routes, "_fetch_observations_for_site", fake_fetch_obs)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda _c: True)
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
+    # Template + xlsx existence checks read from disk; point them at real files.
+    from pims import audit_report_docx as arpt
+    monkeypatch.setattr(arpt, "TEMPLATE_PATH", arpt.TEMPLATE_PATH)  # no-op but explicit
+    # Patch build_audit_report_docx at its import site in pims.routes by
+    # intercepting the inline `from pims.audit_report_docx import ...` — we
+    # do that by replacing the builder on the source module before import.
+    monkeypatch.setattr(arpt, "build_audit_report_docx", fake_build)
+
+    req = patched_routes.AuditReportRequest(
+        site_ids=[
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+        ],
+        summary_text="Summary.",
+        prepared_by="J. Auditor",
+        inspection_datetime="23 Apr 2026 09:00 AEDT",
+    )
+
+    asyncio.run(patched_routes.generate_audit_report_rpd(req, pims_sess="valid"))
+
+    assert "sites" in captured
+    assert len(captured["sites"]) == 2
+    for s in captured["sites"]:
+        assert s.prepared_by == "J. Auditor"
+        assert s.inspection_datetime == "23 Apr 2026 09:00 AEDT"
+
+
 def test_fetch_sends_constant_select_to_supabase(patched_routes, monkeypatch):
     """Belt-and-braces: the outgoing request uses the constant verbatim,
     so the schema assertions above actually guard the live call."""

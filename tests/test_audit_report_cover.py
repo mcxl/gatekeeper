@@ -88,6 +88,26 @@ def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
     # Score + flagged surfaces.
     assert "1 / 2 (50.0%)" in text or "1 / 2 (50%)" in text
 
+    # "Date of inspection" label-value row surfaces the populated value.
+    found_date = False
+    for t in doc.tables:
+        if t.rows and len(t.rows[0].cells) >= 2:
+            if t.rows[0].cells[0].text.strip() == "Date of inspection":
+                assert t.rows[0].cells[1].text.strip() == "23 Apr 2026 09:00 AEST"
+                found_date = True
+                break
+    assert found_date, "Date of inspection row not located"
+
+    # "Prepared by" label-value row surfaces the populated value.
+    found_prep = False
+    for t in doc.tables:
+        if t.rows and len(t.rows[0].cells) >= 2:
+            if t.rows[0].cells[0].text.strip() == "Prepared by":
+                assert t.rows[0].cells[1].text.strip() == "J. Auditor"
+                found_prep = True
+                break
+    assert found_prep, "Prepared by row not located"
+
 
 def test_multi_site_cover_uses_multiple_sites_label(checklist_xlsx):
     if not TEMPLATE_PATH.exists():

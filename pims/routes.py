@@ -2522,6 +2522,11 @@ async def download_rpd_report(
 class AuditReportRequest(BaseModel):
     site_ids: list[str] = Field(..., min_length=1, max_length=50)
     summary_text: Optional[str] = None
+    prepared_by: str = Field(..., min_length=1)
+    # TODO: client formats this as "DD MMM YYYY HH:mm AEDT" unconditionally,
+    # which is wrong during AEST (standard time). Revisit when we wire a
+    # proper timezone-aware formatter.
+    inspection_datetime: str = Field(..., min_length=1)
 
 
 async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
@@ -2682,6 +2687,8 @@ async def generate_audit_report_rpd(
             observations=obs,
             open_actions=open_actions,
             client=s.get("client_name") or "",
+            prepared_by=body.prepared_by,
+            inspection_datetime=body.inspection_datetime,
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)

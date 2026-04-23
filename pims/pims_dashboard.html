@@ -1314,6 +1314,10 @@ async function openAuditReportModal() {
         <p style="font-size:13px;color:#555;">Select one or more sites:</p>
         <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
         <select id="auditReportSites" multiple size="10" style="width:100%;padding:6px;"></select>
+        <p style="font-size:13px;color:#555;margin-top:12px;">Prepared by <span style="color:#b91c1c;">*</span></p>
+        <input id="auditReportPreparedBy" type="text" placeholder="Your name" required style="width:100%;padding:6px;" />
+        <p style="font-size:13px;color:#555;margin-top:12px;">Date of inspection <span style="color:#b91c1c;">*</span></p>
+        <input id="auditReportInspectionDatetime" type="datetime-local" required style="width:100%;padding:6px;" />
         <p style="font-size:13px;color:#555;margin-top:12px;">Optional summary text:</p>
         <textarea id="auditReportSummary" rows="3" style="width:100%;padding:6px;"></textarea>
         <div style="margin-top:16px;text-align:right;">
@@ -1356,13 +1360,34 @@ async function openAuditReportModal() {
 async function submitAuditReport() {
   const sel = document.getElementById('auditReportSites');
   const site_ids = Array.from(sel.selectedOptions).map(o => o.value);
-  if (!site_ids.length) { alert('Select at least one site.'); return; }
+  const err = document.getElementById('auditReportError');
+  const show = (msg) => { err.textContent = msg; err.style.display = 'block'; };
+  err.style.display = 'none';
+  err.textContent = '';
+  if (!site_ids.length) { show('Select at least one site.'); return; }
+  const prepared_by = (document.getElementById('auditReportPreparedBy').value || '').trim();
+  if (!prepared_by) { show('Prepared by is required.'); return; }
+  const dtRaw = document.getElementById('auditReportInspectionDatetime').value;
+  if (!dtRaw) { show('Date of inspection is required.'); return; }
+  // Format as "DD MMM YYYY HH:mm AEDT". TODO: the "AEDT" suffix is
+  // incorrect during AEST (standard time); revisit when we wire a
+  // timezone-aware formatter.
+  const dt = new Date(dtRaw);
+  const inspection_datetime = dt.toLocaleString('en-AU', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }) + ' AEDT';
   const summary = document.getElementById('auditReportSummary').value || null;
   const resp = await fetch('/pims/audit-report/rpd', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({site_ids: site_ids, summary_text: summary}),
+    body: JSON.stringify({
+      site_ids: site_ids,
+      summary_text: summary,
+      prepared_by: prepared_by,
+      inspection_datetime: inspection_datetime,
+    }),
   });
   if (!resp.ok) {
     const txt = await resp.text();
