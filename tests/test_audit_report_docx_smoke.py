@@ -49,6 +49,7 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
     sites = [arpt.SiteData(
         address="1 Test St, Sydney",
         project_value=500000,
+        client="Test Client Pty Ltd",
         summary_text="Routine inspection.",
         observations=[{
             "seq_no": 1,
@@ -92,7 +93,7 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
 
 
 def test_build_fails_on_null_project_value(checklist_xlsx, template_docx):
-    sites = [arpt.SiteData(address="X", project_value=None, observations=[])]
+    sites = [arpt.SiteData(address="X", project_value=None, client="Acme", observations=[])]
     with pytest.raises(ValueError):
         arpt.build_audit_report_docx(
             sites,
@@ -102,7 +103,7 @@ def test_build_fails_on_null_project_value(checklist_xlsx, template_docx):
 
 
 def test_build_fails_on_missing_template(checklist_xlsx, tmp_path):
-    sites = [arpt.SiteData(address="X", project_value=100000, observations=[])]
+    sites = [arpt.SiteData(address="X", project_value=100000, client="Acme", observations=[])]
     with pytest.raises(FileNotFoundError):
         arpt.build_audit_report_docx(
             sites,

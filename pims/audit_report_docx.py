@@ -80,6 +80,9 @@ class SiteData:
     summary_text: str = ""
     observations: list[dict] = field(default_factory=list)
     open_actions: list[dict] = field(default_factory=list)
+    client: str = ""
+    prepared_by: str = ""
+    inspection_datetime: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +317,285 @@ def reframe_instruction(instruction: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Cover-page population (Phase 0)
+# ---------------------------------------------------------------------------
+
+# Literal paragraph prefixes of example/boilerplate content in the shipped
+# template. Matched exactly (startswith) so that future legitimate content a
+# template editor adds is not accidentally deleted.
+_EXAMPLE_PARAGRAPH_PREFIXES = (
+    "Example….An inspection of the Robertson",  # para 9
+    "Example 26 / 35",  # para 13
+    "Example below",  # para 20
+    "Powered mobile plant introduced without RPD verification",  # para 21
+    "Workers removing tiles/render were not initially wearing P2",  # para 22
+    "Silica controls for tile/bed removal non-compliant",  # para 23
+    "Required RCS danger signage not displayed",  # para 24
+    "Electrical equipment lacked supporting inspection",  # para 25
+)
+
+_COVER_TITLE_SUFFIX = "Site Safety Audit Report"
+
+
+def _score_totals(sites: list["SiteData"]) -> dict:
+    total_items = 0
+    passed = 0
+    ncr = 0
+    conditional = 0
+    actions = 0
+    for s in sites:
+        for obs in s.observations:
+            total_items += 1
+            status = (obs.get("conformance_status") or "").strip()
+            if status == "Compliant":
+                passed += 1
+            elif status == "NCR":
+                ncr += 1
+            elif status == "Conditional":
+                conditional += 1
+        actions += len(s.open_actions)
+    flagged = total_items - passed
+    pct = round(100 * passed / total_items, 2) if total_items else 0
+    return {
+        "total": total_items,
+        "passed": passed,
+        "flagged": flagged,
+        "ncr": ncr,
+        "conditional": conditional,
+        "actions": actions,
+        "pct": pct,
+        "score_text": f"{passed} / {total_items} ({pct}%)",
+    }
+
+
+def _resolve_cover_title(sites: list["SiteData"]) -> str:
+    if len(sites) == 1:
+        client = (sites[0].client or "").strip()
+        if not client:
+            raise ValueError(
+                "Single-site audit report requires a non-empty site.client "
+                "(populate sites.client_name); refusing to render a generic title."
+            )
+        return f"{client} – {_COVER_TITLE_SUFFIX}"
+    clients = {(s.client or "").strip() for s in sites}
+    clients.discard("")
+    if len(clients) == 1:
+        return f"{next(iter(clients))} – {_COVER_TITLE_SUFFIX}"
+    return _COVER_TITLE_SUFFIX
+
+
+def _resolve_executive_summary(sites: list["SiteData"], totals: dict) -> str:
+    if len(sites) > 1:
+        return (
+            f"This audit covers {len(sites)} sites. {totals['ncr']} "
+            f"non-conformances and {totals['conditional']} conditional findings "
+            f"were identified across {totals['total']} inspection items."
+        )
+    s = sites[0]
+    if s.summary_text and s.summary_text.strip():
+        return s.summary_text.strip()
+    return (
+        f"This Work Health and Safety audit was conducted on "
+        f"{s.inspection_datetime} at {s.address}. The inspection covered "
+        f"{totals['total']} checklist items, identifying {totals['ncr']} "
+        f"non-conformances and {totals['conditional']} conditional findings. "
+        f"{totals['actions']} actions remain open at the time of this report."
+    )
+
+
+def _clear_paragraph_runs(p) -> None:
+    for r in list(p.runs):
+        r._element.getparent().remove(r._element)
+
+
+def _replace_paragraph_text(p, text: str) -> None:
+    _clear_paragraph_runs(p)
+    p.add_run(text)
+
+
+def _replace_paragraph_with_lines(p, lines: list[str]) -> None:
+    _clear_paragraph_runs(p)
+    if not lines:
+        p.add_run("None.")
+        return
+    p.add_run(lines[0])
+    for line in lines[1:]:
+        br_run = p.add_run()
+        br_run.add_break()
+        p.add_run(line)
+
+
+def _set_cell_text_preserving_style(cell, text: str) -> None:
+    # Prefer updating the first run of the first paragraph so font/size is
+    # preserved. Clear any other paragraphs in the cell to keep it a single
+    # value cell.
+    if not cell.paragraphs:
+        cell.text = text
+        return
+    first = cell.paragraphs[0]
+    _clear_paragraph_runs(first)
+    first.add_run(text)
+    for extra in cell.paragraphs[1:]:
+        extra._element.getparent().remove(extra._element)
+
+
+def _find_paragraph_by_prefix(doc, prefix: str):
+    for p in doc.paragraphs:
+        if p.text.startswith(prefix):
+            return p
+    return None
+
+
+def _delete_paragraph(p) -> None:
+    p._element.getparent().remove(p._element)
+
+
+def _populate_cover(doc, sites: list["SiteData"]) -> None:
+    """Replace cover-page placeholders with computed content from site metadata.
+
+    Missing placeholders (e.g. when called against a blank template in tests)
+    are logged at WARNING and skipped — never raised. Runs pre-loop so the
+    rest of the render pipeline is unaffected.
+    """
+    totals = _score_totals(sites)
+    title = _resolve_cover_title(sites)
+    exec_summary = _resolve_executive_summary(sites, totals)
+
+    if len(sites) == 1:
+        site_conducted = sites[0].address
+    else:
+        site_conducted = f"Multiple sites ({len(sites)})"
+
+    # Use report-level fields from the first site for prepared_by and
+    # inspection_datetime. Multi-site reports assume a single audit event.
+    prepared_by = sites[0].prepared_by or ""
+    inspection_datetime = sites[0].inspection_datetime or ""
+
+    # --- Paragraph placeholders ---------------------------------------
+    # Title: paragraph contains the literal suffix "Site Safety Audit Report".
+    title_p = None
+    for p in doc.paragraphs:
+        if _COVER_TITLE_SUFFIX in p.text:
+            title_p = p
+            break
+    if title_p is not None:
+        _replace_paragraph_text(title_p, title)
+    else:
+        log.warning("Cover title paragraph not found")
+
+    paragraph_replacements = {
+        "[Insert Site Address]": site_conducted,
+        "[Insert Executive Summary]": exec_summary,
+        "[Insert Score]": totals["score_text"],
+    }
+    for placeholder, value in paragraph_replacements.items():
+        p = _find_paragraph_by_prefix(doc, placeholder)
+        if p is None:
+            log.warning("Cover placeholder %r not found", placeholder)
+            continue
+        _replace_paragraph_text(p, value)
+
+    # Open Actions Register + Findings — multi-line replacements.
+    oa_placeholder = "[Insert line items from Open Actions Register"
+    oa_p = _find_paragraph_by_prefix(doc, oa_placeholder)
+    if oa_p is None:
+        log.warning("Cover placeholder %r not found", oa_placeholder)
+    else:
+        oa_lines: list[str] = []
+        for s in sites:
+            for a in s.open_actions:
+                desc = str(a.get("action_description") or a.get("observation_text") or "").strip()
+                resp = str(a.get("responsible") or "").strip()
+                due = str(a.get("due_category") or "").strip()
+                bits = [b for b in (desc, resp, due) if b]
+                if bits:
+                    oa_lines.append("• " + " — ".join(bits))
+        _replace_paragraph_with_lines(oa_p, oa_lines)
+
+    f_placeholder = "[Insert Summary of Findings"
+    f_p = _find_paragraph_by_prefix(doc, f_placeholder)
+    if f_p is None:
+        log.warning("Cover placeholder %r not found", f_placeholder)
+    else:
+        finding_lines: list[str] = []
+        for s in sites:
+            for obs in s.observations:
+                status = (obs.get("conformance_status") or "").strip()
+                if status in ("NCR", "Conditional"):
+                    text = (
+                        obs.get("observation_text_enriched")
+                        or obs.get("observation_text")
+                        or ""
+                    ).strip()
+                    if text:
+                        finding_lines.append("• " + text)
+        _replace_paragraph_with_lines(f_p, finding_lines)
+
+    # --- Label/value tables -------------------------------------------
+    # Table 1 uses a single row with alternating label/value cells.
+    label_values_single_row = {
+        "Score": totals["score_text"],
+        "Flagged items": f"{totals['flagged']}",
+        "Actions": f"{totals['actions']}",
+    }
+    # Tables 2/5/7/9 use a two-cell label/value row.
+    label_values_label_pair = {
+        "Site conducted": site_conducted,
+        "Prepared by": prepared_by,
+        "Date of inspection": inspection_datetime,
+        "Flagged items (row)": f"{totals['flagged']} flagged",
+    }
+    # Table 9's label cell literal text is also "Flagged items" — to
+    # disambiguate from Table 1, we detect by table shape (single row &
+    # >= 4 cells vs single row & 2 cells).
+
+    seen_labels: set[str] = set()
+    for table in doc.tables:
+        if not table.rows:
+            continue
+        row = table.rows[0]
+        cells = row.cells
+        n = len(cells)
+        # Single-row, alternating label/value (Table 1 shape).
+        if len(table.rows) == 1 and n >= 4 and n % 2 == 0:
+            matched_any = False
+            for i in range(0, n, 2):
+                label = cells[i].text.strip()
+                if label in label_values_single_row:
+                    _set_cell_text_preserving_style(
+                        cells[i + 1], label_values_single_row[label]
+                    )
+                    seen_labels.add(label)
+                    matched_any = True
+            if matched_any:
+                continue
+        # Two-cell label/value row.
+        if n >= 2:
+            label = cells[0].text.strip()
+            # Disambiguate "Flagged items" between Table 1 and Table 9.
+            target_key = label
+            if label == "Flagged items" and len(table.rows) == 1 and n == 2:
+                target_key = "Flagged items (row)"
+            if target_key in label_values_label_pair:
+                _set_cell_text_preserving_style(
+                    cells[1], label_values_label_pair[target_key]
+                )
+                seen_labels.add(target_key)
+
+    for lbl in list(label_values_single_row) + list(label_values_label_pair):
+        if lbl not in seen_labels:
+            log.warning("Cover label cell %r not found", lbl)
+
+    # --- Delete hard-coded example paragraphs -------------------------
+    for prefix in _EXAMPLE_PARAGRAPH_PREFIXES:
+        p = _find_paragraph_by_prefix(doc, prefix)
+        if p is None:
+            log.warning("Cover example paragraph with prefix %r not found", prefix)
+            continue
+        _delete_paragraph(p)
+
+
+# ---------------------------------------------------------------------------
 # DOCX build
 # ---------------------------------------------------------------------------
 
@@ -438,6 +720,9 @@ def build_audit_report_docx(
                 summary_text=s.get("summary_text", ""),
                 observations=s.get("observations", []) or [],
                 open_actions=s.get("open_actions", []) or [],
+                client=s.get("client", "") or "",
+                prepared_by=s.get("prepared_by", "") or "",
+                inspection_datetime=s.get("inspection_datetime", "") or "",
             )
         if s.project_value is None:
             raise ValueError(f"Site {s.address!r} has null project_value")
@@ -445,6 +730,7 @@ def build_audit_report_docx(
 
     doc = Document(str(tpath))
     apply_document_font(doc)
+    _populate_cover(doc, sites)
 
     for i, site in enumerate(sites):
         checklist = load_checklist(site.project_value, checklist_xlsx_path)

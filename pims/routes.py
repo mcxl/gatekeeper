@@ -2681,6 +2681,7 @@ async def generate_audit_report_rpd(
             summary_text=body.summary_text or "",
             observations=obs,
             open_actions=open_actions,
+            client=s.get("client_name") or "",
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
