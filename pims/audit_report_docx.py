@@ -369,7 +369,7 @@ def _checklist_row_block(
             or ""
         )
         status = matched_obs.get("conformance_status") or ""
-        photo = matched_obs.get("photo_id") or ""
+        photo = matched_obs.get("photo_url") or ""
         txt = f"[{status}] {finding}"
         if photo:
             txt += f"\nPhoto: {photo}"

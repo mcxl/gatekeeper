@@ -2545,6 +2545,16 @@ async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
 _OBS_PAGE_SIZE = 1000
 _OBS_MAX_PAGES = 50  # 50,000 rows per site hard cap
 
+# Single source of truth for the observation column list.
+# Kept as a module-level constant so tests can assert the outgoing
+# PostgREST ?select=... is schema-correct (see tests/test_audit_report_routes.py).
+OBSERVATION_SELECT_COLUMNS = (
+    "id,seq_no,site_address,observation_text,observation_text_enriched,"
+    "conformance_status,ccvs_code,ccvs_category,action_required,"
+    "action_description,responsible,due_category,legal_reference,"
+    "filename,photo_url"
+)
+
 
 async def _fetch_observations_for_site(site_id: str) -> list[dict]:
     """Paginate observations for a single site via PostgREST Range headers.
@@ -2557,11 +2567,12 @@ async def _fetch_observations_for_site(site_id: str) -> list[dict]:
     """
     base_headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     params = {
-        "select": (
-            "seq_no,site_address,observation_text,observation_text_enriched,"
-            "conformance_status,ccvs_code,ccvs_category,action_required,"
-            "action_description,responsible,due_category,photo_id"
-        ),
+        # Column list MUST match the pims_observations schema in
+        # pims/pims_migration.sql:133-182 — PostgREST rejects unknown columns
+        # with a 400. Every column named here is also referenced by the
+        # renderer in pims/audit_report_docx.py; anything the renderer does
+        # not read is intentionally omitted.
+        "select": OBSERVATION_SELECT_COLUMNS,
         "site_id": f"eq.{site_id}",
         "staging": "eq.false",
         "source_pdf": "is.null",
@@ -2631,59 +2642,48 @@ async def generate_audit_report_rpd(
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
-    # TEMP debug wrapper — surface the underlying exception in Railway logs.
-    # Remove once the pilot 500 is diagnosed.
-    try:
-        # Import lazily so missing template/xlsx errors fail fast at request time,
-        # not at module import.
-        from pims.audit_report_docx import (
-            TEMPLATE_PATH,
-            PIMS_DIR,
-            SiteData,
-            build_audit_report_docx,
-        )
+    # Import lazily so missing template/xlsx errors fail fast at request time,
+    # not at module import.
+    from pims.audit_report_docx import (
+        TEMPLATE_PATH,
+        PIMS_DIR,
+        SiteData,
+        build_audit_report_docx,
+    )
 
-        xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
-        if not TEMPLATE_PATH.exists():
-            raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
-        if not xlsx_path.exists():
-            raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
+    xlsx_path = PIMS_DIR / "audit_checklist.xlsx"
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}")
+    if not xlsx_path.exists():
+        raise HTTPException(status_code=503, detail=f"Checklist workbook missing: {xlsx_path.name}")
 
-        ids = _validate_uuids(body.site_ids)
-        if not ids:
-            raise HTTPException(status_code=422, detail="site_ids required")
+    ids = _validate_uuids(body.site_ids)
+    if not ids:
+        raise HTTPException(status_code=422, detail="site_ids required")
 
-        site_rows = await _fetch_sites_by_id(ids)
-        if not site_rows:
-            raise HTTPException(status_code=404, detail="No matching sites")
-        missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
-        if missing_value:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Sites missing project_value: {', '.join(missing_value)}",
-            )
-
-        sites_data: list[SiteData] = []
-        for s in site_rows:
-            obs = await _fetch_observations_for_site(s["id"])
-            open_actions = [o for o in obs if o.get("action_required")]
-            sites_data.append(SiteData(
-                address=s.get("address_raw") or "",
-                project_value=s.get("project_value"),
-                summary_text=body.summary_text or "",
-                observations=obs,
-                open_actions=open_actions,
-            ))
-
-        buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
-    except HTTPException:
-        raise
-    except Exception as e:
-        log.exception("audit-report failure")
+    site_rows = await _fetch_sites_by_id(ids)
+    if not site_rows:
+        raise HTTPException(status_code=404, detail="No matching sites")
+    missing_value = [s["address_raw"] for s in site_rows if s.get("project_value") is None]
+    if missing_value:
         raise HTTPException(
-            status_code=500,
-            detail=f"{type(e).__name__}: {e}",
+            status_code=400,
+            detail=f"Sites missing project_value: {', '.join(missing_value)}",
         )
+
+    sites_data: list[SiteData] = []
+    for s in site_rows:
+        obs = await _fetch_observations_for_site(s["id"])
+        open_actions = [o for o in obs if o.get("action_required")]
+        sites_data.append(SiteData(
+            address=s.get("address_raw") or "",
+            project_value=s.get("project_value"),
+            summary_text=body.summary_text or "",
+            observations=obs,
+            open_actions=open_actions,
+        ))
+
+    buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
     filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
     return StreamingResponse(
         buf,
