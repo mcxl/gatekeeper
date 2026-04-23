@@ -2677,6 +2677,14 @@ async def generate_audit_report_rpd(
     for s in site_rows:
         obs = await _fetch_observations_for_site(s["id"])
         open_actions = [o for o in obs if o.get("action_required")]
+        # Pre-fetch photos for open-action observations so the renderer can
+        # embed them inline rather than link to Supabase URLs.
+        oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
+        oa_photo_bytes = await _fetch_images(oa_photo_urls) if oa_photo_urls else []
+        oa_photo_bytes_by_obs_id: dict[str, bytes] = {}
+        for o, b in zip(open_actions, oa_photo_bytes):
+            if b:
+                oa_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
         sites_data.append(SiteData(
             address=s.get("address_raw") or "",
             project_value=s.get("project_value"),
@@ -2686,6 +2694,7 @@ async def generate_audit_report_rpd(
             client=s.get("client_name") or "",
             prepared_by=body.prepared_by,
             inspection_datetime=body.inspection_datetime,
+            open_action_photo_bytes_by_obs_id=oa_photo_bytes_by_obs_id,
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)

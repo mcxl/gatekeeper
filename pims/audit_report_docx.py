@@ -22,7 +22,7 @@ from pathlib import Path
 import openpyxl
 from docx import Document
 from docx.enum.text import WD_BREAK
-from docx.shared import Pt
+from docx.shared import Cm, Pt, RGBColor
 
 from src.docx_style_standard import (
     add_body_cell,
@@ -83,6 +83,19 @@ class SiteData:
     client: str = ""
     prepared_by: str = ""
     inspection_datetime: str = ""
+    # Pre-fetched open-action photo bytes, keyed by observation id.
+    # Populated by the route before calling build_audit_report_docx.
+    open_action_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
+
+
+# Bold status palette for shaded cells — keyed by conformance_status.
+# (bg_hex, font_hex). Hex without leading '#'.
+STATUS_PALETTE: dict[str, tuple[str, str]] = {
+    "Compliant":   ("00B050", "FFFFFF"),
+    "Conditional": ("FFC000", "000000"),
+    "NCR":         ("C00000", "FFFFFF"),
+    "Info":        ("5B9BD5", "FFFFFF"),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -638,8 +651,53 @@ def _p(doc: Document, text: str, size: int = 10) -> None:
     run.font.size = Pt(size)
 
 
-def _open_actions_table(doc: Document, actions: list[dict]) -> None:
-    headers = ["#", "Observation", "Action", "Responsible", "Due"]
+def _apply_status_cell(cell, status: str) -> None:
+    """Shade a cell with the bold status palette and force the font colour
+    on every run currently in the cell. Statuses outside the palette leave
+    the cell untouched (no shading, default font)."""
+    entry = STATUS_PALETTE.get((status or "").strip())
+    if entry is None:
+        return
+    bg_hex, font_hex = entry
+    set_cell_shading(cell, bg_hex)
+    rgb = RGBColor.from_string(font_hex)
+    for p in cell.paragraphs:
+        for run in p.runs:
+            run.font.color.rgb = rgb
+
+
+def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
+    """Embed photo_bytes into cell as an inline image, or write fallback_text
+    if bytes are absent or PIL/embed fails. Matches the thumbnail behaviour
+    of the staging-review DOCX path in pims/routes.py."""
+    if not photo_bytes:
+        add_body_cell(cell, fallback_text)
+        return
+    try:
+        from io import BytesIO
+        from PIL import Image as PILImage
+        pil = PILImage.open(BytesIO(photo_bytes)).convert("RGB")
+        pil.thumbnail((300, 300), PILImage.LANCZOS)
+        buf = BytesIO()
+        pil.save(buf, format="JPEG", quality=85)
+        buf.seek(0)
+        # Clear default paragraph text then embed.
+        p = cell.paragraphs[0]
+        for r in list(p.runs):
+            r._element.getparent().remove(r._element)
+        p.add_run().add_picture(buf, width=Cm(3.5))
+    except Exception:
+        log.warning("Photo embed failed; falling back to text", exc_info=True)
+        add_body_cell(cell, fallback_text)
+
+
+def _open_actions_table(
+    doc: Document,
+    actions: list[dict],
+    photo_bytes_by_obs_id: dict[str, bytes] | None = None,
+) -> None:
+    photo_bytes_by_obs_id = photo_bytes_by_obs_id or {}
+    headers = ["#", "Status", "Photo", "Action", "Responsible", "Due", "CCVS"]
     table = doc.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     for i, h in enumerate(headers):
@@ -647,11 +705,23 @@ def _open_actions_table(doc: Document, actions: list[dict]) -> None:
     for a in actions:
         row = table.add_row()
         add_body_cell(row.cells[0], str(a.get("seq_no", "")))
-        add_body_cell(row.cells[1], str(a.get("observation_text", "")))
-        add_body_cell(row.cells[2], str(a.get("action_description", "")))
-        add_body_cell(row.cells[3], str(a.get("responsible", "")))
-        add_body_cell(row.cells[4], str(a.get("due_category", "")))
-    set_col_widths(table, [1.2, 6.0, 5.0, 2.5, 1.8])
+        status = a.get("conformance_status") or ""
+        add_body_cell(row.cells[1], status)
+        _apply_status_cell(row.cells[1], status)
+        obs_id = str(a.get("id") or "")
+        _embed_photo(row.cells[2], photo_bytes_by_obs_id.get(obs_id), "—")
+        # Action falls back to the enriched observation when no action
+        # description is recorded.
+        action_text = (
+            (a.get("action_description") or "").strip()
+            or (a.get("observation_text_enriched") or "").strip()
+            or (a.get("observation_text") or "").strip()
+        )
+        add_body_cell(row.cells[3], action_text)
+        add_body_cell(row.cells[4], str(a.get("responsible", "")))
+        add_body_cell(row.cells[5], str(a.get("due_category", "")))
+        add_body_cell(row.cells[6], str(a.get("ccvs_code") or ""))
+    set_col_widths(table, [0.8, 1.6, 3.5, 5.5, 2.2, 1.6, 1.3])
     set_table_borders(table)
 
 
@@ -671,14 +741,14 @@ def _checklist_row_block(
             or matched_obs.get("observation_text")
             or ""
         )
-        status = matched_obs.get("conformance_status") or ""
+        status = (matched_obs.get("conformance_status") or "").strip()
         photo = matched_obs.get("photo_url") or ""
-        txt = f"[{status}] {finding}"
+        # Status now lives in the cell shading — no "[STATUS] " prefix.
+        txt = finding
         if photo:
             txt += f"\nPhoto: {photo}"
         add_controls_cell(t.rows[1].cells[1], txt)
-        if status.upper() == "NCR":
-            set_cell_shading(t.rows[1].cells[1], "F8D7DA")
+        _apply_status_cell(t.rows[1].cells[1], status)
     else:
         add_controls_cell(t.rows[1].cells[1], reframe_instruction(row.instruction))
     set_col_widths(t, [7.0, 9.5])
@@ -694,20 +764,30 @@ def _append_site(
     if not is_first:
         _page_break(doc)
 
-    # Part A
+    # Site title banner.
     _h(doc, f"Audit Report — {site.address}", size=16)
-    _p(doc, f"Project value: ${site.project_value:,.0f}" if site.project_value else "")
-    if site.summary_text:
-        _p(doc, site.summary_text)
+
+    # Part A — Open Actions Register (leads the body so what's wrong and
+    # what's being done about it is the first thing the reader sees).
     _h(doc, "Part A — Open Actions Register", size=13)
     if site.open_actions:
-        _open_actions_table(doc, site.open_actions)
+        _open_actions_table(
+            doc, site.open_actions, site.open_action_photo_bytes_by_obs_id,
+        )
     else:
         _p(doc, "No open actions.")
 
-    # Part B
+    # Part B — Site Visit Summary (metadata + narrative).
     _page_break(doc)
-    _h(doc, "Part B — Site Safety Inspection Checklist", size=13)
+    _h(doc, "Part B — Site Visit Summary", size=13)
+    if site.project_value:
+        _p(doc, f"Project value: ${site.project_value:,.0f}")
+    if site.summary_text:
+        _p(doc, site.summary_text)
+
+    # Part C — Checklist.
+    _page_break(doc)
+    _h(doc, "Part C — Site Safety Inspection Checklist", size=13)
 
     matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
     for row in checklist:
@@ -766,6 +846,9 @@ def build_audit_report_docx(
                 client=s.get("client", "") or "",
                 prepared_by=s.get("prepared_by", "") or "",
                 inspection_datetime=s.get("inspection_datetime", "") or "",
+                open_action_photo_bytes_by_obs_id=(
+                    s.get("open_action_photo_bytes_by_obs_id") or {}
+                ),
             )
         if s.project_value is None:
             raise ValueError(f"Site {s.address!r} has null project_value")
