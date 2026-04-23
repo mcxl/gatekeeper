@@ -121,6 +121,125 @@ def _full_text_and_tables(doc):
     return parts
 
 
+def _find_metadata_table(doc):
+    """Locate the Part B metadata table: the first table whose label cells
+    include 'Client' and 'Site address' in order."""
+    for t in doc.tables:
+        labels = [r.cells[0].text.strip() for r in t.rows] if t.rows else []
+        if labels[:2] == ["Client", "Site address"]:
+            return t
+    return None
+
+
+def test_phase_e_metadata_table_present(checklist_xlsx, template_docx):
+    """Part B metadata table has the expected label rows in order, with
+    Audit reference between Prepared by and Project value."""
+    sites = [arpt.SiteData(
+        address="M Test",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT",
+        audit_ref="AUDIT-2026-001", summary_text="s",
+        observations=[{
+            "id": "O1", "ccvs_code": "WAH-H6",
+            "conformance_status": "Compliant",
+            "observation_text_enriched": "ok",
+        }],
+        open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites, checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    mt = _find_metadata_table(doc)
+    assert mt is not None, "metadata table not found"
+    labels = [r.cells[0].text.strip() for r in mt.rows]
+    assert labels == [
+        "Client", "Site address", "Date of inspection", "Prepared by",
+        "Audit reference", "Project value", "Total items", "Compliant",
+        "Conditional", "NCR", "Open actions",
+    ]
+    # Values land in the right rows.
+    values = [r.cells[1].text.strip() for r in mt.rows]
+    assert values[0] == "Acme"
+    assert values[4] == "AUDIT-2026-001"
+
+
+def test_phase_e_metadata_table_status_rows_shaded(checklist_xlsx, template_docx):
+    """Compliant / Conditional / NCR value cells in the metadata table
+    carry the bold palette hex backgrounds."""
+    sites = [arpt.SiteData(
+        address="M Test",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT",
+        audit_ref="A", summary_text="s",
+        observations=[
+            {"id": "O1", "ccvs_code": "WAH-H6", "conformance_status": "Compliant",
+             "observation_text_enriched": "ok"},
+            {"id": "O2", "ccvs_code": "SYS-L1", "conformance_status": "NCR",
+             "observation_text_enriched": "bad"},
+        ],
+        open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites, checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    mt = _find_metadata_table(doc)
+    assert mt is not None
+    labels = [r.cells[0].text.strip() for r in mt.rows]
+    i_comp = labels.index("Compliant")
+    i_cond = labels.index("Conditional")
+    i_ncr = labels.index("NCR")
+    assert (_cell_fill_hex(mt.rows[i_comp].cells[1]) or "").upper() == "00B050"
+    assert (_cell_fill_hex(mt.rows[i_cond].cells[1]) or "").upper() == "FFC000"
+    assert (_cell_fill_hex(mt.rows[i_ncr].cells[1]) or "").upper() == "C00000"
+
+
+def test_phase_e_exec_summary_matches_cover(tmp_path):
+    """The Part B executive summary paragraph must be byte-identical to
+    the cover executive summary paragraph for a single-site report."""
+    # Custom fixtures so we can use the shipped template (cover lookups).
+    if not arpt.TEMPLATE_PATH.exists():
+        pytest.skip("shipped template not present")
+    import openpyxl as _op
+    xlsx = tmp_path / "cl.xlsx"
+    wb = _op.Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet(arpt.SHEET_HIGH)
+    ws.append(["Category", "Criteria", "Instruction", "ccvs_code",
+               "ccvs_category", "observation_text_enriched"])
+    ws.append(["C1", "Crit 1", "Check one", "C1", "X", "x"])
+    wb.create_sheet(arpt.SHEET_LOW).append(["Category", "Criteria", "Instruction"])
+    wb.save(xlsx)
+
+    site = arpt.SiteData(
+        address="E Test",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT",
+        audit_ref="A",
+        summary_text="",  # force deterministic fallback
+        observations=[{
+            "id": "O1", "ccvs_code": "C1", "conformance_status": "NCR",
+            "observation_text_enriched": "bad",
+        }],
+        open_actions=[{"id": "O1", "conformance_status": "NCR"}],
+    )
+    buf = arpt.build_audit_report_docx([site], checklist_xlsx_path=xlsx)
+    buf.seek(0)
+    doc = Document(buf)
+
+    expected = arpt._resolve_executive_summary(
+        [site], arpt._score_totals([site])
+    )
+    occurrences = [p.text for p in doc.paragraphs if p.text == expected]
+    # Must land once on the cover and once in Part B → 2 copies, byte-identical.
+    assert len(occurrences) == 2, (
+        f"exec summary appeared {len(occurrences)} times, expected 2 "
+        f"(cover + Part B)"
+    )
+
+
 def test_phase_d_body_order_open_actions_before_summary(checklist_xlsx, template_docx):
     """Part A (Open Actions) must appear before Part B (Site Visit Summary)
     which must appear before Part C (Checklist)."""

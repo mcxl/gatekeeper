@@ -83,6 +83,7 @@ class SiteData:
     client: str = ""
     prepared_by: str = ""
     inspection_datetime: str = ""
+    audit_ref: str = ""
     # Pre-fetched open-action photo bytes, keyed by observation id.
     # Populated by the route before calling build_audit_report_docx.
     open_action_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
@@ -755,6 +756,43 @@ def _checklist_row_block(
     set_table_borders(t)
 
 
+def _site_metadata_table(doc: Document, site: SiteData, totals: dict) -> None:
+    """Two-column label/value table for Part B.
+
+    The Compliant / Conditional / NCR count rows reuse the bold status
+    palette (`_apply_status_cell`) so the severity reads at a glance.
+    Rows intentionally duplicate 'Prepared by' and 'Date of inspection'
+    from the cover — the cover is a one-page top-level summary; Part B
+    restates per-site context at the start of each site section.
+    """
+    pv = (
+        f"${site.project_value:,.0f}"
+        if site.project_value is not None else "—"
+    )
+    rows: list[tuple[str, str, str | None]] = [
+        ("Client",             site.client or "—",              None),
+        ("Site address",       site.address or "—",             None),
+        ("Date of inspection", site.inspection_datetime or "—", None),
+        ("Prepared by",        site.prepared_by or "—",         None),
+        ("Audit reference",    site.audit_ref or "—",           None),
+        ("Project value",      pv,                              None),
+        ("Total items",        str(totals["total"]),             None),
+        ("Compliant",          str(totals["passed"]),            "Compliant"),
+        ("Conditional",        str(totals["conditional"]),       "Conditional"),
+        ("NCR",                str(totals["ncr"]),               "NCR"),
+        ("Open actions",       str(totals["actions"]),           None),
+    ]
+    table = doc.add_table(rows=len(rows), cols=2)
+    table.style = "Table Grid"
+    for i, (label, value, status) in enumerate(rows):
+        format_header_cell(table.rows[i].cells[0], label)
+        add_body_cell(table.rows[i].cells[1], value)
+        if status is not None:
+            _apply_status_cell(table.rows[i].cells[1], status)
+    set_col_widths(table, [3.5, 6.5])
+    set_table_borders(table)
+
+
 def _append_site(
     doc: Document,
     site: SiteData,
@@ -780,10 +818,9 @@ def _append_site(
     # Part B — Site Visit Summary (metadata + narrative).
     _page_break(doc)
     _h(doc, "Part B — Site Visit Summary", size=13)
-    if site.project_value:
-        _p(doc, f"Project value: ${site.project_value:,.0f}")
-    if site.summary_text:
-        _p(doc, site.summary_text)
+    site_totals = _score_totals([site])
+    _site_metadata_table(doc, site, site_totals)
+    _p(doc, _resolve_executive_summary([site], site_totals))
 
     # Part C — Checklist.
     _page_break(doc)
@@ -846,6 +883,7 @@ def build_audit_report_docx(
                 client=s.get("client", "") or "",
                 prepared_by=s.get("prepared_by", "") or "",
                 inspection_datetime=s.get("inspection_datetime", "") or "",
+                audit_ref=s.get("audit_ref", "") or "",
                 open_action_photo_bytes_by_obs_id=(
                     s.get("open_action_photo_bytes_by_obs_id") or {}
                 ),

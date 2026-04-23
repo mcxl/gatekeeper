@@ -2554,7 +2554,7 @@ OBSERVATION_SELECT_COLUMNS = (
     "id,seq_no,site_address,observation_text,observation_text_enriched,"
     "conformance_status,ccvs_code,ccvs_category,action_required,"
     "action_description,responsible,due_category,legal_reference,"
-    "filename,photo_url"
+    "filename,photo_url,audit_id"
 )
 
 
@@ -2673,10 +2673,29 @@ async def generate_audit_report_rpd(
             detail=f"Sites missing project_value: {', '.join(missing_value)}",
         )
 
+    async def _fetch_audit_ref(audit_id: str | None) -> str:
+        if not audit_id:
+            return ""
+        h = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_audits",
+                headers=h,
+                params={"id": f"eq.{audit_id}", "select": "audit_ref", "limit": "1"},
+            )
+            r.raise_for_status()
+            rows = r.json()
+        return (rows[0].get("audit_ref") or "") if rows else ""
+
     sites_data: list[SiteData] = []
     for s in site_rows:
         obs = await _fetch_observations_for_site(s["id"])
         open_actions = [o for o in obs if o.get("action_required")]
+        audit_ref = ""
+        for o in obs:
+            if o.get("audit_id"):
+                audit_ref = await _fetch_audit_ref(o["audit_id"])
+                break
         # Pre-fetch photos for open-action observations so the renderer can
         # embed them inline rather than link to Supabase URLs.
         oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
@@ -2694,6 +2713,7 @@ async def generate_audit_report_rpd(
             client=s.get("client_name") or "",
             prepared_by=body.prepared_by,
             inspection_datetime=body.inspection_datetime,
+            audit_ref=audit_ref,
             open_action_photo_bytes_by_obs_id=oa_photo_bytes_by_obs_id,
         ))
 
