@@ -70,3 +70,4 @@ data/*_analysis.jsonl
 
 # Malformed path-literal directories (accidental creates)
 C:Users*/
+.venv-test/
