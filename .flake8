@@ -5,6 +5,7 @@ exclude =
     venv,
     __pycache__,
     .git,
+    .claude,
     src,
     patch_*.py,
     bullet_test.py,

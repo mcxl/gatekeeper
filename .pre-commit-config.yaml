@@ -1,0 +1,8 @@
+# Install once:  pip install pre-commit && pre-commit install
+# Runs on every `git commit` and blocks the commit if flake8 fails.
+# Config honours the repo's .flake8 file.
+repos:
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8

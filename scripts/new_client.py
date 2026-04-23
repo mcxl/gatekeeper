@@ -307,11 +307,6 @@ def bootstrap_sql(name: str, ref: str, site_name: str) -> str:
 
 
 def run_supabase_bootstrap(url: str, service_key: str, name: str, ref: str) -> None:
-    try:
-        import httpx
-    except ImportError:
-        die("httpx not installed; cannot run --supabase-* bootstrap")
-
     sql = bootstrap_sql(name=name, ref=ref, site_name=name)
     # Supabase doesn't expose raw SQL over PostgREST. The operator has two
     # realistic options: supabase_mcp.apply_migration, or paste into the SQL

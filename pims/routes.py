@@ -40,11 +40,9 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from fastapi import APIRouter, BackgroundTasks, Cookie, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
-from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
-from openpyxl.worksheet.protection import SheetProtection
 from PIL import Image as PILImage
 from pydantic import BaseModel, Field
 
@@ -571,16 +569,16 @@ async def _handle_observation(
         )
 
     return ObservationResponse(
-        id=                 record_id,
-        seq_no=             seq_no,
-        conformance_status= "Pending",
-        ccvs_code=          None,
-        ccvs_category=      None,
-        ccvs_confidence=    None,
-        action_required=    False,
-        action_description= None,
-        monitoring_note=    "Enrichment running in background",
-        review_status=      "Pending",
+        id=record_id,
+        seq_no=seq_no,
+        conformance_status="Pending",
+        ccvs_code=None,
+        ccvs_category=None,
+        ccvs_confidence=None,
+        action_required=False,
+        action_description=None,
+        monitoring_note="Enrichment running in background",
+        review_status="Pending",
     )
 
 
@@ -593,12 +591,12 @@ async def rpd_observation(
 ):
     """Receive a field observation for RPD and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              payload,
-        supabase_url=         RPD_SUPABASE_URL,
-        supabase_service_key= RPD_SUPABASE_SERVICE_KEY,
-        expected_token=       RPD_PIMS_TOKEN,
-        token=                x_pims_token,
-        background_tasks=     background_tasks,
+        request=payload,
+        supabase_url=RPD_SUPABASE_URL,
+        supabase_service_key=RPD_SUPABASE_SERVICE_KEY,
+        expected_token=RPD_PIMS_TOKEN,
+        token=x_pims_token,
+        background_tasks=background_tasks,
     )
 
 
@@ -611,12 +609,12 @@ async def sdgroup_observation(
 ):
     """Receive a field observation for SD Group and enrich with CCVS codes."""
     return await _handle_observation(
-        request=              payload,
-        supabase_url=         SDG_SUPABASE_URL,
-        supabase_service_key= SDG_SUPABASE_SERVICE_KEY,
-        expected_token=       SDG_PIMS_TOKEN,
-        token=                x_pims_token,
-        background_tasks=     background_tasks,
+        request=payload,
+        supabase_url=SDG_SUPABASE_URL,
+        supabase_service_key=SDG_SUPABASE_SERVICE_KEY,
+        expected_token=SDG_PIMS_TOKEN,
+        token=x_pims_token,
+        background_tasks=background_tasks,
     )
 
 
