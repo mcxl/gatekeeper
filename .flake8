@@ -3,6 +3,8 @@ max-line-length = 120
 ignore = E501,W503,E221,E226,E241,E128,E131,E127,E231,E302,E303,E305,E306,E401,E402,E701,E702,E741,W291,W391
 exclude =
     venv,
+    .venv,
+    .venv-test,
     __pycache__,
     .git,
     .claude,

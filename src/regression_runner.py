@@ -126,8 +126,14 @@ _STREAMS = [
 # ── Runner ───────────────────────────────────────────────────────────────────
 
 def _run_pytest(args: list[str], verbose: bool = False) -> tuple[int, int, int]:
-    """Run pytest with given args. Returns (total, passed, failed)."""
-    cmd = [sys.executable, "-m", "pytest"] + args + ["-q", "--tb=no", "--no-header"]
+    """Run pytest with given args. Returns (total, passed, failed).
+
+    Do not pass -q: pytest 9+ suppresses the "N passed in Xs" summary line
+    under -q, which is exactly the line this function parses. Relying on -q
+    silently returned total=0, breaking the RA regression coverage guard in
+    tests/test_regression_runner.py::test_ra_streams_pass.
+    """
+    cmd = [sys.executable, "-m", "pytest"] + args + ["--tb=no", "--no-header"]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     output = result.stdout + result.stderr
 
