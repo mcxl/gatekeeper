@@ -92,6 +92,41 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
     assert "All workers have completed required inductions and training." in full_text
 
 
+def test_no_checklist_block_has_duplicate_header_text(checklist_xlsx, template_docx):
+    """Regression guard: the header row of a _checklist_row_block must be
+    [category, 'Result']. No row 0 produced by this code path should have
+    identical text in its first two cells unless the cell text is literally
+    'Result' (i.e. category is missing and falls back to the same literal)."""
+    sites = [arpt.SiteData(
+        address="Test Site",
+        project_value=500_000,
+        client="Acme",
+        prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT",
+        summary_text="S",
+        observations=[],
+        open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites,
+        checklist_xlsx_path=checklist_xlsx,
+        template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    for t in doc.tables:
+        if not t.rows or len(t.rows[0].cells) < 2:
+            continue
+        a = t.rows[0].cells[0].text.strip()
+        b = t.rows[0].cells[1].text.strip()
+        if not a or not b:
+            continue
+        if a == b and a != "Result" and b != "Result":
+            raise AssertionError(
+                f"Header row cells mirror each other: {a!r} == {b!r}"
+            )
+
+
 def test_build_fails_on_null_project_value(checklist_xlsx, template_docx):
     sites = [arpt.SiteData(address="X", project_value=None, client="Acme", observations=[])]
     with pytest.raises(ValueError):
