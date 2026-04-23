@@ -52,7 +52,7 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
         summary_text="Routine inspection.",
         observations=[{
             "seq_no": 1,
-            "photo_id": "P001",
+            "photo_url": "P001",
             "observation_text": "Worker at height without harness",
             "observation_text_enriched": "Worker on roof without fall protection",
             "conformance_status": "NCR",
