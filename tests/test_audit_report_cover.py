@@ -103,7 +103,8 @@ def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
     for t in doc.tables:
         if t.rows and len(t.rows[0].cells) >= 2:
             if t.rows[0].cells[0].text.strip() == "Prepared by":
-                assert t.rows[0].cells[1].text.strip() == "J. Auditor"
+                # Phase H2 expands prepared_by into "{name}, AuditCo".
+                assert t.rows[0].cells[1].text.strip() == "J. Auditor, AuditCo"
                 found_prep = True
                 break
     assert found_prep, "Prepared by row not located"
