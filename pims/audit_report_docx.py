@@ -23,6 +23,7 @@ from pathlib import Path
 
 import openpyxl
 from docx import Document
+from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_BREAK
 from docx.shared import Cm, Pt, RGBColor
@@ -1173,13 +1174,37 @@ def _site_metadata_table(doc: Document, site: SiteData, totals: dict) -> None:
     set_table_borders(table)
 
 
+def _start_body_section(doc: Document) -> None:
+    """Insert a section break that starts the body (Part A onwards) on a
+    fresh page with a blank header and blank footer, unlinked from the
+    cover section. Prevents the template's cover-page header / footer
+    artwork (watermark, logo, page banner, PAGE field strip) from
+    bleeding through to the body pages.
+
+    The cover template's footer uses a table for layout, so paragraph-
+    only clearing would leave the field-code strip intact. Instead we
+    strip every child element of the header/footer root and re-append
+    a single empty <w:p> so Word has something to render.
+    """
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    for container in (section.header, section.footer):
+        container.is_linked_to_previous = False
+        elem = container.part.element
+        for child in list(elem):
+            elem.remove(child)
+        empty_p = elem.makeelement(_qn_w("p"), {})
+        elem.append(empty_p)
+
+
 def _append_site(
     doc: Document,
     site: SiteData,
     checklist: list[ChecklistRow],
     is_first: bool,
 ) -> None:
-    if not is_first:
+    if is_first:
+        _start_body_section(doc)
+    else:
         _page_break(doc)
 
     # Site title banner.
