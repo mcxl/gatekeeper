@@ -121,6 +121,115 @@ def _full_text_and_tables(doc):
     return parts
 
 
+def _part_d_index(doc) -> int:
+    for i, p in enumerate(doc.paragraphs):
+        if p.text.startswith("Part D") and "Sign-off" in p.text:
+            return i
+    raise AssertionError("Part D heading not found")
+
+
+def _signoff_table(doc):
+    """The 5-row label/value table whose first row label is 'Auditor name'."""
+    for t in doc.tables:
+        if t.rows and len(t.rows[0].cells) >= 2:
+            if t.rows[0].cells[0].text.strip() == "Auditor name":
+                return t
+    return None
+
+
+def _phase_g_sample_site():
+    return arpt.SiteData(
+        address="G Test",
+        project_value=500_000, client="Acme", prepared_by="J. Auditor",
+        inspection_datetime="23 Apr 2026, 09:00 AEST",
+        audit_ref="AUDIT-G-001", summary_text="s",
+        observations=[{
+            "id": "O1", "ccvs_code": "WAH-H6", "conformance_status": "Compliant",
+            "observation_text_enriched": "ok",
+        }],
+        open_actions=[],
+    )
+
+
+def test_phase_g_part_d_section_present(checklist_xlsx, template_docx):
+    """Part D appears after Part C in the rendered body."""
+    buf = arpt.build_audit_report_docx(
+        [_phase_g_sample_site()],
+        checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    c_idx = _part_c_index(doc)
+    d_idx = _part_d_index(doc)
+    assert c_idx < d_idx, f"Part D must follow Part C: C={c_idx} D={d_idx}"
+
+
+def test_phase_g_sign_off_table_structure(checklist_xlsx, template_docx):
+    """Signature table has exactly 5 rows with the expected labels and the
+    'Auditor name' value cell carries site.prepared_by."""
+    buf = arpt.build_audit_report_docx(
+        [_phase_g_sample_site()],
+        checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    t = _signoff_table(doc)
+    assert t is not None, "signature table not located"
+    labels = [r.cells[0].text.strip() for r in t.rows]
+    assert labels == [
+        "Auditor name", "Position", "Auditor signature",
+        "Date signed", "AuditCo licence",
+    ]
+    assert t.rows[0].cells[1].text.strip() == "J. Auditor"
+
+
+def test_phase_g_signature_row_height_explicit(checklist_xlsx, template_docx):
+    """Row 3 ('Auditor signature') has an explicit EXACTLY row height."""
+    from docx.enum.table import WD_ROW_HEIGHT_RULE
+    buf = arpt.build_audit_report_docx(
+        [_phase_g_sample_site()],
+        checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    t = _signoff_table(doc)
+    sig_row = t.rows[2]  # 'Auditor signature'
+    assert sig_row.height is not None and sig_row.height > 0
+    assert sig_row.height_rule == WD_ROW_HEIGHT_RULE.EXACTLY
+
+
+def test_phase_g_disclaimer_contains_required_phrases(checklist_xlsx, template_docx):
+    """The Part D disclaimer paragraph contains both the regulatory basis
+    phrase and the draft-status phrase."""
+    buf = arpt.build_audit_report_docx(
+        [_phase_g_sample_site()],
+        checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    d_idx = _part_d_index(doc)
+    # Disclaimer is the next non-empty paragraph after Part D heading.
+    disclaimer = next(
+        p.text for p in doc.paragraphs[d_idx + 1:] if p.text.strip()
+    )
+    assert "NSW WHS Regulation 2017" in disclaimer
+    assert "draft for review" in disclaimer
+    assert "AUDIT-G-001" in disclaimer
+
+
+def test_phase_g_licence_placeholder(checklist_xlsx, template_docx):
+    """AuditCo licence value cell carries the placeholder. This test will
+    be updated in a future PR when the real licence is captured."""
+    buf = arpt.build_audit_report_docx(
+        [_phase_g_sample_site()],
+        checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    t = _signoff_table(doc)
+    assert t.rows[4].cells[1].text.strip() == "AC-NSW-XXXXXX"
+
+
 def _part_c_index(doc) -> int:
     for i, p in enumerate(doc.paragraphs):
         if p.text.startswith("Part C") and "Checklist" in p.text:

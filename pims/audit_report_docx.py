@@ -21,6 +21,7 @@ from pathlib import Path
 
 import openpyxl
 from docx import Document
+from docx.enum.table import WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_BREAK
 from docx.shared import Cm, Pt, RGBColor
 
@@ -788,6 +789,53 @@ def _part_c_banner(doc: Document, totals: dict) -> None:
     set_table_borders(table)
 
 
+AUDITCO_LICENCE_PLACEHOLDER = "AC-NSW-XXXXXX"
+
+
+def _part_d_signoff(doc: Document, site: SiteData) -> None:
+    """Emit the Part D — Auditor Sign-off section for one site.
+
+    Order: page break, heading, italic disclaimer combining the regulatory
+    basis with the draft-status sentence, then a five-row signature table
+    (Auditor name / Position / Auditor signature / Date signed / AuditCo
+    licence). The signature and date-signed value rows use explicit
+    3 cm and 1 cm heights respectively so re-pagination by Word does not
+    collapse them.
+    """
+    _page_break(doc)
+    _h(doc, "Part D — Auditor Sign-off", size=13)
+
+    disclaimer = (
+        "This report has been prepared in accordance with NSW WHS "
+        "Regulation 2017 and SafeWork NSW codes of practice. Findings are "
+        "based on conditions observed at the time of the audit. This "
+        "document is a draft for review until signed by a competent "
+        f"person; the draft date is {site.inspection_datetime or '—'} and "
+        f"the audit reference is {site.audit_ref or '—'}."
+    )
+    _italic_small(doc, disclaimer)
+
+    # TODO: replace AUDITCO_LICENCE_PLACEHOLDER with the live AuditCo
+    # licence number when it's captured upstream (per-auditor or per-org).
+    rows_spec: list[tuple[str, str, float | None]] = [
+        ("Auditor name",      site.prepared_by or "",         None),
+        ("Position",          "",                             None),
+        ("Auditor signature", "",                             3.0),
+        ("Date signed",       "",                             1.0),
+        ("AuditCo licence",   AUDITCO_LICENCE_PLACEHOLDER,    None),
+    ]
+    table = doc.add_table(rows=len(rows_spec), cols=2)
+    table.style = "Table Grid"
+    for i, (label, value, height_cm) in enumerate(rows_spec):
+        format_header_cell(table.rows[i].cells[0], label)
+        add_body_cell(table.rows[i].cells[1], value)
+        if height_cm is not None:
+            table.rows[i].height = Cm(height_cm)
+            table.rows[i].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+    set_col_widths(table, [4.0, 10.0])
+    set_table_borders(table)
+
+
 def _site_metadata_table(doc: Document, site: SiteData, totals: dict) -> None:
     """Two-column label/value table for Part B.
 
@@ -923,6 +971,9 @@ def _append_site(
             _checklist_row_block(doc, row, obs)
 
     _flush_category()
+
+    # Part D — Auditor Sign-off
+    _part_d_signoff(doc, site)
 
 
 def build_audit_report_docx(
