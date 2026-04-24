@@ -2692,7 +2692,11 @@ async def generate_audit_report_rpd(
         obs = await _fetch_observations_for_site(s["id"])
         open_actions = [o for o in obs if o.get("action_required")]
         audit_ref = ""
-        for o in obs:
+        # obs is sorted observation_date.asc; iterate in reverse so we pick the
+        # most recent audit's ref (not the oldest). Phase H replaces this entire
+        # resolution path with a deterministic _select_latest_audit_id_for_site
+        # query against pims_audits.
+        for o in reversed(obs):
             if o.get("audit_id"):
                 audit_ref = await _fetch_audit_ref(o["audit_id"])
                 break
