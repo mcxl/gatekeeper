@@ -601,22 +601,19 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
         if lbl not in seen_labels:
             log.warning("Cover label cell %r not found", lbl)
 
-    # --- Delete hard-coded example paragraphs -------------------------
+    # --- Defensive cleanup belt-and-braces ---------------------------
+    # The shipped template is cleaned at build time by
+    # pims/scripts/clean_audit_report_template.py, so the loops below
+    # should be no-ops in the steady state. They remain as a fallback in
+    # case a future template re-export reintroduces example content.
+    # "Not found" is the expected case now and therefore logged at DEBUG.
     for prefix in _EXAMPLE_PARAGRAPH_PREFIXES:
         p = _find_paragraph_by_prefix(doc, prefix)
         if p is None:
-            log.warning("Cover example paragraph with prefix %r not found", prefix)
+            log.debug("Cover example paragraph with prefix %r not found", prefix)
             continue
         _delete_paragraph(p)
 
-    # --- Delete stray "Photo N" scaffold tables --------------------
-    # The shipped template contains single-row "Photo N" placeholder
-    # tables that are designer layout scaffolds — unpopulated in the
-    # live render and visually bleed artwork between the summary and
-    # Part A. Drop any table whose first cell starts with "Photo ".
-    # (The rendered checklist blocks from _checklist_row_block do not
-    # have "Photo " as their first cell, so they are not affected.)
-    removed_scaffold = 0
     for table in list(doc.tables):
         if not table.rows:
             continue
@@ -626,9 +623,6 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
             parent = tbl.getparent()
             if parent is not None:
                 parent.remove(tbl)
-                removed_scaffold += 1
-    if removed_scaffold == 0:
-        log.warning("No scaffold 'Photo N' table found on cover to remove")
 
 
 # ---------------------------------------------------------------------------
