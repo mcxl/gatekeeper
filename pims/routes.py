@@ -2522,6 +2522,8 @@ async def download_rpd_report(
 class AuditReportRequest(BaseModel):
     site_ids: list[str] = Field(..., min_length=1, max_length=50)
     summary_text: Optional[str] = None
+    prepared_by: str = Field(..., min_length=1)
+    inspection_datetime: str = Field(..., min_length=1)
 
 
 async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
@@ -2552,7 +2554,7 @@ OBSERVATION_SELECT_COLUMNS = (
     "id,seq_no,site_address,observation_text,observation_text_enriched,"
     "conformance_status,ccvs_code,ccvs_category,action_required,"
     "action_description,responsible,due_category,legal_reference,"
-    "filename,photo_url"
+    "filename,photo_url,audit_id"
 )
 
 
@@ -2671,16 +2673,52 @@ async def generate_audit_report_rpd(
             detail=f"Sites missing project_value: {', '.join(missing_value)}",
         )
 
+    async def _fetch_audit_ref(audit_id: str | None) -> str:
+        if not audit_id:
+            return ""
+        h = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_audits",
+                headers=h,
+                params={"id": f"eq.{audit_id}", "select": "audit_ref", "limit": "1"},
+            )
+            r.raise_for_status()
+            rows = r.json()
+        return (rows[0].get("audit_ref") or "") if rows else ""
+
     sites_data: list[SiteData] = []
     for s in site_rows:
         obs = await _fetch_observations_for_site(s["id"])
         open_actions = [o for o in obs if o.get("action_required")]
+        audit_ref = ""
+        # obs is sorted observation_date.asc; iterate in reverse so we pick the
+        # most recent audit's ref (not the oldest). Phase H replaces this entire
+        # resolution path with a deterministic _select_latest_audit_id_for_site
+        # query against pims_audits.
+        for o in reversed(obs):
+            if o.get("audit_id"):
+                audit_ref = await _fetch_audit_ref(o["audit_id"])
+                break
+        # Pre-fetch photos for open-action observations so the renderer can
+        # embed them inline rather than link to Supabase URLs.
+        oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
+        oa_photo_bytes = await _fetch_images(oa_photo_urls) if oa_photo_urls else []
+        oa_photo_bytes_by_obs_id: dict[str, bytes] = {}
+        for o, b in zip(open_actions, oa_photo_bytes):
+            if b:
+                oa_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
         sites_data.append(SiteData(
             address=s.get("address_raw") or "",
             project_value=s.get("project_value"),
             summary_text=body.summary_text or "",
             observations=obs,
             open_actions=open_actions,
+            client=s.get("client_name") or "",
+            prepared_by=body.prepared_by,
+            inspection_datetime=body.inspection_datetime,
+            audit_ref=audit_ref,
+            open_action_photo_bytes_by_obs_id=oa_photo_bytes_by_obs_id,
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
