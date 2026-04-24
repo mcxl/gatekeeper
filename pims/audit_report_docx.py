@@ -756,6 +756,38 @@ def _checklist_row_block(
     set_table_borders(t)
 
 
+def _italic_small(doc: Document, text: str) -> None:
+    p = doc.add_paragraph()
+    run = p.add_run(text)
+    run.italic = True
+    run.font.size = Pt(9)
+
+
+def _part_c_banner(doc: Document, totals: dict) -> None:
+    """Three-cell summary banner that opens Part C. Uses STATUS_PALETTE so
+    severity reads at a glance; the counts themselves live authoritatively
+    on the cover and in the Part B metadata table."""
+    score_text = totals["score_text"]
+    flagged = totals["flagged"]
+    actions = totals["actions"]
+    cells_spec = [
+        (score_text, "Compliant"),
+        (f"{flagged} flagged", "Conditional" if flagged > 0 else "Compliant"),
+        (f"{actions} open", "NCR" if actions > 0 else "Compliant"),
+    ]
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    for i, (text, status) in enumerate(cells_spec):
+        cell = table.rows[0].cells[i]
+        add_body_cell(cell, text)
+        _apply_status_cell(cell, status)
+        for p in cell.paragraphs:
+            for run in p.runs:
+                run.bold = True
+    set_col_widths(table, [4.0, 4.0, 4.0])
+    set_table_borders(table)
+
+
 def _site_metadata_table(doc: Document, site: SiteData, totals: dict) -> None:
     """Two-column label/value table for Part B.
 
@@ -826,6 +858,12 @@ def _append_site(
     _page_break(doc)
     _h(doc, "Part C — Site Safety Inspection Checklist", size=13)
 
+    # Visual-only summary banner — restates cover + Part B counts with
+    # the STATUS_PALETTE so severity reads at a glance. The underlying
+    # counts are authoritative in Cover Table 1 and the Part B metadata
+    # table; this row is not a new data location.
+    _part_c_banner(doc, site_totals)
+
     matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
     for row in checklist:
         row_matches: list[dict] = []
@@ -844,7 +882,35 @@ def _append_site(
             size=9,
         )
 
+    # Group rows by category, preserving xlsx order of first appearance.
+    current_category: str | None = None
+    category_group: list[tuple[ChecklistRow, list[dict]]] = []
+
+    def _flush_category():
+        nonlocal category_group
+        if not category_group:
+            return
+        total_obs = sum(len(m) for _, m in category_group)
+        compliant = sum(
+            1
+            for _, matches in category_group
+            for obs in matches
+            if (obs.get("conformance_status") or "").strip() == "Compliant"
+        )
+        if total_obs > 0:
+            _italic_small(
+                doc, f"Category score: {compliant}/{total_obs} compliant",
+            )
+        category_group = []
+
     for row, row_matches in matches_by_row:
+        category = row.category or "Uncategorised"
+        if category != current_category:
+            _flush_category()
+            current_category = category
+            _h(doc, category, size=12)
+        category_group.append((row, row_matches))
+
         if not row_matches:
             _checklist_row_block(doc, row, None)
             continue
@@ -855,6 +921,8 @@ def _append_site(
             )
         for obs in row_matches:
             _checklist_row_block(doc, row, obs)
+
+    _flush_category()
 
 
 def build_audit_report_docx(

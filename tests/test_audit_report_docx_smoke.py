@@ -121,6 +121,151 @@ def _full_text_and_tables(doc):
     return parts
 
 
+def _part_c_index(doc) -> int:
+    for i, p in enumerate(doc.paragraphs):
+        if p.text.startswith("Part C") and "Checklist" in p.text:
+            return i
+    raise AssertionError("Part C heading not found")
+
+
+def _first_table_after_paragraph(doc, para_idx: int):
+    """Return the first table that appears after the given paragraph index
+    in the document body."""
+    from docx.oxml.ns import qn
+    target = doc.paragraphs[para_idx]._element
+    body = doc.element.body
+    passed = False
+    for elem in body.iter():
+        if elem is target:
+            passed = True
+            continue
+        if passed and elem.tag == qn("w:tbl"):
+            for t in doc.tables:
+                if t._element is elem:
+                    return t
+    return None
+
+
+def test_phase_f_part_c_banner_present(checklist_xlsx, template_docx):
+    """Part C leads with a 3-cell banner. First cell starts with a digit
+    (score text). Actions cell is shaded C00000 when open actions > 0."""
+    sites = [arpt.SiteData(
+        address="F Banner",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT", audit_ref="A",
+        summary_text="s",
+        observations=[{
+            "id": "O1", "ccvs_code": "WAH-H6", "conformance_status": "NCR",
+            "observation_text_enriched": "bad", "action_required": True,
+        }],
+        open_actions=[{
+            "id": "O1", "conformance_status": "NCR",
+            "action_description": "fix",
+        }],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites, checklist_xlsx_path=checklist_xlsx, template_path=template_docx,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    pc_idx = _part_c_index(doc)
+    banner = _first_table_after_paragraph(doc, pc_idx)
+    assert banner is not None, "banner table not found after Part C heading"
+    cells = banner.rows[0].cells
+    assert len(cells) == 3
+    assert cells[0].text.strip()[:1].isdigit(), (
+        f"banner score cell must start with a digit, got {cells[0].text!r}"
+    )
+    # Actions cell is the third cell; NCR palette when > 0.
+    assert (_cell_fill_hex(cells[2]) or "").upper() == "C00000"
+
+
+def test_phase_f_categories_grouped(tmp_path):
+    """A category heading appears before each distinct category's first
+    block, and a 'Category score:' italic line follows each category's
+    last block when that category has at least one observation."""
+    import openpyxl as _op
+    p = tmp_path / "cl_group.xlsx"
+    wb = _op.Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet(arpt.SHEET_HIGH)
+    ws.append(["Category", "Criteria", "Instruction", "ccvs_code",
+               "ccvs_category", "observation_text_enriched"])
+    ws.append(["01. Planning", "P1", "Check P1", "P1", "X", "x"])
+    ws.append(["01. Planning", "P2", "Check P2", "P2", "X", "x"])
+    ws.append(["02. Electrical", "E1", "Check E1", "E1", "X", "x"])
+    wb.create_sheet(arpt.SHEET_LOW).append(["Category", "Criteria", "Instruction"])
+    wb.save(p)
+    tpl = tmp_path / "tpl.docx"
+    Document().save(tpl)
+
+    sites = [arpt.SiteData(
+        address="G Test",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT", audit_ref="A",
+        summary_text="s",
+        observations=[
+            {"id": "O1", "ccvs_code": "P1", "conformance_status": "Compliant",
+             "observation_text_enriched": "ok"},
+            {"id": "O2", "ccvs_code": "P2", "conformance_status": "NCR",
+             "observation_text_enriched": "bad"},
+            {"id": "O3", "ccvs_code": "E1", "conformance_status": "Compliant",
+             "observation_text_enriched": "ok"},
+        ],
+        open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites, checklist_xlsx_path=p, template_path=tpl,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    texts = [p.text for p in doc.paragraphs]
+    # Category headings appear verbatim from the xlsx.
+    assert "01. Planning" in texts
+    assert "02. Electrical" in texts
+    # Two 'Category score:' lines present.
+    score_lines = [t for t in texts if t.startswith("Category score:")]
+    assert len(score_lines) == 2, (
+        f"expected one category-score line per category, got {score_lines!r}"
+    )
+    assert "Category score: 1/2 compliant" in score_lines
+    assert "Category score: 1/1 compliant" in score_lines
+
+
+def test_phase_f_category_order_preserved(tmp_path):
+    """Categories render in xlsx order, not alphabetically."""
+    import openpyxl as _op
+    p = tmp_path / "cl_order.xlsx"
+    wb = _op.Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet(arpt.SHEET_HIGH)
+    ws.append(["Category", "Criteria", "Instruction", "ccvs_code",
+               "ccvs_category", "observation_text_enriched"])
+    # Deliberately non-alphabetical category order.
+    ws.append(["ZZ Zulu first", "Z1", "z", "Z1", "X", "x"])
+    ws.append(["AA Alpha second", "A1", "a", "A1", "X", "x"])
+    ws.append(["MM Mike third", "M1", "m", "M1", "X", "x"])
+    wb.create_sheet(arpt.SHEET_LOW).append(["Category", "Criteria", "Instruction"])
+    wb.save(p)
+    tpl = tmp_path / "tpl.docx"
+    Document().save(tpl)
+
+    sites = [arpt.SiteData(
+        address="Order",
+        project_value=500_000, client="Acme", prepared_by="J",
+        inspection_datetime="1 Jan 2026, 10:00 AEDT", audit_ref="A",
+        summary_text="s", observations=[], open_actions=[],
+    )]
+    buf = arpt.build_audit_report_docx(
+        sites, checklist_xlsx_path=p, template_path=tpl,
+    )
+    buf.seek(0)
+    doc = Document(buf)
+    texts = [p.text for p in doc.paragraphs]
+    i_z = texts.index("ZZ Zulu first")
+    i_a = texts.index("AA Alpha second")
+    i_m = texts.index("MM Mike third")
+    assert i_z < i_a < i_m, f"xlsx order not preserved: Z={i_z} A={i_a} M={i_m}"
+
+
 def _find_metadata_table(doc):
     """Locate the Part B metadata table: the first table whose label cells
     include 'Client' and 'Site address' in order."""
