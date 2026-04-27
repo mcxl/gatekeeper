@@ -2868,6 +2868,178 @@ def _format_date_range(start: str, end: str) -> str:
     return s or e or "—"
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Observation approval workflow (Phase 6 of docs/pims_site_visit_report_spec.md)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# pims_observations.review_status is one of {Pending, Approved, Rejected}.
+# The Site Visit Report renderer only sees Approved rows
+# (_fetch_observations_for_site filters review_status=eq.Approved). Without an
+# approval flow, observations that field-walked into PIMS as Pending stay
+# Pending forever and never appear in any report. Phase 6 closes that gap.
+
+VALID_OBSERVATION_REVIEW_STATUSES = {"Pending", "Approved", "Rejected"}
+
+
+class ObservationApproveRequest(BaseModel):
+    approver: Optional[str] = Field(
+        default=None,
+        max_length=120,
+        description="Free-text label for the approver. Defaults to 'dashboard'.",
+    )
+
+
+class ObservationRejectRequest(BaseModel):
+    approver: Optional[str] = Field(default=None, max_length=120)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+async def _set_observation_review_status(
+    observation_id: str,
+    *,
+    new_status: str,
+    approver: str,
+    reason: str | None = None,
+) -> dict:
+    """Flip pims_observations.review_status. Returns the updated row.
+
+    Caller is responsible for session/UUID validation. This helper is the
+    single place that writes the (review_status, approved_by, approved_at)
+    triple so the audit trail stays consistent.
+    """
+    if new_status not in VALID_OBSERVATION_REVIEW_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid review_status: {new_status!r}",
+        )
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    payload: dict = {
+        "review_status": new_status,
+        "approved_by": approver,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if reason is not None:
+        # Stash the rejection reason in monitoring_note so it surfaces to
+        # the next reviewer without needing a new column. The schema CHECK
+        # on review_status carries the boolean state; the free-text reason
+        # is non-structural.
+        payload["monitoring_note"] = f"[{new_status} by {approver}] {reason}"
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params={"id": f"eq.{observation_id}", "select": "*"},
+            json=payload,
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            log.error(
+                "review_status update failed: %s %s", r.status_code, r.text,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update review_status",
+            )
+        rows = r.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Observation not found")
+    return rows[0]
+
+
+@router.post("/observation/{observation_id}/approve")
+async def approve_observation(
+    observation_id: str,
+    body: ObservationApproveRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip a single observation to review_status='Approved'."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    obs_id = _validate_uuids([observation_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+    row = await _set_observation_review_status(
+        obs_id, new_status="Approved", approver=approver,
+    )
+    return {"ok": True, "id": row["id"], "review_status": row["review_status"]}
+
+
+@router.post("/observation/{observation_id}/reject")
+async def reject_observation(
+    observation_id: str,
+    body: ObservationRejectRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip a single observation to review_status='Rejected'.
+
+    Rejected rows do NOT appear in the Site Visit Report (the route filters
+    review_status=Approved). Use to remove a duplicate or invalid finding
+    without losing the audit trail (the row stays in the table).
+    """
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    obs_id = _validate_uuids([observation_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+    row = await _set_observation_review_status(
+        obs_id, new_status="Rejected",
+        approver=approver, reason=body.reason,
+    )
+    return {"ok": True, "id": row["id"], "review_status": row["review_status"]}
+
+
+class BulkApproveRequest(BaseModel):
+    site_id: str
+    approver: Optional[str] = Field(default=None, max_length=120)
+
+
+@router.post("/site/observations/approve-pending")
+async def approve_all_pending_observations_for_site(
+    body: BulkApproveRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip every Pending observation for a site to Approved in one call.
+
+    Idempotent (rows already Approved are not touched). Returns the count
+    of rows updated. Useful for clearing a backlog of unreviewed
+    observations before generating a Site Visit Report.
+    """
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    site_id = _validate_uuids([body.site_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    payload = {
+        "review_status": "Approved",
+        "approved_by": approver,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params={
+                "site_id": f"eq.{site_id}",
+                "review_status": "eq.Pending",
+                "select": "id",
+            },
+            json=payload,
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            log.error("bulk approval failed: %s %s", r.status_code, r.text)
+            raise HTTPException(status_code=500, detail="Bulk approval failed")
+        rows = r.json()
+    return {"ok": True, "site_id": site_id, "approved_count": len(rows)}
+
+
 async def _resolve_audit_ref_for_observations(observations: list[dict]) -> str:
     """Fetch the audit_ref of the most recent pims_audits row referenced
     by the observations' audit_id. Returns "" when no audit_id is present

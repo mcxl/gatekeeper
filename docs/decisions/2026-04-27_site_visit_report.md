@@ -211,12 +211,43 @@ behind it.
 
 ---
 
-## Open questions / Phase 6+ candidates
+## Phase 6 — observation approval endpoints
 
-- **Approval flow.** The route filters `review_status=eq.Approved`.
-  Pilot data is Pending. Need a UI / endpoint for a reviewer to flip
-  status. Currently only `POST /pims/staging/{id}/approve` exists for
-  staging rows; nothing for already-live observations. Phase 6.
+- Three endpoints land in `pims/routes.py`:
+  - `POST /pims/observation/{id}/approve` — single-row flip to
+    `Approved`, stamps `approved_by` + `approved_at`.
+  - `POST /pims/observation/{id}/reject` — single-row flip to
+    `Rejected`, optional `reason` is stuffed into `monitoring_note`
+    so the next reviewer sees it without us needing a new column.
+    Rejected rows do NOT appear in the Site Visit Report (the route
+    filters Approved-only).
+  - `POST /pims/site/observations/approve-pending` — bulk filter by
+    `(site_id, review_status='Pending')`, idempotent, returns the
+    count. Lets a reviewer clear a backlog before generating a
+    report.
+- All three share `_set_observation_review_status()` for the actual
+  PATCH so the audit trail stays consistent — single place that
+  writes the (status, approved_by, approved_at) triple.
+- `VALID_OBSERVATION_REVIEW_STATUSES` mirrors the Postgres CHECK
+  constraint; the helper validates before it touches the database so
+  a bad value gets a 422 from FastAPI rather than a 500 from
+  Postgres.
+- Tests pin: 401 on no-session, 422 on bad uuid + bad status, 404 on
+  missing row, default approver "dashboard" when none supplied,
+  rejection reason landing in monitoring_note with `[Rejected by X]`
+  prefix, bulk-approve filter shape (`site_id=eq.X` AND
+  `review_status=eq.Pending`), zero-result return path.
+- The pilot site flip itself was **not** done in this commit. A
+  bulk UPDATE of 13 real WHS observations to Approved stamped as
+  "claude-phase-6" is the wrong audit-trail signature — that
+  approver column is meant to identify the human who reviewed the
+  finding. The endpoints are now in place; the actual approvals
+  happen when someone authoritative runs them with their own
+  identity.
+
+---
+
+## Open questions / Phase 7+ candidates
 - **Legacy deprecation.** Once Phase 6 ships and the new flow has run
   for ~1 week, delete `pims/audit_report_docx.py`,
   `pims/audit_report_template.docx`, the
