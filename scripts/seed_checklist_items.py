@@ -1,0 +1,166 @@
+"""One-shot seed: pims/audit_checklist.xlsx -> public.checklist_items.
+
+Per docs/pims_site_visit_report_spec.md invariant #2, the xlsx is a seed
+input only — never read at runtime. This script parses the two sheets
+(`<$250K_inspection_checklist` for tier='low' and `>$250K_inspection_checklist`
+for tier='high') and emits an idempotent SQL migration to
+pims/migrations/2026-04-27_seed_checklist_items.sql:
+
+  INSERT ... ON CONFLICT (project_value_tier, category_no, item_no) DO UPDATE
+      SET criteria = EXCLUDED.criteria,
+          category_name = EXCLUDED.category_name,
+          instruction = EXCLUDED.instruction;
+
+Re-running the script after editing the xlsx is safe — the unique constraint
+ensures (tier, category_no, item_no) maps to a single row, and CONFLICT
+DO UPDATE refreshes the editable text columns. ccvs_category / ccvs_code
+stay NULL in this seed pass; they're populated separately if/when the
+xlsx grows those columns.
+
+Usage:
+    python scripts/seed_checklist_items.py
+
+Then apply the resulting SQL via Supabase MCP apply_migration or psql.
+"""
+from __future__ import annotations
+
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+import openpyxl
+
+REPO = Path(__file__).resolve().parent.parent
+XLSX = REPO / "pims" / "audit_checklist.xlsx"
+OUT = REPO / "pims" / "migrations" / "2026-04-27_seed_checklist_items.sql"
+
+# Sheet name -> tier value in the schema.
+TIER_BY_SHEET = {
+    "<$250K_inspection_checklist": "low",
+    ">$250K_inspection_checklist": "high",
+}
+
+_CATEGORY_RE = re.compile(r"^\s*(\d+[A-Za-z]?)\.\s*(.+?)\s*(?:\(Project Value[^)]*\))?\s*$")
+_ITEM_RE = re.compile(r"^\s*(\d+[A-Za-z]?)\.\s*(.+?)\s*$")
+
+
+def _sql_str(s: str | None) -> str:
+    if s is None:
+        return "NULL"
+    return "'" + s.replace("'", "''") + "'"
+
+
+def _parse_category(raw: str) -> tuple[str, str]:
+    m = _CATEGORY_RE.match(raw or "")
+    if not m:
+        raise ValueError(f"unparseable category cell: {raw!r}")
+    return m.group(1), m.group(2).strip()
+
+
+def _parse_criteria(raw: str) -> tuple[str, str]:
+    m = _ITEM_RE.match(raw or "")
+    if not m:
+        raise ValueError(f"unparseable criteria cell: {raw!r}")
+    return m.group(1), m.group(2).strip()
+
+
+def main() -> None:
+    if not XLSX.exists():
+        raise SystemExit(f"missing seed input: {XLSX}")
+
+    wb = openpyxl.load_workbook(XLSX, data_only=True, read_only=True)
+    rows: list[dict] = []
+    # (tier, category_no, item_no) -> occurrence count. The xlsx has
+    # category 01 sections with restarting item_no sequences (17 + 13
+    # rows both numbered 01..N); to keep all rows and respect the
+    # UNIQUE (tier, category_no, item_no) constraint, second and later
+    # occurrences get a deterministic _N suffix.
+    occurrence: dict[tuple[str, str, str], int] = defaultdict(int)
+    suffixed: list[tuple[str, str, str, str]] = []
+    for sheet_name, tier in TIER_BY_SHEET.items():
+        if sheet_name not in wb.sheetnames:
+            raise SystemExit(f"missing sheet: {sheet_name!r}")
+        ws = wb[sheet_name]
+        for r_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+            if r_idx == 1:
+                continue
+            cat_raw, crit_raw, instr_raw = (row + (None, None, None))[:3]
+            if cat_raw is None and crit_raw is None and instr_raw is None:
+                continue
+            cat_no, cat_name = _parse_category(str(cat_raw))
+            item_no_raw, criteria = _parse_criteria(str(crit_raw))
+            instruction = (instr_raw or "").strip()
+            if not instruction:
+                raise ValueError(
+                    f"sheet {sheet_name!r} row {r_idx}: empty instruction"
+                )
+            key = (tier, cat_no, item_no_raw)
+            occurrence[key] += 1
+            n = occurrence[key]
+            item_no = item_no_raw if n == 1 else f"{item_no_raw}_{n}"
+            if n > 1:
+                suffixed.append((sheet_name, cat_no, item_no_raw, item_no))
+            rows.append({
+                "tier": tier,
+                "category_no": cat_no,
+                "category_name": cat_name,
+                "item_no": item_no,
+                "criteria": criteria,
+                "instruction": instruction,
+            })
+
+    if suffixed:
+        print(
+            f"warning: {len(suffixed)} rows in pims/audit_checklist.xlsx had "
+            "duplicate (tier, category_no, item_no) keys and were given _N "
+            "suffixes for deterministic seeding:",
+            file=sys.stderr,
+        )
+        for sheet_name, cat_no, raw, suffixed_no in suffixed[:10]:
+            print(
+                f"  {sheet_name} cat={cat_no} item_no_raw={raw!r} -> {suffixed_no!r}",
+                file=sys.stderr,
+            )
+        if len(suffixed) > 10:
+            print(f"  ... and {len(suffixed) - 10} more", file=sys.stderr)
+
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = [
+        "-- AUTO-GENERATED by scripts/seed_checklist_items.py from",
+        "-- pims/audit_checklist.xlsx. Edit the xlsx and re-run the script;",
+        "-- do not hand-edit this file.",
+        "--",
+        "-- Idempotent: ON CONFLICT (tier, category_no, item_no) DO UPDATE",
+        "-- refreshes the editable text columns. ccvs_* stay NULL until the",
+        "-- xlsx grows those columns; they are not overwritten on conflict.",
+        "",
+        "INSERT INTO public.checklist_items",
+        "    (project_value_tier, category_no, category_name, item_no, criteria, instruction)",
+        "VALUES",
+    ]
+    value_rows = []
+    for r in rows:
+        value_rows.append(
+            "    (" + ", ".join([
+                _sql_str(r["tier"]),
+                _sql_str(r["category_no"]),
+                _sql_str(r["category_name"]),
+                _sql_str(r["item_no"]),
+                _sql_str(r["criteria"]),
+                _sql_str(r["instruction"]),
+            ]) + ")"
+        )
+    lines.append(",\n".join(value_rows))
+    lines.append("ON CONFLICT (project_value_tier, category_no, item_no) DO UPDATE")
+    lines.append("    SET category_name = EXCLUDED.category_name,")
+    lines.append("        criteria      = EXCLUDED.criteria,")
+    lines.append("        instruction   = EXCLUDED.instruction;")
+    lines.append("")
+
+    OUT.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote {len(rows)} rows to {OUT.relative_to(REPO)}")
+
+
+if __name__ == "__main__":
+    main()
