@@ -2845,11 +2845,38 @@ async def generate_site_visit_report(
         log.warning("site-visit-report: unknown tokens left in template: %s",
                     sorted(unknown_tokens))
 
+    # Phase 7 deterministic issue gate. Errors fail the request — a
+    # report that fails the gate would ship with a known trust failure
+    # (missing footer, unresolved tokens, dropped checklist items).
+    # Warnings are logged but do not block.
+    from pims.services.site_visit_report_gate import run_gate
+    docx_bytes = buf.getvalue()
+    gate = run_gate(
+        ctx=ctx, results=results, unmatched=unmatched, docx_bytes=docx_bytes,
+    )
+    for warning in gate.warnings:
+        log.warning("site-visit-report gate WARNING %s: %s",
+                    warning.check, warning.message)
+    if gate.errors:
+        for err in gate.errors:
+            log.error("site-visit-report gate ERROR %s: %s",
+                      err.check, err.message)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Site Visit Report failed the issue gate: "
+                + "; ".join(f"[{e.check}] {e.message}" for e in gate.errors)
+            ),
+        )
+
     filename = f"Site_Visit_Report_{date.today().isoformat()}.docx"
     return StreamingResponse(
-        buf,
+        BytesIO(docx_bytes),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "X-Issue-Gate-Warnings": str(len(gate.warnings)),
+        },
     )
 
 

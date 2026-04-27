@@ -231,12 +231,29 @@ def main() -> int:
     if unknown_tokens:
         print(f"WARNING: unknown tokens in template: {sorted(unknown_tokens)}")
 
+    # Phase 7 deterministic issue gate.
+    from pims.services.site_visit_report_gate import run_gate
+    docx_bytes = buf.getvalue()
+    gate = run_gate(
+        ctx=ctx, results=results, unmatched=unmatched, docx_bytes=docx_bytes,
+    )
+    if gate.warnings:
+        print(f"gate: {len(gate.warnings)} WARNING(s):")
+        for w in gate.warnings:
+            print(f"  [{w.check}] {w.message}")
+    if gate.errors:
+        print(f"gate: {len(gate.errors)} ERROR(s):")
+        for e in gate.errors:
+            print(f"  [{e.check}] {e.message}")
+        # Still write the file so a developer can open it and diagnose.
+        # Production route fails the request; the CLI is for diagnosis.
+
     out = Path(args.output) if args.output else Path(
         f"Site_Visit_Report_{date.today().isoformat()}.docx"
     )
-    out.write_bytes(buf.getvalue())
+    out.write_bytes(docx_bytes)
     print(f"wrote {out} ({out.stat().st_size:,} bytes)")
-    return 0
+    return 1 if gate.errors else 0
 
 
 if __name__ == "__main__":

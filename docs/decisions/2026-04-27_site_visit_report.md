@@ -247,7 +247,80 @@ behind it.
 
 ---
 
-## Open questions / Phase 7+ candidates
+## Phase 7 — deterministic issue gate
+
+Per CLAUDE.md "automation priority: implement deterministic issue-gate
+checks ... use those as the default internal pre-review layer before
+expert/manual review". Phase 7 lands a fail-closed gate that catches
+trust failures *before* the .docx leaves the route.
+
+### Module: `pims/services/site_visit_report_gate.py`
+
+- Pure-function `run_gate(ctx, results, unmatched, docx_bytes)` →
+  `GateReport`. No I/O, no Supabase, no env reads. The route + the
+  CLI both call it and react to the issues identically.
+- Severity is binary — ERROR (the report has a known trust failure
+  and must not ship) or WARNING (structural drift worth logging but
+  not blocking). The route returns 500 on any ERROR; the CLI prints
+  + exits 1 but still writes the file (developer needs to open it
+  to diagnose).
+- Check-id constants are part of the public contract — tests
+  reference them by id so a future renaming is loud.
+
+### Checks (run order is deterministic so issue lists diff cleanly):
+
+1. **`unresolved_tokens`** (ERROR) — any `[Insert Foo Bar]` /
+   `[Foo Bar]` placeholder still in the document. Token regex
+   requires either an `Insert ` prefix or an embedded space, so the
+   evidence-cell prefixes the renderer emits (`[NCR]`, `[Compliant]`)
+   don't false-fire. Real template tokens always have a space.
+2. **`audit_footer_present`** (ERROR) — spec invariant #5: the
+   audit-defensibility footer text appears verbatim. Catches a
+   future edit that paraphrases or truncates it.
+3. **`compliance_rate_rendered`** (ERROR) — the compliance rate
+   computed by `compute_kpis` actually appears in the document
+   (formatted as `XX.X%`). Catches a renderer refactor that drops
+   the row or formats it unrecognisably.
+4. **`kpi_totals_internally_consistent`** (ERROR) — KPI total
+   equals the sum of items in known states. Pure-function arithmetic
+   sanity. Catches the case where a future fifth state slips in
+   without `compute_kpis` being updated to count it.
+5. **`every_result_rendered`** (ERROR) — spec invariant #6: every
+   `category_no.item_no` from the matcher appears in the rendered
+   cross-reference. Catches silent drops.
+6. **`every_unmatched_rendered`** (ERROR / WARNING) — spec
+   invariant #6: every unmatched observation's text appears in the
+   appendix. WARNING (rather than ERROR) when an unmatched obs has
+   no `observation_text` to anchor a check on (data quality issue,
+   not a render issue).
+7. **`unmatched_appendix_presence`** (ERROR / WARNING) — spec
+   line 98: appendix renders IFF unmatched is non-empty. ERROR
+   when unmatched is non-empty but the appendix header is missing
+   (silent drop). WARNING when the header is present but unmatched
+   is empty (drift).
+
+### Wiring
+
+- `pims/routes.py::generate_site_visit_report` — runs the gate
+  after build(). Logs warnings, raises 500 with the full error
+  list as the response detail. Sets `X-Issue-Gate-Warnings: <count>`
+  on success so a frontend / load balancer can surface
+  warning counts without parsing logs.
+- `scripts/render_site_visit_report.py` — runs the gate after
+  build(), prints all warnings and errors, exits 1 if any errors.
+  Still writes the .docx — a developer needs the file to diagnose
+  whatever the gate flagged.
+
+### Tests
+
+- 11 cases pinning each individual check's failure mode and the
+  pass case. Plus an end-to-end matcher → renderer → gate
+  integration that exercises the realistic flow with one matched
+  observation and one unmatched orphan, asserting the gate passes.
+
+---
+
+## Open questions / Phase 8+ candidates
 - **Legacy deprecation.** Once Phase 6 ships and the new flow has run
   for ~1 week, delete `pims/audit_report_docx.py`,
   `pims/audit_report_template.docx`, the
