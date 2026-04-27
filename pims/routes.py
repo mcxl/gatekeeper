@@ -2554,7 +2554,8 @@ OBSERVATION_SELECT_COLUMNS = (
     "id,seq_no,site_address,observation_text,observation_text_enriched,"
     "conformance_status,ccvs_code,ccvs_category,action_required,"
     "action_description,responsible,due_category,legal_reference,"
-    "filename,photo_url,audit_id"
+    "filename,photo_url,photo_refs,observation_date,audit_id,"
+    "submitted_by,prepared_by"
 )
 
 
@@ -2728,3 +2729,377 @@ async def generate_audit_report_rpd(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Site Visit Report (Phase 4 of docs/pims_site_visit_report_spec.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SiteVisitReportRequest(BaseModel):
+    site_id: str = Field(..., description="canonical sites.id (uuid)")
+    audit_date_start: Optional[str] = Field(
+        default=None,
+        description="ISO date; observation lower bound. Defaults to the "
+                    "earliest observation_date for the site.",
+    )
+    audit_date_end: Optional[str] = Field(
+        default=None,
+        description="ISO date; observation upper bound (inclusive). "
+                    "Defaults to the latest observation_date for the site.",
+    )
+
+
+@router.post("/site-visit-report")
+async def generate_site_visit_report(
+    body: SiteVisitReportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Render the single-site .docx Site Visit Report (spec invariant #1)."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    site_id = _validate_uuids([body.site_id])[0]
+
+    from pims.services.checklist_matcher import (
+        ChecklistItem,
+        cross_reference,
+    )
+    from pims.services.site_visit_report import (
+        TEMPLATE_PATH,
+        SiteContext,
+        build,
+    )
+
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(
+            status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}",
+        )
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        sr = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value,client_name",
+                "id": f"eq.{site_id}",
+            },
+        )
+        sr.raise_for_status()
+        sites = sr.json()
+        if not sites:
+            raise HTTPException(status_code=404, detail="Site not found")
+        site = sites[0]
+        if site.get("project_value") is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Site {site.get('address_raw')!r} has no project_value",
+            )
+        tier = "high" if float(site["project_value"]) >= 250000 else "low"
+
+        cl = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/checklist_items",
+            headers=headers,
+            params={
+                "select": "id,category_no,category_name,item_no,criteria,"
+                          "instruction,ccvs_category,ccvs_code,project_value_tier",
+                "project_value_tier": f"eq.{tier}",
+                "order": "category_no.asc,item_no.asc",
+            },
+        )
+        cl.raise_for_status()
+        items = [ChecklistItem.from_row(r) for r in cl.json()]
+
+    observations = await _fetch_observations_for_site(site_id)
+
+    if observations:
+        dates = sorted(o["observation_date"] for o in observations
+                       if o.get("observation_date"))
+        default_start = dates[0] if dates else ""
+        default_end = dates[-1] if dates else ""
+    else:
+        default_start = default_end = ""
+
+    audit_date_range = _format_date_range(
+        body.audit_date_start or default_start,
+        body.audit_date_end or default_end,
+    )
+
+    audit_ref = await _resolve_audit_ref_for_observations(observations)
+
+    results, unmatched = cross_reference(items, observations)
+    ctx = SiteContext(
+        address=site["address_raw"],
+        project_value_tier=tier,
+        audit_ref=audit_ref or "—",
+        prepared_by=_resolve_prepared_by(observations),
+    )
+
+    buf, unknown_tokens = build(
+        ctx=ctx, results=results, unmatched=unmatched,
+        audit_date_range=audit_date_range,
+    )
+    if unknown_tokens:
+        log.warning("site-visit-report: unknown tokens left in template: %s",
+                    sorted(unknown_tokens))
+
+    # Phase 7 deterministic issue gate. Errors fail the request — a
+    # report that fails the gate would ship with a known trust failure
+    # (missing footer, unresolved tokens, dropped checklist items).
+    # Warnings are logged but do not block.
+    from pims.services.site_visit_report_gate import run_gate
+    docx_bytes = buf.getvalue()
+    gate = run_gate(
+        ctx=ctx, results=results, unmatched=unmatched, docx_bytes=docx_bytes,
+    )
+    for warning in gate.warnings:
+        log.warning("site-visit-report gate WARNING %s: %s",
+                    warning.check, warning.message)
+    if gate.errors:
+        for err in gate.errors:
+            log.error("site-visit-report gate ERROR %s: %s",
+                      err.check, err.message)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Site Visit Report failed the issue gate: "
+                + "; ".join(f"[{e.check}] {e.message}" for e in gate.errors)
+            ),
+        )
+
+    filename = f"Site_Visit_Report_{date.today().isoformat()}.docx"
+    return StreamingResponse(
+        BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "X-Issue-Gate-Warnings": str(len(gate.warnings)),
+        },
+    )
+
+
+def _format_date_range(start: str, end: str) -> str:
+    """Format ISO strings as 'DD Mon YYYY – DD Mon YYYY'."""
+    def _fmt(s: str) -> str:
+        if not s:
+            return ""
+        try:
+            return datetime.fromisoformat(s).strftime("%d %b %Y")
+        except (TypeError, ValueError):
+            return s
+    s, e = _fmt(start), _fmt(end)
+    if s and e:
+        return f"{s} – {e}"
+    return s or e or "—"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Observation approval workflow (Phase 6 of docs/pims_site_visit_report_spec.md)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# pims_observations.review_status is one of {Pending, Approved, Rejected}.
+# The Site Visit Report renderer only sees Approved rows
+# (_fetch_observations_for_site filters review_status=eq.Approved). Without an
+# approval flow, observations that field-walked into PIMS as Pending stay
+# Pending forever and never appear in any report. Phase 6 closes that gap.
+
+VALID_OBSERVATION_REVIEW_STATUSES = {"Pending", "Approved", "Rejected"}
+
+
+class ObservationApproveRequest(BaseModel):
+    approver: Optional[str] = Field(
+        default=None,
+        max_length=120,
+        description="Free-text label for the approver. Defaults to 'dashboard'.",
+    )
+
+
+class ObservationRejectRequest(BaseModel):
+    approver: Optional[str] = Field(default=None, max_length=120)
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+async def _set_observation_review_status(
+    observation_id: str,
+    *,
+    new_status: str,
+    approver: str,
+    reason: str | None = None,
+) -> dict:
+    """Flip pims_observations.review_status. Returns the updated row.
+
+    Caller is responsible for session/UUID validation. This helper is the
+    single place that writes the (review_status, approved_by, approved_at)
+    triple so the audit trail stays consistent.
+    """
+    if new_status not in VALID_OBSERVATION_REVIEW_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid review_status: {new_status!r}",
+        )
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    payload: dict = {
+        "review_status": new_status,
+        "approved_by": approver,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if reason is not None:
+        # Stash the rejection reason in monitoring_note so it surfaces to
+        # the next reviewer without needing a new column. The schema CHECK
+        # on review_status carries the boolean state; the free-text reason
+        # is non-structural.
+        payload["monitoring_note"] = f"[{new_status} by {approver}] {reason}"
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params={"id": f"eq.{observation_id}", "select": "*"},
+            json=payload,
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            log.error(
+                "review_status update failed: %s %s", r.status_code, r.text,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update review_status",
+            )
+        rows = r.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Observation not found")
+    return rows[0]
+
+
+@router.post("/observation/{observation_id}/approve")
+async def approve_observation(
+    observation_id: str,
+    body: ObservationApproveRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip a single observation to review_status='Approved'."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    obs_id = _validate_uuids([observation_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+    row = await _set_observation_review_status(
+        obs_id, new_status="Approved", approver=approver,
+    )
+    return {"ok": True, "id": row["id"], "review_status": row["review_status"]}
+
+
+@router.post("/observation/{observation_id}/reject")
+async def reject_observation(
+    observation_id: str,
+    body: ObservationRejectRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip a single observation to review_status='Rejected'.
+
+    Rejected rows do NOT appear in the Site Visit Report (the route filters
+    review_status=Approved). Use to remove a duplicate or invalid finding
+    without losing the audit trail (the row stays in the table).
+    """
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    obs_id = _validate_uuids([observation_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+    row = await _set_observation_review_status(
+        obs_id, new_status="Rejected",
+        approver=approver, reason=body.reason,
+    )
+    return {"ok": True, "id": row["id"], "review_status": row["review_status"]}
+
+
+class BulkApproveRequest(BaseModel):
+    site_id: str
+    approver: Optional[str] = Field(default=None, max_length=120)
+
+
+@router.post("/site/observations/approve-pending")
+async def approve_all_pending_observations_for_site(
+    body: BulkApproveRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Flip every Pending observation for a site to Approved in one call.
+
+    Idempotent (rows already Approved are not touched). Returns the count
+    of rows updated. Useful for clearing a backlog of unreviewed
+    observations before generating a Site Visit Report.
+    """
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    site_id = _validate_uuids([body.site_id])[0]
+    approver = (body.approver or "dashboard").strip() or "dashboard"
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    payload = {
+        "review_status": "Approved",
+        "approved_by": approver,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers,
+            params={
+                "site_id": f"eq.{site_id}",
+                "review_status": "eq.Pending",
+                "select": "id",
+            },
+            json=payload,
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            log.error("bulk approval failed: %s %s", r.status_code, r.text)
+            raise HTTPException(status_code=500, detail="Bulk approval failed")
+        rows = r.json()
+    return {"ok": True, "site_id": site_id, "approved_count": len(rows)}
+
+
+async def _resolve_audit_ref_for_observations(observations: list[dict]) -> str:
+    """Fetch the audit_ref of the most recent pims_audits row referenced
+    by the observations' audit_id. Returns "" when no audit_id is present
+    or the lookup fails."""
+    audit_ids = [o.get("audit_id") for o in observations if o.get("audit_id")]
+    if not audit_ids:
+        return ""
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    id_filter = "(" + ",".join(audit_ids) + ")"
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_audits",
+            headers=headers,
+            params={
+                "select": "audit_ref,audit_date",
+                "id": f"in.{id_filter}",
+                "order": "audit_date.desc",
+                "limit": "1",
+            },
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            return ""
+        rows = r.json()
+    if not rows:
+        return ""
+    return (rows[0].get("audit_ref") or "").strip()
+
+
+def _resolve_prepared_by(observations: list[dict]) -> str:
+    for o in observations:
+        v = (o.get("prepared_by") or o.get("submitted_by") or "").strip()
+        if v:
+            return v
+    return ""
