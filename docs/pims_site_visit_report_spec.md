@@ -41,19 +41,14 @@ Per matcher contract: `cross_reference()` returns `(results, unmatched_observati
 
 ## Cover-page token map (Phase 4 — finalised after template inspection)
 
-The new template `pims/RPD_SSA_template.docx` is opened once at the start of Phase 4. Tokens are catalogued from `<w:t>` and `<a:t>` content (body, headers, footers, textboxes, sdt content, DrawingML).
+The new template `pims/RPD_SSA_template.docx` was inspected at the start of Phase 4. Two distinct tokens were catalogued from `<w:t>` and `<a:t>` content (body, headers, footers, textboxes, sdt content, DrawingML):
 
-**Expected token set** (placeholder names confirmed at template-inspection time):
+| Token | Location | Value source |
+|---|---|---|
+| `[Insert Site Address]` | body | `site.address` |
+| `[Insert Current Date]` | footer | `date.today().strftime("%d %B %Y")` |
 
-| Token | Value source |
-|---|---|
-| `[Site Address]` | `site.address` |
-| `[Audit Date Range]` | `f"{start:%d %b %Y} – {end:%d %b %Y}"` |
-| `[Auditor]` | `site.prepared_by + ", AuditCo"` |
-| `[Project Value Tier]` | `site.project_value_tier` |
-| `[Audit Reference]` | `site.audit_ref` |
-| `[Report Version]` | `"v1.0"` (hardcoded for first iteration) |
-| `[Current Date]` | `date.today().strftime("%d %B %Y")` |
+Tokens originally anticipated (`[Audit Date Range]`, `[Auditor]`, `[Project Value Tier]`, `[Audit Reference]`, `[Report Version]`) were absent from the template. The corresponding facts are rendered into the appended Site Visit Summary section instead of being woven into the cover. If a future template revision adds those tokens, the renderer's `_TOKEN_VALUES` table is the single point of update.
 
 Any unrecognised template token surfaces to the user before merge — Phase 4 does not silently ignore.
 

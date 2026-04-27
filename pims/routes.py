@@ -2554,7 +2554,8 @@ OBSERVATION_SELECT_COLUMNS = (
     "id,seq_no,site_address,observation_text,observation_text_enriched,"
     "conformance_status,ccvs_code,ccvs_category,action_required,"
     "action_description,responsible,due_category,legal_reference,"
-    "filename,photo_url,audit_id"
+    "filename,photo_url,photo_refs,observation_date,audit_id,"
+    "submitted_by,prepared_by"
 )
 
 
@@ -2728,3 +2729,178 @@ async def generate_audit_report_rpd(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Site Visit Report (Phase 4 of docs/pims_site_visit_report_spec.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SiteVisitReportRequest(BaseModel):
+    site_id: str = Field(..., description="canonical sites.id (uuid)")
+    audit_date_start: Optional[str] = Field(
+        default=None,
+        description="ISO date; observation lower bound. Defaults to the "
+                    "earliest observation_date for the site.",
+    )
+    audit_date_end: Optional[str] = Field(
+        default=None,
+        description="ISO date; observation upper bound (inclusive). "
+                    "Defaults to the latest observation_date for the site.",
+    )
+
+
+@router.post("/site-visit-report")
+async def generate_site_visit_report(
+    body: SiteVisitReportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Render the single-site .docx Site Visit Report (spec invariant #1)."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    site_id = _validate_uuids([body.site_id])[0]
+
+    from pims.services.checklist_matcher import (
+        ChecklistItem,
+        cross_reference,
+    )
+    from pims.services.site_visit_report import (
+        TEMPLATE_PATH,
+        SiteContext,
+        build,
+    )
+
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(
+            status_code=503, detail=f"Template missing: {TEMPLATE_PATH.name}",
+        )
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        sr = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw,project_value,client_name",
+                "id": f"eq.{site_id}",
+            },
+        )
+        sr.raise_for_status()
+        sites = sr.json()
+        if not sites:
+            raise HTTPException(status_code=404, detail="Site not found")
+        site = sites[0]
+        if site.get("project_value") is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Site {site.get('address_raw')!r} has no project_value",
+            )
+        tier = "high" if float(site["project_value"]) >= 250000 else "low"
+
+        cl = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/checklist_items",
+            headers=headers,
+            params={
+                "select": "id,category_no,category_name,item_no,criteria,"
+                          "instruction,ccvs_category,ccvs_code,project_value_tier",
+                "project_value_tier": f"eq.{tier}",
+                "order": "category_no.asc,item_no.asc",
+            },
+        )
+        cl.raise_for_status()
+        items = [ChecklistItem.from_row(r) for r in cl.json()]
+
+    observations = await _fetch_observations_for_site(site_id)
+
+    if observations:
+        dates = sorted(o["observation_date"] for o in observations
+                       if o.get("observation_date"))
+        default_start = dates[0] if dates else ""
+        default_end = dates[-1] if dates else ""
+    else:
+        default_start = default_end = ""
+
+    audit_date_range = _format_date_range(
+        body.audit_date_start or default_start,
+        body.audit_date_end or default_end,
+    )
+
+    audit_ref = await _resolve_audit_ref_for_observations(observations)
+
+    results, unmatched = cross_reference(items, observations)
+    ctx = SiteContext(
+        address=site["address_raw"],
+        project_value_tier=tier,
+        audit_ref=audit_ref or "—",
+        prepared_by=_resolve_prepared_by(observations),
+    )
+
+    buf, unknown_tokens = build(
+        ctx=ctx, results=results, unmatched=unmatched,
+        audit_date_range=audit_date_range,
+    )
+    if unknown_tokens:
+        log.warning("site-visit-report: unknown tokens left in template: %s",
+                    sorted(unknown_tokens))
+
+    filename = f"Site_Visit_Report_{date.today().isoformat()}.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+def _format_date_range(start: str, end: str) -> str:
+    """Format ISO strings as 'DD Mon YYYY – DD Mon YYYY'."""
+    def _fmt(s: str) -> str:
+        if not s:
+            return ""
+        try:
+            return datetime.fromisoformat(s).strftime("%d %b %Y")
+        except (TypeError, ValueError):
+            return s
+    s, e = _fmt(start), _fmt(end)
+    if s and e:
+        return f"{s} – {e}"
+    return s or e or "—"
+
+
+async def _resolve_audit_ref_for_observations(observations: list[dict]) -> str:
+    """Fetch the audit_ref of the most recent pims_audits row referenced
+    by the observations' audit_id. Returns "" when no audit_id is present
+    or the lookup fails."""
+    audit_ids = [o.get("audit_id") for o in observations if o.get("audit_id")]
+    if not audit_ids:
+        return ""
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    id_filter = "(" + ",".join(audit_ids) + ")"
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_audits",
+            headers=headers,
+            params={
+                "select": "audit_ref,audit_date",
+                "id": f"in.{id_filter}",
+                "order": "audit_date.desc",
+                "limit": "1",
+            },
+        )
+        try:
+            r.raise_for_status()
+        except Exception:
+            return ""
+        rows = r.json()
+    if not rows:
+        return ""
+    return (rows[0].get("audit_ref") or "").strip()
+
+
+def _resolve_prepared_by(observations: list[dict]) -> str:
+    for o in observations:
+        v = (o.get("prepared_by") or o.get("submitted_by") or "").strip()
+        if v:
+            return v
+    return ""

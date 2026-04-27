@@ -1316,7 +1316,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       <span id="connStatus">Connecting</span>
     </div>
     <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
-    <button class="btn btn-primary" onclick="openAuditReportModal()">📄 Generate Audit Report</button>
+    <button class="btn btn-primary" onclick="openAuditReportModal()">📄 Generate Site Visit Report</button>
     <a href="/pims-logout" style="font-size:0.78rem;color:#94a3b8;text-decoration:none;padding:4px 10px;border:1px solid #334155;border-radius:5px;">Sign out</a>
   </div>
 </header>
@@ -2581,12 +2581,10 @@ async function openAuditReportModal() {
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
     modal.innerHTML = `
       <div style="background:#fff;padding:24px;border-radius:8px;min-width:420px;max-width:90vw;max-height:80vh;overflow:auto;color:#111;">
-        <h3 style="margin-top:0;">Generate Audit Report</h3>
-        <p style="font-size:13px;color:#555;">Select one or more sites:</p>
+        <h3 style="margin-top:0;">Generate Site Visit Report</h3>
+        <p style="font-size:13px;color:#555;">Select a site (single-site report):</p>
         <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
-        <select id="auditReportSites" multiple size="10" style="width:100%;padding:6px;"></select>
-        <p style="font-size:13px;color:#555;margin-top:12px;">Optional summary text:</p>
-        <textarea id="auditReportSummary" rows="3" style="width:100%;padding:6px;"></textarea>
+        <select id="auditReportSites" size="10" style="width:100%;padding:6px;"></select>
         <div style="margin-top:16px;text-align:right;">
           <button class="btn" onclick="document.getElementById('auditReportModal').remove()">Cancel</button>
           <button class="btn btn-primary" onclick="submitAuditReport()">Generate</button>
@@ -2626,24 +2624,23 @@ async function openAuditReportModal() {
 
 async function submitAuditReport() {
   const sel = document.getElementById('auditReportSites');
-  const site_ids = Array.from(sel.selectedOptions).map(o => o.value);
-  if (!site_ids.length) { alert('Select at least one site.'); return; }
-  const summary = document.getElementById('auditReportSummary').value || null;
-  const resp = await fetch('/pims/audit-report/rpd', {
+  const site_id = sel.value;
+  if (!site_id) { alert('Select a site.'); return; }
+  const resp = await fetch('/pims/site-visit-report', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({site_ids: site_ids, summary_text: summary}),
+    body: JSON.stringify({site_id: site_id}),
   });
   if (!resp.ok) {
     const txt = await resp.text();
-    alert('Audit report failed: ' + txt);
+    alert('Site Visit Report failed: ' + txt);
     return;
   }
   const blob = await resp.blob();
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(blob),
-    download: `PIMS_Audit_Report_${new Date().toISOString().slice(0,10)}.docx`,
+    download: `Site_Visit_Report_${new Date().toISOString().slice(0,10)}.docx`,
   });
   a.click();
   document.getElementById('auditReportModal').remove();
