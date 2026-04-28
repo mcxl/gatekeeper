@@ -1261,7 +1261,10 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
     </div>
     <div class="modal-body">
       <div class="obs-card" id="modalObsText"></div>
-      <div class="action-card" id="modalAction"></div>
+      <div class="form-group">
+        <label class="form-label">Action Required</label>
+        <textarea class="form-textarea" id="modalAction" placeholder="Describe the corrective action required..."></textarea>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">CCVS Code</label>
@@ -2530,7 +2533,7 @@ function openModal(id) {
   if (!o) return;
   editingId = id;
   document.getElementById('modalObsText').textContent  = o.observation_text||'—';
-  document.getElementById('modalAction').textContent   = o.action_description||'No action description';
+  document.getElementById('modalAction').value        = o.action_description||'';
   document.getElementById('modalCcvs').value           = o.ccvs_code||'—';
   document.getElementById('modalResponsible').value    = o.responsible||'—';
   document.getElementById('modalStatus').value         = o.closeout_status==='N/A'?'Open':o.closeout_status;
@@ -2548,6 +2551,7 @@ function closeModal() {
 async function saveCloseout() {
   if (!editingId) return;
   const payload = {
+    action_description: document.getElementById('modalAction').value.trim() || null,
     closeout_status: document.getElementById('modalStatus').value,
     closed_date:     document.getElementById('modalClosedDate').value || null,
     closed_by:       document.getElementById('modalClosedBy').value   || null,
