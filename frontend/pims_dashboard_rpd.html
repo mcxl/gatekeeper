@@ -1282,7 +1282,8 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
         </div>
         <div class="form-group">
           <label class="form-label">CCVS Code</label>
-          <input class="form-input" id="modalCcvs" placeholder="e.g. ENE-M4">
+          <input class="form-input" id="modalCcvs" list="ccvsCodeList" placeholder="e.g. ENE-M4">
+          <datalist id="ccvsCodeList"></datalist>
         </div>
       </div>
       <div class="form-group">
@@ -2559,6 +2560,20 @@ function openModal(id) {
   const o = allObs.find(x=>x.id===id);
   if (!o) return;
   editingId = id;
+  // Populate CCVS picker from existing codes in the dataset.
+  const dl = document.getElementById('ccvsCodeList');
+  if (dl) {
+    const seen = new Map();
+    allObs.forEach(x => {
+      const code = (x.ccvs_code || '').trim();
+      if (!code) return;
+      if (!seen.has(code)) seen.set(code, x.ccvs_category || '');
+    });
+    const sorted = [...seen.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+    dl.innerHTML = sorted.map(([code,cat]) =>
+      `<option value="${code.replace(/"/g,'&quot;')}">${(cat||'').replace(/"/g,'&quot;')}</option>`
+    ).join('');
+  }
   document.getElementById('modalObsText').textContent  = o.observation_text||'—';
   document.getElementById('modalSiteAddress').value    = o.site_address||'';
   document.getElementById('modalFinding').value        = o.observation_text_enriched || o.observation_text || '';
@@ -2583,13 +2598,14 @@ async function saveCloseout() {
   if (!editingId) return;
   const conf = document.getElementById('modalConformance').value;
   const actionText = document.getElementById('modalAction').value.trim();
+  const requiresAction = conf === 'NCR' || conf === 'Conditional' || !!actionText;
   const payload = {
     site_address:       document.getElementById('modalSiteAddress').value.trim() || null,
     observation_text_enriched: document.getElementById('modalFinding').value.trim() || null,
     conformance_status: conf || null,
     ccvs_code:          document.getElementById('modalCcvs').value.trim() || null,
     action_description: actionText || null,
-    action_required:    !!actionText,
+    action_required:    requiresAction,
     responsible:        document.getElementById('modalResponsible').value.trim() || null,
     monitoring_note:    document.getElementById('modalMonitoringNote').value.trim() || null,
     closeout_status:    document.getElementById('modalStatus').value || 'Open',
