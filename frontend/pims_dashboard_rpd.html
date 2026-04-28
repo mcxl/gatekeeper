@@ -2583,13 +2583,14 @@ async function saveCloseout() {
   if (!editingId) return;
   const conf = document.getElementById('modalConformance').value;
   const actionText = document.getElementById('modalAction').value.trim();
+  const requiresAction = conf === 'NCR' || conf === 'Conditional' || !!actionText;
   const payload = {
     site_address:       document.getElementById('modalSiteAddress').value.trim() || null,
     observation_text_enriched: document.getElementById('modalFinding').value.trim() || null,
     conformance_status: conf || null,
     ccvs_code:          document.getElementById('modalCcvs').value.trim() || null,
     action_description: actionText || null,
-    action_required:    !!actionText,
+    action_required:    requiresAction,
     responsible:        document.getElementById('modalResponsible').value.trim() || null,
     monitoring_note:    document.getElementById('modalMonitoringNote').value.trim() || null,
     closeout_status:    document.getElementById('modalStatus').value || 'Open',
