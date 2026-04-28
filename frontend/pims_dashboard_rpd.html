@@ -1262,17 +1262,41 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
     <div class="modal-body">
       <div class="obs-card" id="modalObsText"></div>
       <div class="form-group">
+        <label class="form-label">Site Address</label>
+        <input class="form-input" id="modalSiteAddress" placeholder="Site address">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Finding (observation)</label>
+        <textarea class="form-textarea" id="modalFinding" placeholder="Observation / finding text..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="modalConformance">
+            <option value="">—</option>
+            <option value="Compliant">Compliant</option>
+            <option value="Conditional">Conditional</option>
+            <option value="NCR">NCR</option>
+            <option value="Info">Info</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CCVS Code</label>
+          <input class="form-input" id="modalCcvs" placeholder="e.g. ENE-M4">
+        </div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Action Required</label>
         <textarea class="form-textarea" id="modalAction" placeholder="Describe the corrective action required..."></textarea>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">CCVS Code</label>
-          <input class="form-input" id="modalCcvs" disabled>
+          <label class="form-label">Responsible</label>
+          <input class="form-input" id="modalResponsible" placeholder="Name / role">
         </div>
         <div class="form-group">
-          <label class="form-label">Responsible</label>
-          <input class="form-input" id="modalResponsible" disabled>
+          <label class="form-label">Monitoring Note</label>
+          <input class="form-input" id="modalMonitoringNote" placeholder="Monitoring note">
         </div>
       </div>
       <div class="form-group">
@@ -2482,7 +2506,10 @@ function renderAllObs() {
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
         <td style="max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>
-        <td style="padding-right:20px;">${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">↩ Send back</button>` : ''}</td>`;
+        <td style="padding-right:20px;white-space:nowrap;">
+          <button onclick="openModal('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:5px;cursor:pointer;margin-right:4px;">✎ Edit</button>
+          ${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">↩ Send back</button>` : ''}
+        </td>`;
     } else {
       tr.innerHTML = `
         <td style="padding-left:20px;min-width:160px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
@@ -2533,9 +2560,13 @@ function openModal(id) {
   if (!o) return;
   editingId = id;
   document.getElementById('modalObsText').textContent  = o.observation_text||'—';
+  document.getElementById('modalSiteAddress').value    = o.site_address||'';
+  document.getElementById('modalFinding').value        = o.observation_text_enriched || o.observation_text || '';
+  document.getElementById('modalConformance').value    = o.conformance_status||'';
   document.getElementById('modalAction').value        = o.action_description||'';
-  document.getElementById('modalCcvs').value           = o.ccvs_code||'—';
-  document.getElementById('modalResponsible').value    = o.responsible||'—';
+  document.getElementById('modalCcvs').value           = o.ccvs_code||'';
+  document.getElementById('modalResponsible').value    = o.responsible||'';
+  document.getElementById('modalMonitoringNote').value = o.monitoring_note||'';
   document.getElementById('modalStatus').value         = (o.closeout_status && o.closeout_status!=='N/A') ? o.closeout_status : 'Open';
   document.getElementById('modalClosedDate').value     = o.closed_date||'';
   document.getElementById('modalClosedBy').value       = o.closed_by||'';
@@ -2550,12 +2581,21 @@ function closeModal() {
 
 async function saveCloseout() {
   if (!editingId) return;
+  const conf = document.getElementById('modalConformance').value;
+  const actionText = document.getElementById('modalAction').value.trim();
   const payload = {
-    action_description: document.getElementById('modalAction').value.trim() || null,
-    closeout_status: document.getElementById('modalStatus').value || 'Open',
-    closed_date:     document.getElementById('modalClosedDate').value || null,
-    closed_by:       document.getElementById('modalClosedBy').value   || null,
-    closeout_notes:  document.getElementById('modalNotes').value      || null,
+    site_address:       document.getElementById('modalSiteAddress').value.trim() || null,
+    observation_text_enriched: document.getElementById('modalFinding').value.trim() || null,
+    conformance_status: conf || null,
+    ccvs_code:          document.getElementById('modalCcvs').value.trim() || null,
+    action_description: actionText || null,
+    action_required:    !!actionText,
+    responsible:        document.getElementById('modalResponsible').value.trim() || null,
+    monitoring_note:    document.getElementById('modalMonitoringNote').value.trim() || null,
+    closeout_status:    document.getElementById('modalStatus').value || 'Open',
+    closed_date:        document.getElementById('modalClosedDate').value || null,
+    closed_by:          document.getElementById('modalClosedBy').value   || null,
+    closeout_notes:     document.getElementById('modalNotes').value      || null,
   };
   try {
     const { error } = await db.from('pims_observations').update(payload).eq('id', editingId);
