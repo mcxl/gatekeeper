@@ -1272,7 +1272,7 @@ function openModal(id) {
   document.getElementById('modalAction').value        = o.action_description||'';
   document.getElementById('modalCcvs').value           = o.ccvs_code||'—';
   document.getElementById('modalResponsible').value    = o.responsible||'—';
-  document.getElementById('modalStatus').value         = o.closeout_status==='N/A'?'Open':o.closeout_status;
+  document.getElementById('modalStatus').value         = (o.closeout_status && o.closeout_status!=='N/A') ? o.closeout_status : 'Open';
   document.getElementById('modalClosedDate').value     = o.closed_date||'';
   document.getElementById('modalClosedBy').value       = o.closed_by||'';
   document.getElementById('modalNotes').value          = o.closeout_notes||'';
@@ -1288,7 +1288,7 @@ async function saveCloseout() {
   if (!editingId) return;
   const payload = {
     action_description: document.getElementById('modalAction').value.trim() || null,
-    closeout_status: document.getElementById('modalStatus').value,
+    closeout_status: document.getElementById('modalStatus').value || 'Open',
     closed_date:     document.getElementById('modalClosedDate').value || null,
     closed_by:       document.getElementById('modalClosedBy').value   || null,
     closeout_notes:  document.getElementById('modalNotes').value      || null,
