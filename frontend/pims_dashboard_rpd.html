@@ -1943,8 +1943,14 @@ function applyFilters(options = {}) {
     return true;
   });
 
-  const liveOnly = baseFiltered.filter(isLiveAuditRecord);
-  const historicalOnly = baseFiltered.filter(isHistoricalRecord);
+  const byDateDesc = (a, b) => {
+    const da = a.observation_date || a.audit_date || '';
+    const dbb = b.observation_date || b.audit_date || '';
+    if (da === dbb) return (b.seq_no ?? 0) - (a.seq_no ?? 0);
+    return dbb.localeCompare(da);
+  };
+  const liveOnly = baseFiltered.filter(isLiveAuditRecord).sort(byDateDesc);
+  const historicalOnly = baseFiltered.filter(isHistoricalRecord).sort(byDateDesc);
   if (resetPages) {
     liveObsPage = 1;
     historicalObsPage = 1;
