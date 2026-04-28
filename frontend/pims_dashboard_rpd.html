@@ -1282,8 +1282,12 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
         </div>
         <div class="form-group">
           <label class="form-label">CCVS Code</label>
-          <input class="form-input" id="modalCcvs" list="ccvsCodeList" placeholder="e.g. ENE-M4">
-          <datalist id="ccvsCodeList"></datalist>
+          <div style="display:flex;gap:6px;">
+            <input class="form-input" id="modalCcvs" placeholder="e.g. ENE-M4" style="flex:1;">
+            <select class="form-select" id="modalCcvsPicker" onchange="if(this.value){document.getElementById('modalCcvs').value=this.value;this.selectedIndex=0;}" style="max-width:180px;">
+              <option value="">Pick…</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -2536,6 +2540,25 @@ function renderAllObs() {
 }
 
 // ── Inline PATCH helpers ──
+async function patchStagingField(input) {
+  const id = input.dataset.id;
+  const field = input.dataset.field;
+  let val = (input.value || '').trim();
+  if (val === '' && field !== 'review_status') val = null;
+  const row = stagingFieldRows.find(r => r.id === id);
+  if (!row || row[field] === val) return;
+  try {
+    const { error } = await db.from('pims_staging').update({ [field]: val }).eq('id', id);
+    if (error) throw error;
+    row[field] = val;
+    input.style.borderColor = '#16a34a';
+    setTimeout(() => { input.style.borderColor = '#cbd5e1'; }, 1200);
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+    input.value = row[field] || '';
+  }
+}
+
 async function patchField(input) {
   const id = input.dataset.id;
   const field = input.dataset.field;
@@ -2561,8 +2584,8 @@ function openModal(id) {
   if (!o) return;
   editingId = id;
   // Populate CCVS picker from existing codes in the dataset.
-  const dl = document.getElementById('ccvsCodeList');
-  if (dl) {
+  const picker = document.getElementById('modalCcvsPicker');
+  if (picker) {
     const seen = new Map();
     allObs.forEach(x => {
       const code = (x.ccvs_code || '').trim();
@@ -2570,9 +2593,10 @@ function openModal(id) {
       if (!seen.has(code)) seen.set(code, x.ccvs_category || '');
     });
     const sorted = [...seen.entries()].sort((a,b) => a[0].localeCompare(b[0]));
-    dl.innerHTML = sorted.map(([code,cat]) =>
-      `<option value="${code.replace(/"/g,'&quot;')}">${(cat||'').replace(/"/g,'&quot;')}</option>`
-    ).join('');
+    picker.innerHTML = '<option value="">Pick…</option>' + sorted.map(([code,cat]) => {
+      const label = cat ? `${code} — ${cat}` : code;
+      return `<option value="${code.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`;
+    }).join('');
   }
   document.getElementById('modalObsText').textContent  = o.observation_text||'—';
   document.getElementById('modalSiteAddress').value    = o.site_address||'';
@@ -3431,11 +3455,15 @@ function renderAllObsMobile(obs) {
         return;
       }
 
+      const editStyle = "width:100%;padding:4px 6px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#0f172a;";
+      const confOptions = ['','Compliant','Conditional','NCR','Info'];
+      const reviewOptions = ['Pending','Approved','Rejected'];
       tbody.innerHTML = rows.map(row => {
         const confRaw = row.conformance_status || '';
         const conf = esc(confRaw);
         const confClass = confRaw ? `field-badge-${confRaw.toLowerCase()}` : 'field-badge-na';
         const approved = row.review_status === 'Approved';
+        const ro = approved ? 'disabled' : '';
         const thumb = row.photo_url
           ? `<a href="${esc(row.photo_url)}" target="_blank" rel="noopener" title="${esc(row.filename) || 'View photo'}">
                <img src="${esc(row.photo_url)}" alt="photo"
@@ -3451,27 +3479,28 @@ function renderAllObsMobile(obs) {
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:200px;">${esc(row.site_address) || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">
+              <input ${ro} type="text" data-id="${row.id}" data-field="site_address" value="${esc(row.site_address) || ''}" onblur="patchStagingField(this)" style="${editStyle}">
+            </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">${thumb}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:280px;">${esc(row.observation_text) || '—'}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
-              ${row.ccvs_code ? `<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">${esc(row.ccvs_code)}</code>` : '—'}
-            </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
-              ${conf ? `<span class="field-badge ${confClass}">${conf}</span>` : '—'}
-            </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px;">
-              ${row.observation_text_enriched
-                ? `<span title="${esc(row.observation_text_enriched)}"
-                    style="display:block;font-size:0.75rem;line-height:1.45;color:#334155;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
-                    ${esc(row.observation_text_enriched)}
-                  </span>`
-                : '<span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">— not enriched —</span>'}
+              <textarea ${ro} rows="2" data-id="${row.id}" data-field="observation_text" onblur="patchStagingField(this)" style="${editStyle}resize:vertical;">${esc(row.observation_text) || ''}</textarea>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <input ${ro} type="text" data-id="${row.id}" data-field="ccvs_code" value="${esc(row.ccvs_code) || ''}" onblur="patchStagingField(this)" style="${editStyle}font-family:monospace;width:110px;">
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <select ${ro} data-id="${row.id}" data-field="conformance_status" onchange="patchStagingField(this)" style="${editStyle}">
+                ${confOptions.map(v => `<option value="${v}"${v===confRaw?' selected':''}>${v||'—'}</option>`).join('')}
+              </select>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:320px;">
+              <textarea ${ro} rows="2" data-id="${row.id}" data-field="observation_text_enriched" onblur="patchStagingField(this)" placeholder="— not enriched —" style="${editStyle}resize:vertical;">${esc(row.observation_text_enriched) || ''}</textarea>
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
-              <span class="field-badge field-badge-${(row.review_status || 'Pending').toLowerCase()}">
-                ${row.review_status || 'Pending'}
-              </span>
+              <select data-id="${row.id}" data-field="review_status" onchange="patchStagingField(this)" style="${editStyle}">
+                ${reviewOptions.map(v => `<option value="${v}"${v===(row.review_status||'Pending')?' selected':''}>${v}</option>`).join('')}
+              </select>
             </td>
             <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;white-space:nowrap;">
               <button
