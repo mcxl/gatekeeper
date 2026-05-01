@@ -2052,6 +2052,33 @@ async def upload_observations_xlsx(
                         "message": "Failed to update staging row.",
                     })
                     continue
+
+                # Also PATCH any linked pims_observations row so the live
+                # board reflects xlsx edits without requiring re-approval.
+                obs_patch = dict(patch_body)
+                if "legal_reference" in obs_patch:
+                    obs_patch["legal_ref"] = obs_patch.pop("legal_reference")
+                if conformance_status in {"NCR", "Conditional"}:
+                    obs_patch["action_required"] = True
+                obs_lookup = await client.get(
+                    f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                    headers=headers_repr,
+                    params={"select": "id", "staging_id": f"eq.{row_id}", "limit": "1"},
+                )
+                if obs_lookup.status_code == 200 and obs_lookup.json():
+                    obs_id = obs_lookup.json()[0]["id"]
+                    obs_patch_resp = await client.patch(
+                        f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                        headers=headers_minimal,
+                        params={"id": f"eq.{obs_id}"},
+                        json=obs_patch,
+                    )
+                    if obs_patch_resp.status_code not in (200, 204):
+                        log.warning(
+                            "Upload obs PATCH failed for row %s obs_id=%s: %s %s",
+                            row_num, obs_id, obs_patch_resp.status_code, obs_patch_resp.text,
+                        )
+
                 updated += 1
                 continue
 
