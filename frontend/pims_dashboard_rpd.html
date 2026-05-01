@@ -1303,9 +1303,19 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
           <input class="form-input" id="modalResponsible" placeholder="Name / role">
         </div>
         <div class="form-group">
-          <label class="form-label">Monitoring Note</label>
-          <input class="form-input" id="modalMonitoringNote" placeholder="Monitoring note">
+          <label class="form-label">Due</label>
+          <select class="form-select" id="modalDue">
+            <option value="">—</option>
+            <option value="Immediate">Immediate</option>
+            <option value="Next audit">Next audit</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="N/A">N/A</option>
+          </select>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monitoring Note</label>
+        <input class="form-input" id="modalMonitoringNote" placeholder="Monitoring note">
       </div>
       <div class="form-group">
         <label class="form-label">Close-out Status</label>
@@ -2615,6 +2625,7 @@ function openModal(id) {
   document.getElementById('modalActionRequired').checked = !!o.action_required;
   document.getElementById('modalCcvs').value           = o.ccvs_code||'';
   document.getElementById('modalResponsible').value    = o.responsible||'';
+  document.getElementById('modalDue').value            = o.due_category||'';
   document.getElementById('modalMonitoringNote').value = o.monitoring_note||'';
   document.getElementById('modalStatus').value         = (o.closeout_status && o.closeout_status!=='N/A') ? o.closeout_status : 'Open';
   document.getElementById('modalClosedDate').value     = o.closed_date||'';
@@ -2641,6 +2652,7 @@ async function saveCloseout() {
     action_description: actionText || null,
     action_required:    requiresAction,
     responsible:        document.getElementById('modalResponsible').value.trim() || null,
+    due_category:       document.getElementById('modalDue').value || null,
     monitoring_note:    document.getElementById('modalMonitoringNote').value.trim() || null,
     closeout_status:    document.getElementById('modalStatus').value || 'Open',
     closed_date:        document.getElementById('modalClosedDate').value || null,
