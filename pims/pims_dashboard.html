@@ -746,7 +746,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
     <div class="modal-body">
       <div class="obs-card" id="modalObsText"></div>
       <div class="form-group">
-        <label class="form-label">Action Required</label>
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="modalActionRequired" style="width:16px;height:16px;cursor:pointer">
+          <span>Action Required</span>
+        </label>
         <textarea class="form-textarea" id="modalAction" placeholder="Describe the corrective action required..."></textarea>
       </div>
       <div class="form-row">
@@ -1270,6 +1273,7 @@ function openModal(id) {
   editingId = id;
   document.getElementById('modalObsText').textContent  = o.observation_text||'—';
   document.getElementById('modalAction').value        = o.action_description||'';
+  document.getElementById('modalActionRequired').checked = !!o.action_required;
   document.getElementById('modalCcvs').value           = o.ccvs_code||'—';
   document.getElementById('modalResponsible').value    = o.responsible||'—';
   document.getElementById('modalStatus').value         = (o.closeout_status && o.closeout_status!=='N/A') ? o.closeout_status : 'Open';
@@ -1288,6 +1292,7 @@ async function saveCloseout() {
   if (!editingId) return;
   const payload = {
     action_description: document.getElementById('modalAction').value.trim() || null,
+    action_required: document.getElementById('modalActionRequired').checked,
     closeout_status: document.getElementById('modalStatus').value || 'Open',
     closed_date:     document.getElementById('modalClosedDate').value || null,
     closed_by:       document.getElementById('modalClosedBy').value   || null,
