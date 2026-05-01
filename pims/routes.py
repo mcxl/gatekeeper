@@ -1834,6 +1834,7 @@ async def download_staging_xlsx(
             continue
         try:
             pil = PILImage.open(BytesIO(img_bytes)).convert("RGB")
+            pil = pil.rotate(-90, expand=True)
             pil.thumbnail((THUMB_PX, THUMB_PX), PILImage.LANCZOS)
             buf = BytesIO()
             pil.save(buf, format="JPEG", quality=80)
