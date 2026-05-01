@@ -40,6 +40,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from fastapi import APIRouter, BackgroundTasks, Cookie, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
+from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
@@ -1736,7 +1737,7 @@ async def download_staging_xlsx(
     data_font = Font(name="Aptos", size=8.5, color=text_c)
 
     upload_headers = [
-        "id", "site_address", "audit_date", "observation_text",
+        "id", "photo", "site_address", "audit_date", "observation_text",
         "observation_text_enriched", "conformance_status",
         "ccvs_code", "ccvs_category", "action_description",
         "responsible", "due_category", "recommendation",
@@ -1744,7 +1745,7 @@ async def download_staging_xlsx(
         "prepared_by", "source_pdf", "section", "needs_review",
     ]
     header_widths = {
-        "id": 38, "site_address": 28, "audit_date": 12,
+        "id": 38, "photo": 22, "site_address": 28, "audit_date": 12,
         "observation_text": 42, "observation_text_enriched": 42,
     }
 
@@ -1791,6 +1792,7 @@ async def download_staging_xlsx(
         audit_date_str = str(audit_date_val)[:10]
         values = {
             "id": row_data.get("id") or "",
+            "photo": "",
             "site_address": row_data.get("site_address") or "",
             "audit_date": audit_date_str,
             "observation_text": row_data.get("observation_text") or "",
@@ -1815,6 +1817,33 @@ async def download_staging_xlsx(
             cell.font = data_font
             cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             cell.border = bdr()
+
+    photo_col_idx = upload_headers.index("photo") + 1
+    photo_col_letter = get_column_letter(photo_col_idx)
+    try:
+        images = await _fetch_images([r.get("photo_url") for r in rows])
+    except Exception as exc:
+        log.warning(f"XLSX photo fetch failed: {exc}")
+        images = [None] * len(rows)
+
+    THUMB_PX = 120
+    ws.column_dimensions[photo_col_letter].width = 20
+    for i, img_bytes in enumerate(images):
+        r_num = i + 5
+        if not img_bytes:
+            continue
+        try:
+            pil = PILImage.open(BytesIO(img_bytes)).convert("RGB")
+            pil.thumbnail((THUMB_PX, THUMB_PX), PILImage.LANCZOS)
+            buf = BytesIO()
+            pil.save(buf, format="JPEG", quality=80)
+            buf.seek(0)
+            xl_img = XLImage(buf)
+            xl_img.anchor = f"{photo_col_letter}{r_num}"
+            ws.add_image(xl_img)
+            ws.row_dimensions[r_num].height = pil.height * 0.78
+        except Exception as exc:
+            log.warning(f"XLSX PIL embed failed row {rows[i].get('id')}: {exc}")
 
     buf_out = BytesIO()
     wb.save(buf_out)
