@@ -2566,6 +2566,8 @@ async def list_observations_rpd(
 async def download_rpd_report(
     request: Request,
     period: str = "week",
+    start: str | None = None,
+    end: str | None = None,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     if not verify_session_cookie(pims_sess):
@@ -2579,7 +2581,22 @@ async def download_rpd_report(
     if period not in {"week", "month", "quarter"}:
         raise HTTPException(status_code=422, detail="period must be one of: week, month, quarter")
 
-    start, end, prev_start, prev_end, period_label, _ = _period_window(period)
+    if start and end:
+        if not (_ISO_DATE_RE.match(start) and _ISO_DATE_RE.match(end)):
+            raise HTTPException(status_code=422, detail="start/end must be YYYY-MM-DD")
+        if start > end:
+            raise HTTPException(status_code=422, detail="start must be <= end")
+        from datetime import timedelta as _td
+        start_d = date.fromisoformat(start)
+        # Inclusive end: bump to next day so half-open [start, end) bounds work.
+        end_d = date.fromisoformat(end) + _td(days=1)
+        span = end_d - start_d
+        prev_start = start_d - span
+        prev_end = start_d
+        start, end = start_d, end_d
+        period_label = f"{start_d.isoformat()} → {(end_d - _td(days=1)).isoformat()}"
+    else:
+        start, end, prev_start, prev_end, period_label, _ = _period_window(period)
 
     headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     params = {
