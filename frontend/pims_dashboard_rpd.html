@@ -2694,11 +2694,22 @@ async function openAuditReportModal() {
     modal.id = 'auditReportModal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
     modal.innerHTML = `
-      <div style="background:#fff;padding:24px;border-radius:8px;min-width:420px;max-width:90vw;max-height:80vh;overflow:auto;color:#111;">
-        <h3 style="margin-top:0;">Generate Site Visit Report</h3>
-        <p style="font-size:13px;color:#555;">Select a site (single-site report):</p>
+      <div style="background:#fff;padding:24px;border-radius:8px;min-width:480px;max-width:90vw;max-height:85vh;overflow:auto;color:#111;">
+        <h3 style="margin-top:0;">Generate Site Visit Report (xlsx)</h3>
+        <p style="font-size:13px;color:#555;margin:0 0 6px;">Select one or more sites (Ctrl/Shift-click) and the observation date range. Output is the PIMS_Staging xlsx format with photo thumbnails.</p>
         <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
-        <select id="auditReportSites" size="10" style="width:100%;padding:6px;"></select>
+        <label style="font-size:12px;color:#374151;display:block;margin-bottom:4px;">
+          <input type="checkbox" id="auditReportSelectAll" onchange="toggleAuditReportAll()"> Select all
+        </label>
+        <select id="auditReportSites" multiple size="12" style="width:100%;padding:6px;"></select>
+        <div style="display:flex;gap:12px;margin-top:12px;">
+          <label style="flex:1;font-size:12px;color:#374151;">From
+            <input type="date" id="auditReportFrom" style="width:100%;padding:6px;">
+          </label>
+          <label style="flex:1;font-size:12px;color:#374151;">To
+            <input type="date" id="auditReportTo" style="width:100%;padding:6px;">
+          </label>
+        </div>
         <div style="margin-top:16px;text-align:right;">
           <button class="btn" onclick="document.getElementById('auditReportModal').remove()">Cancel</button>
           <button class="btn btn-primary" onclick="submitAuditReport()">Generate</button>
@@ -2712,15 +2723,15 @@ async function openAuditReportModal() {
   err.style.display = 'none';
   err.textContent = '';
   try {
-    const resp = await fetch('/pims/sites/eligible', { credentials: 'include' });
+    const resp = await fetch('/pims/sites/active', { credentials: 'include' });
     if (!resp.ok) {
-      err.textContent = 'Failed to load eligible sites (' + resp.status + ').';
+      err.textContent = 'Failed to load sites (' + resp.status + ').';
       err.style.display = 'block';
       return;
     }
     const sites = await resp.json();
     if (!Array.isArray(sites) || sites.length === 0) {
-      err.textContent = 'No eligible sites found (need active=true and a project_value).';
+      err.textContent = 'No active sites found.';
       err.style.display = 'block';
       return;
     }
@@ -2730,21 +2741,38 @@ async function openAuditReportModal() {
       o.textContent = site.address_raw;
       tgt.appendChild(o);
     });
+    // Default date range: last 30 days through today.
+    const today = new Date();
+    const past = new Date(today.getTime() - 30 * 86400000);
+    const iso = d => d.toISOString().slice(0, 10);
+    document.getElementById('auditReportFrom').value = iso(past);
+    document.getElementById('auditReportTo').value = iso(today);
+    document.getElementById('auditReportSelectAll').checked = false;
   } catch (e) {
     err.textContent = 'Failed to load eligible sites: ' + e.message;
     err.style.display = 'block';
   }
 }
 
+function toggleAuditReportAll() {
+  const all = document.getElementById('auditReportSelectAll').checked;
+  const sel = document.getElementById('auditReportSites');
+  Array.from(sel.options).forEach(o => { o.selected = all; });
+}
+
 async function submitAuditReport() {
   const sel = document.getElementById('auditReportSites');
-  const site_id = sel.value;
-  if (!site_id) { alert('Select a site.'); return; }
-  const resp = await fetch('/pims/site-visit-report', {
+  const site_ids = Array.from(sel.selectedOptions).map(o => o.value);
+  if (site_ids.length === 0) { alert('Select at least one site.'); return; }
+  const date_from = document.getElementById('auditReportFrom').value;
+  const date_to = document.getElementById('auditReportTo').value;
+  if (!date_from || !date_to) { alert('Pick a From and To date.'); return; }
+  if (date_from > date_to) { alert('From date must be on or before To date.'); return; }
+  const resp = await fetch('/pims/site-visit-report/xlsx', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({site_id: site_id}),
+    body: JSON.stringify({site_ids, date_from, date_to}),
   });
   if (!resp.ok) {
     const txt = await resp.text();
@@ -2754,7 +2782,7 @@ async function submitAuditReport() {
   const blob = await resp.blob();
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(blob),
-    download: `Site_Visit_Report_${new Date().toISOString().slice(0,10)}.docx`,
+    download: `Site_Visit_Report_${new Date().toISOString().slice(0,10)}.xlsx`,
   });
   a.click();
   document.getElementById('auditReportModal').remove();

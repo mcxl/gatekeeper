@@ -1705,21 +1705,10 @@ async def download_staging_docx(
     )
 
 
-@router.post("/staging/rpd/xlsx")
-async def download_staging_xlsx(
-    request: Request,
-    payload: StagingExportRequest,
-    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
-):
-    if not verify_session_cookie(pims_sess):
-        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
-    if not RPD_SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=503, detail="Supabase not configured")
-
-    rows = await _fetch_staging_rows(payload.ids)
-    if not rows:
-        raise HTTPException(status_code=404, detail="No rows found.")
-
+async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
+    """Build the PIMS_Staging-format workbook (with thumbnails) from a list
+    of row dicts. Used by both the staging export and the site-visit
+    xlsx report so the two outputs stay byte-identical in shape."""
     navy = "0A1628"
     white = "FFFFFF"
     border_c = "D1D5DB"
@@ -1849,6 +1838,25 @@ async def download_staging_xlsx(
     buf_out = BytesIO()
     wb.save(buf_out)
     buf_out.seek(0)
+    return buf_out
+
+
+@router.post("/staging/rpd/xlsx")
+async def download_staging_xlsx(
+    request: Request,
+    payload: StagingExportRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    rows = await _fetch_staging_rows(payload.ids)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No rows found.")
+
+    buf_out = await _build_staging_format_xlsx(rows)
     fname = f"PIMS_Staging_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
         buf_out,
@@ -2665,6 +2673,32 @@ async def _fetch_observations_for_site(site_id: str) -> list[dict]:
         )
 
 
+@router.get("/sites/active")
+async def list_active_sites(
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """List all active sites (no project_value gate). Used by the
+    Site Visit Report xlsx modal which does not need project_value."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/sites",
+            headers=headers,
+            params={
+                "select": "id,address_raw",
+                "active": "eq.true",
+                "order": "address_raw.asc",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+
 @router.get("/sites/eligible")
 async def list_eligible_sites(
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
@@ -2791,6 +2825,91 @@ async def generate_audit_report_rpd(
 # ─────────────────────────────────────────────────────────────────────────────
 # Site Visit Report (Phase 4 of docs/pims_site_visit_report_spec.md)
 # ─────────────────────────────────────────────────────────────────────────────
+
+class SiteVisitXlsxRequest(BaseModel):
+    site_ids: list[str] = Field(..., min_length=1, description="canonical sites.id (uuid) list")
+    date_from: str = Field(..., description="ISO date inclusive lower bound (observation_date)")
+    date_to: str = Field(..., description="ISO date inclusive upper bound (observation_date)")
+
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+async def _fetch_observations_for_sites(
+    site_ids: list[str], date_from: str, date_to: str,
+) -> list[dict]:
+    """Fetch approved, non-staging observations for the given sites within the
+    inclusive date window. Paginates via PostgREST Range headers."""
+    base_headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+    params = {
+        "select": OBSERVATION_SELECT_COLUMNS + ",monitoring_note,recommendation",
+        "site_id": f"in.({','.join(site_ids)})",
+        "staging": "eq.false",
+        "review_status": "eq.Approved",
+        "observation_date": f"gte.{date_from}",
+        "and": f"(observation_date.lte.{date_to})",
+        "order": "site_address.asc,observation_date.asc,seq_no.asc",
+    }
+    out: list[dict] = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for page in range(_OBS_MAX_PAGES):
+            start = page * _OBS_PAGE_SIZE
+            end = start + _OBS_PAGE_SIZE - 1
+            headers = {**base_headers, "Range-Unit": "items", "Range": f"{start}-{end}"}
+            r = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                headers=headers,
+                params=params,
+            )
+            r.raise_for_status()
+            batch = r.json()
+            out.extend(batch)
+            if len(batch) < _OBS_PAGE_SIZE:
+                return out
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Observation pagination exceeded {_OBS_MAX_PAGES} pages "
+                "for site-visit xlsx export."
+            ),
+        )
+
+
+@router.post("/site-visit-report/xlsx")
+async def generate_site_visit_xlsx(
+    body: SiteVisitXlsxRequest,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Site visit report in PIMS_Staging xlsx format, scoped to the chosen
+    sites and observation_date window. Includes thumbnails."""
+    if not verify_session_cookie(pims_sess):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    site_ids = _validate_uuids(body.site_ids)
+    if not site_ids:
+        raise HTTPException(status_code=422, detail="site_ids required")
+    if not (_ISO_DATE_RE.match(body.date_from) and _ISO_DATE_RE.match(body.date_to)):
+        raise HTTPException(status_code=422, detail="date_from and date_to must be YYYY-MM-DD")
+    if body.date_from > body.date_to:
+        raise HTTPException(status_code=422, detail="date_from must be <= date_to")
+
+    rows = await _fetch_observations_for_sites(site_ids, body.date_from, body.date_to)
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail="No observations found for the selected sites and date range.",
+        )
+
+    buf_out = await _build_staging_format_xlsx(rows)
+    fname = f"Site_Visit_Report_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buf_out,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
+
 
 class SiteVisitReportRequest(BaseModel):
     site_id: str = Field(..., description="canonical sites.id (uuid)")
