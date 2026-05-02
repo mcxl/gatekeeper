@@ -2696,12 +2696,12 @@ async function openAuditReportModal() {
     modal.innerHTML = `
       <div style="background:#fff;padding:24px;border-radius:8px;min-width:480px;max-width:90vw;max-height:85vh;overflow:auto;color:#111;">
         <h3 style="margin-top:0;">Generate Site Visit Report (xlsx)</h3>
-        <p style="font-size:13px;color:#555;margin:0 0 6px;">Select one or more sites (Ctrl/Shift-click) and the observation date range. Output is the PIMS_Staging xlsx format with photo thumbnails.</p>
+        <p style="font-size:13px;color:#555;margin:0 0 6px;">Tick one or more sites and pick the observation date range. Output is the PIMS_Staging xlsx format with photo thumbnails.</p>
         <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
         <label style="font-size:12px;color:#374151;display:block;margin-bottom:4px;">
           <input type="checkbox" id="auditReportSelectAll" onchange="toggleAuditReportAll()"> Select all
         </label>
-        <select id="auditReportSites" multiple size="12" style="width:100%;padding:6px;"></select>
+        <div id="auditReportSites" style="width:100%;max-height:280px;overflow-y:auto;border:1px solid #d1d5db;border-radius:4px;padding:6px 10px;background:#fff;"></div>
         <div style="display:flex;gap:12px;margin-top:12px;">
           <label style="flex:1;font-size:12px;color:#374151;">From
             <input type="date" id="auditReportFrom" style="width:100%;padding:6px;">
@@ -2736,10 +2736,17 @@ async function openAuditReportModal() {
       return;
     }
     sites.forEach(site => {
-      const o = document.createElement('option');
-      o.value = site.id;
-      o.textContent = site.address_raw;
-      tgt.appendChild(o);
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:#111;cursor:pointer;border-bottom:1px solid #f3f4f6;';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'auditReportSiteCb';
+      cb.value = site.id;
+      const span = document.createElement('span');
+      span.textContent = site.address_raw;
+      row.appendChild(cb);
+      row.appendChild(span);
+      tgt.appendChild(row);
     });
     // Default date range: last 30 days through today.
     const today = new Date();
@@ -2756,13 +2763,14 @@ async function openAuditReportModal() {
 
 function toggleAuditReportAll() {
   const all = document.getElementById('auditReportSelectAll').checked;
-  const sel = document.getElementById('auditReportSites');
-  Array.from(sel.options).forEach(o => { o.selected = all; });
+  document.querySelectorAll('#auditReportSites .auditReportSiteCb')
+    .forEach(cb => { cb.checked = all; });
 }
 
 async function submitAuditReport() {
-  const sel = document.getElementById('auditReportSites');
-  const site_ids = Array.from(sel.selectedOptions).map(o => o.value);
+  const site_ids = Array.from(
+    document.querySelectorAll('#auditReportSites .auditReportSiteCb:checked')
+  ).map(cb => cb.value);
   if (site_ids.length === 0) { alert('Select at least one site.'); return; }
   const date_from = document.getElementById('auditReportFrom').value;
   const date_to = document.getElementById('auditReportTo').value;
