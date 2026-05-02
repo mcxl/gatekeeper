@@ -1705,10 +1705,20 @@ async def download_staging_docx(
     )
 
 
-async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
+async def _build_staging_format_xlsx(
+    rows: list[dict], *, presentation: bool = False,
+) -> BytesIO:
     """Build the PIMS_Staging-format workbook (with thumbnails) from a list
     of row dicts. Used by both the staging export and the site-visit
-    xlsx report so the two outputs stay byte-identical in shape."""
+    xlsx report.
+
+    presentation=False (default): full round-trip layout with the upload
+    instruction banner and raw column names, used by the staging export
+    so the file can be re-uploaded.
+    presentation=True: site-visit report layout — instruction banner
+    removed, headers prettified, columns E and M-T hidden, landscape +
+    narrow margins, opens in page-break preview.
+    """
     navy = "0A1628"
     white = "FFFFFF"
     border_c = "D1D5DB"
@@ -1721,9 +1731,13 @@ async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
         s = Side(style="thin", color=border_c)
         return Border(top=s, left=s, bottom=s, right=s)
 
-    hdr_font = Font(name="Aptos", bold=True, color=white, size=9)
+    if presentation:
+        hdr_font = Font(name="Aptos", bold=True, color=white, size=10)
+        data_font = Font(name="Aptos", size=10, color=text_c)
+    else:
+        hdr_font = Font(name="Aptos", bold=True, color=white, size=9)
+        data_font = Font(name="Aptos", size=8.5, color=text_c)
     hdr_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    data_font = Font(name="Aptos", size=8.5, color=text_c)
 
     upload_headers = [
         "id", "photo", "site_address", "audit_date", "observation_text",
@@ -1733,35 +1747,85 @@ async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
         "monitoring_note", "legal_ref", "photo_refs",
         "prepared_by", "source_pdf", "section", "needs_review",
     ]
-    header_widths = {
+    # Site Visit Report template column widths and display header labels
+    # (from pims/Site_Visit_Report_template.xlsx, row 1).
+    presentation_labels = {
+        "id": "id", "photo": "photo", "site_address": "site address",
+        "audit_date": "audit date", "observation_text": "observation_text",
+        "observation_text_enriched": "finding",
+        "conformance_status": "conformance status", "ccvs_code": "ccvs code",
+        "ccvs_category": "ccvs category", "action_description": "action description",
+        "responsible": "responsible", "due_category": "due category",
+        "recommendation": "recommendation", "monitoring_note": "monitoring note",
+        "legal_ref": "legal ref", "photo_refs": "photo refs",
+        "prepared_by": "prepared by", "source_pdf": "source pdf",
+        "section": "section", "needs_review": "needs review",
+    }
+    presentation_widths = {
+        "id": 5.66, "photo": 14.55, "site_address": 9.0, "audit_date": 8.78,
+        "observation_text": 42.0, "observation_text_enriched": 24.22,
+        "conformance_status": 11.22, "ccvs_code": 7.11, "ccvs_category": 9.22,
+        "action_description": 18.89, "responsible": 11.11, "due_category": 12.22,
+        "recommendation": 18.11, "monitoring_note": 18.89, "legal_ref": 21.0,
+        "photo_refs": 11.22, "prepared_by": 14.66, "source_pdf": 14.66,
+        "section": 14.66, "needs_review": 14.66,
+    }
+    upload_widths = {
         "id": 38, "photo": 22, "site_address": 28, "audit_date": 12,
         "observation_text": 42, "observation_text_enriched": 42,
+    }
+    # Per template: hide observation_text (E) and recommendation..needs_review (M-T).
+    presentation_hidden = {
+        "observation_text", "recommendation", "monitoring_note", "legal_ref",
+        "photo_refs", "prepared_by", "source_pdf", "section", "needs_review",
     }
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Observations"
 
-    ws.cell(
-        row=1, column=1,
-        value=(
-            "Edit site_address, observation_text (Observation) and "
-            "observation_text_enriched (Finding) then re-upload. Rows with "
-            "an 'id' value will UPDATE the existing staging row; rows "
-            "without an id will be inserted as new observations. Do not "
-            "rename this sheet or move the header row."
-        ),
-    )
-    ws.cell(row=1, column=1).font = Font(name="Aptos", bold=True, size=10)
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(upload_headers))
+    if presentation:
+        header_row = 1
+        data_start_row = 2
+    else:
+        header_row = 3
+        data_start_row = 5
+        ws.cell(
+            row=1, column=1,
+            value=(
+                "Edit site_address, observation_text (Observation) and "
+                "observation_text_enriched (Finding) then re-upload. Rows with "
+                "an 'id' value will UPDATE the existing staging row; rows "
+                "without an id will be inserted as new observations. Do not "
+                "rename this sheet or move the header row."
+            ),
+        )
+        ws.cell(row=1, column=1).font = Font(name="Aptos", bold=True, size=10)
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(upload_headers))
 
     for c, name in enumerate(upload_headers, 1):
-        hc = ws.cell(row=3, column=c, value=name)
+        label = presentation_labels[name] if presentation else name
+        hc = ws.cell(row=header_row, column=c, value=label)
         hc.font = hdr_font
         hc.fill = solid(navy)
         hc.alignment = hdr_align
         hc.border = bdr()
-        ws.column_dimensions[get_column_letter(c)].width = header_widths.get(name, 22)
+        if presentation:
+            col_dim = ws.column_dimensions[get_column_letter(c)]
+            col_dim.width = presentation_widths.get(name, 14.66)
+            if name in presentation_hidden:
+                col_dim.hidden = True
+        else:
+            ws.column_dimensions[get_column_letter(c)].width = upload_widths.get(name, 22)
+    if presentation:
+        ws.row_dimensions[header_row].height = 25.2
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+        ws.page_margins = PageMargins(
+            left=0.25, right=0.25, top=0.75, bottom=0.75, header=0.3, footer=0.3,
+        )
+        ws.sheet_view.view = "pageBreakPreview"
+        ws.sheet_view.zoomScale = 100
+        ws.sheet_view.zoomScaleSheetLayoutView = 100
 
     today_iso = date.today().isoformat()
 
@@ -1775,7 +1839,7 @@ async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
         return t if t in {"Compliant", "Conditional", "Info"} else ""
 
     for i, row_data in enumerate(rows):
-        r_num = i + 5
+        r_num = i + data_start_row
         legal_ref_val = row_data.get("legal_ref") or row_data.get("legal_reference") or ""
         audit_date_val = row_data.get("audit_date") or row_data.get("observation_date") or today_iso
         audit_date_str = str(audit_date_val)[:10]
@@ -1816,9 +1880,10 @@ async def _build_staging_format_xlsx(rows: list[dict]) -> BytesIO:
         images = [None] * len(rows)
 
     THUMB_PX = 120
-    ws.column_dimensions[photo_col_letter].width = 20
+    if not presentation:
+        ws.column_dimensions[photo_col_letter].width = 20
     for i, img_bytes in enumerate(images):
-        r_num = i + 5
+        r_num = i + data_start_row
         if not img_bytes:
             continue
         try:
@@ -2848,7 +2913,7 @@ async def _fetch_observations_for_sites(
         "review_status": "eq.Approved",
         "observation_date": f"gte.{date_from}",
         "and": f"(observation_date.lte.{date_to})",
-        "order": "site_address.asc,observation_date.asc,seq_no.asc",
+        "order": "observation_date.desc,site_address.asc,seq_no.desc",
     }
     out: list[dict] = []
     async with httpx.AsyncClient(timeout=30) as client:
@@ -2902,7 +2967,7 @@ async def generate_site_visit_xlsx(
             detail="No observations found for the selected sites and date range.",
         )
 
-    buf_out = await _build_staging_format_xlsx(rows)
+    buf_out = await _build_staging_format_xlsx(rows, presentation=True)
     fname = f"Site_Visit_Report_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
         buf_out,
