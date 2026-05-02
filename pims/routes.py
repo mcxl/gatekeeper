@@ -1838,6 +1838,13 @@ async def _build_staging_format_xlsx(
         t = s.title()
         return t if t in {"Compliant", "Conditional", "Info"} else ""
 
+    status_fills = {
+        "Compliant":   "DCFCE7",
+        "Conditional": "FEF3C7",
+        "NCR":         "FECACA",
+        "Info":        "DBEAFE",
+    }
+
     for i, row_data in enumerate(rows):
         r_num = i + data_start_row
         legal_ref_val = row_data.get("legal_ref") or row_data.get("legal_reference") or ""
@@ -1864,12 +1871,6 @@ async def _build_staging_format_xlsx(
             "source_pdf": row_data.get("source_pdf") or "",
             "section": row_data.get("section") or "",
             "needs_review": row_data.get("needs_review") if row_data.get("needs_review") is not None else "",
-        }
-        status_fills = {
-            "Compliant":   "DCFCE7",  # green
-            "Conditional": "FEF3C7",  # amber
-            "NCR":         "FECACA",  # red
-            "Info":        "DBEAFE",  # blue
         }
         for c, name in enumerate(upload_headers, 1):
             cell = ws.cell(row=r_num, column=c, value=values.get(name, ""))
@@ -2916,15 +2917,21 @@ async def _fetch_observations_for_sites(
     """Fetch approved, non-staging observations for the given sites within the
     inclusive date window. Paginates via PostgREST Range headers."""
     base_headers = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
-    params = {
-        "select": OBSERVATION_SELECT_COLUMNS + ",monitoring_note,recommendation",
-        "site_id": f"in.({','.join(site_ids)})",
-        "staging": "eq.false",
-        "review_status": "eq.Approved",
-        "observation_date": f"gte.{date_from}",
-        "and": f"(observation_date.lte.{date_to})",
-        "order": "observation_date.desc,site_address.asc,seq_no.desc",
-    }
+    # NOTE: monitoring_note/recommendation are appended to the shared
+    # OBSERVATION_SELECT_COLUMNS string. If either is later added to that
+    # constant this would duplicate the column in the select list.
+    select_cols = OBSERVATION_SELECT_COLUMNS + ",monitoring_note,recommendation"
+    # Use a list of tuples so we can repeat observation_date for the
+    # date-range bounds without PostgREST's awkward and(...) syntax.
+    params = [
+        ("select", select_cols),
+        ("site_id", f"in.({','.join(site_ids)})"),
+        ("staging", "eq.false"),
+        ("review_status", "eq.Approved"),
+        ("observation_date", f"gte.{date_from}"),
+        ("observation_date", f"lte.{date_to}"),
+        ("order", "observation_date.desc,site_address.asc,seq_no.desc"),
+    ]
     out: list[dict] = []
     async with httpx.AsyncClient(timeout=30) as client:
         for page in range(_OBS_MAX_PAGES):
