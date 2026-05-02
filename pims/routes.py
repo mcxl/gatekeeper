@@ -1865,11 +1865,21 @@ async def _build_staging_format_xlsx(
             "section": row_data.get("section") or "",
             "needs_review": row_data.get("needs_review") if row_data.get("needs_review") is not None else "",
         }
+        status_fills = {
+            "Compliant":   "DCFCE7",  # green
+            "Conditional": "FEF3C7",  # amber
+            "NCR":         "FECACA",  # red
+            "Info":        "DBEAFE",  # blue
+        }
         for c, name in enumerate(upload_headers, 1):
             cell = ws.cell(row=r_num, column=c, value=values.get(name, ""))
             cell.font = data_font
             cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             cell.border = bdr()
+            if presentation and name == "conformance_status":
+                hex_fill = status_fills.get(values["conformance_status"])
+                if hex_fill:
+                    cell.fill = solid(hex_fill)
 
     photo_col_idx = upload_headers.index("photo") + 1
     photo_col_letter = get_column_letter(photo_col_idx)
