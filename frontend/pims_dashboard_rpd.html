@@ -775,15 +775,23 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 
 .manager-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 2fr) minmax(180px, 1fr) minmax(180px, 1fr);
-  gap: 14px;
-  padding: 14px;
+  grid-template-columns: minmax(420px, 3fr) minmax(170px, 1fr) minmax(170px, 1fr);
+  gap: 10px;
+  padding: 10px;
 }
-.manager-main,
+.manager-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
 .manager-side {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+@media (max-width: 1100px) {
+  .manager-main { grid-template-columns: 1fr; }
 }
 .manager-panel {
   border: 1px solid var(--border);
@@ -795,12 +803,12 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   overflow: visible;
 }
 .manager-panel-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--text-secondary);
-  padding: 10px 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border);
 }
 .manager-site-table td {
@@ -814,32 +822,32 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-  padding: 12px;
+  padding: 8px 10px;
 }
 .metric-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 .metric-value {
-  font-size: 32px;
+  font-size: 22px;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
   color: var(--text-primary);
   font-weight: 800;
-  margin-top: 6px;
+  margin-top: 3px;
 }
 .metric-sub {
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 2px;
+  font-size: 10px;
   color: var(--text-light);
 }
 .metric-progress {
-  margin-top: 8px;
+  margin-top: 5px;
   width: 100%;
-  height: 7px;
+  height: 5px;
   border-radius: 999px;
   background: var(--card);
   overflow: hidden;
@@ -852,8 +860,8 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
   transition: width 0.3s ease;
 }
 .metric-delta {
-  margin-top: 8px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: 10px;
   font-weight: 700;
 }
 .delta-good { color: var(--green-text); }
@@ -876,8 +884,8 @@ table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--am
 .ccvs-bars {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 5px;
+  padding: 8px 10px;
 }
 .ccvs-row {
   display: grid;
