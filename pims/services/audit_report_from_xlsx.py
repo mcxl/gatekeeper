@@ -1010,7 +1010,10 @@ def _obs_paragraphs(o: ParsedObs) -> list[list[tuple[str, bool]]]:
     # `recommendation`. `action_description` is the operational action-register
     # entry and is rendered separately. Fall back to action_description only
     # for legacy rows that pre-date the recommendation field.
-    add("Recommendation", o.recommendation or o.action_description)
+    if (o.recommendation or "").strip():
+        add("Recommendation", o.recommendation)
+    elif (o.action_description or "").strip():
+        add("Required action", o.action_description)
     add("Due Category", o.due_category)
     return paras
 
@@ -1657,24 +1660,28 @@ def _insert_findings_after_summary(
     # Findings header
     last_el = _new_p_after(last_el, [("Findings", True)])
     for status, n, m in findings:
-        title = (m.obs.ccvs_category or "").strip().split("–")[0].strip()
+        title = (m.obs.ccvs_category or "").strip()
         if not title:
             base = (m.obs.finding or m.obs.observation_text or "").strip()
             title = base.split(".")[0][:80]
         finding_text = (m.obs.finding or m.obs.observation_text or "").strip()
-        # Polished report-narrative paragraph from `recommendation`; legacy
-        # fallback to `action_description` for rows pre-dating the field.
-        recommendation = (m.obs.recommendation or m.obs.action_description or "").strip()
+        rec_text = (m.obs.recommendation or "").strip()
+        action_text = (m.obs.action_description or "").strip()
         runs: list[tuple[str, bool]] = [
             (f"{status} #{n}. ", True),
             (f"{title} – ", True),
             (finding_text, False),
         ]
         last_el = _new_p_after(last_el, runs)
-        if recommendation:
+        if rec_text:
             last_el = _new_p_after(last_el, [
                 ("Recommendation: ", True),
-                (recommendation, False),
+                (rec_text, False),
+            ])
+        elif action_text:
+            last_el = _new_p_after(last_el, [
+                ("Required action: ", True),
+                (action_text, False),
             ])
 
 
