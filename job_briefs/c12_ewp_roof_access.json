@@ -1,0 +1,20 @@
+{
+  "customer": "mcxi.co",
+  "project": "EWP roof access for guttering and flashing replacement on 2-storey commercial building with overhead power lines",
+  "job_type": "maintenance",
+  "scope_modifiers": [
+    "occupied_building",
+    "overhead_power_lines"
+  ],
+  "scope_of_works": "Boom lift EWP used to access roof perimeter for removal of damaged guttering and flashing, and installation of new Colorbond guttering and flashing on a 2-storey commercial building. Overhead power lines run along one elevation. Workers transfer from EWP basket onto the roof via the perimeter to access install zones, returning to the basket for descent. Applicable HRCW: risk of a person falling more than 2 metres; movement of powered mobile plant (boom lift EWP); work in proximity to energised electrical installations (overhead power lines).",
+  "quick_scan_focus": [
+    "EWP positioning and ground bearing controls",
+    "overhead power line clearance (minimum 3 m)",
+    "EWP-to-roof transfer point controls (gap, anchor, spotter)",
+    "rescue plan and operator competency",
+    "occupied building and pedestrian interface",
+    "weather and wind OEM limits"
+  ],
+  "last_used": "2026-05-03T00:00:00Z",
+  "jobs_run": 0
+}
