@@ -43,6 +43,14 @@ def main() -> int:
                    help="Override Prepared by on the cover.")
     p.add_argument("--out", type=Path, default=None,
                    help="Output directory (defaults to xlsx_path.parent).")
+    enrich = p.add_mutually_exclusive_group()
+    enrich.add_argument("--enrich-findings", dest="enrich_findings",
+                        action="store_true", default=None,
+                        help="Enable wording-enrichment staging stage "
+                             "(overrides PIMS_ENRICH_FINDINGS env var).")
+    enrich.add_argument("--no-enrich-findings", dest="enrich_findings",
+                        action="store_false",
+                        help="Disable wording-enrichment staging stage.")
     args = p.parse_args()
 
     if not args.xlsx_path.exists():
@@ -57,7 +65,9 @@ def main() -> int:
         return 2
 
     ext, payload = asyncio.run(
-        audit_report_from_xlsx.build(raw, args.prepared_by)
+        audit_report_from_xlsx.build(
+            raw, args.prepared_by, enrich_findings=args.enrich_findings,
+        )
     )
     out_dir = args.out or args.xlsx_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)

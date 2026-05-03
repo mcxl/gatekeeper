@@ -2120,8 +2120,12 @@ def _fallback_match_unmatched(
 async def _build_one_site(
     ix: TemplateIndex, site_address: str, site_obs: list[ParsedObs],
     prepared_by_override: str | None,
+    enrich_findings_override: bool | None = None,
 ) -> tuple[str, bytes]:
     await proofread_observations(site_obs)
+    # Wording-enrichment staging stage (no-op unless feature flag is on).
+    from pims.services.finding_enricher import enrich_findings
+    await enrich_findings(site_obs, enabled=enrich_findings_override)
     chosen_tier = await probe_planning_tier(ix, site_obs)
     mapping = await map_observations(ix, chosen_tier, site_obs)
     _fallback_match_unmatched(_active_items(ix, chosen_tier), mapping)
@@ -2153,7 +2157,11 @@ async def _build_one_site(
     return safe_addr, payload
 
 
-async def build(xlsx_bytes: bytes, prepared_by: str | None = None) -> tuple[str, bytes]:
+async def build(
+    xlsx_bytes: bytes,
+    prepared_by: str | None = None,
+    enrich_findings: bool | None = None,
+) -> tuple[str, bytes]:
     """Build one or more audit reports from a Site_Visit_Report-format xlsx.
 
     Returns ``(".docx", bytes)`` for a single-site upload, or
@@ -2171,13 +2179,17 @@ async def build(xlsx_bytes: bytes, prepared_by: str | None = None) -> tuple[str,
 
     if len(grouped) == 1:
         site, rows = next(iter(grouped.items()))
-        _, payload = await _build_one_site(ix, site, rows, prepared_by)
+        _, payload = await _build_one_site(
+            ix, site, rows, prepared_by, enrich_findings,
+        )
         return ".docx", payload
 
     # Multi-site: build sequentially (cache reuse benefits second-Nth call).
     results: list[tuple[str, bytes]] = []
     for site, rows in grouped.items():
-        safe, payload = await _build_one_site(ix, site, rows, prepared_by)
+        safe, payload = await _build_one_site(
+            ix, site, rows, prepared_by, enrich_findings,
+        )
         results.append((safe, payload))
 
     zip_buf = BytesIO()
