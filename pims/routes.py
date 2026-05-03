@@ -363,6 +363,97 @@ async def enrich_and_update(
         log.error(f"Background patch exception for {record_id}: {e}")
 
 
+async def _record_precedent_feedback(
+    *,
+    client: httpx.AsyncClient,
+    staging: dict,
+    new_obs: dict,
+    staging_id: str,
+    headers_repr: dict,
+    headers_minimal: dict,
+    now_utc: str,
+) -> None:
+    """Slice 4 — additive approval feedback loop.
+
+    On approval, when the staging row used precedents AND has a
+    non-empty recommendation AND status is NCR/Conditional:
+      1. Insert a NEW pims_precedent_examples row with
+         source_kind='pims_approved' (ignore-duplicates).
+      2. Increment usage_count + last_used_at on each matched precedent.
+      3. Set staging.precedent_usage_recorded_at to prevent
+         double-counting on demote/re-approve cycles.
+
+    Idempotent: bails immediately if precedent_usage_recorded_at is
+    already set on the staging row.
+    """
+    if staging.get("precedent_usage_recorded_at"):
+        return
+    matched_ids = staging.get("precedent_example_ids") or []
+    status = staging.get("conformance_status")
+    recommendation = staging.get("recommendation")
+    obs_text = staging.get("observation_text")
+    if status not in ("NCR", "Conditional"):
+        return
+    if not matched_ids or not recommendation or not obs_text:
+        return
+
+    new_obs_id = (new_obs or {}).get("id")
+    if not new_obs_id:
+        return
+
+    # 1. Insert precedent feedback row.
+    feedback_row = {
+        "source_kind":           "pims_approved",
+        "source_file":           f"pims_obs_{new_obs_id}",
+        "source_item_key":       str(new_obs_id),
+        "finding_text":          staging.get("observation_text_enriched"),
+        "recommendation_text":   recommendation,
+        "observation_text":      obs_text,
+        "ccvs_code":             staging.get("ccvs_code"),
+        "ccvs_category":         staging.get("ccvs_category"),
+        "section_name":          None,
+        "status_normalized":     status,
+        "source_observation_id": str(new_obs_id),
+    }
+    r = await client.post(
+        f"{RPD_SUPABASE_URL}/rest/v1/pims_precedent_examples",
+        headers={**headers_minimal,
+                 "Prefer": "resolution=ignore-duplicates,return=minimal"},
+        params={"on_conflict": "source_kind,source_file,source_item_key"},
+        json=feedback_row,
+    )
+    if r.status_code not in (200, 201, 204):
+        log.warning(f"precedent feedback insert failed: {r.status_code} {r.text[:200]}")
+
+    # 2. Increment usage_count on matched precedents.
+    for pid in matched_ids:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_precedent_examples",
+            headers=headers_repr,
+            params={"id": f"eq.{pid}", "select": "usage_count"},
+        )
+        if r.status_code != 200:
+            continue
+        rows = r.json()
+        if not rows:
+            continue
+        current = rows[0].get("usage_count") or 0
+        await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_precedent_examples",
+            headers=headers_minimal,
+            params={"id": f"eq.{pid}"},
+            json={"usage_count": current + 1, "last_used_at": now_utc},
+        )
+
+    # 3. Mark staging row to prevent double-counting.
+    await client.patch(
+        f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+        headers=headers_minimal,
+        params={"id": f"eq.{staging_id}"},
+        json={"precedent_usage_recorded_at": now_utc},
+    )
+
+
 async def upload_photo_background(
     supabase_url: str,
     supabase_service_key: str,
@@ -772,6 +863,22 @@ async def approve_staging_rpd(
                 status_code=500,
                 detail="Observation promoted but status update failed. Contact administrator.",
             )
+
+        # ── Slice 4: precedent feedback loop ─────────────────────────
+        # Additive only. Wrapped in try/except — failures log but never
+        # fail the approval response.
+        try:
+            await _record_precedent_feedback(
+                client=client,
+                staging=staging,
+                new_obs=new_obs,
+                staging_id=staging_id,
+                headers_repr=headers_repr,
+                headers_minimal=headers_minimal,
+                now_utc=now_utc,
+            )
+        except Exception as e:
+            log.warning(f"precedent feedback failed for {staging_id}: {e}")
 
         ccvs = staging.get("ccvs_code")
         response = {
