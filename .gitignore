@@ -31,6 +31,16 @@ patch_*.py
 
 # PIMS audit-report runtime cache
 pims/data/
+
+# PIMS screenshots and report spreadsheets
+pims/Screenshot *.png
+pims/Site_Visit_Report_*.xlsx
+pims/Field Capture Platform/
+
+# Data captures (jsonl)
+src/data/procore_payloads.jsonl
+src/data/procore_reviews.jsonl
+src/data/consultant_edits.jsonl
 *.pdf
 real_job_*.docx
 real_job_*.pdf
