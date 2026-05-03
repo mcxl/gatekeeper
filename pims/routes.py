@@ -116,8 +116,14 @@ STAGING_COPY_FIELDS = [
     "enriched", "enriched_at", "conformance_status", "ccvs_code",
     "ccvs_category", "ccvs_confidence", "action_required",
     "action_description", "responsible", "due_category", "monitoring_note",
-    "observation_text_enriched", "legal_reference",
+    "observation_text_enriched", "legal_reference", "recommendation",
 ]
+# Field semantics:
+#   recommendation     = polished report-narrative paragraph (appears in the
+#                        Recommendation column of the audit report).
+#   action_description = short operational action / register entry (imperative,
+#                        owner/date-bearing; appears in the Open Actions Register).
+# These are distinct outputs and must not be conflated in renderers.
 
 # â”€â”€ Request / Response models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -2885,14 +2891,19 @@ async def generate_audit_report_rpd(
             if o.get("audit_id"):
                 audit_ref = await _fetch_audit_ref(o["audit_id"])
                 break
-        # Pre-fetch photos for open-action observations so the renderer can
-        # embed them inline rather than link to Supabase URLs.
-        oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
-        oa_photo_bytes = await _fetch_images(oa_photo_urls) if oa_photo_urls else []
-        oa_photo_bytes_by_obs_id: dict[str, bytes] = {}
-        for o, b in zip(open_actions, oa_photo_bytes):
+        # Pre-fetch photos for ALL observations so the renderer can embed
+        # inline thumbnails on both Open Actions and matched checklist rows.
+        all_photo_urls = [o.get("photo_url") or "" for o in obs]
+        all_photo_bytes = await _fetch_images(all_photo_urls) if all_photo_urls else []
+        obs_photo_bytes_by_obs_id: dict[str, bytes] = {}
+        for o, b in zip(obs, all_photo_bytes):
             if b:
-                oa_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
+                obs_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
+        oa_photo_bytes_by_obs_id: dict[str, bytes] = {
+            str(o.get("id") or ""): obs_photo_bytes_by_obs_id[str(o.get("id") or "")]
+            for o in open_actions
+            if str(o.get("id") or "") in obs_photo_bytes_by_obs_id
+        }
         sites_data.append(SiteData(
             address=s.get("address_raw") or "",
             project_value=s.get("project_value"),
@@ -2904,6 +2915,7 @@ async def generate_audit_report_rpd(
             inspection_datetime=body.inspection_datetime,
             audit_ref=audit_ref,
             open_action_photo_bytes_by_obs_id=oa_photo_bytes_by_obs_id,
+            obs_photo_bytes_by_obs_id=obs_photo_bytes_by_obs_id,
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)

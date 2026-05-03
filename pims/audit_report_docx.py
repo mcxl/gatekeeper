@@ -88,6 +88,8 @@ class SiteData:
     # Pre-fetched open-action photo bytes, keyed by observation id.
     # Populated by the route before calling build_audit_report_docx.
     open_action_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
+    # Photo bytes for any observation (matched-checklist embeds), keyed by observation id.
+    obs_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
 
 
 # Bold status palette for shaded cells — keyed by conformance_status.
@@ -351,6 +353,33 @@ _EXAMPLE_PARAGRAPH_PREFIXES = (
 
 _COVER_TITLE_SUFFIX = "Site Safety Audit Report"
 
+_MONTH_NAMES = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+
+
+def _format_audit_date(raw: str) -> str:
+    """Format an ISO-ish date/datetime string as 'D Month YYYY' (e.g.
+    '30 April 2026'). Returns '—' if parsing fails or input is empty."""
+    if not raw:
+        return "—"
+    s = str(raw).strip()
+    # Accept 'YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SS', 'YYYY-MM-DD HH:MM:SS'.
+    head = s.split("T", 1)[0].split(" ", 1)[0]
+    parts = head.split("-")
+    if len(parts) != 3:
+        return s
+    try:
+        year = int(parts[0])
+        month = int(parts[1])
+        day = int(parts[2])
+        if not (1 <= month <= 12):
+            return s
+        return f"{day} {_MONTH_NAMES[month - 1]} {year}"
+    except (TypeError, ValueError):
+        return s
+
 
 def _score_totals(sites: list["SiteData"]) -> dict:
     total_items = 0
@@ -454,6 +483,44 @@ def _set_cell_text_preserving_style(cell, text: str) -> None:
         extra._element.getparent().remove(extra._element)
 
 
+def _replace_inline_placeholder(doc, placeholder: str, value: str) -> int:
+    """Replace placeholder with value inline across body, table cells, and
+    section footers/headers. Preserves surrounding text by collapsing the
+    paragraph's runs into a single run when the placeholder is split across
+    runs. Returns count of replacements made."""
+    count = 0
+
+    def _walk_paragraphs(paragraphs):
+        nonlocal count
+        for p in paragraphs:
+            if placeholder not in p.text:
+                continue
+            new_text = p.text.replace(placeholder, value)
+            _clear_paragraph_runs(p)
+            p.add_run(new_text)
+            count += 1
+
+    def _walk_tables(tables):
+        for table in tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    _walk_paragraphs(cell.paragraphs)
+                    _walk_tables(cell.tables)
+
+    _walk_paragraphs(doc.paragraphs)
+    _walk_tables(doc.tables)
+    for section in doc.sections:
+        for hf in (section.header, section.footer,
+                   section.first_page_header, section.first_page_footer,
+                   section.even_page_header, section.even_page_footer):
+            try:
+                _walk_paragraphs(hf.paragraphs)
+                _walk_tables(hf.tables)
+            except Exception:
+                continue
+    return count
+
+
 def _find_paragraph_by_prefix(doc, prefix: str):
     for p in doc.paragraphs:
         if p.text.startswith(prefix):
@@ -498,11 +565,20 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
     else:
         log.warning("Cover title paragraph not found")
 
+    audit_date_formatted = _format_audit_date(inspection_datetime)
+
     paragraph_replacements = {
         "[Insert Site Address]": site_conducted,
         "[Insert Executive Summary]": exec_summary,
         "[Insert Score]": totals["score_text"],
     }
+
+    # Inline substitution for "[Insert Current Date]" — preserves any
+    # surrounding text such as the "Date: " footer prefix. Walks body
+    # paragraphs, every cell paragraph, and every section footer paragraph.
+    _replace_inline_placeholder(
+        doc, "[Insert Current Date]", audit_date_formatted,
+    )
     for placeholder, value in paragraph_replacements.items():
         p = _find_paragraph_by_prefix(doc, placeholder)
         if p is None:
@@ -630,6 +706,16 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
     if removed_scaffold == 0:
         log.warning("No scaffold 'Photo N' table found on cover to remove")
 
+    # --- Delete stray "Photo N" scaffold paragraphs --------------------
+    # Template paragraphs of the form "Photo 45", "Photo 46", … are layout
+    # scaffolds that bleed into the body when the renderer appends sites.
+    # Strip them anywhere in the doc; rendered photo captions use a leading
+    # italic small font and live inside table cells, so they are not affected.
+    _photo_label_re = re.compile(r"^\s*Photo\s+\d+\s*$", re.IGNORECASE)
+    for p in list(doc.paragraphs):
+        if _photo_label_re.match(p.text or ""):
+            _delete_paragraph(p)
+
 
 # ---------------------------------------------------------------------------
 # DOCX build
@@ -668,10 +754,18 @@ def _apply_status_cell(cell, status: str) -> None:
             run.font.color.rgb = rgb
 
 
-def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
+def _embed_photo(
+    cell,
+    photo_bytes: bytes | None,
+    fallback_text: str,
+    caption: str | None = None,
+) -> None:
     """Embed photo_bytes into cell as an inline image, or write fallback_text
     if bytes are absent or PIL/embed fails. Matches the thumbnail behaviour
-    of the staging-review DOCX path in pims/routes.py."""
+    of the staging-review DOCX path in pims/routes.py.
+
+    When caption is provided and the embed succeeds, the caption text is added
+    as a small italic line under the image (e.g. "Photo 12")."""
     if not photo_bytes:
         add_body_cell(cell, fallback_text)
         return
@@ -679,7 +773,7 @@ def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
         from io import BytesIO
         from PIL import Image as PILImage
         pil = PILImage.open(BytesIO(photo_bytes)).convert("RGB")
-        pil.thumbnail((300, 300), PILImage.LANCZOS)
+        pil.thumbnail((600, 600), PILImage.LANCZOS)
         buf = BytesIO()
         pil.save(buf, format="JPEG", quality=85)
         buf.seek(0)
@@ -688,6 +782,11 @@ def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
         for r in list(p.runs):
             r._element.getparent().remove(r._element)
         p.add_run().add_picture(buf, width=Cm(3.5))
+        if caption:
+            cap_p = cell.add_paragraph()
+            cap_run = cap_p.add_run(caption)
+            cap_run.italic = True
+            cap_run.font.size = Pt(8)
     except Exception:
         log.warning("Photo embed failed; falling back to text", exc_info=True)
         add_body_cell(cell, fallback_text)
@@ -697,6 +796,7 @@ def _open_actions_table(
     doc: Document,
     actions: list[dict],
     photo_bytes_by_obs_id: dict[str, bytes] | None = None,
+    photo_counter: list[int] | None = None,
 ) -> None:
     photo_bytes_by_obs_id = photo_bytes_by_obs_id or {}
     headers = ["#", "Status", "Photo", "Action", "Responsible", "Due", "CCVS"]
@@ -711,7 +811,12 @@ def _open_actions_table(
         add_body_cell(row.cells[1], status)
         _apply_status_cell(row.cells[1], status)
         obs_id = str(a.get("id") or "")
-        _embed_photo(row.cells[2], photo_bytes_by_obs_id.get(obs_id), "—")
+        photo_bytes = photo_bytes_by_obs_id.get(obs_id)
+        caption = None
+        if photo_bytes and photo_counter is not None:
+            photo_counter[0] += 1
+            caption = f"Photo {photo_counter[0]}"
+        _embed_photo(row.cells[2], photo_bytes, "—", caption=caption)
         # Action falls back to the enriched observation when no action
         # description is recorded.
         action_text = (
@@ -727,10 +832,38 @@ def _open_actions_table(
     set_table_borders(table)
 
 
+def _append_photo_to_cell(
+    cell, photo_bytes: bytes | None, caption: str | None = None,
+) -> None:
+    """Append an inline photo (and optional caption) as new paragraphs at the
+    end of cell, preserving any existing text. No-op if bytes absent."""
+    if not photo_bytes:
+        return
+    try:
+        from io import BytesIO
+        from PIL import Image as PILImage
+        pil = PILImage.open(BytesIO(photo_bytes)).convert("RGB")
+        pil.thumbnail((600, 600), PILImage.LANCZOS)
+        buf = BytesIO()
+        pil.save(buf, format="JPEG", quality=85)
+        buf.seek(0)
+        img_p = cell.add_paragraph()
+        img_p.add_run().add_picture(buf, width=Cm(3.5))
+        if caption:
+            cap_p = cell.add_paragraph()
+            cap_run = cap_p.add_run(caption)
+            cap_run.italic = True
+            cap_run.font.size = Pt(8)
+    except Exception:
+        log.warning("Inline photo embed failed", exc_info=True)
+
+
 def _checklist_row_block(
     doc: Document,
     row: ChecklistRow,
     matched_obs: dict | None,
+    photo_bytes_by_obs_id: dict[str, bytes] | None = None,
+    photo_counter: list[int] | None = None,
 ) -> None:
     t = doc.add_table(rows=2, cols=2)
     t.style = "Table Grid"
@@ -744,13 +877,19 @@ def _checklist_row_block(
             or ""
         )
         status = (matched_obs.get("conformance_status") or "").strip()
-        photo = matched_obs.get("photo_url") or ""
         # Status now lives in the cell shading — no "[STATUS] " prefix.
-        txt = finding
-        if photo:
-            txt += f"\nPhoto: {photo}"
-        add_controls_cell(t.rows[1].cells[1], txt)
-        _apply_status_cell(t.rows[1].cells[1], status)
+        result_cell = t.rows[1].cells[1]
+        add_controls_cell(result_cell, finding)
+        _apply_status_cell(result_cell, status)
+        photo_bytes = None
+        if photo_bytes_by_obs_id is not None:
+            obs_id = str(matched_obs.get("id") or "")
+            photo_bytes = photo_bytes_by_obs_id.get(obs_id)
+        if photo_bytes and photo_counter is not None:
+            photo_counter[0] += 1
+            _append_photo_to_cell(
+                result_cell, photo_bytes, f"Photo {photo_counter[0]}",
+            )
     else:
         add_controls_cell(t.rows[1].cells[1], reframe_instruction(row.instruction))
     set_col_widths(t, [7.0, 9.5])
@@ -885,12 +1024,19 @@ def _append_site(
     # Site title banner.
     _h(doc, f"Audit Report — {site.address}", size=16)
 
+    # Shared photo counter — ensures sequential "Photo N" captions across
+    # Open Actions and Part C checklist embeds within this site.
+    photo_counter: list[int] = [0]
+
     # Part A — Open Actions Register (leads the body so what's wrong and
     # what's being done about it is the first thing the reader sees).
     _h(doc, "Part A — Open Actions Register", size=13)
     if site.open_actions:
         _open_actions_table(
-            doc, site.open_actions, site.open_action_photo_bytes_by_obs_id,
+            doc,
+            site.open_actions,
+            site.open_action_photo_bytes_by_obs_id,
+            photo_counter=photo_counter,
         )
     else:
         _p(doc, "No open actions.")
@@ -968,7 +1114,13 @@ def _append_site(
                 len(row_matches), row.category, row.criteria,
             )
         for obs in row_matches:
-            _checklist_row_block(doc, row, obs)
+            _checklist_row_block(
+                doc,
+                row,
+                obs,
+                photo_bytes_by_obs_id=site.obs_photo_bytes_by_obs_id,
+                photo_counter=photo_counter,
+            )
 
     _flush_category()
 
@@ -1005,6 +1157,9 @@ def build_audit_report_docx(
                 audit_ref=s.get("audit_ref", "") or "",
                 open_action_photo_bytes_by_obs_id=(
                     s.get("open_action_photo_bytes_by_obs_id") or {}
+                ),
+                obs_photo_bytes_by_obs_id=(
+                    s.get("obs_photo_bytes_by_obs_id") or {}
                 ),
             )
         if s.project_value is None:
