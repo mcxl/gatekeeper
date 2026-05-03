@@ -171,7 +171,8 @@ Given a field observation from a site safety audit, return a JSON object with:
   "due_category": "Immediate" | "Next audit" | "Ongoing" | "N/A",
   "monitoring_note": what to verify at next audit or null,
   "observation_text_enriched": a professional rewrite of the observation in plain Australian English, suitable for a formal WHS audit report. 2-3 sentences. Must include the hazard, the finding, and the implication. For NCR status, the enriched text MUST also cite the specific NSW WHS Regulation 2017 clause inline (e.g. "...breaching NSW WHS Regulation 2017 cl 37.") in addition to populating legal_reference,
-  "legal_reference": the single most relevant NSW legal reference. REQUIRED for NCR status and must cite a specific NSW WHS Regulation 2017 clause (e.g. "NSW WHS Regulation 2017 cl 79" or "NSW WHS Regulation 2017 cl 228-244"); a SafeWork NSW Code of Practice section may be appended after a semicolon but must never replace the regulation clause. For Conditional status, prefer a NSW WHS Regulation 2017 clause, fall back to WHS Act 2011 s19 or a COP. For Compliant status, any of the three formats is acceptable. Null only if Info status. Format examples: "NSW WHS Regulation 2017 cl 54" or "NSW WHS Regulation 2017 cl 228-244; SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2"
+  "legal_reference": the single most relevant NSW legal reference. REQUIRED for NCR status and must cite a specific NSW WHS Regulation 2017 clause (e.g. "NSW WHS Regulation 2017 cl 79" or "NSW WHS Regulation 2017 cl 228-244"); a SafeWork NSW Code of Practice section may be appended after a semicolon but must never replace the regulation clause. For Conditional status, prefer a NSW WHS Regulation 2017 clause, fall back to WHS Act 2011 s19 or a COP. For Compliant status, any of the three formats is acceptable. Null only if Info status. Format examples: "NSW WHS Regulation 2017 cl 54" or "NSW WHS Regulation 2017 cl 228-244; SafeWork NSW COP: Managing Risks of Falls at Workplaces s3.2",
+  "recommendation": polished consultant-style recommendation paragraph (2-3 sentences) suitable for the report Recommendation column. Distinct from action_description which is a short imperative for the action register. Must NOT echo or duplicate observation_text_enriched. Required for NCR and Conditional status. Null only for Info status.
 }
 
 APPROVED CCVS CODES (use only these exact strings):
@@ -194,6 +195,7 @@ RULES:
 - ccvs_confidence: High = clear match, Medium = reasonable match, Low = uncertain
 - action_required must be true for NCR and Conditional
 - For NCR status, legal_reference MUST cite a specific NSW WHS Regulation 2017 clause (never null, never COP-only)
+- recommendation MUST be present for NCR and Conditional status; recommendation MUST NOT repeat the wording of observation_text_enriched — it is a separate paragraph offering remedial guidance. action_description (short imperative) and recommendation (polished paragraph) are different fields and serve different report columns.
 RPD SWMS REFERENCE (use these when assigning ccvs_code and legal_reference):
 
 WAH â€” Working at Height (WAH-H6, WAH-H9):
@@ -233,8 +235,20 @@ SWING STAGE â€” Suspended Scaffold (WAH-H6, WAH-H9):
 - Return ONLY valid JSON. No commentary, no markdown fences."""
 
 
-async def enrich_observation(observation_text: str) -> dict:
-    """Call Claude Haiku to classify and enrich a PIMS observation."""
+async def enrich_observation(
+    observation_text: str,
+    precedent_supplement: str = "",
+) -> dict:
+    """Call Claude Haiku to classify and enrich a PIMS observation.
+
+    `precedent_supplement` is appended to the user message so that
+    ENRICHMENT_SYSTEM stays fixed and cacheable. Pass "" to skip.
+    """
+    user_content = f"Observation: {observation_text}"
+    if precedent_supplement:
+        user_content = f"{user_content}\n\n{precedent_supplement}"
+        if os.getenv("PIMS_LOG_PRECEDENT_PROMPT") == "1":
+            log.info(f"PIMS precedent prompt (len={len(precedent_supplement)}):\n{precedent_supplement}")
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
@@ -246,10 +260,10 @@ async def enrich_observation(observation_text: str) -> dict:
                 },
                 json={
                     "model":      "claude-haiku-4-5",
-                    "max_tokens": 768,
+                    "max_tokens": 1024,
                     "system":     ENRICHMENT_SYSTEM,
                     "messages": [
-                        {"role": "user", "content": f"Observation: {observation_text}"}
+                        {"role": "user", "content": user_content}
                     ],
                 },
             )
@@ -292,8 +306,21 @@ async def enrich_and_update(
     observation_text: str,
 ) -> None:
     """Background task â€” enrich observation and patch the staging record."""
+    # Precedent retrieval — failure-tolerant; never breaks enrichment.
+    precedents = []
+    supplement = ""
     try:
-        enrichment = await enrich_observation(observation_text)
+        from pims.services.precedent_matcher import find_precedents
+        from pims.services.precedent_prompt import build_supplement
+        precedents = await find_precedents(
+            observation_text, supabase_url, supabase_service_key, top_k=3,
+        )
+        supplement = build_supplement(observation_text, precedents)
+    except Exception as e:
+        log.warning(f"precedent retrieval failed for {record_id}: {e}")
+
+    try:
+        enrichment = await enrich_observation(observation_text, supplement)
     except Exception as e:
         log.error(f"Background enrichment failed for {record_id}: {e}")
         return
@@ -311,9 +338,15 @@ async def enrich_and_update(
         "monitoring_note":           enrichment.get("monitoring_note"),
         "observation_text_enriched": enrichment.get("observation_text_enriched"),
         "legal_reference":           enrichment.get("legal_reference"),
+        "recommendation":            enrichment.get("recommendation"),
         "enriched":                  True,
         "enriched_at":               datetime.now(timezone.utc).isoformat(),
     }
+    if precedents:
+        patch["precedent_example_ids"] = [p.id for p in precedents]
+        patch["precedent_match_summary"] = {
+            "matches": [p.to_summary() for p in precedents],
+        }
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.patch(
@@ -483,6 +516,7 @@ async def insert_staging(
         "monitoring_note":    enrichment.get("monitoring_note"),
         "observation_text_enriched": enrichment.get("observation_text_enriched"),
         "legal_reference":           enrichment.get("legal_reference"),
+        "recommendation":            enrichment.get("recommendation"),
         "review_status":      "Pending",
     }
     async with httpx.AsyncClient(timeout=15) as client:

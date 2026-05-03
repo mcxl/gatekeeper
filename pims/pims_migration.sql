@@ -293,6 +293,14 @@ CREATE POLICY pims_precedent_anon_read ON public.pims_precedent_examples
     FOR SELECT TO anon USING (true);
 
 -- ============================================================
+-- Migration 006: precedent provenance on pims_staging
+-- ============================================================
+ALTER TABLE public.pims_staging
+    ADD COLUMN IF NOT EXISTS precedent_example_ids uuid[],
+    ADD COLUMN IF NOT EXISTS precedent_match_summary jsonb,
+    ADD COLUMN IF NOT EXISTS precedent_usage_recorded_at timestamptz;
+
+-- ============================================================
 -- Post-migration: remind PostgREST to refresh its schema cache.
 -- Supabase does this automatically via DDL event triggers, but the
 -- NOTIFY is idempotent and useful for manual re-runs.
