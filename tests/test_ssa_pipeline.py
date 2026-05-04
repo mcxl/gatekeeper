@@ -45,6 +45,10 @@ from docx import Document
 from PIL import Image
 
 from pims.scripts.run_ssa_pipeline import run_once
+from pims.services.ssa_ccvs_taxonomy import (
+    STREAM_TO_CATEGORY, VALID_STREAMS, VALID_TIERS,
+    category_for, is_valid_code, stream_of,
+)
 from pims.services.ssa_checklist_lookup import ChecklistLookup
 from pims.services.ssa_pipeline import (
     ObservationRow,
@@ -290,6 +294,93 @@ def test_extract_site_address_no_hit_returns_none():
 # ChecklistLookup
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# CCVS taxonomy (canonical scheme: 25 streams x 6 tiers = 150 codes)
+# ---------------------------------------------------------------------------
+
+def test_ccvs_taxonomy_25_streams():
+    """Stream list locks against renderers/docx_renderer.py + sample SYS."""
+    expected = {
+        "WFR", "WFA", "WAH", "IRA", "ELE", "SIL", "STR", "CFS", "ENE",
+        "HOT", "MOB", "ASB", "LED", "TRF", "ENV", "CHM", "SCF", "CRN",
+        "EXC", "MNH", "NOI", "TLT", "DEM", "FMW", "SYS",
+    }
+    assert VALID_STREAMS == frozenset(expected)
+    assert set(STREAM_TO_CATEGORY) == expected
+
+
+def test_ccvs_taxonomy_tiers_six():
+    assert VALID_TIERS == frozenset({"H6", "H9", "M3", "M4", "L1", "L2"})
+
+
+def test_ccvs_validate_code_round_trip():
+    """Sample-derived codes all validate; ill-formed codes are rejected."""
+    for c in ("WAH-H6", "MOB-M4", "SYS-L1", "STR-H9", "ELE-H6", "SIL-H6"):
+        assert is_valid_code(c), c
+    for bad in ("WAH-X1", "WAH-H7", "XXX-H6", "WAH", "wah-h6", "", None):
+        assert not is_valid_code(bad)
+
+
+def test_ccvs_category_for_round_trip():
+    assert category_for("WAH-H6") == "Work at Height"
+    assert category_for("MOB-M4") == "Mobile Plant"
+    assert category_for("SYS-L1") == "Systems"
+    assert category_for("XXX-H6") == ""
+    assert category_for("") == ""
+
+
+def test_ccvs_stream_of_extracts_prefix():
+    assert stream_of("WAH-H6") == "WAH"
+    assert stream_of("invalid") == ""
+
+
+# ---------------------------------------------------------------------------
+# Vision enricher — coercion + offline path
+# ---------------------------------------------------------------------------
+
+def test_vision_coerce_record_normalises_and_validates():
+    from pims.services.ssa_vision_enricher import _coerce_record
+    r = _coerce_record({
+        "status": "NCR",
+        "ccvs_code": "wah-h6",   # case + hyphen normalised
+        "ccvs_category": "ignored — derived from code",
+        "finding": "  multi-line  finding   ",
+        "legal_ref": "WHS Reg cl.79",
+        "recommendation": "fix it",
+        "monitoring_note": "verify next audit",
+    })
+    assert r["status"] == "NCR"
+    assert r["ccvs_code"] == "WAH-H6"
+    assert r["ccvs_category"] == "Work at Height"  # regenerated from code
+    assert r["finding"] == "multi-line  finding"   # outer-trim only
+
+
+def test_vision_coerce_record_drops_invalid_code():
+    from pims.services.ssa_vision_enricher import _coerce_record
+    r = _coerce_record({
+        "status": "NCR", "ccvs_code": "BOGUS-X9",
+        "ccvs_category": "Bogus", "finding": "x",
+    })
+    assert r["ccvs_code"] == ""
+    assert r["ccvs_category"] == ""
+
+
+def test_vision_coerce_record_unknown_status_falls_to_unmatched():
+    from pims.services.ssa_vision_enricher import _coerce_record
+    r = _coerce_record({"status": "Compliantish", "ccvs_code": ""})
+    assert r["status"] == "Unmatched"
+
+
+def test_vision_enrichment_no_api_key_skips_cleanly(evidence_folder, monkeypatch):
+    """ANTHROPIC_API_KEY missing → vision enricher returns diagnostics
+    with the missing-key reason and rows stay Unmatched. Pipeline does
+    not raise."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    payload = run_once(evidence_folder)
+    assert payload["staging_status"] == "bulk_uploadable"
+    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
+
+
 def test_checklist_lookup_synthesises_code_from_leading_numbers():
     cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
     cl = ChecklistLookup.from_xlsx(cl_path)
@@ -353,7 +444,7 @@ def test_enrich_observations_auto_matches_on_confident_hit():
     obs1.observation_text = "first aid kit was incomplete"
     obs2 = _row("b.jpg", csv_row=2)
     obs2.observation_text = "guardrail missing at edge of slab"  # ambiguous
-    enriched = enrich_observations([obs1, obs2], checklist=cl)
+    enriched = enrich_observations([obs1, obs2], checklist=cl, auto_match=True)
     # Confident match: status lifts to Conditional, fields populated.
     assert enriched[0].conformance_status == "Conditional"
     assert enriched[0].ccvs_code == "01.06"
@@ -379,7 +470,7 @@ def test_enrich_observations_explicit_ccvs_code_overrides_auto_match():
     obs = _row("a.jpg", csv_row=1)
     obs.observation_text = "first aid kit was incomplete"
     enriched = enrich_observations(
-        [obs], checklist=cl, ccvs_codes={1: "01.01"},
+        [obs], checklist=cl, ccvs_codes={1: "01.01"}, auto_match=True,
     )
     # Explicit code wins over the auto-matcher's preferred 01.06.
     assert enriched[0].ccvs_code == "01.01"

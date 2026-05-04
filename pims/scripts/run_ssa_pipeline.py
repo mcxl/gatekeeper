@@ -191,104 +191,57 @@ def _resolve_staging_status(
     return "bulk_uploadable", None
 
 
-def _apply_llm_pass(
+def _apply_vision_enrichment(
     enriched: list[EnrichedRow],
     site_address: str | None,
     audit_date_iso: str,
     enable: bool,
-) -> str:
-    """Run the educational-tone finding rewrite + narrative summary.
+) -> tuple[str, dict]:
+    """Vision-enabled per-row classification + narrative summary.
 
-    Returns the narrative-summary paragraph (empty string when the LLM
-    is disabled, no Anthropic key is set, or the call fails — the docx
-    builder substitutes ``{{NARRATIVE_SUMMARY}}`` with whatever this
-    returns, so an empty string yields an empty Executive Summary
-    paragraph rather than a placeholder).
+    Returns ``(narrative_paragraph, diagnostics_dict)``. On any failure
+    path (LLM disabled, key missing, network error, JSON parse error,
+    timeout) the function returns an empty narrative and a diagnostics
+    dict describing what happened — never raises into the orchestrator.
 
-    Side-effect: rewrites ``EnrichedRow.finding`` for every NCR /
-    Conditional row when the rewrite returns a non-empty string. Other
-    rows (Compliant, Unmatched) are not rewritten — finding_enricher's
-    eligibility gate is in finding_enricher.py and we don't widen it
-    from here.
+    Side-effect: in-place mutation of every row that the LLM
+    successfully classifies — sets ``conformance_status``,
+    ``ccvs_code``, ``ccvs_category``, ``finding``, ``legal_ref``,
+    ``recommendation``, ``monitoring_note``. Rows that fall through
+    the LLM (no photo / API error / parse error) keep their default
+    ``Unmatched`` state.
     """
     if not enable or not enriched:
-        return ""
+        return "", {"enabled": False, "rows_total": len(enriched)}
 
-    # Local import — keeps run_once importable without anthropic SDK
-    # installed when LLM mode is off.
-    from pims.services.audit_report_from_xlsx import ParsedObs
-    from pims.services.finding_enricher import (
-        enrich_findings,
+    from pims.services.ssa_vision_enricher import (
+        enrich_rows_with_vision,
         generate_narrative_summary,
-        is_enabled,
     )
 
-    # Honour the env-var gate on top of the CLI flag — the underlying
-    # functions also short-circuit, but checking here saves the
-    # adapter-build cost on a no-op run.
-    if not is_enabled():
-        return ""
-
-    # Build ParsedObs adapters keyed by index in `enriched` so we can
-    # write the rewritten finding back to the right row.
-    adapters: list[ParsedObs] = []
-    idx_for: dict[int, int] = {}  # adapter_idx → enriched_idx
-    for i, r in enumerate(enriched):
-        # Default to the cleaned observation text as the seed `finding`
-        # — gives the educational-tone rewrite a non-empty starting
-        # point on rows where the upstream stage left finding="".
-        seed = r.finding or r.observation_text_clean or r.obs.observation_text
-        ad = ParsedObs(
-            row_idx=i,
+    async def _drive() -> tuple[str, dict]:
+        diag = await enrich_rows_with_vision(
+            enriched,
             site_address=site_address or "",
-            audit_date=audit_date_iso,
-            observation_text=r.observation_text_clean or r.obs.observation_text,
-            finding=seed,
-            status=r.conformance_status,
-            ccvs_code=r.ccvs_code,
-            ccvs_category=r.ccvs_category,
-            action_description=r.action_description,
-            recommendation=r.recommendation,
-            monitoring_note=r.monitoring_note,
-            legal_ref=r.legal_ref,
-            prepared_by="",
-            due_category="",
-            photo_image=None,
+            audit_date_iso=audit_date_iso,
         )
-        idx_for[len(adapters)] = i
-        adapters.append(ad)
-
-    async def _drive() -> str:
-        await enrich_findings(adapters, tone="educational")
-        findings_payload = [
-            {
-                "status": ad.status,
-                "ccvs_category": ad.ccvs_category,
-                "finding": ad.finding,
-                "observation_text": ad.observation_text,
-            }
-            for ad in adapters
-        ]
-        return await generate_narrative_summary(
-            findings_payload, site_address or "", audit_date_iso,
+        text = await generate_narrative_summary(
+            enriched,
+            site_address=site_address or "",
+            audit_date_iso=audit_date_iso,
         )
+        return text, diag
 
     try:
-        narrative = asyncio.run(_drive())
-    except Exception:
-        log.warning("LLM pass failed; continuing without rewrites",
-                    exc_info=True)
-        return ""
-
-    # Copy the rewritten findings back. Adapter indices map 1:1 to
-    # enriched-row indices via `idx_for`. Only NCR/Conditional rows are
-    # touched by enrich_findings (per its own eligibility gate).
-    for adapter_idx, ad in enumerate(adapters):
-        target = enriched[idx_for[adapter_idx]]
-        if ad.finding and ad.finding != (target.finding or ""):
-            target.finding = ad.finding
-
-    return narrative
+        narrative, diag = asyncio.run(_drive())
+    except Exception as exc:
+        log.warning("vision enrichment driver failed: %s", exc, exc_info=True)
+        return "", {
+            "enabled": True, "driver_error": f"{type(exc).__name__}: {exc}",
+            "rows_total": len(enriched),
+        }
+    diag["enabled"] = True
+    return narrative, diag
 
 
 def run_once(
@@ -372,10 +325,11 @@ def run_once(
     site_for_docx = site_address or "[Site address - to be confirmed]"
     site_for_staging = site_address or ""
 
-    # LLM pass — rewrites NCR/Conditional findings under educational
-    # tone and produces the Executive Summary paragraph. No-op when
-    # ``--no-enrich`` was passed or ``PIMS_ENRICH_FINDINGS`` is unset.
-    narrative_summary = _apply_llm_pass(
+    # Vision enrichment — per-row classification (status, CCVS code,
+    # finding text, legal_ref, recommendation, monitoring_note) plus
+    # the Executive Summary paragraph. Default-on. No-op when
+    # ``--no-enrich`` was passed or ANTHROPIC_API_KEY is unset.
+    narrative_summary, llm_diag = _apply_vision_enrichment(
         enriched,
         site_address=site_address,
         audit_date_iso=iso,
@@ -458,6 +412,7 @@ def run_once(
         "enriched_diagnostics": enriched_diag,
         "report_diagnostics": report_diag,
         "staging_diagnostics": staging_diag,
+        "llm_diagnostics": llm_diag,
         "completed_at": datetime.now(timezone.utc)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

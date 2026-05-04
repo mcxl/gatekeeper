@@ -472,7 +472,10 @@ def _row_value(row: EnrichedRow, header_lc: str) -> object:
     if header_lc == "filename":
         return obs.resolved_filename or ""
     if header_lc == "observation":
-        return row.observation_text_clean or obs.observation_text
+        # Per the canonical sample, this column carries the enriched
+        # multi-sentence narrative (the "finding"), not the raw note.
+        # Falls back to the cleaned observation when no enrichment ran.
+        return row.finding or row.observation_text_clean or obs.observation_text
     if header_lc == "conformance status":
         return row.conformance_status
     if header_lc == "ccvs code":
@@ -482,7 +485,13 @@ def _row_value(row: EnrichedRow, header_lc: str) -> object:
     if header_lc == "action required":
         return row.action_required
     if header_lc == "action description":
-        return row.action_description
+        # Vision enricher writes the corrective action into
+        # ``recommendation``; keep ``action_description`` as a fallback
+        # for upstream paths that populated it directly. Compliant rows
+        # leave both empty per the sample's pattern.
+        return row.action_description or row.recommendation
+    if header_lc == "monitoring note":
+        return row.monitoring_note
     return ""
 
 
@@ -1298,7 +1307,7 @@ def enrich_observations(
     rows: list[ObservationRow],
     checklist: object | None = None,
     ccvs_codes: dict[int, str] | None = None,
-    auto_match: bool = True,
+    auto_match: bool = False,
 ) -> list[EnrichedRow]:
     """Lift parsed CSV rows into builder-ready ``EnrichedRow``s.
 
