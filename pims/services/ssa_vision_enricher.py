@@ -110,13 +110,17 @@ _SYSTEM_PROMPT = (
     "review-ready finding.\n\n"
     "OUTPUT JSON ONLY — no prose, no markdown fences. The JSON object "
     "must carry exactly these keys:\n"
-    '  status            ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
-    '  ccvs_code         "<STREAM>-<TIER>" or "" if no clear match\n'
-    '  ccvs_category     plain-English category for the chosen stream, or ""\n'
-    '  finding           2–4 sentence narrative, year-12 plain English\n'
-    '  legal_ref         NSW WHS Reg / AS / SafeWork NSW citation, or ""\n'
-    '  recommendation    one short sentence, or ""\n'
-    '  monitoring_note   one short sentence reviewer cue, or ""\n\n'
+    '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
+    '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
+    '  ccvs_category        plain-English category for the chosen stream, or ""\n'
+    '  location             short site/area anchor (e.g. "Mile End Road frontage", '
+    '"Tilt-up panel zone, north elevation", "Site office area"), or ""\n'
+    '  finding              2–4 sentence narrative, year-12 plain English\n'
+    '  hierarchy_of_control one of: Elimination / Substitution / Isolation / '
+    'Engineering / Administrative / PPE — pick the tier the recommendation lands in\n'
+    '  legal_ref            NSW WHS Reg / AS / SafeWork NSW citation, or ""\n'
+    '  recommendation       one short sentence, or ""\n'
+    '  monitoring_note      one short sentence reviewer cue, or ""\n\n'
     "STREAM PREFIXES (pick exactly one):\n"
     f"{_STREAM_LIST}\n\n"
     "SEVERITY TIERS:\n"
@@ -304,11 +308,24 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
         code = ""
     category = category_for(code) if code else ""
 
+    # Hierarchy of Control — narrow the LLM's output to the canonical
+    # WHS hierarchy tier list. Anything else collapses to "" so the
+    # template cell stays blank instead of carrying a fabricated label.
+    hoc_raw = _s("hierarchy_of_control").title()
+    hoc = hoc_raw if hoc_raw in {
+        "Elimination", "Substitution", "Isolation",
+        "Engineering", "Administrative", "Ppe",
+    } else ""
+    if hoc == "Ppe":
+        hoc = "PPE"
+
     return {
         "status": status,
         "ccvs_code": code,
         "ccvs_category": category,
+        "location": _s("location"),
         "finding": _s("finding"),
+        "hierarchy_of_control": hoc,
         "legal_ref": _s("legal_ref"),
         "recommendation": _s("recommendation"),
         "monitoring_note": _s("monitoring_note"),
@@ -376,9 +393,22 @@ async def enrich_rows_with_vision(
             )
         except httpx.HTTPStatusError as exc:
             diag["rows_failed"] += 1
-            seen_errors.add(
-                f"http {exc.response.status_code} on row {row.obs.csv_row}"
-            )
+            # Surface the API's own error message body so billing /
+            # auth / model-not-found issues don't read as "bad request"
+            # to the orchestrator.
+            try:
+                api_err = exc.response.json().get("error", {})
+                api_msg = api_err.get("message", "")[:160]
+                api_type = api_err.get("type", "")
+            except Exception:
+                api_msg = ""
+                api_type = ""
+            tag = f"http {exc.response.status_code}"
+            if api_type:
+                tag = f"{tag} {api_type}"
+            if api_msg:
+                tag = f"{tag}: {api_msg}"
+            seen_errors.add(tag)
             continue
         except Exception as exc:
             diag["rows_failed"] += 1
@@ -399,8 +429,12 @@ async def enrich_rows_with_vision(
         row.conformance_status = rec["status"]
         row.ccvs_code = rec["ccvs_code"]
         row.ccvs_category = rec["ccvs_category"]
+        if rec["location"]:
+            row.location = rec["location"]
         if rec["finding"]:
             row.finding = rec["finding"]
+        if rec["hierarchy_of_control"]:
+            row.hierarchy_of_control = rec["hierarchy_of_control"]
         if rec["legal_ref"]:
             row.legal_ref = rec["legal_ref"]
         if rec["recommendation"]:

@@ -776,10 +776,19 @@ def test_findings_list_expands_per_non_compliant_row(tmp_path):
     assert len(headings) == 2
     assert any(h.startswith("#1") and "WAH-H6" in h for h in headings)
     assert any(h.startswith("#2") and "WAH-H6" in h for h in headings)
-    # Finding body text must appear as separate paragraphs.
-    body_texts = [p.text for p in doc.paragraphs]
-    assert any("FINDING-0" in t for t in body_texts)
-    assert any("FINDING-2" in t for t in body_texts)
+    # Finding body text now lives in the cloned 2-col detail table's
+    # Observation row, not in a body paragraph. Verify it landed there.
+    detail_obs = []
+    for t in doc.tables:
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location":
+            obs_row = next(
+                (r for r in t.rows if r.cells[0].text.strip() == "Observation"),
+                None,
+            )
+            if obs_row is not None:
+                detail_obs.append(obs_row.cells[1].text)
+    assert any("FINDING-0" in t for t in detail_obs)
+    assert any("FINDING-2" in t for t in detail_obs)
 
 
 def test_findings_list_no_register_rows_writes_placeholder(tmp_path):
@@ -891,22 +900,72 @@ def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
     assert len(set(reg_data)) == len(reg_data)
 
 
-def test_build_ssa_report_docx_removes_per_location_placeholder(tmp_path):
-    """v1 always strips the per-location 2-col block per R-1.3(e).
-    Output should contain exactly 3 tables (Positive, Prior Recs,
-    Observations Register) and no 'Location' first-cell table."""
+def test_build_ssa_report_docx_findings_block_per_non_compliant(tmp_path):
+    """Each non-Compliant finding renders as a (#N heading + 6-row
+    2-col detail table) block per the canonical template. The
+    detail table's right column carries Location / Observation /
+    Regulatory Basis / Hierarchy of Control / Required Action /
+    Timeframe values."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(3)]
+    rows = []
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs-{i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            finding=f"FINDING-{i} narrative.",
+            conformance_status="NCR",
+            ccvs_code="WAH-H6",
+            legal_ref=f"WHS Reg cl.{79 + i}",
+            recommendation=f"do action {i}",
+            location=f"area-{i}",
+            hierarchy_of_control="Engineering" if i == 0 else "Administrative",
+        ))
     out = tmp_path / "r.docx"
     build_ssa_report_docx(
-        rows=[],
-        site_address="addr",
-        audit_date_ddmmyyyy="01/01/2026",
-        narrative_summary="",
-        output_path=out,
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="", output_path=out,
     )
     doc = Document(out)
-    assert len(doc.tables) == 3
-    for t in doc.tables:
-        assert t.rows[0].cells[0].text.strip() != "Location"
+    # 3 NCR rows → 3 cloned per-finding detail tables, plus Positive
+    # Observations + Prior Recs + Observations Register = 6 tables.
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2
+        and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    assert len(detail_tables) == 3
+    # Each detail table carries the right field values for its row.
+    for i, t in enumerate(detail_tables):
+        # 2-col, 6 rows: Location, Observation, Regulatory Basis,
+        # Hierarchy of Control, Required Action, Timeframe.
+        labels = [r.cells[0].text.strip() for r in t.rows]
+        assert labels == [
+            "Location", "Observation", "Regulatory Basis",
+            "Hierarchy of Control", "Required Action", "Timeframe",
+        ]
+        values = [r.cells[1].text.strip() for r in t.rows]
+        assert values[0] == f"area-{i}"
+        assert f"FINDING-{i}" in values[1]
+        assert values[2] == f"WHS Reg cl.{79 + i}"
+        assert values[3] in {"Engineering", "Administrative"}
+        assert values[4] == f"do action {i}"
+        assert values[5] == "Immediate"  # NCR → Immediate
+
+
+def test_build_ssa_report_docx_no_findings_collapses_detail_table(tmp_path):
+    """Empty audit collapses the Findings detail table's right-column
+    cells to blank and writes the placeholder heading."""
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[], site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="", output_path=out,
+    )
+    doc = Document(out)
+    assert any("No findings recorded." in p.text for p in doc.paragraphs)
 
 
 def test_build_ssa_report_docx_no_findings_writes_placeholder(tmp_path):

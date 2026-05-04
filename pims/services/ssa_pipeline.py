@@ -383,6 +383,14 @@ class EnrichedRow:
     recommendation: str = ""
     legal_ref: str = ""
     monitoring_note: str = ""
+    # Vision-derived per-finding block fields (template's 2-col detail
+    # table). ``location`` is a short reviewer-facing place anchor
+    # (e.g. "Mile End Road frontage", "Tilt-up panel zone, north
+    # elevation"). ``hierarchy_of_control`` names the WHS hierarchy
+    # tier the recommendation lands in: Elimination / Substitution /
+    # Isolation / Engineering / Administrative / PPE.
+    location: str = ""
+    hierarchy_of_control: str = ""
 
     @property
     def action_required(self) -> str:
@@ -819,86 +827,166 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
 
 
 def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
-    """Materialise the ``#N`` Findings sub-list per non-Compliant row.
+    """Materialise the ``Findings`` section per non-Compliant row.
 
-    The canonical template has a placeholder shape:
+    The canonical template lays each finding out as a heading + a
+    6-row 2-col detail table (per the screenshot the user shared):
 
-        Findings              (14pt bold)
-        #1                    (12pt bold) — placeholder heading
-        (empty paragraph)     — body slot
-        Status of Previous Recommendations …
+        #N                        (12pt bold heading)
+        +---------------------+----------------+
+        | Location            | <site/area>    |
+        | Observation         | <finding text> |
+        | Regulatory Basis    | <legal_ref>    |
+        | Hierarchy of Control| <hierarchy>    |
+        | Required Action     | <recommend>    |
+        | Timeframe           | <due timeframe>|
+        +---------------------+----------------+
 
-    For each register row this function lays down:
+    Per R-1.3(e) block-level cloning of (heading + 2-col table) is
+    permitted. For idx==1 we mutate the existing pair in-place; for
+    idx>=2 we deepcopy and insert before the Status heading so
+    iteration order is preserved.
 
-        #N STATUS — CCVS-CODE          (12pt bold heading clone)
-        <finding text>                 (body paragraph clone)
-
-    Inserted in CSV order before the ``Status of Previous
-    Recommendations`` heading paragraph. Without this, V-10.5 fails
-    and the rendered docx shows an empty ``#1`` placeholder regardless
-    of how many findings the audit produced.
-
-    Returns the number of `#N` headings written. ``0`` is a no-op (no
-    placeholder found, or no non-Compliant rows).
+    Returns the number of finding blocks written.
     """
     import copy
     from docx.oxml.ns import qn
 
     body = doc.element.body
 
-    # Locate the `#1 ` heading and the Status heading. The status
-    # heading is locked text per A.8 R-8.1.
+    # Locate the placeholder #1 heading + the 2-col detail table that
+    # follows it + the Status of Previous Recommendations heading.
     heading_p = None
+    detail_tbl = None
     status_p = None
     for child in body.iterchildren():
-        if child.tag != qn("w:p"):
-            continue
-        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
-        if heading_p is None and text.startswith("#1"):
-            heading_p = child
-        elif heading_p is not None and text.startswith(
-            "Status of Previous Recommendations"
-        ):
-            status_p = child
-            break
-    if heading_p is None or status_p is None:
-        return 0
-
-    # The placeholder body paragraph sits between the `#1 ` heading and
-    # the Status heading. Walk forward from heading_p until we hit a
-    # paragraph that's not the heading itself; that's the body slot.
-    body_p = heading_p.getnext()
-    if body_p is None or body_p.tag != qn("w:p"):
+        tag = child.tag
+        if tag == qn("w:p"):
+            text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+            if heading_p is None and text.startswith("#1"):
+                heading_p = child
+            elif heading_p is not None and text.startswith(
+                "Status of Previous Recommendations"
+            ):
+                status_p = child
+                break
+        elif tag == qn("w:tbl") and heading_p is not None and detail_tbl is None:
+            # The first <w:tbl> after the #1 heading is the per-finding
+            # detail block. Confirm by checking it's 2-col and the first
+            # row's first cell carries the literal ``Location``.
+            first_row = next(child.iter(qn("w:tr")), None)
+            if first_row is not None:
+                cells = list(first_row.iter(qn("w:tc")))
+                if len(cells) == 2:
+                    label_text = "".join(
+                        t.text or "" for t in cells[0].iter(qn("w:t"))
+                    ).strip()
+                    if label_text.startswith("Location"):
+                        detail_tbl = child
+    if heading_p is None or status_p is None or detail_tbl is None:
         return 0
 
     if not register_rows:
-        # Empty audit — collapse the Findings list to a single
-        # placeholder row noting "no findings recorded" so the section
-        # header still renders meaningfully.
         _set_paragraph_runs_text(heading_p, "No findings recorded.")
-        _set_paragraph_runs_text(body_p, "")
+        # Wipe the detail table's right-column cells.
+        for row in detail_tbl.iter(qn("w:tr")):
+            cells = list(row.iter(qn("w:tc")))
+            if len(cells) >= 2:
+                _set_cell_text_oxml(cells[1], "")
         return 0
 
-    # i==1: mutate the existing heading + body in-place. i>=2: deepcopy
-    # the (heading, body) pair and insert before the Status heading so
-    # iteration order is preserved.
     written = 0
     for idx, row in enumerate(register_rows, start=1):
         title = _finding_heading_text(idx, row)
-        text = (row.finding or row.observation_text_clean
-                or row.obs.observation_text or "").strip()
         if idx == 1:
             _set_paragraph_runs_text(heading_p, title)
-            _set_paragraph_runs_text(body_p, text)
+            _populate_finding_detail_table(detail_tbl, row)
         else:
             new_h = copy.deepcopy(heading_p)
-            new_b = copy.deepcopy(body_p)
+            new_t = copy.deepcopy(detail_tbl)
             _set_paragraph_runs_text(new_h, title)
-            _set_paragraph_runs_text(new_b, text)
+            _populate_finding_detail_table(new_t, row)
             status_p.addprevious(new_h)
-            status_p.addprevious(new_b)
+            status_p.addprevious(new_t)
         written += 1
     return written
+
+
+# Row-label → EnrichedRow attribute resolver. Header (left-cell) text
+# is matched case-insensitively against the canonical labels.
+_FINDING_DETAIL_LABEL_TO_VALUE = {
+    "location": lambda r: r.location or "",
+    "observation": lambda r: (
+        r.finding or r.observation_text_clean or r.obs.observation_text or ""
+    ),
+    "regulatory basis": lambda r: r.legal_ref or "",
+    "hierarchy of control": lambda r: r.hierarchy_of_control or "",
+    "required action": lambda r: (r.recommendation or r.action_description or ""),
+    "timeframe": lambda r: _timeframe_for(r),
+}
+
+
+def _timeframe_for(row: EnrichedRow) -> str:
+    """Plain-English timeframe label for the per-finding detail table.
+
+    Mirrors the staging xlsx's due_category mapping but uses the
+    detail-table's reviewer-facing wording.
+    """
+    if row.conformance_status == "NCR":
+        return "Immediate"
+    if row.conformance_status == "Conditional":
+        return "Within 7 days"
+    if row.conformance_status == "Info":
+        return "Monitor"
+    return "N/A"
+
+
+def _populate_finding_detail_table(tbl_element, row: EnrichedRow) -> None:
+    """Walk the cloned 2-col table, write each label's value into
+    that row's right cell. Left cells (the labels) are preserved
+    verbatim from the template."""
+    from docx.oxml.ns import qn
+    for tr in tbl_element.iter(qn("w:tr")):
+        cells = list(tr.iter(qn("w:tc")))
+        if len(cells) < 2:
+            continue
+        label = "".join(
+            t.text or "" for t in cells[0].iter(qn("w:t"))
+        ).strip().lower()
+        resolver = _FINDING_DETAIL_LABEL_TO_VALUE.get(label)
+        if resolver is None:
+            continue
+        _set_cell_text_oxml(cells[1], resolver(row))
+
+
+def _set_cell_text_oxml(tc_element, text: str) -> None:
+    """Replace the cell's text content while preserving the first
+    paragraph's pPr/rPr (so the cloned cell inherits the template's
+    font, alignment, indent). Drops trailing paragraphs and runs to
+    avoid placeholder ghosts."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    paragraphs = list(tc_element.iter(qn("w:p")))
+    if not paragraphs:
+        # No paragraph — Word will reject the cell. Append one with
+        # the text. python-docx auto-fixes on save but we do it here
+        # to keep the XML well-formed in flight.
+        p = OxmlElement("w:p")
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        r.append(t)
+        p.append(r)
+        tc_element.append(p)
+        return
+    first_p = paragraphs[0]
+    _set_paragraph_runs_text(first_p, text)
+    # Remove sibling paragraphs after the first to avoid stale lines.
+    for extra in paragraphs[1:]:
+        parent = extra.getparent()
+        if parent is not None:
+            parent.remove(extra)
 
 
 def _finding_heading_text(idx: int, row: EnrichedRow) -> str:
@@ -1175,15 +1263,12 @@ def build_ssa_report_docx(
     positive = [r for r in rows if r.conformance_status == "Compliant"]
     register = [r for r in rows if r.conformance_status != "Compliant"]
 
-    # Strip the per-location placeholder block (R-1.3(e)). v1 never
-    # populates it — keeps the deliverable clean instead of leaving a
-    # stale 6-row scaffold visible in the output.
-    _remove_per_location_block(doc)
-
-    # Materialise the `#N` Findings sub-list — one heading + body pair
-    # per non-Compliant row. Without this the rendered docx leaves
-    # only the template's `#1` placeholder visible regardless of how
-    # many findings the audit produced.
+    # Materialise the Findings section: clone the (#N heading + 2-col
+    # detail table) block per non-Compliant row. Per the canonical
+    # template each finding renders as a 6-row table (Location /
+    # Observation / Regulatory Basis / Hierarchy of Control /
+    # Required Action / Timeframe). R-1.3(e) explicitly permits this
+    # block-level operation on the per-finding detail table.
     _expand_findings_list(doc, register)
 
     diagnostics: dict[str, list] = {
