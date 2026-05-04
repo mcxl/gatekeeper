@@ -51,7 +51,7 @@ log = logging.getLogger(__name__)
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
-SONNET_MODEL = "claude-sonnet-4-5-20250929"
+VISION_MODEL = "claude-opus-4-7"
 
 # Largest edge for the photo passed into the vision call. 1024 px is
 # enough resolution for compliance evidence (signage legibility, edge
@@ -176,7 +176,7 @@ async def _vision_call(
         f"AUDITOR_NOTE: {observation_text}\n"
     )
     body = {
-        "model": SONNET_MODEL,
+        "model": VISION_MODEL,
         "max_tokens": _MAX_OUTPUT_TOKENS,
         "system": _SYSTEM_PROMPT,
         "messages": [
@@ -272,7 +272,7 @@ async def enrich_rows_with_vision(
     keep ``status="Unmatched"`` and blank fields.
     """
     diag: dict[str, Any] = {
-        "model": SONNET_MODEL,
+        "model": VISION_MODEL,
         "rows_total": len(rows),
         "rows_called": 0,
         "rows_ok": 0,
@@ -397,7 +397,7 @@ async def generate_narrative_summary(
         f"FINDINGS:\n{json.dumps(payload, ensure_ascii=False)}"
     )
     body = {
-        "model": SONNET_MODEL,
+        "model": VISION_MODEL,
         "max_tokens": 600,
         "system": system,
         "messages": [{"role": "user", "content": user_text}],
