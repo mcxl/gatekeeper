@@ -335,6 +335,139 @@ def test_ccvs_stream_of_extracts_prefix():
 
 
 # ---------------------------------------------------------------------------
+# Risk Assessment parser
+# ---------------------------------------------------------------------------
+
+def _make_synthetic_ra_docx(path: Path) -> Path:
+    """Build a minimal RA docx in the canonical shape: 2-col metadata,
+    6-col hold-point schedule, 7-col risk register with phase headers."""
+    from docx import Document
+    d = Document()
+
+    # 2-col metadata
+    meta = d.add_table(rows=3, cols=2)
+    meta.rows[0].cells[0].text = "Project"
+    meta.rows[0].cells[1].text = "Test Project — 5 Units"
+    meta.rows[1].cells[0].text = "Site address"
+    meta.rows[1].cells[1].text = "1 Test Lane, Sydney NSW 2000"
+    meta.rows[2].cells[0].text = "Principal Contractor"
+    meta.rows[2].cells[1].text = "Acme PC"
+
+    # 6-col hold-point schedule
+    hp = d.add_table(rows=3, cols=6)
+    hp.rows[0].cells[0].text = "Hold Point"
+    hp.rows[0].cells[1].text = "Description"
+    hp.rows[0].cells[2].text = "Package"
+    hp.rows[0].cells[3].text = "Condition"
+    hp.rows[0].cells[4].text = "Sign-off"
+    hp.rows[0].cells[5].text = "Evidence"
+    hp.rows[1].cells[0].text = "HP-01"
+    hp.rows[1].cells[1].text = "Lift study reviewed"
+    hp.rows[1].cells[2].text = "Tilt-Up"
+    hp.rows[1].cells[3].text = "Lift study signed"
+    hp.rows[1].cells[4].text = "Engineer"
+    hp.rows[1].cells[5].text = "Signed doc"
+    hp.rows[2].cells[0].text = "HP-02"
+    hp.rows[2].cells[1].text = "Excavation inspection"
+    hp.rows[2].cells[2].text = "Pier Footings"
+    hp.rows[2].cells[3].text = "Inspection complete"
+    hp.rows[2].cells[4].text = "Competent person"
+    hp.rows[2].cells[5].text = "Signed record"
+
+    # 7-col risk register: header + 1 phase header + 2 activity rows
+    reg = d.add_table(rows=4, cols=7)
+    reg.rows[0].cells[0].text = "Ref"
+    reg.rows[0].cells[1].text = "Activity"
+    reg.rows[0].cells[2].text = "HRCW"
+    reg.rows[0].cells[3].text = "Initial"
+    reg.rows[0].cells[4].text = "Controls"
+    reg.rows[0].cells[5].text = "Residual"
+    reg.rows[0].cells[6].text = "Responsible"
+    # Phase header row — ALL cells carry the phase title
+    for c in reg.rows[1].cells:
+        c.text = "1 — Site Establishment"
+    reg.rows[2].cells[0].text = "SE-01"
+    reg.rows[2].cells[1].text = "Site compound"
+    reg.rows[2].cells[2].text = "H14"
+    reg.rows[2].cells[3].text = "High (3)"
+    reg.rows[2].cells[4].text = "TMP in place"
+    reg.rows[2].cells[5].text = "Medium (2)"
+    reg.rows[2].cells[6].text = "Site Manager"
+    reg.rows[3].cells[0].text = "SE-02"
+    reg.rows[3].cells[1].text = "Temporary power"
+    reg.rows[3].cells[2].text = "H11"
+    reg.rows[3].cells[3].text = "High (3)"
+    reg.rows[3].cells[4].text = "Isolation"
+    reg.rows[3].cells[5].text = "Medium (2)"
+    reg.rows[3].cells[6].text = "Electrician"
+
+    d.save(path)
+    return path
+
+
+def test_ra_parser_extracts_metadata_holdpoints_activities(tmp_path):
+    from pims.services.ssa_ra_parser import parse_risk_assessment
+    p = _make_synthetic_ra_docx(tmp_path / "RA.docx")
+    ra = parse_risk_assessment(p)
+
+    assert ra.project_name == "Test Project — 5 Units"
+    assert ra.site_address == "1 Test Lane, Sydney NSW 2000"
+    assert ra.principal_contractor == "Acme PC"
+
+    assert len(ra.hold_points) == 2
+    assert ra.hold_points[0].code == "HP-01"
+    assert ra.hold_points[0].description == "Lift study reviewed"
+
+    assert len(ra.activities) == 2
+    assert ra.activities[0].ref == "SE-01"
+    assert ra.activities[0].phase == "1 — Site Establishment"
+    assert ra.activities[0].hrcw == "H14"
+    assert ra.activities[0].initial_risk == "High (3)"
+    assert ra.activities[1].ref == "SE-02"
+    assert ra.activities[1].phase == "1 — Site Establishment"
+
+
+def test_ra_parser_phase_header_em_dash_and_hyphen(tmp_path):
+    """Phase header detection must handle em-dash, en-dash, and hyphen."""
+    from pims.services.ssa_ra_parser import _PHASE_HEADER_RE
+    for s in ("1 — Foo", "2 – Bar", "3 - Baz", "10 — Final Phase"):
+        assert _PHASE_HEADER_RE.match(s), s
+
+
+def test_ra_compact_context_caps_activity_count(tmp_path):
+    from pims.services.ssa_ra_parser import (
+        RiskAssessment, RAActivity, compact_context_block,
+    )
+    ra = RiskAssessment(project_name="X")
+    for i in range(100):
+        ra.activities.append(RAActivity(
+            ref=f"AC-{i:03d}", phase="1 — Phase A", activity=f"A{i}",
+            hrcw="H01", initial_risk="High (3)", controls="x",
+            residual_risk="Low (1)", responsible="x",
+        ))
+    ctx = compact_context_block(ra, max_activities=10)
+    assert "AC-009" in ctx
+    assert "AC-099" not in ctx
+    assert "(90 more activities)" in ctx
+
+
+def test_ra_autodiscover_in_folder_picks_risk_assessment(tmp_path):
+    from pims.services.ssa_ra_parser import autodiscover_in_folder
+    # Plant decoys + the real one
+    (tmp_path / "Site-Safety-Audit-Report-260501-SDG.docx").write_bytes(b"x")
+    (tmp_path / "Random_Doc.docx").write_bytes(b"x")
+    target = tmp_path / "Project_Risk_Assessment_v3.docx"
+    target.write_bytes(b"x")
+    assert autodiscover_in_folder(tmp_path) == target
+
+
+def test_ra_parser_returns_empty_on_missing_file(tmp_path):
+    from pims.services.ssa_ra_parser import parse_risk_assessment
+    ra = parse_risk_assessment(tmp_path / "does-not-exist.docx")
+    assert ra.is_empty
+
+
+# ---------------------------------------------------------------------------
 # Vision enricher — coercion + offline path
 # ---------------------------------------------------------------------------
 

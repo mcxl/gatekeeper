@@ -196,6 +196,7 @@ def _apply_vision_enrichment(
     site_address: str | None,
     audit_date_iso: str,
     enable: bool,
+    ra_context: str = "",
 ) -> tuple[str, dict]:
     """Vision-enabled per-row classification + narrative summary.
 
@@ -224,6 +225,7 @@ def _apply_vision_enrichment(
             enriched,
             site_address=site_address or "",
             audit_date_iso=audit_date_iso,
+            ra_context=ra_context,
         )
         text = await generate_narrative_summary(
             enriched,
@@ -251,6 +253,7 @@ def run_once(
     checklist_path: Path | None = None,
     force: bool = False,
     enrich: bool = True,
+    risk_assessment_path: Path | None = None,
 ) -> dict:
     """Run the pipeline once. Returns the .ssa_run.json payload.
 
@@ -325,6 +328,34 @@ def run_once(
     site_for_docx = site_address or "[Site address - to be confirmed]"
     site_for_staging = site_address or ""
 
+    # Project Risk Assessment context (optional). Auto-discovers any
+    # ``*Risk_Assessment*.docx`` in the audit folder when no explicit
+    # path is supplied. Empty string when no RA is available — the
+    # vision call falls back to generic Australian-WHS classification.
+    from pims.services.ssa_ra_parser import (
+        autodiscover_in_folder, compact_context_block, parse_risk_assessment,
+    )
+    ra_path = risk_assessment_path
+    if ra_path is None:
+        ra_path = autodiscover_in_folder(folder)
+    ra_context = ""
+    ra_summary: dict[str, object] = {"path": None, "phases": 0, "activities": 0,
+                                     "hold_points": 0}
+    if ra_path is not None:
+        ra = parse_risk_assessment(ra_path)
+        ra_context = compact_context_block(ra)
+        ra_summary = {
+            "path": ra_path.name,
+            "project": ra.project_name,
+            "phases": len({a.phase for a in ra.activities}),
+            "activities": len(ra.activities),
+            "hold_points": len(ra.hold_points),
+        }
+        log.info(
+            "RA loaded: %s — %d activities, %d hold points",
+            ra_path.name, len(ra.activities), len(ra.hold_points),
+        )
+
     # Vision enrichment — per-row classification (status, CCVS code,
     # finding text, legal_ref, recommendation, monitoring_note) plus
     # the Executive Summary paragraph. Default-on. No-op when
@@ -334,7 +365,9 @@ def run_once(
         site_address=site_address,
         audit_date_iso=iso,
         enable=enrich,
+        ra_context=ra_context,
     )
+    llm_diag["ra"] = ra_summary
 
     enriched_diag = build_pims_enriched_xlsx(enriched, enriched_path)
     report_diag = build_ssa_report_docx(
@@ -434,6 +467,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--checklist", type=Path, default=None)
     ap.add_argument(
+        "--risk-assessment", type=Path, default=None,
+        help="path to project Risk Assessment .docx; "
+             "auto-discovered from audit folder when omitted",
+    )
+    ap.add_argument(
         "--no-enrich", action="store_true",
         help="skip the LLM finding-rewrite + narrative-summary pass",
     )
@@ -453,6 +491,7 @@ def main(argv: list[str] | None = None) -> int:
             checklist_path=args.checklist,
             force=args.force,
             enrich=not args.no_enrich,
+            risk_assessment_path=args.risk_assessment,
         )
     except RuntimeError as e:
         # Frozen folder — the documented exit signal for the manual CLI

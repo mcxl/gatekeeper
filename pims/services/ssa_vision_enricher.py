@@ -164,17 +164,43 @@ _SYSTEM_PROMPT = (
 async def _vision_call(
     photo_b64: str, photo_mime: str, observation_text: str,
     site_address: str, audit_date_iso: str, api_key: str,
+    ra_context: str = "",
 ) -> dict[str, Any]:
     """Single Anthropic vision call. Returns the parsed JSON dict.
 
     Raises on HTTP error / JSON parse failure / network — caller wraps
     in try/except and falls back to Unmatched on any failure.
+
+    ``ra_context`` is the compact project Risk Assessment block (per
+    ``ssa_ra_parser.compact_context_block``). When non-empty, the
+    model is instructed to cite RA hold-point codes (``HP-04``) and
+    activity refs (``TP-05``) inside the finding text, and to align
+    severity with the RA's Initial / Residual rubric where it can.
     """
-    user_text = (
-        f"SITE: {site_address or '(unresolved)'}\n"
-        f"AUDIT_DATE: {audit_date_iso}\n"
-        f"AUDITOR_NOTE: {observation_text}\n"
-    )
+    parts: list[str] = []
+    if ra_context:
+        parts.append(ra_context)
+        parts.append("")
+        parts.append(
+            "RA-ALIGNMENT INSTRUCTIONS:\n"
+            "- When this photo + note relates to a specific RA "
+            "  activity, reference the activity ref (e.g. TP-05) "
+            "  inside your finding sentence.\n"
+            "- When the activity is gated by a Hold Point, reference "
+            "  the HP code (e.g. HP-04) and what evidence the RA "
+            "  requires.\n"
+            "- When the RA states an HRCW category for that activity, "
+            "  mention it (e.g. \"HRCW H14 traffic corridor\").\n"
+            "- Pick the CCVS tier (H6/H9/M3/M4/L1/L2) consistent with "
+            "  the RA's Initial / Residual risk for the activity. NCR "
+            "  status when the observed control falls below the RA's "
+            "  minimum standard for that activity."
+        )
+        parts.append("")
+    parts.append(f"SITE: {site_address or '(unresolved)'}")
+    parts.append(f"AUDIT_DATE: {audit_date_iso}")
+    parts.append(f"AUDITOR_NOTE: {observation_text}")
+    user_text = "\n".join(parts) + "\n"
     body = {
         "model": VISION_MODEL,
         "max_tokens": _MAX_OUTPUT_TOKENS,
@@ -255,6 +281,7 @@ async def enrich_rows_with_vision(
     rows: list[EnrichedRow],
     site_address: str,
     audit_date_iso: str,
+    ra_context: str = "",
 ) -> dict[str, Any]:
     """In-place enrichment: photo+note → status + CCVS + finding fields.
 
@@ -307,6 +334,7 @@ async def enrich_rows_with_vision(
             raw = await _vision_call(
                 photo_b64, photo_mime, text,
                 site_address, audit_date_iso, api_key,
+                ra_context=ra_context,
             )
         except httpx.HTTPStatusError as exc:
             diag["rows_failed"] += 1
