@@ -1,0 +1,1371 @@
+"""SSA evidence-folder → 3-deliverable pipeline.
+
+Orchestrator for the Site Safety Audit pipeline (workflow #1). Produces:
+
+  1. PIMS-Enriched-YYMMDD-<CLIENT>.xlsx
+  2. Site-Safety-Audit-Report-YYMMDD-<CLIENT>.docx
+  3. Site-Visit-Report-Upload-PIMS-Staging-YYMMDD-<CLIENT>.xlsx
+
+This file currently contains the template-independent stages only:
+
+  - parse_evidence_csv        (CSV parser contract)
+  - match_photos              (filename matching contract)
+  - extract_site_address      (no unsafe fallback)
+
+The three builders, watcher, and CLI scripts depend on hand-built
+templates under pims/templates/ssa/ and are added in subsequent phases.
+
+Authoritative spec: .claude/plans/workflow-1-i-upload-optimized-catmull.md
+"""
+from __future__ import annotations
+
+import csv
+import io
+import json
+import logging
+import re
+import shutil
+from dataclasses import dataclass, field
+from io import BytesIO
+from pathlib import Path
+from typing import Iterable
+
+log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Data shapes
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CsvWarning:
+    row: int | None
+    reason: str
+    detail: str = ""
+
+    def to_dict(self) -> dict:
+        return {"row": self.row, "reason": self.reason, "detail": self.detail}
+
+
+@dataclass
+class ObservationRow:
+    """One parsed CSV row + match resolution. Builder stages mutate
+    enriched / checklist-derived fields after this struct is constructed."""
+    csv_row: int                       # 1-based source row number
+    timestamp_raw: str                 # original CSV cell, never mutated
+    timestamp_iso: str | None          # parsed YYYY-MM-DD_HH-MM-SS or None
+    observation_text: str
+    csv_filename: str                  # original CSV token for the photo
+    resolved_filename: str | None = None  # actual on-disk filename (post-match)
+    resolved_path: Path | None = None
+    needs_review: bool = False
+    review_reasons: list[str] = field(default_factory=list)
+    duplicate_filename: bool = False
+
+    def flag(self, reason: str) -> None:
+        self.needs_review = True
+        if reason not in self.review_reasons:
+            self.review_reasons.append(reason)
+
+
+# ---------------------------------------------------------------------------
+# CSV parsing — Evidence_Master.csv
+# ---------------------------------------------------------------------------
+
+_REQUIRED_HEADER = ("timestamp", "observation", "filename")
+_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
+
+
+def _decode_csv_bytes(raw: bytes) -> str:
+    """Detect UTF-8 / UTF-8-SIG / CP1252 and return a unicode string.
+
+    BOM is stripped. CP1252 fallback only fires when both UTF-8 codecs
+    raise UnicodeDecodeError — avoids silently mojibake-ing real UTF-8.
+    """
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw.decode("utf-8-sig")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp1252")
+
+
+def _is_header_row(row: list[str]) -> bool:
+    if len(row) != 3:
+        return False
+    return tuple(c.strip().lower() for c in row) == _REQUIRED_HEADER
+
+
+def parse_evidence_csv(
+    csv_path: Path,
+) -> tuple[list[ObservationRow], list[CsvWarning]]:
+    """Parse Evidence_Master.csv per the CSV parser contract.
+
+    Returns (rows, warnings). Drops are recorded as warnings; flags are
+    attached to the surviving row. No silent coercion.
+    """
+    raw = csv_path.read_bytes()
+    text = _decode_csv_bytes(raw)
+    reader = csv.reader(io.StringIO(text))
+
+    rows: list[ObservationRow] = []
+    warnings: list[CsvWarning] = []
+    seen_filenames: dict[str, list[int]] = {}
+
+    for line_no, raw_row in enumerate(reader, start=1):
+        # Blank rows: skip silently.
+        if not raw_row or all(not (c or "").strip() for c in raw_row):
+            continue
+
+        # Header detection: only when row 1's three cells match exactly.
+        if line_no == 1 and _is_header_row(raw_row):
+            continue
+
+        if len(raw_row) != 3:
+            warnings.append(CsvWarning(
+                row=line_no,
+                reason="bad_field_count",
+                detail=f"expected 3 fields, got {len(raw_row)}",
+            ))
+            continue
+
+        ts_raw, obs_text, fname = (c.strip() for c in raw_row)
+
+        if not fname:
+            warnings.append(CsvWarning(
+                row=line_no, reason="missing_filename",
+            ))
+            continue
+
+        if not obs_text:
+            warnings.append(CsvWarning(
+                row=line_no, reason="empty_observation_text",
+            ))
+            continue
+
+        ts_iso: str | None
+        if _TIMESTAMP_RE.match(ts_raw):
+            ts_iso = ts_raw
+        else:
+            ts_iso = None
+
+        row = ObservationRow(
+            csv_row=line_no,
+            timestamp_raw=ts_raw,
+            timestamp_iso=ts_iso,
+            observation_text=obs_text,
+            csv_filename=fname,
+        )
+        if ts_iso is None:
+            row.flag("bad_timestamp")
+            warnings.append(CsvWarning(
+                row=line_no,
+                reason="bad_timestamp",
+                detail=ts_raw,
+            ))
+
+        seen_filenames.setdefault(fname.lower(), []).append(len(rows))
+        rows.append(row)
+
+    # Stamp duplicate flag on every affected row (kept; flagged).
+    for indices in seen_filenames.values():
+        if len(indices) > 1:
+            for idx in indices:
+                rows[idx].duplicate_filename = True
+                rows[idx].flag("duplicate_filename")
+
+    return rows, warnings
+
+
+# ---------------------------------------------------------------------------
+# Filename matching
+# ---------------------------------------------------------------------------
+
+_JPEG_EXTS = {".jpg", ".jpeg"}
+
+
+def _canonical_name(name: str) -> str:
+    """Lowercase + JPEG-extension normalisation. Drive-suffix patterns
+    like '(1)' or ' - Copy' are NOT stripped — they identify derivative
+    copies and stripping them would collapse distinct files."""
+    s = name.strip().lower()
+    p = Path(s)
+    ext = p.suffix
+    if ext in _JPEG_EXTS:
+        return p.with_suffix(".jpg").name
+    return p.name
+
+
+def _stem(name: str) -> str:
+    return Path(name).stem.lower()
+
+
+def match_photos(
+    rows: list[ObservationRow],
+    image_paths: Iterable[Path],
+) -> list[CsvWarning]:
+    """Resolve each row's csv_filename to an on-disk image path.
+
+    Mutates rows in place. Returns a list of warnings. Every rule
+    yields 0/1/many; "many" always sets needs_review=True with no
+    silent selection (per filename-matching contract).
+    """
+    warnings: list[CsvWarning] = []
+    on_disk = [Path(p) for p in image_paths]
+
+    # Pre-index for cheap lookup. Store the full Path against multiple keys.
+    by_canonical: dict[str, list[Path]] = {}
+    by_stem: dict[str, list[Path]] = {}
+    for p in on_disk:
+        by_canonical.setdefault(_canonical_name(p.name), []).append(p)
+        if p.suffix.lower() in _JPEG_EXTS:
+            by_stem.setdefault(_stem(p.name), []).append(p)
+
+    for row in rows:
+        token = row.csv_filename
+        canon = _canonical_name(token)
+
+        # Rule 2: exact canonical match.
+        hits = list(by_canonical.get(canon, []))
+        if len(hits) == 1:
+            row.resolved_filename = hits[0].name
+            row.resolved_path = hits[0]
+            continue
+        if len(hits) > 1:
+            row.flag("photo_match_ambiguous")
+            warnings.append(CsvWarning(
+                row=row.csv_row,
+                reason="photo_match_ambiguous",
+                detail=f"{token} -> {[h.name for h in hits]}",
+            ))
+            continue
+
+        # Rule 3: stem match across the JPEG family.
+        if Path(canon).suffix in _JPEG_EXTS:
+            hits = list(by_stem.get(_stem(token), []))
+            if len(hits) == 1:
+                row.resolved_filename = hits[0].name
+                row.resolved_path = hits[0]
+                if hits[0].suffix.lower() != Path(token).suffix.lower():
+                    warnings.append(CsvWarning(
+                        row=row.csv_row,
+                        reason="extension_swap",
+                        detail=f"{token} -> {hits[0].name}",
+                    ))
+                continue
+            if len(hits) > 1:
+                row.flag("photo_match_ambiguous")
+                warnings.append(CsvWarning(
+                    row=row.csv_row,
+                    reason="photo_match_ambiguous",
+                    detail=f"stem {token} -> {[h.name for h in hits]}",
+                ))
+                continue
+
+        # Rule 4: suffix match — canonical CSV filename appears at the
+        # end of an on-disk canonical filename (handles prefixed names).
+        suffix_hits = [
+            p for p in on_disk
+            if _canonical_name(p.name).endswith(canon)
+            and _canonical_name(p.name) != canon
+        ]
+        if len(suffix_hits) == 1:
+            row.resolved_filename = suffix_hits[0].name
+            row.resolved_path = suffix_hits[0]
+            warnings.append(CsvWarning(
+                row=row.csv_row,
+                reason="prefix_match",
+                detail=f"{token} -> {suffix_hits[0].name}",
+            ))
+            continue
+        if len(suffix_hits) > 1:
+            row.flag("photo_match_ambiguous")
+            warnings.append(CsvWarning(
+                row=row.csv_row,
+                reason="photo_match_ambiguous",
+                detail=f"suffix {token} -> {[h.name for h in suffix_hits]}",
+            ))
+            continue
+
+        # Rule 6: missing.
+        row.flag("photo_missing")
+        warnings.append(CsvWarning(
+            row=row.csv_row, reason="photo_missing", detail=token,
+        ))
+
+    return warnings
+
+
+# ---------------------------------------------------------------------------
+# Site-address extraction (no unsafe fallback)
+# ---------------------------------------------------------------------------
+
+# Conservative street pattern: a leading street number (with optional
+# letter suffix) followed by 1-4 capitalised words then a street-type
+# token. Matches "12 Smith Street", "6a Francis Rd", "100-104 King Ave".
+# Deliberately strict — a stray sentence with a number won't trigger.
+_STREET_TYPES = (
+    r"(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|"
+    r"Court|Ct|Crescent|Cres|Parade|Pde|Highway|Hwy|Way|Boulevard|"
+    r"Blvd|Terrace|Tce|Close|Cl|Circuit|Cct|Esplanade|Esp)"
+)
+_ADDRESS_RE = re.compile(
+    r"\b\d{1,5}[A-Za-z]?(?:-\d{1,5}[A-Za-z]?)?\s+"
+    r"(?:[A-Z][A-Za-z'’]+\s+){1,4}"
+    + _STREET_TYPES
+    + r"\b[^.\n,]*",
+    re.UNICODE,
+)
+
+
+def _load_known_sites(path: Path | None) -> list[str]:
+    if path is None or not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        log.warning("known_sites.json unreadable", exc_info=True)
+        return []
+    if isinstance(data, list):
+        return [str(s) for s in data if isinstance(s, str)]
+    if isinstance(data, dict):
+        return [str(s) for s in data.values() if isinstance(s, str)]
+    return []
+
+
+def extract_site_address(
+    rows: list[ObservationRow],
+    known_sites_path: Path | None = None,
+) -> str | None:
+    """Scan all observations for an address-shaped string.
+
+    Returns the first hit (lowest CSV row index). On no match returns
+    None — caller is responsible for flagging needs_review on every
+    staging row and recording site_address_unresolved=True. Folder name
+    is NEVER used as a fallback (would leak date/client junk into PIMS).
+    """
+    known = _load_known_sites(known_sites_path)
+    known_lower = [(s, s.lower()) for s in known]
+
+    for row in rows:
+        text = row.observation_text or ""
+        m = _ADDRESS_RE.search(text)
+        if m:
+            return m.group(0).strip().rstrip(",")
+        text_lower = text.lower()
+        for original, lower in known_lower:
+            if lower in text_lower:
+                return original
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Per-row enrichment payload (filled by upstream stages before builders run)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EnrichedRow:
+    """Builder input — one fully-resolved register row.
+
+    Carries the parsed CSV row plus everything the three deliverables
+    need to render: checklist-derived deterministic fields, enriched
+    observation/finding text, conformance status. Builders never call
+    the enricher or matcher — those are upstream stages.
+    """
+    obs: ObservationRow
+    observation_text_clean: str = ""
+    finding: str = ""
+    conformance_status: str = "Unmatched"
+    ccvs_code: str = ""
+    ccvs_category: str = ""
+    action_description: str = ""
+    recommendation: str = ""
+    legal_ref: str = ""
+    monitoring_note: str = ""
+
+    @property
+    def action_required(self) -> str:
+        if self.conformance_status in {"NCR", "Conditional", "Unmatched"}:
+            return "Yes"
+        return "No"
+
+    @property
+    def needs_review(self) -> bool:
+        return bool(self.obs.needs_review) or self.conformance_status == "Unmatched"
+
+
+# ---------------------------------------------------------------------------
+# Photo preprocessing — Appendix A R-7.4.1 / Appendix B R-B-3.1
+# ---------------------------------------------------------------------------
+
+def _preprocess_photo(
+    source: Path,
+    max_edge_px: int = 1600,
+) -> tuple[BytesIO, str, int, int] | None:
+    """EXIF-transpose, downscale, recompress.
+
+    Returns (BytesIO, format, width_px, height_px) or None on load
+    failure / missing source. ``format`` is ``"JPEG"`` or ``"PNG"``
+    (PNG only when the source was PNG with transparency).
+    """
+    try:
+        from PIL import Image, ImageOps
+    except Exception:
+        log.warning("Pillow unavailable - photo embed skipped")
+        return None
+    try:
+        with Image.open(source) as im:
+            im = ImageOps.exif_transpose(im)
+            keep_png = (
+                source.suffix.lower() == ".png"
+                and (im.mode in ("RGBA", "LA") or "transparency" in im.info)
+            )
+            longest = max(im.width, im.height)
+            if longest > max_edge_px:
+                ratio = max_edge_px / float(longest)
+                new_size = (int(im.width * ratio), int(im.height * ratio))
+                im = im.resize(new_size, Image.LANCZOS)
+            buf = BytesIO()
+            if keep_png:
+                im.save(buf, format="PNG", optimize=False)
+                fmt = "PNG"
+            else:
+                rgb = im.convert("RGB")
+                rgb.save(buf, format="JPEG", quality=85, optimize=False)
+                fmt = "JPEG"
+            buf.seek(0)
+            return buf, fmt, im.width, im.height
+    except FileNotFoundError:
+        return None
+    except Exception:
+        log.warning("photo load failed for %s", source, exc_info=True)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Builder #1 - PIMS-Enriched-YYMMDD-<CLIENT>.xlsx (Appendix B)
+# ---------------------------------------------------------------------------
+
+_PHOTO_THUMB_PX = 95  # 2.5 cm @ 96 dpi
+_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "ssa"
+PIMS_ENRICHED_TEMPLATE = _TEMPLATE_DIR / "PIMS-Enriched.template.xlsx"
+SSA_REPORT_TEMPLATE = _TEMPLATE_DIR / "Site-Safety-Audit-Report.template.docx"
+PIMS_STAGING_TEMPLATE = (
+    _TEMPLATE_DIR / "Site-Visit-Report-PIMS-Staging.template.xlsx"
+)
+
+
+def _row_value(row: EnrichedRow, header_lc: str) -> object:
+    """Map a header literal (lowercased) to the cell value to write.
+
+    Blank-by-design fields per the Field Defaults table return ``""``.
+    Photo cell is image-only (caller skips it). The ``#`` and
+    ``photo id`` columns are renumbered against the data-row index by
+    the builder, not from this function.
+    """
+    obs = row.obs
+    if header_lc == "observation date":
+        if obs.timestamp_iso:
+            return obs.timestamp_iso
+        return f"RAW: {obs.timestamp_raw}" if obs.timestamp_raw else ""
+    if header_lc == "filename":
+        return obs.resolved_filename or ""
+    if header_lc == "observation":
+        return row.observation_text_clean or obs.observation_text
+    if header_lc == "conformance status":
+        return row.conformance_status
+    if header_lc == "ccvs code":
+        return row.ccvs_code
+    if header_lc == "ccvs category":
+        return row.ccvs_category
+    if header_lc == "action required":
+        return row.action_required
+    if header_lc == "action description":
+        return row.action_description
+    return ""
+
+
+def build_pims_enriched_xlsx(
+    rows: list[EnrichedRow],
+    output_path: Path,
+    template_path: Path = PIMS_ENRICHED_TEMPLATE,
+) -> dict:
+    """Write the PIMS-Enriched register per Appendix B.
+
+    Returns a diagnostics dict for ``.ssa_run.json``:
+        {"photo_load_failed": [...], "photo_file_missing_at_render": [...]}
+
+    Implementation: ``shutil.copyfile`` then openpyxl mutate. Column
+    widths, header row, and Summary sheet structure are inherited
+    untouched per R-B-1.2 / B.9.
+    """
+    import os
+    import openpyxl
+    from openpyxl.drawing.image import Image as XLImage
+    from openpyxl.utils import get_column_letter
+
+    if not template_path.exists():
+        raise FileNotFoundError(
+            f"PIMS-Enriched template missing: {template_path}"
+        )
+
+    # openpyxl validates by extension on load — keep ``.xlsx`` on the
+    # tmp path while still using a sibling-of-final pattern so os.replace
+    # is atomic on the same volume.
+    tmp = output_path.with_name(output_path.name + ".tmp.xlsx")
+    shutil.copyfile(template_path, tmp)
+
+    wb = openpyxl.load_workbook(tmp)
+    if "Enriched Register" not in wb.sheetnames:
+        raise ValueError("template missing 'Enriched Register' sheet")
+    ws = wb["Enriched Register"]
+
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[1]
+    ]
+    try:
+        photo_col_idx = headers.index("photo") + 1
+    except ValueError:
+        photo_col_idx = 4  # column D per Appendix B
+
+    diagnostics: dict[str, list] = {
+        "photo_load_failed": [],
+        "photo_file_missing_at_render": [],
+    }
+
+    for data_idx, row in enumerate(rows, start=1):
+        excel_row = data_idx + 1
+
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr == "photo":
+                continue
+            if hdr == "#":
+                ws.cell(row=excel_row, column=col_idx, value=data_idx)
+                continue
+            if hdr == "photo id":
+                ws.cell(
+                    row=excel_row, column=col_idx, value=f"P-{data_idx:04d}",
+                )
+                continue
+            ws.cell(row=excel_row, column=col_idx, value=_row_value(row, hdr))
+
+        path = row.obs.resolved_path
+        if not path:
+            continue
+        if not path.exists():
+            diagnostics["photo_file_missing_at_render"].append(str(path))
+            continue
+        prepared = _preprocess_photo(path)
+        if prepared is None:
+            diagnostics["photo_load_failed"].append(str(path))
+            continue
+        buf, _fmt, w_px, h_px = prepared
+        img = XLImage(buf)
+        scale = _PHOTO_THUMB_PX / float(w_px)
+        img.width = _PHOTO_THUMB_PX
+        img.height = max(1, int(round(h_px * scale)))
+        anchor_col = get_column_letter(photo_col_idx)
+        ws.add_image(img, anchor=f"{anchor_col}{excel_row}")
+        ws.row_dimensions[excel_row].height = max(95, img.height)
+
+    wb.save(tmp)
+    wb.close()
+    os.replace(tmp, output_path)
+    return diagnostics
+
+
+# ---------------------------------------------------------------------------
+# Builder #2 - Site-Safety-Audit-Report-YYMMDD-<CLIENT>.docx (Appendix A)
+# ---------------------------------------------------------------------------
+
+# Header-text signatures used to locate the four template tables. Match
+# is "first row's joined cell text contains all of these tokens" — keeps
+# us robust against a stray non-breaking space without ever picking a
+# wrong table.
+_TABLE_SIGNATURES = {
+    "positive": ("#", "Observation", "Reference"),
+    "prior_recs": ("Recommendation", "Required Actions", "Status", "Commentary"),
+    "obs_register": ("Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"),
+}
+
+# Per-location 2-col detail block: first row first cell == "Location",
+# 2 columns. Distinct enough from every other table in the template to
+# match unambiguously.
+_PER_LOCATION_FIRST_CELL = "Location"
+
+
+def _remove_per_location_block(doc) -> bool:
+    """Remove the per-location 2-col placeholder table from the document.
+
+    Per A.7 / R-1.3(e), block-level removal of the per-location detail
+    table is the one structural operation permitted outside row-level
+    cloning. v1 always removes — location detection (clone-per-location)
+    is a deferred slice. Returns True if a block was removed.
+
+    Conservative — does NOT remove the preceding heading paragraph,
+    because in this template the per-location block sits inside the
+    Findings list region and its preceding paragraphs (``Findings`` /
+    ``#1 ``) are part of the Findings scaffolding, not a per-location
+    sub-heading.
+    """
+    for tbl in list(doc.tables):
+        if len(tbl.columns) != 2:
+            continue
+        if not tbl.rows:
+            continue
+        first_cell_text = tbl.rows[0].cells[0].text.strip()
+        if first_cell_text == _PER_LOCATION_FIRST_CELL:
+            tbl._element.getparent().remove(tbl._element)
+            return True
+    return False
+
+
+def _replace_tokens_in_part(part, replacements: dict[str, str]) -> int:
+    """Replace ``{{TOKEN}}`` text inside every ``<w:t>`` of a docx part.
+
+    Walks the element tree (so text boxes / drawings are covered, not
+    just python-docx's surfaced paragraphs). Tokens are pre-confirmed
+    single-run in the canonical template — no run splitting needed.
+    """
+    from docx.oxml.ns import qn
+    if not hasattr(part, "element"):
+        return 0
+    n = 0
+    for t in part.element.iter(qn("w:t")):
+        txt = t.text
+        if not txt:
+            continue
+        new = txt
+        for token, value in replacements.items():
+            if token in new:
+                new = new.replace(token, value)
+        if new != txt:
+            t.text = new
+            n += 1
+    return n
+
+
+def _replace_token_runs(paragraphs, replacements: dict[str, str]) -> int:
+    """Replace ``{{TOKEN}}`` text on a per-run basis.
+
+    Per A.6 R-6.2: locate the run containing the literal token, replace
+    only ``r.text``. ``rPr`` (font size, bold, theme) is preserved.
+    Returns the number of runs mutated.
+    """
+    n = 0
+    for para in paragraphs:
+        for run in para.runs:
+            txt = run.text
+            if not txt:
+                continue
+            new = txt
+            for token, value in replacements.items():
+                if token in new:
+                    new = new.replace(token, value)
+            if new != txt:
+                run.text = new
+                n += 1
+    return n
+
+
+def _find_table(doc, signature: tuple[str, ...]):
+    """Locate a table whose first row contains every signature token."""
+    for tbl in doc.tables:
+        if not tbl.rows:
+            continue
+        joined = " | ".join(c.text.strip() for c in tbl.rows[0].cells)
+        if all(token in joined for token in signature):
+            return tbl
+    return None
+
+
+def _clone_row(table, src_row):
+    """deepcopy a placeholder ``<w:tr>`` and append as the table's last row.
+
+    Returns the new ``Row`` object. Per R-7.2 we touch nothing on the
+    cloned row's properties — text writes happen via cell.text on the
+    caller side, which only mutates the cell's first paragraph runs.
+    """
+    import copy
+    new_tr = copy.deepcopy(src_row._tr)
+    src_row._tr.addnext(new_tr)
+    # Refresh the table's row collection — python-docx caches via the XML.
+    return table.rows[-1]
+
+
+def _set_cell_text(cell, text: str) -> None:
+    """Write text into a cloned cell, preserving the cell's first run's
+    formatting. Subsequent paragraphs/runs are emptied — the placeholder
+    cell carries one paragraph with one styled run.
+    """
+    if not cell.paragraphs:
+        cell.add_paragraph(text)
+        return
+    p = cell.paragraphs[0]
+    if p.runs:
+        # Keep the first run's rPr; replace text. Drop trailing runs to
+        # avoid leaving placeholder fragments behind.
+        first = p.runs[0]
+        first.text = text or ""
+        for extra in list(p.runs[1:]):
+            extra._element.getparent().remove(extra._element)
+    else:
+        p.add_run(text or "")
+    # Clear any extra paragraphs in the cell (placeholder cells always
+    # carry exactly one paragraph; defensive only).
+    for extra in list(cell.paragraphs[1:]):
+        extra._element.getparent().remove(extra._element)
+
+
+def _embed_image_in_cell(cell, image_buf: BytesIO) -> bool:
+    """Insert one inline image at exactly Cm(2.5) into the cell's first
+    paragraph. Per R-7.4 / R-7.4.2 width is fixed; height is auto.
+    Returns True on success.
+    """
+    from docx.shared import Cm
+    try:
+        if not cell.paragraphs:
+            cell.add_paragraph()
+        p = cell.paragraphs[0]
+        # Drop the placeholder text run (keeps rPr-bearing run only if
+        # empty; we want a clean paragraph that hosts only the image).
+        for run in list(p.runs):
+            run._element.getparent().remove(run._element)
+        run = p.add_run()
+        image_buf.seek(0)
+        run.add_picture(image_buf, width=Cm(2.5))
+        return True
+    except Exception:
+        log.warning("docx photo embed failed", exc_info=True)
+        return False
+
+
+def build_ssa_report_docx(
+    rows: list[EnrichedRow],
+    site_address: str,
+    audit_date_ddmmyyyy: str,
+    narrative_summary: str,
+    output_path: Path,
+    prepared_by: str = "Alan Richardson",
+    prior_recs: list[dict] | None = None,
+    template_path: Path = SSA_REPORT_TEMPLATE,
+) -> dict:
+    """Render the SSA report per Appendix A.
+
+    Allowed operations only (R-1.3): replace placeholder run text;
+    deepcopy a placeholder table row N times; write text into cloned
+    cells; insert exactly one inline image per Photo cell at ``Cm(2.5)``.
+
+    The per-location 2-col detail table (table 1 in the template) is
+    left as-is in v1 — location detection is out of scope for this
+    slice.
+
+    Returns a diagnostics dict for ``.ssa_run.json``:
+        {"photo_load_failed": [...], "photo_file_missing_at_render": [...],
+         "missing_photo_obs": [...]}  # rows whose Obs # got a `*` suffix
+
+    ``site_address`` is written verbatim. Caller is responsible for
+    passing ``"[Site address - to be confirmed]"`` when extraction
+    failed (per Field Defaults).
+    """
+    import os
+    from docx import Document
+
+    if not template_path.exists():
+        raise FileNotFoundError(
+            f"SSA report template missing: {template_path}"
+        )
+
+    tmp = output_path.with_name(output_path.name + ".tmp.docx")
+    shutil.copyfile(template_path, tmp)
+
+    doc = Document(tmp)
+
+    # --- A.6: token substitution -------------------------------------
+    # Walk the body part AND every header/footer part. Body-paragraph
+    # iteration alone misses tokens inside text boxes (e.g. cover-page
+    # site address frame); the part-level walk covers those.
+    all_replacements = {
+        "{{SITE_ADDRESS}}": site_address or "",
+        "{{NARRATIVE_SUMMARY}}": narrative_summary or "",
+        "{{AUDIT_DATE}}": audit_date_ddmmyyyy or "",
+        "{{PREPARED_BY}}": prepared_by or "",
+    }
+    _replace_tokens_in_part(doc.part, all_replacements)
+    for sec in doc.sections:
+        for hf in (
+            sec.header, sec.first_page_header,
+            sec.footer, sec.first_page_footer,
+        ):
+            _replace_tokens_in_part(hf.part, all_replacements)
+
+    # --- Partition rows ----------------------------------------------
+    positive = [r for r in rows if r.conformance_status == "Compliant"]
+    register = [r for r in rows if r.conformance_status != "Compliant"]
+
+    # Strip the per-location placeholder block (R-1.3(e)). v1 never
+    # populates it — keeps the deliverable clean instead of leaving a
+    # stale 6-row scaffold visible in the output.
+    _remove_per_location_block(doc)
+
+    diagnostics: dict[str, list] = {
+        "photo_load_failed": [],
+        "photo_file_missing_at_render": [],
+        "missing_photo_obs": [],
+    }
+
+    # --- Positive Observations table (3 cols) ------------------------
+    pos_tbl = _find_table(doc, _TABLE_SIGNATURES["positive"])
+    if pos_tbl is not None and len(pos_tbl.rows) >= 2:
+        placeholder = pos_tbl.rows[1]
+        if positive:
+            for idx, row in enumerate(positive, start=1):
+                target = placeholder if idx == 1 else _clone_row(pos_tbl, placeholder)
+                cells = target.cells
+                _set_cell_text(cells[0], str(idx))
+                _set_cell_text(
+                    cells[1],
+                    row.observation_text_clean or row.obs.observation_text,
+                )
+                _set_cell_text(cells[2], row.legal_ref or "")
+        else:
+            cells = placeholder.cells
+            _set_cell_text(cells[0], "-")
+            _set_cell_text(cells[1], "No positive observations recorded.")
+            _set_cell_text(cells[2], "")
+
+    # --- Status of Previous Recommendations table (4 cols) ----------
+    prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
+    if prev_tbl is not None and len(prev_tbl.rows) >= 2:
+        placeholder = prev_tbl.rows[1]
+        recs = list(prior_recs or [])
+        if recs:
+            for idx, rec in enumerate(recs, start=1):
+                target = placeholder if idx == 1 else _clone_row(prev_tbl, placeholder)
+                cells = target.cells
+                _set_cell_text(cells[0], str(rec.get("recommendation", "")))
+                _set_cell_text(cells[1], str(rec.get("required_actions", "")))
+                _set_cell_text(cells[2], str(rec.get("status", "")))
+                _set_cell_text(cells[3], str(rec.get("commentary", "")))
+        else:
+            cells = placeholder.cells
+            _set_cell_text(cells[0], "No prior recommendations carried forward.")
+            _set_cell_text(cells[1], "")
+            _set_cell_text(cells[2], "")
+            _set_cell_text(cells[3], "")
+
+    # --- Observations Register table (6 cols, photos in col 1) -------
+    reg_tbl = _find_table(doc, _TABLE_SIGNATURES["obs_register"])
+    if reg_tbl is not None and len(reg_tbl.rows) >= 2:
+        placeholder = reg_tbl.rows[1]
+        if register:
+            for idx, row in enumerate(register, start=1):
+                target = placeholder if idx == 1 else _clone_row(reg_tbl, placeholder)
+                cells = target.cells
+
+                # Resolve photo first so the Obs # marker reflects
+                # missing-photo state per R-7.5.
+                photo_embedded = False
+                src = row.obs.resolved_path
+                if src is not None:
+                    if not src.exists():
+                        diagnostics["photo_file_missing_at_render"].append(str(src))
+                    else:
+                        prepared = _preprocess_photo(src)
+                        if prepared is None:
+                            diagnostics["photo_load_failed"].append(str(src))
+                        else:
+                            buf, _fmt, _w, _h = prepared
+                            photo_embedded = _embed_image_in_cell(cells[1], buf)
+                if not photo_embedded:
+                    # Empty Photo cell (cells[1] kept untouched) and
+                    # mark Obs # with the trailing `*` per R-7.5.
+                    diagnostics["missing_photo_obs"].append(idx)
+
+                obs_marker = f"{idx}{'*' if not photo_embedded else ''}"
+                _set_cell_text(cells[0], obs_marker)
+                # cells[1] is the Photo cell; only mutated by the embed
+                # path above. If embed failed, leave the placeholder
+                # paragraph empty per R-7.5.
+                if not photo_embedded:
+                    _set_cell_text(cells[1], "")
+
+                finding_text = (
+                    row.finding
+                    or row.observation_text_clean
+                    or row.obs.observation_text
+                )
+                _set_cell_text(cells[2], finding_text)
+                _set_cell_text(cells[3], row.legal_ref or "")
+                _set_cell_text(cells[4], row.conformance_status)
+                _set_cell_text(cells[5], row.obs.resolved_filename or "")
+        else:
+            cells = placeholder.cells
+            _set_cell_text(cells[0], "-")
+            _set_cell_text(cells[1], "")
+            _set_cell_text(cells[2], "No findings recorded.")
+            _set_cell_text(cells[3], "")
+            _set_cell_text(cells[4], "")
+            _set_cell_text(cells[5], "")
+
+    doc.save(tmp)
+    os.replace(tmp, output_path)
+    return diagnostics
+
+
+# ---------------------------------------------------------------------------
+# Builder #3 - Site-Visit-Report-Upload-PIMS-Staging-YYMMDD-<CLIENT>.xlsx
+# (Appendix C)
+# ---------------------------------------------------------------------------
+
+# Snake_case header literals expected in row 3 of the staging template.
+# Order is the column order PIMS-side reads at routes.py:2131; we match
+# against the template's actual row 3 at build time but keep this list
+# as a contract reference + due-category dispatch keys.
+STAGING_HEADERS: tuple[str, ...] = (
+    "id", "photo", "site_address", "audit_date", "observation_text",
+    "finding", "conformance_status", "ccvs_code", "ccvs_category",
+    "action_description", "responsible", "due_category", "recommendation",
+    "monitoring_note", "legal_ref", "photo_refs", "prepared_by",
+    "source_pdf", "section", "needs_review",
+)
+
+# Per Field Defaults: due_category derived deterministically from status.
+_DUE_CATEGORY = {
+    "NCR": "Immediate",
+    "Conditional": "Within 7 days",
+}
+
+
+def _staging_row_value(
+    row: EnrichedRow,
+    header: str,
+    site_address: str,
+    audit_date_iso: str,
+    prepared_by: str,
+) -> object:
+    """Map a snake_case staging header to its cell value.
+
+    Per Field Defaults (workflow plan §"PIMS Staging workbook"). ``id``
+    is ALWAYS blank — see "Insert-from-staging direction" in the plan;
+    the upload endpoint takes Branch B (INSERT) only when id is empty.
+    Returning a ``uuid4()`` here would silently no-op every row at
+    upload time.
+    """
+    obs = row.obs
+    if header == "id":
+        return ""  # Branch B contract — never uuid4
+    if header == "photo":
+        return ""  # image-only cell; image added separately
+    if header == "site_address":
+        return site_address or ""
+    if header == "audit_date":
+        return audit_date_iso or ""  # always folder-derived, never row-level
+    if header == "observation_text":
+        return row.observation_text_clean or obs.observation_text
+    if header == "finding":
+        return row.finding or ""
+    if header == "conformance_status":
+        return row.conformance_status
+    if header == "ccvs_code":
+        return row.ccvs_code
+    if header == "ccvs_category":
+        return row.ccvs_category
+    if header == "action_description":
+        return row.action_description
+    if header == "responsible":
+        return ""  # filled at QA review
+    if header == "due_category":
+        return _DUE_CATEGORY.get(row.conformance_status, "N/A")
+    if header == "recommendation":
+        return row.recommendation
+    if header == "monitoring_note":
+        return row.monitoring_note
+    if header == "legal_ref":
+        return row.legal_ref
+    if header == "photo_refs":
+        return obs.resolved_filename or ""
+    if header == "prepared_by":
+        return prepared_by or "Alan Richardson"
+    if header == "source_pdf":
+        return ""
+    if header == "section":
+        return ""  # PIMS auto-derives server-side from CCVS category
+    if header == "needs_review":
+        return "TRUE" if row.needs_review else "FALSE"
+    return ""
+
+
+def build_pims_staging_xlsx(
+    rows: list[EnrichedRow],
+    output_path: Path,
+    site_address: str,
+    audit_date_iso: str,
+    prepared_by: str = "Alan Richardson",
+    max_edge_px: int = 1600,
+    template_path: Path = PIMS_STAGING_TEMPLATE,
+) -> dict:
+    """Render the staging xlsx in PIMS upload format per Appendix C.
+
+    Sheet ``Observations``: row 3 = snake_case headers (template);
+    data appended from row 5. Photos embedded in column B (review
+    only — PIMS upload endpoint joins via ``photo_refs``).
+
+    Returns diagnostics for ``.ssa_run.json``:
+        {
+          "photo_load_failed":            [...],
+          "photo_file_missing_at_render": [...],
+          "rows_written":                 int,
+          "final_bytes":                  int,
+          "max_edge_px":                  int,   # actual cap used
+        }
+
+    The 5 MB cap and split-on-size path (Appendix C §C.6) are the
+    caller's responsibility — this builder honours ``max_edge_px`` so
+    the orchestrator can re-render at progressively smaller caps
+    (1200 → 1000 → 800) before falling back to a row-count split.
+    """
+    import os
+    import openpyxl
+    from openpyxl.drawing.image import Image as XLImage
+    from openpyxl.utils import get_column_letter
+
+    if not template_path.exists():
+        raise FileNotFoundError(
+            f"PIMS staging template missing: {template_path}"
+        )
+
+    tmp = output_path.with_name(output_path.name + ".tmp.xlsx")
+    shutil.copyfile(template_path, tmp)
+
+    wb = openpyxl.load_workbook(tmp)
+    if "Observations" not in wb.sheetnames:
+        raise ValueError("template missing 'Observations' sheet")
+    ws = wb["Observations"]
+
+    # Read row 3 header literals — the template is the source of truth.
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[3]
+    ]
+    # Locate the photo column from the template (defensive — defaults to
+    # column B per Appendix C R-C-2.1).
+    try:
+        photo_col_idx = headers.index("photo") + 1
+    except ValueError:
+        photo_col_idx = 2
+
+    diagnostics: dict[str, object] = {
+        "photo_load_failed": [],
+        "photo_file_missing_at_render": [],
+        "rows_written": 0,
+        "final_bytes": 0,
+        "max_edge_px": max_edge_px,
+    }
+
+    for data_idx, row in enumerate(rows, start=1):
+        excel_row = data_idx + 4  # row 5 is the first data row
+
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr == "photo":
+                continue  # image-only cell
+            value = _staging_row_value(
+                row, hdr, site_address, audit_date_iso, prepared_by,
+            )
+            ws.cell(row=excel_row, column=col_idx, value=value)
+
+        path = row.obs.resolved_path
+        if path is None:
+            continue
+        if not path.exists():
+            diagnostics["photo_file_missing_at_render"].append(str(path))
+            continue
+        prepared = _preprocess_photo(path, max_edge_px=max_edge_px)
+        if prepared is None:
+            diagnostics["photo_load_failed"].append(str(path))
+            continue
+        buf, _fmt, w_px, h_px = prepared
+        img = XLImage(buf)
+        scale = _PHOTO_THUMB_PX / float(w_px)
+        img.width = _PHOTO_THUMB_PX
+        img.height = max(1, int(round(h_px * scale)))
+        anchor_col = get_column_letter(photo_col_idx)
+        ws.add_image(img, anchor=f"{anchor_col}{excel_row}")
+        ws.row_dimensions[excel_row].height = max(95, img.height)
+
+    diagnostics["rows_written"] = len(rows)
+    wb.save(tmp)
+    wb.close()
+    diagnostics["final_bytes"] = tmp.stat().st_size
+    os.replace(tmp, output_path)
+    return diagnostics
+
+
+# ---------------------------------------------------------------------------
+# Staging size-control wrapper (Appendix C §C.6)
+# ---------------------------------------------------------------------------
+
+# 5 MB hard cap from pims/routes.py:2113 (RPD upload endpoint). The
+# 500-row cap (R-1) is independent and applies even when size is fine.
+STAGING_MAX_BYTES = 5 * 1024 * 1024
+STAGING_MAX_ROWS = 500
+
+# Progressive downscale ladder. Each rung is a longest-edge cap fed to
+# `_preprocess_photo`. Order matters: the first rung that produces a
+# file ≤ 5 MB wins. If 800 px still oversizes a single part, fall
+# through to a row-count split at the smallest cap.
+_DOWNSCALE_LADDER = (1600, 1200, 1000, 800)
+
+
+def _staging_part_path(output_path: Path, part_idx: int, total_parts: int) -> Path:
+    """Single-file when total_parts == 1; ``-partN.xlsx`` suffix otherwise."""
+    if total_parts == 1:
+        return output_path
+    stem = output_path.stem  # ``...-RPD``
+    return output_path.with_name(f"{stem}-part{part_idx}{output_path.suffix}")
+
+
+def build_pims_staging_xlsx_with_size_control(
+    rows: list[EnrichedRow],
+    output_path: Path,
+    site_address: str,
+    audit_date_iso: str,
+    prepared_by: str = "Alan Richardson",
+    template_path: Path = PIMS_STAGING_TEMPLATE,
+    max_bytes: int = STAGING_MAX_BYTES,
+    max_rows: int = STAGING_MAX_ROWS,
+) -> dict:
+    """Render the staging xlsx within the PIMS upload limits (5 MB / 500 rows).
+
+    Returns a dict shaped:
+        {
+          "parts":          [Path, ...],        # written files in order
+          "max_edge_px":    int,                # cap that produced the parts
+          "split":          bool,
+          "split_reason":   "row_count" | "size" | None,
+          "diagnostics":    [per-part diag, ...],
+        }
+
+    Strategy (per Appendix C §C.6):
+      1. If ``len(rows) > max_rows`` → split by row count up front; each
+         chunk renders independently at the default 1600 px cap. This is
+         the cheap path — no re-render loop.
+      2. Otherwise render at 1600 px. If ≤ ``max_bytes`` → done.
+      3. Otherwise re-render at 1200 → 1000 → 800 px. First pass under
+         budget wins.
+      4. If 800 px still over budget → split the row set in halves
+         (recursively at 800 px) until every part fits or a part has
+         only one row. A single-row part that still oversizes is the
+         "photo too large for staging" case in the plan; we still emit
+         it and surface the size in diagnostics.
+
+    The non-size-controlled builder remains in place for callers that
+    want a single render at a fixed cap (tests, debugging).
+    """
+    diags: list[dict] = []
+
+    def _render_at(rs: list[EnrichedRow], path: Path, edge_px: int) -> dict:
+        return build_pims_staging_xlsx(
+            rs, path,
+            site_address=site_address,
+            audit_date_iso=audit_date_iso,
+            prepared_by=prepared_by,
+            max_edge_px=edge_px,
+            template_path=template_path,
+        )
+
+    # --- Path 1: row-count split (deterministic, no size loop) ------
+    if len(rows) > max_rows:
+        chunks = [rows[i:i + max_rows] for i in range(0, len(rows), max_rows)]
+        total = len(chunks)
+        parts_written: list[Path] = []
+        for idx, chunk in enumerate(chunks, start=1):
+            part_path = _staging_part_path(output_path, idx, total)
+            d = _render_at(chunk, part_path, _DOWNSCALE_LADDER[0])
+            diags.append(d)
+            parts_written.append(part_path)
+        return {
+            "parts": parts_written,
+            "max_edge_px": _DOWNSCALE_LADDER[0],
+            "split": True,
+            "split_reason": "row_count",
+            "diagnostics": diags,
+        }
+
+    # --- Path 2-3: progressive downscale on a single part ----------
+    for edge_px in _DOWNSCALE_LADDER:
+        d = _render_at(rows, output_path, edge_px)
+        diags.append(d)
+        if d["final_bytes"] <= max_bytes:
+            return {
+                "parts": [output_path],
+                "max_edge_px": edge_px,
+                "split": False,
+                "split_reason": None,
+                "diagnostics": diags,
+            }
+
+    # --- Path 4: size-driven split at the smallest cap -------------
+    # Bisect the row set; each half is recursed into the same wrapper
+    # so a half that fits short-circuits cleanly. Halves render at the
+    # smallest cap because anything larger has already been rejected
+    # at the full set.
+    if len(rows) <= 1:
+        # Single row over budget at 800 px — emit it and flag.
+        return {
+            "parts": [output_path],
+            "max_edge_px": _DOWNSCALE_LADDER[-1],
+            "split": False,
+            "split_reason": None,
+            "diagnostics": diags,
+            "oversize_row": True,
+        }
+
+    mid = len(rows) // 2
+    left_rows, right_rows = rows[:mid], rows[mid:]
+    # Reserve part1/part2 names; recurse into a temporary "single-file"
+    # path per half, then collapse into our caller's part list.
+    left_path = _staging_part_path(output_path, 1, 2)
+    right_path = _staging_part_path(output_path, 2, 2)
+
+    left = build_pims_staging_xlsx_with_size_control(
+        left_rows, left_path,
+        site_address=site_address, audit_date_iso=audit_date_iso,
+        prepared_by=prepared_by, template_path=template_path,
+        max_bytes=max_bytes, max_rows=max_rows,
+    )
+    right = build_pims_staging_xlsx_with_size_control(
+        right_rows, right_path,
+        site_address=site_address, audit_date_iso=audit_date_iso,
+        prepared_by=prepared_by, template_path=template_path,
+        max_bytes=max_bytes, max_rows=max_rows,
+    )
+
+    # If the recursion itself produced parts (size-driven splits within
+    # halves), flatten and renumber so the final file set is
+    # `-part1.xlsx`, `-part2.xlsx`, …, regardless of recursion depth.
+    flat: list[Path] = []
+    for p in (*left["parts"], *right["parts"]):
+        flat.append(p)
+    final_paths: list[Path] = []
+    total = len(flat)
+    if total == 1:
+        # Single part was returned — collapse name to canonical.
+        if flat[0] != output_path:
+            flat[0].replace(output_path)
+        final_paths = [output_path]
+    else:
+        for new_idx, current in enumerate(flat, start=1):
+            new_path = _staging_part_path(output_path, new_idx, total)
+            if current != new_path:
+                if new_path.exists():
+                    new_path.unlink()
+                current.replace(new_path)
+            final_paths.append(new_path)
+
+    return {
+        "parts": final_paths,
+        "max_edge_px": _DOWNSCALE_LADDER[-1],
+        "split": True,
+        "split_reason": "size",
+        "diagnostics": [
+            *left.get("diagnostics", []),
+            *right.get("diagnostics", []),
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Upstream stage - enrich_observations
+# ---------------------------------------------------------------------------
+
+# Collapse runs of whitespace to a single space; strip ends. The cleanup
+# is deliberately conservative — we don't reflow sentences, we don't
+# autocapitalise, we don't strip trailing punctuation. The LLM finding
+# pass (when enabled) does the year-12 rewrite separately.
+_WS_RUN = re.compile(r"\s+")
+
+
+def _light_cleanup(text: str) -> str:
+    if not text:
+        return ""
+    return _WS_RUN.sub(" ", text).strip()
+
+
+def enrich_observations(
+    rows: list[ObservationRow],
+    checklist: object | None = None,
+    ccvs_codes: dict[int, str] | None = None,
+    auto_match: bool = True,
+) -> list[EnrichedRow]:
+    """Lift parsed CSV rows into builder-ready ``EnrichedRow``s.
+
+    v1 contract — CCVS resolution is **out of scope**. Every row lands
+    with ``conformance_status="Unmatched"`` and blank checklist-derived
+    fields, matching the "no checklist match" defaults in the plan
+    ("Defaults for kept-but-invalid rows"): ``Action Required="Yes"``
+    (forced via the EnrichedRow property), ``needs_review=TRUE``, every
+    checklist column blank, ``finding`` initially blank (builders fall
+    back to ``observation_text_clean``).
+
+    Hooks for a later auto-matcher are kept narrow:
+      - ``checklist`` is a ``ChecklistLookup`` (or anything exposing
+        ``.match(ccvs_code) -> ChecklistMatch | None``).
+      - ``ccvs_codes`` is an optional ``{csv_row: ccvs_code}`` map. When
+        supplied, any matched code populates the deterministic checklist
+        fields verbatim and lifts the status to a default of
+        ``"Conditional"`` so the row is treated as a real finding rather
+        than Unmatched. The status itself is never inferred — caller
+        overrides via a sibling ``statuses`` arg in a later slice.
+
+    The function is sync and side-effect-free. LLM-driven finding
+    rewrites (educational tone, narrative summary) run as a separate
+    async pass in the orchestrator — keeps this stage testable without
+    Anthropic credentials.
+    """
+    enriched: list[EnrichedRow] = []
+    for obs in rows:
+        clean = _light_cleanup(obs.observation_text)
+        row = EnrichedRow(
+            obs=obs,
+            observation_text_clean=clean,
+            finding="",
+            conformance_status="Unmatched",
+        )
+
+        match = None
+        ccvs = (ccvs_codes or {}).get(obs.csv_row, "").strip()
+        if ccvs and checklist is not None:
+            # Caller-supplied CCVS code is authoritative (manual override
+            # path or future explicit-mapping pre-stage).
+            match = checklist.match(ccvs)
+        elif auto_match and checklist is not None:
+            # Conservative token-recall match against the criteria
+            # corpus — see ``ChecklistLookup.match_observation`` for the
+            # gate (≥2 overlap, ≥0.40 score, ≥0.10 margin). A miss
+            # leaves the row at status="Unmatched".
+            text = clean or obs.observation_text
+            try:
+                match = checklist.match_observation(text)  # type: ignore[attr-defined]
+            except AttributeError:
+                match = None
+
+        if match is not None:
+            row.ccvs_code = match.ccvs_code
+            row.ccvs_category = match.ccvs_category
+            row.action_description = match.action_description
+            row.recommendation = match.recommendation
+            row.legal_ref = match.legal_ref
+            row.monitoring_note = match.monitoring_note
+            # Reviewer flips the status at QA — auto-match cannot tell
+            # NCR from Compliant, so default to Conditional which still
+            # surfaces ``needs_review=TRUE`` and a "Within 7 days" due
+            # category for follow-up. Caller can override status via a
+            # future ``statuses`` arg without touching this stage.
+            row.conformance_status = "Conditional"
+
+        enriched.append(row)
+
+    return enriched
