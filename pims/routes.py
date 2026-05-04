@@ -756,7 +756,7 @@ async def delete_staging_row(
     request: Request,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired.")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -784,7 +784,7 @@ async def approve_staging_rpd(
     staging_id: str,
     pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not _is_uuid(staging_id):
         raise HTTPException(status_code=422, detail="Invalid staging_id format.")
@@ -898,7 +898,7 @@ async def send_observation_to_staging_rpd(
     observation_id: str,
     pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not _is_uuid(observation_id):
         raise HTTPException(status_code=422, detail="Invalid observation_id format.")
@@ -1755,7 +1755,7 @@ async def download_staging_docx(
     payload: StagingExportRequest,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2070,7 +2070,7 @@ async def download_staging_xlsx(
     payload: StagingExportRequest,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2095,7 +2095,7 @@ async def upload_observations_xlsx(
     is_current_audit: bool = Form(False),
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not RPD_SUPABASE_URL:
         raise HTTPException(status_code=503, detail="Supabase URL not configured")
@@ -2453,7 +2453,7 @@ async def reenrich_staging(
     background_tasks: BackgroundTasks,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired.")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2587,7 +2587,7 @@ async def reenrich_live_ncr(
     background_tasks: BackgroundTasks,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired.")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2629,7 +2629,7 @@ async def reenrich_live_observations(
     background_tasks: BackgroundTasks,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired.")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2673,7 +2673,7 @@ async def list_observations_rpd(
     limit: int = 500,
     offset: int = 0,
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL:
         raise HTTPException(status_code=503, detail="Supabase URL not configured")
@@ -2717,7 +2717,7 @@ async def download_rpd_report(
     end: str | None = None,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL:
         raise HTTPException(status_code=503, detail="Supabase URL not configured")
@@ -2919,7 +2919,7 @@ async def list_active_sites(
 ):
     """List all active sites (no project_value gate). Used by the
     Site Visit Report xlsx modal which does not need project_value."""
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2945,7 +2945,7 @@ async def list_eligible_sites(
 ):
     """List sites eligible for audit-report generation: active=true AND
     project_value is not null, ordered by address_raw."""
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2971,7 +2971,7 @@ async def generate_audit_report_rpd(
     body: AuditReportRequest,
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -3134,7 +3134,7 @@ async def generate_site_visit_xlsx(
 ):
     """Site visit report in PIMS_Staging xlsx format, scoped to the chosen
     sites and observation_date window. Includes thumbnails."""
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -3183,7 +3183,7 @@ async def generate_site_visit_report(
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     """Render the single-site .docx Site Visit Report (spec invariant #1)."""
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -3409,7 +3409,7 @@ async def approve_observation(
     pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ):
     """Flip a single observation to review_status='Approved'."""
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -3433,7 +3433,7 @@ async def reject_observation(
     review_status=Approved). Use to remove a duplicate or invalid finding
     without losing the audit trail (the row stays in the table).
     """
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -3462,7 +3462,7 @@ async def approve_all_pending_observations_for_site(
     of rows updated. Useful for clearing a backlog of unreviewed
     observations before generating a Site Visit Report.
     """
-    if not verify_session_cookie(pims_sess):
+    if not verify_session_cookie(pims_sess, "rpd"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=503, detail="Supabase not configured")
