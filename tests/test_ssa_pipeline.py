@@ -746,6 +746,63 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     assert reg.rows[2].cells[0].text == "2*"
 
 
+def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
+    """Regression for the _clone_row bug that dropped all middle rows.
+
+    Before the fix, addnext()+rows[-1] caused every cloned row except
+    the final one to keep the placeholder's deepcopied content, so a
+    table built from N findings rendered row 1 repeated (N-1) times
+    plus row N at the end. Asserts every cloned row carries the
+    finding text it was written for, in order.
+    """
+    photos = []
+    for i in range(5):
+        p = tmp_path / f"P_{i}.jpg"
+        _save_jpeg(p, (400, 300))
+        photos.append(p)
+
+    rows = [
+        EnrichedRow(
+            obs=ObservationRow(
+                csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+                observation_text=f"obs {i}", csv_filename=p.name,
+                resolved_filename=p.name, resolved_path=p,
+            ),
+            observation_text_clean=f"clean {i}",
+            finding=f"FINDING NUMBER {i} unique-marker-{i}",
+            conformance_status="NCR" if i % 2 == 0 else "Compliant",
+            legal_ref=f"REF-{i}",
+        )
+        for i, p in enumerate(photos)
+    ]
+    out = tmp_path / "report.docx"
+    build_ssa_report_docx(
+        rows=rows,
+        site_address="addr",
+        audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="x",
+        output_path=out,
+    )
+
+    doc = Document(out)
+    pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
+               and "Reference" in t.rows[0].cells[2].text)
+    reg = next(t for t in doc.tables
+               if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
+
+    # 3 NCR (i=0,2,4) → register; 2 Compliant (i=1,3) → positive table.
+    pos_data = [r.cells[1].text for r in pos.rows[1:]]
+    reg_data = [r.cells[2].text for r in reg.rows[1:]]
+    assert pos_data == ["clean 1", "clean 3"]
+    # All NCR rows must carry their finding text — placeholder-content
+    # repetition would surface as identical strings here.
+    assert "unique-marker-0" in reg_data[0]
+    assert "unique-marker-2" in reg_data[1]
+    assert "unique-marker-4" in reg_data[2]
+    # And every register row must be distinct.
+    assert len(set(reg_data)) == len(reg_data)
+
+
 def test_build_ssa_report_docx_removes_per_location_placeholder(tmp_path):
     """v1 always strips the per-location 2-col block per R-1.3(e).
     Output should contain exactly 3 tables (Positive, Prior Recs,
@@ -830,6 +887,52 @@ def test_build_staging_xlsx_row5_data_id_blank_due_category(tmp_path):
     assert ws.cell(row=6, column=20).value == "TRUE"
     # Row 7: Conditional → "Within 7 days"
     assert ws.cell(row=7, column=12).value == "Within 7 days"
+
+
+def test_xlsx_polish_widths_wrap_and_status_fills_applied(tmp_path):
+    """The Enriched + Staging builders apply column widths, wrap_text on
+    long-content cells, and status colour fills on the Conformance
+    Status column. Without these the deliverables render unprofessional
+    (truncated mid-sentence findings, no at-a-glance status scanning)."""
+    p1 = _save_jpeg(tmp_path / "a.jpg", (1200, 800))
+    obs = ObservationRow(
+        csv_row=1, timestamp_raw="2026-05-01_09-15-22",
+        timestamp_iso="2026-05-01_09-15-22",
+        observation_text="x", csv_filename="a.jpg",
+        resolved_filename="a.jpg", resolved_path=p1,
+    )
+    rows = [
+        EnrichedRow(obs=obs, conformance_status="NCR",
+                    finding="multi-sentence enriched finding text here",
+                    ccvs_code="WAH-H6"),
+    ]
+
+    e_out = tmp_path / "enriched.xlsx"
+    build_pims_enriched_xlsx(rows, e_out)
+    wb = openpyxl.load_workbook(e_out)
+    ws = wb["Enriched Register"]
+    # Observation column wider than default 8.43.
+    obs_col_width = ws.column_dimensions["F"].width  # F = "Observation"
+    assert obs_col_width is not None and obs_col_width >= 50
+    # Wrap text on the Observation cell.
+    assert ws.cell(row=2, column=6).alignment.wrap_text is True
+    # NCR row gets a red-ish fill on the Conformance Status column (G).
+    fill = ws.cell(row=2, column=7).fill
+    assert fill.fill_type == "solid"
+    assert "FFC7CE" in (fill.start_color.rgb or "").upper()
+
+    s_out = tmp_path / "staging.xlsx"
+    build_pims_staging_xlsx(
+        rows, s_out, site_address="addr", audit_date_iso="2026-05-01",
+    )
+    wb = openpyxl.load_workbook(s_out)
+    ws = wb["Observations"]
+    # Finding column (header in row 3) widened and wrapped.
+    assert ws.column_dimensions["F"].width is not None
+    assert ws.cell(row=5, column=6).alignment.wrap_text is True
+    # Conformance Status (column G) on row 5 gets the NCR fill.
+    fill = ws.cell(row=5, column=7).fill
+    assert "FFC7CE" in (fill.start_color.rgb or "").upper()
 
 
 # ---------------------------------------------------------------------------

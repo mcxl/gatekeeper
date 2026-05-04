@@ -456,6 +456,147 @@ PIMS_STAGING_TEMPLATE = (
 )
 
 
+# --- xlsx polish — column widths, status colour fills, wrap ---------------
+#
+# Excel column-width units are roughly "character widths of the default
+# font". 95 px ≈ 13.6 char-units, so the photo columns get 14 to fit the
+# embedded thumbnails. Long-content columns (Observation, Finding,
+# Action Description, Monitoring Note) widen and wrap so reviewers
+# don't see truncated mid-sentence findings.
+
+# Header (lowercased) → column width in Excel char-units.
+_ENRICHED_COL_WIDTHS: dict[str, float] = {
+    "#": 4,
+    "observation date": 18,
+    "photo id": 9,
+    "photo": 14,                # 2.5 cm thumbnail
+    "filename": 30,
+    "observation": 60,          # multi-sentence enriched finding
+    "conformance status": 14,
+    "ccvs code": 10,
+    "ccvs category": 22,
+    "action required": 10,
+    "action description": 40,
+    "responsible": 14,
+    "due": 12,
+    "monitoring note": 40,
+    "close-out status": 14,
+    "closed date": 12,
+    "closed by": 14,
+    "close-out notes": 30,
+}
+
+_STAGING_COL_WIDTHS: dict[str, float] = {
+    "id": 8,
+    "photo": 14,
+    "site_address": 30,
+    "audit_date": 12,
+    "observation_text": 50,
+    "finding": 60,
+    "conformance_status": 14,
+    "ccvs_code": 10,
+    "ccvs_category": 22,
+    "action_description": 40,
+    "responsible": 14,
+    "due_category": 14,
+    "recommendation": 40,
+    "monitoring_note": 40,
+    "legal_ref": 30,
+    "photo_refs": 28,
+    "prepared_by": 16,
+    "source_pdf": 14,
+    "section": 14,
+    "needs_review": 12,
+}
+
+# Headers that need wrap_text=True applied to data cells. Without wrap
+# Excel renders the cell as a single truncated line, even when the
+# column is wide enough — wrap is what makes multi-sentence findings
+# render as a readable paragraph block.
+_WRAP_HEADERS: frozenset[str] = frozenset({
+    "observation",          # PIMS-Enriched
+    "action description",
+    "monitoring note",
+    "close-out notes",
+    "observation_text",     # Staging
+    "finding",
+    "recommendation",
+    "monitoring_note",
+    "legal_ref",
+    "site_address",
+})
+
+# Conformance Status colour fills — at-a-glance scanning convention
+# from the canonical PIMS-Enriched - Sample.xlsx (NCR red, Conditional
+# amber, Compliant green, Info grey, Unmatched white).
+_STATUS_FILL_HEX: dict[str, str] = {
+    "NCR":         "FFC7CE",   # light red
+    "Conditional": "FFE699",   # light amber
+    "Compliant":   "C6EFCE",   # light green
+    "Info":        "D9E1F2",   # light blue / grey
+    "Unmatched":   "F2F2F2",   # neutral
+}
+
+
+def _apply_xlsx_polish(
+    ws,
+    header_row_idx: int,
+    data_first_row: int,
+    col_widths: dict[str, float],
+    status_header: str,
+) -> None:
+    """Apply column widths, wrap, and status colour fills to a sheet.
+
+    ``ws`` openpyxl worksheet; ``header_row_idx`` 1-based; ``data_first_row``
+    the first data row (2 for Enriched, 5 for Staging); ``col_widths``
+    keyed by lowercased header literal; ``status_header`` the lowercased
+    header name to colour-fill (``"conformance status"`` for Enriched,
+    ``"conformance_status"`` for Staging).
+    """
+    from openpyxl.styles import Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[header_row_idx]
+    ]
+
+    # Column widths.
+    for idx, hdr in enumerate(headers, start=1):
+        width = col_widths.get(hdr)
+        if width is not None:
+            ws.column_dimensions[get_column_letter(idx)].width = width
+
+    # wrap_text + vertical-centre on every data cell. Vertical-centre
+    # keeps photo cells (which set tall row heights) aligned with the
+    # text in the rest of the row instead of stuck at the top.
+    wrap_alignment = Alignment(wrap_text=True, vertical="center")
+    plain_alignment = Alignment(vertical="center")
+    last_data_row = ws.max_row
+    for row in ws.iter_rows(
+        min_row=data_first_row, max_row=last_data_row,
+        min_col=1, max_col=len(headers),
+    ):
+        for cell in row:
+            hdr = headers[cell.column - 1] if cell.column <= len(headers) else ""
+            cell.alignment = wrap_alignment if hdr in _WRAP_HEADERS else plain_alignment
+
+    # Status colour fills.
+    try:
+        status_col_idx = headers.index(status_header) + 1
+    except ValueError:
+        status_col_idx = 0
+    if status_col_idx:
+        for r in range(data_first_row, last_data_row + 1):
+            cell = ws.cell(row=r, column=status_col_idx)
+            val = (cell.value or "").strip() if isinstance(cell.value, str) else ""
+            hex_fill = _STATUS_FILL_HEX.get(val)
+            if hex_fill:
+                cell.fill = PatternFill(
+                    fill_type="solid", start_color=hex_fill, end_color=hex_fill,
+                )
+
+
 def _row_value(row: EnrichedRow, header_lc: str) -> object:
     """Map a header literal (lowercased) to the cell value to write.
 
@@ -579,6 +720,14 @@ def build_pims_enriched_xlsx(
         ws.add_image(img, anchor=f"{anchor_col}{excel_row}")
         ws.row_dimensions[excel_row].height = max(95, img.height)
 
+    _apply_xlsx_polish(
+        ws,
+        header_row_idx=1,
+        data_first_row=2,
+        col_widths=_ENRICHED_COL_WIDTHS,
+        status_header="conformance status",
+    )
+
     wb.save(tmp)
     wb.close()
     os.replace(tmp, output_path)
@@ -693,15 +842,26 @@ def _find_table(doc, signature: tuple[str, ...]):
 def _clone_row(table, src_row):
     """deepcopy a placeholder ``<w:tr>`` and append as the table's last row.
 
-    Returns the new ``Row`` object. Per R-7.2 we touch nothing on the
-    cloned row's properties — text writes happen via cell.text on the
-    caller side, which only mutates the cell's first paragraph runs.
+    Returns a ``_Row`` wrapper around the freshly appended element. Per
+    R-7.2 we touch nothing on the cloned row's properties — text writes
+    happen via cell.text on the caller side, which only mutates the
+    cell's first paragraph runs.
+
+    NOTE: do NOT use ``src_row._tr.addnext(new_tr)`` here. ``addnext``
+    inserts each new row immediately after ``src_row``, pushing earlier
+    clones further down the table. Combined with ``table.rows[-1]`` this
+    silently corrupts the table — every clone except the final one
+    keeps the placeholder's deepcopied content, and only the very first
+    clone (now at index -1) gets repeatedly overwritten with each
+    iteration's data. The fix appends to the END of the parent ``<w:tbl>``
+    element directly so clones land in iteration order.
     """
     import copy
+    from docx.table import _Row
     new_tr = copy.deepcopy(src_row._tr)
-    src_row._tr.addnext(new_tr)
-    # Refresh the table's row collection — python-docx caches via the XML.
-    return table.rows[-1]
+    parent = src_row._tr.getparent()
+    parent.append(new_tr)
+    return _Row(new_tr, table)
 
 
 def _set_cell_text(cell, text: str) -> None:
@@ -1105,6 +1265,13 @@ def build_pims_staging_xlsx(
         ws.row_dimensions[excel_row].height = max(95, img.height)
 
     diagnostics["rows_written"] = len(rows)
+    _apply_xlsx_polish(
+        ws,
+        header_row_idx=3,
+        data_first_row=5,
+        col_widths=_STAGING_COL_WIDTHS,
+        status_header="conformance_status",
+    )
     wb.save(tmp)
     wb.close()
     diagnostics["final_bytes"] = tmp.stat().st_size
