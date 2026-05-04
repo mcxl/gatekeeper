@@ -754,6 +754,207 @@ _TABLE_SIGNATURES = {
 _PER_LOCATION_FIRST_CELL = "Location"
 
 
+def parse_prior_report_recommendations(path: Path) -> list[dict]:
+    """Extract carry-forward recommendations from a prior SSA report.
+
+    Pulls NCR + Conditional rows from the prior report's Observations
+    Register (6-col table whose header[0] == 'Obs #'). Each row becomes
+    a ``Status of Previous Recommendations`` entry shaped:
+
+        {
+          "recommendation":   short summary from prior Observation cell,
+          "required_actions": prior Reference / regulatory cite,
+          "status":           "" — auditor fills with DD/MM/YY at QA,
+          "commentary":       "" — auditor fills at QA,
+        }
+
+    Returns ``[]`` when the file is unreadable, lacks an Observations
+    Register, or carries no non-Compliant rows. Never raises into the
+    orchestrator.
+    """
+    if not path.exists():
+        return []
+    try:
+        from docx import Document
+        doc = Document(path)
+    except Exception:
+        log.warning("prior report unreadable: %s", path, exc_info=True)
+        return []
+
+    register = None
+    for tbl in doc.tables:
+        if len(tbl.columns) != 6:
+            continue
+        if not tbl.rows:
+            continue
+        head = tbl.rows[0].cells[0].text.strip()
+        if head.startswith("Obs"):
+            register = tbl
+            break
+    if register is None:
+        return []
+
+    out: list[dict] = []
+    for row in register.rows[1:]:
+        if len(row.cells) < 6:
+            continue
+        status = row.cells[4].text.strip()
+        if status == "Compliant" or status == "":
+            continue
+        if status not in {"NCR", "Conditional", "Info", "Unmatched"}:
+            # Status text in older reports may be free-form (e.g.
+            # "See F1 re exclusion zone"); treat as carry-forward.
+            pass
+        observation = " ".join(row.cells[2].text.split())
+        reference = " ".join(row.cells[3].text.split())
+        if not observation:
+            continue
+        out.append({
+            "recommendation": observation,
+            "required_actions": reference,
+            "status": "",
+            "commentary": "",
+        })
+    return out
+
+
+def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
+    """Materialise the ``#N`` Findings sub-list per non-Compliant row.
+
+    The canonical template has a placeholder shape:
+
+        Findings              (14pt bold)
+        #1                    (12pt bold) — placeholder heading
+        (empty paragraph)     — body slot
+        Status of Previous Recommendations …
+
+    For each register row this function lays down:
+
+        #N STATUS — CCVS-CODE          (12pt bold heading clone)
+        <finding text>                 (body paragraph clone)
+
+    Inserted in CSV order before the ``Status of Previous
+    Recommendations`` heading paragraph. Without this, V-10.5 fails
+    and the rendered docx shows an empty ``#1`` placeholder regardless
+    of how many findings the audit produced.
+
+    Returns the number of `#N` headings written. ``0`` is a no-op (no
+    placeholder found, or no non-Compliant rows).
+    """
+    import copy
+    from docx.oxml.ns import qn
+
+    body = doc.element.body
+
+    # Locate the `#1 ` heading and the Status heading. The status
+    # heading is locked text per A.8 R-8.1.
+    heading_p = None
+    status_p = None
+    for child in body.iterchildren():
+        if child.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+        if heading_p is None and text.startswith("#1"):
+            heading_p = child
+        elif heading_p is not None and text.startswith(
+            "Status of Previous Recommendations"
+        ):
+            status_p = child
+            break
+    if heading_p is None or status_p is None:
+        return 0
+
+    # The placeholder body paragraph sits between the `#1 ` heading and
+    # the Status heading. Walk forward from heading_p until we hit a
+    # paragraph that's not the heading itself; that's the body slot.
+    body_p = heading_p.getnext()
+    if body_p is None or body_p.tag != qn("w:p"):
+        return 0
+
+    if not register_rows:
+        # Empty audit — collapse the Findings list to a single
+        # placeholder row noting "no findings recorded" so the section
+        # header still renders meaningfully.
+        _set_paragraph_runs_text(heading_p, "No findings recorded.")
+        _set_paragraph_runs_text(body_p, "")
+        return 0
+
+    # i==1: mutate the existing heading + body in-place. i>=2: deepcopy
+    # the (heading, body) pair and insert before the Status heading so
+    # iteration order is preserved.
+    written = 0
+    for idx, row in enumerate(register_rows, start=1):
+        title = _finding_heading_text(idx, row)
+        text = (row.finding or row.observation_text_clean
+                or row.obs.observation_text or "").strip()
+        if idx == 1:
+            _set_paragraph_runs_text(heading_p, title)
+            _set_paragraph_runs_text(body_p, text)
+        else:
+            new_h = copy.deepcopy(heading_p)
+            new_b = copy.deepcopy(body_p)
+            _set_paragraph_runs_text(new_h, title)
+            _set_paragraph_runs_text(new_b, text)
+            status_p.addprevious(new_h)
+            status_p.addprevious(new_b)
+        written += 1
+    return written
+
+
+def _finding_heading_text(idx: int, row: EnrichedRow) -> str:
+    """``#3 NCR — WAH-H6`` or ``#3 — WAH-H6`` if status is empty."""
+    parts = [f"#{idx}"]
+    if row.conformance_status:
+        parts.append(row.conformance_status)
+    if row.ccvs_code:
+        parts.append(row.ccvs_code)
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} {parts[1]} — {parts[2]}" if len(parts) == 3 \
+        else f"{parts[0]} — {parts[1]}"
+
+
+def _set_paragraph_runs_text(p_element, text: str) -> None:
+    """Replace text on the first <w:r>/<w:t> of the paragraph; preserve
+    that run's rPr (font size, bold, theme). Drop trailing runs so the
+    placeholder fragments don't ghost into the output. When the
+    paragraph carries no runs at all (an intentionally-empty template
+    paragraph), append a fresh ``<w:r><w:t>`` so the text shows up
+    instead of silently disappearing."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    runs = list(p_element.iter(qn("w:r")))
+    if not runs:
+        run = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = text
+        # Preserve leading/trailing whitespace so multi-sentence
+        # findings don't get collapsed at line breaks.
+        t.set(qn("xml:space"), "preserve")
+        run.append(t)
+        p_element.append(run)
+        return
+    first = runs[0]
+    # Update the first <w:t> on the first run.
+    t_els = list(first.iter(qn("w:t")))
+    if t_els:
+        t_els[0].text = text
+        t_els[0].set(qn("xml:space"), "preserve")
+        for extra in t_els[1:]:
+            extra.text = ""
+    else:
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        first.append(t)
+    # Drop sibling runs after the first to avoid leftover placeholder
+    # text fragments.
+    for extra in runs[1:]:
+        parent = extra.getparent()
+        if parent is not None:
+            parent.remove(extra)
+
+
 def _remove_per_location_block(doc) -> bool:
     """Remove the per-location 2-col placeholder table from the document.
 
@@ -978,6 +1179,12 @@ def build_ssa_report_docx(
     # populates it — keeps the deliverable clean instead of leaving a
     # stale 6-row scaffold visible in the output.
     _remove_per_location_block(doc)
+
+    # Materialise the `#N` Findings sub-list — one heading + body pair
+    # per non-Compliant row. Without this the rendered docx leaves
+    # only the template's `#1` placeholder visible regardless of how
+    # many findings the audit produced.
+    _expand_findings_list(doc, register)
 
     diagnostics: dict[str, list] = {
         "photo_load_failed": [],

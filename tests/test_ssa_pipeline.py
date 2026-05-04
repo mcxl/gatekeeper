@@ -746,6 +746,94 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     assert reg.rows[2].cells[0].text == "2*"
 
 
+def test_findings_list_expands_per_non_compliant_row(tmp_path):
+    """Findings #N section must materialise one heading + body pair per
+    non-Compliant row. Before this fix the rendered docx left only the
+    template's `#1` placeholder visible."""
+    rows = []
+    for i in range(4):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs-{i}", csv_filename=f"x{i}.jpg",
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            finding=f"FINDING-{i} multi-sentence reviewer narrative.",
+            conformance_status="NCR" if i % 2 == 0 else "Compliant",
+            ccvs_code="WAH-H6" if i % 2 == 0 else "SYS-L1",
+        ))
+    out = tmp_path / "report.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    headings = [
+        p.text for p in doc.paragraphs
+        if p.text.startswith("#") and len(p.text) > 2
+    ]
+    # 2 non-Compliant rows (i=0 NCR, i=2 NCR) → 2 #N headings.
+    assert len(headings) == 2
+    assert any(h.startswith("#1") and "WAH-H6" in h for h in headings)
+    assert any(h.startswith("#2") and "WAH-H6" in h for h in headings)
+    # Finding body text must appear as separate paragraphs.
+    body_texts = [p.text for p in doc.paragraphs]
+    assert any("FINDING-0" in t for t in body_texts)
+    assert any("FINDING-2" in t for t in body_texts)
+
+
+def test_findings_list_no_register_rows_writes_placeholder(tmp_path):
+    """Empty audit collapses Findings to a single 'no findings recorded'
+    line so the section still renders cleanly."""
+    out = tmp_path / "report.docx"
+    build_ssa_report_docx(
+        rows=[], site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="", output_path=out,
+    )
+    doc = Document(out)
+    assert any("No findings recorded." in p.text for p in doc.paragraphs)
+
+
+def test_parse_prior_report_recommendations_extracts_non_compliant(tmp_path):
+    """Prior report's NCR / Conditional rows in the Observations
+    Register table become carry-forward recommendation entries."""
+    from pims.services.ssa_pipeline import parse_prior_report_recommendations
+    # Build a minimal prior-report shape: one 6-col Observations
+    # Register with mixed statuses.
+    from docx import Document as DocBuilder
+    d = DocBuilder()
+    t = d.add_table(rows=4, cols=6)
+    headers = ["Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"]
+    for i, h in enumerate(headers):
+        t.rows[0].cells[i].text = h
+    # NCR row
+    for i, v in enumerate(["1", "", "missing edge protection", "WHS Reg cl.79",
+                            "NCR", "ev1.jpg"]):
+        t.rows[1].cells[i].text = v
+    # Compliant row — should be skipped
+    for i, v in enumerate(["2", "", "site sign current", "WHS Reg cl.34",
+                            "Compliant", "ev2.jpg"]):
+        t.rows[2].cells[i].text = v
+    # Conditional row
+    for i, v in enumerate(["3", "", "SWMS undated", "WHS Reg cl.301",
+                            "Conditional", "ev3.jpg"]):
+        t.rows[3].cells[i].text = v
+    p = tmp_path / "Site-Safety-Audit-Report-260301-RPD.docx"
+    d.save(p)
+
+    recs = parse_prior_report_recommendations(p)
+    assert len(recs) == 2
+    assert recs[0]["recommendation"] == "missing edge protection"
+    assert recs[0]["required_actions"] == "WHS Reg cl.79"
+    assert recs[0]["status"] == ""
+    assert recs[1]["recommendation"] == "SWMS undated"
+
+
+def test_parse_prior_report_missing_file_returns_empty(tmp_path):
+    from pims.services.ssa_pipeline import parse_prior_report_recommendations
+    assert parse_prior_report_recommendations(tmp_path / "no.docx") == []
+
+
 def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
     """Regression for the _clone_row bug that dropped all middle rows.
 

@@ -43,6 +43,7 @@ from pims.services.ssa_pipeline import (
     extract_site_address,
     match_photos,
     parse_evidence_csv,
+    parse_prior_report_recommendations,
 )
 
 log = logging.getLogger("ssa.cli")
@@ -369,6 +370,14 @@ def run_once(
     )
     llm_diag["ra"] = ra_summary
 
+    # Parse carry-forward recommendations from the newest qualifying
+    # prior report so the SSA report's "Status of Previous
+    # Recommendations" table actually carries content.
+    prior_recs: list[dict] = []
+    if prior_reports:
+        newest_prior = prior_reports[-1]
+        prior_recs = parse_prior_report_recommendations(newest_prior)
+
     enriched_diag = build_pims_enriched_xlsx(enriched, enriched_path)
     report_diag = build_ssa_report_docx(
         enriched,
@@ -377,7 +386,9 @@ def run_once(
         narrative_summary=narrative_summary,
         output_path=report_path,
         prepared_by=prepared_by,
+        prior_recs=prior_recs,
     )
+    report_diag["prior_recs_count"] = len(prior_recs)
     staging_result = build_pims_staging_xlsx_with_size_control(
         enriched,
         staging_path,
