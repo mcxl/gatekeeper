@@ -76,7 +76,7 @@ def routes(monkeypatch):
         pytest.skip(f"pims.routes unavailable: {e}")
     monkeypatch.setattr(r, "RPD_SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(r, "RPD_SUPABASE_SERVICE_KEY", "test-key")
-    monkeypatch.setattr(r, "verify_session_cookie", lambda _: True)
+    monkeypatch.setattr(r, "verify_session_cookie", lambda *_a, **_kw: True)
     monkeypatch.setattr(r.httpx, "AsyncClient", _CapturingClient)
     _CapturingClient.calls = []
     _CapturingClient.next_responses = []
@@ -113,7 +113,7 @@ class TestApproveObservation:
 
     def test_unauthorized_without_session(self, routes, monkeypatch):
         from fastapi import HTTPException
-        monkeypatch.setattr(routes, "verify_session_cookie", lambda _: False)
+        monkeypatch.setattr(routes, "verify_session_cookie", lambda *_a, **_kw: False)
         with pytest.raises(HTTPException) as exc:
             asyncio.run(routes.approve_observation(
                 "11111111-1111-1111-1111-111111111111",

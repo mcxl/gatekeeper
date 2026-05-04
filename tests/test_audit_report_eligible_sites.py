@@ -53,7 +53,7 @@ def patched_routes(monkeypatch):
         pytest.skip(f"pims.routes unavailable: {e}")
     monkeypatch.setattr(routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
-    monkeypatch.setattr(routes, "verify_session_cookie", lambda _: True)
+    monkeypatch.setattr(routes, "verify_session_cookie", lambda *_a, **_kw: True)
     monkeypatch.setattr(routes.httpx, "AsyncClient", _FakeClient)
     _FakeClient.last_params = None
     _FakeClient.next_payload = []
@@ -75,7 +75,7 @@ def test_eligible_sites_filters_null_project_value(patched_routes):
 
 def test_eligible_sites_requires_session(patched_routes, monkeypatch):
     from fastapi import HTTPException
-    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda _: False)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda *_a, **_kw: False)
     with pytest.raises(HTTPException) as exc:
         asyncio.run(patched_routes.list_eligible_sites(pims_sess=None))
     assert exc.value.status_code == 401

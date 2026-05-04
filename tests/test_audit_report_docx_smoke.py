@@ -85,8 +85,10 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
     # Part A + Part B headers
     assert "Part A" in full_text
     assert "Part B" in full_text
-    # The matched row renders the NCR finding + photo
-    assert "P001" in full_text
+    # The matched row renders the NCR finding (photos are now pre-fetched
+    # and embedded as image bytes; the photo_url string itself is no longer
+    # written into any cell — see commit 791e167).
+    assert "Worker on roof without fall protection" in full_text
     assert "NCR" in full_text
     # The unmatched row (inductions) is reframed per the golden example
     assert "All workers have completed required inductions and training." in full_text
@@ -727,17 +729,10 @@ def test_duplicate_ccvs_code_renders_one_block_per_observation(
     assert len(beta_tables) == 1, f"second obs not rendered exactly once: {beta_tables}"
     assert alpha_tables != beta_tables, "both observations landed in the same table"
 
-    # Each block carries its own photo marker.
-    alpha_text = "\n".join(
-        cell.text for row in doc.tables[alpha_tables[0]].rows for cell in row.cells
-    )
-    beta_text = "\n".join(
-        cell.text for row in doc.tables[beta_tables[0]].rows for cell in row.cells
-    )
-    assert "PHOTO_ONE" in alpha_text
-    assert "PHOTO_TWO" in beta_text
-    assert "PHOTO_TWO" not in alpha_text
-    assert "PHOTO_ONE" not in beta_text
+    # Per-block isolation is already proven by the distinctive alpha/beta
+    # checks above. The photo_url strings (PHOTO_ONE/PHOTO_TWO) are no
+    # longer written into any cell — photos are pre-fetched and embedded
+    # as image bytes (see commit 791e167).
 
 
 def test_no_checklist_block_has_duplicate_header_text(checklist_xlsx, template_docx):

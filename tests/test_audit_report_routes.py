@@ -184,7 +184,7 @@ def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkey
 
     monkeypatch.setattr(patched_routes, "_fetch_sites_by_id", fake_fetch_sites)
     monkeypatch.setattr(patched_routes, "_fetch_observations_for_site", fake_fetch_obs)
-    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda _c: True)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda *_a, **_kw: True)
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
     # Template + xlsx existence checks read from disk; point them at real files.
@@ -234,7 +234,7 @@ def _happy_path_with_datetime(patched_routes, monkeypatch, dt_string: str) -> li
 
     monkeypatch.setattr(patched_routes, "_fetch_sites_by_id", fake_fetch_sites)
     monkeypatch.setattr(patched_routes, "_fetch_observations_for_site", fake_fetch_obs)
-    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda _c: True)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda *_a, **_kw: True)
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
     from pims import audit_report_docx as arpt
