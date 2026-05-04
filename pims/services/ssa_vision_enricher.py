@@ -161,10 +161,14 @@ _SYSTEM_PROMPT = (
 )
 
 
+_TRANSIENT_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+
+
 async def _vision_call(
     photo_b64: str, photo_mime: str, observation_text: str,
     site_address: str, audit_date_iso: str, api_key: str,
     ra_context: str = "",
+    retries: int = 2,
 ) -> dict[str, Any]:
     """Single Anthropic vision call. Returns the parsed JSON dict.
 
@@ -222,18 +226,41 @@ async def _vision_call(
             }
         ],
     }
-    async with httpx.AsyncClient(timeout=120) as client:
-        resp = await client.post(
-            ANTHROPIC_URL,
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": ANTHROPIC_VERSION,
-                "content-type": "application/json",
-            },
-            json=body,
-        )
-        resp.raise_for_status()
-        text = resp.json()["content"][0]["text"].strip()
+    last_exc: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    ANTHROPIC_URL,
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": ANTHROPIC_VERSION,
+                        "content-type": "application/json",
+                    },
+                    json=body,
+                )
+            if resp.status_code in _TRANSIENT_HTTP_STATUSES:
+                raise httpx.HTTPStatusError(
+                    f"transient HTTP {resp.status_code}",
+                    request=resp.request, response=resp,
+                )
+            resp.raise_for_status()
+            text = resp.json()["content"][0]["text"].strip()
+            break
+        except (httpx.ConnectError, httpx.ReadError, httpx.WriteError,
+                httpx.TimeoutException, httpx.RemoteProtocolError,
+                httpx.HTTPStatusError) as exc:
+            last_exc = exc
+            if isinstance(exc, httpx.HTTPStatusError) and \
+                    exc.response.status_code not in _TRANSIENT_HTTP_STATUSES:
+                # 4xx (auth, bad request) — don't retry, surface
+                raise
+            if attempt >= retries:
+                raise
+            import asyncio
+            await asyncio.sleep(1.5 * (attempt + 1))
+    else:  # pragma: no cover — loop never falls through; either break or raise
+        raise RuntimeError(f"vision call failed after retries: {last_exc}")
     # Strip code fences if the model wrapped output despite instruction.
     if text.startswith("```"):
         text = text.split("```", 2)[1]
