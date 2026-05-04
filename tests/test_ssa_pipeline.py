@@ -1,0 +1,937 @@
+"""Regression tests for the SSA evidence-folder → 3-deliverable pipeline.
+
+Locks down behaviours verified ad-hoc across the slices that built the
+parser, builders, CLI, and watcher (see ``.claude/plans/workflow-1...md``
+for the spec). These tests run without Anthropic credentials — the LLM
+pass is a separate slice and stubbed out where it would otherwise be
+called.
+
+Coverage:
+  - parse_evidence_csv: header detection, encoding, bad timestamp,
+    duplicate filename, missing filename, embedded newlines / quoted
+    commas, blank rows, bad field count
+  - match_photos: exact, stem (extension swap), suffix/prefix,
+    ambiguous, missing
+  - extract_site_address: regex hit + no-hit
+  - ChecklistLookup.from_xlsx + match (synthesised CCVS code path)
+  - enrich_observations: Unmatched defaults; needs_review surface
+  - build_pims_enriched_xlsx: header passthrough, photo embed, missing
+    photo, RAW: prefix on bad timestamp
+  - build_ssa_report_docx: token substitution (incl. cover-page text
+    box), table cloning by status, `*` marker on missing photo, no
+    `{{`/`}}` left in any document part
+  - build_pims_staging_xlsx: row 3 headers, row 5 data start, blank
+    `id`, due_category mapping, needs_review TRUE/FALSE, photo embed
+    in column B
+  - run_ssa_pipeline.run_once: tri-state staging_status (RPD ok / SDG /
+    no-address); freeze skip; manifest-based idempotency (skip,
+    input-change rerun, partial-output recovery); prior-report
+    self-reference protection
+  - ssa_watcher.Watcher: eligibility skip; quiescence (settle +
+    stability); freeze; runner-error → .ssa_run.error; idempotent
+    second fire returns skipped=True
+"""
+from __future__ import annotations
+
+import json
+import time
+import zipfile
+from io import BytesIO
+from pathlib import Path
+
+import openpyxl
+import pytest
+from docx import Document
+from PIL import Image
+
+from pims.scripts.run_ssa_pipeline import run_once
+from pims.services.ssa_checklist_lookup import ChecklistLookup
+from pims.services.ssa_pipeline import (
+    ObservationRow,
+    EnrichedRow,
+    build_pims_enriched_xlsx,
+    build_pims_staging_xlsx,
+    build_pims_staging_xlsx_with_size_control,
+    build_ssa_report_docx,
+    enrich_observations,
+    extract_site_address,
+    match_photos,
+    parse_evidence_csv,
+)
+from pims.services.ssa_watcher import Watcher
+
+
+# ---------------------------------------------------------------------------
+# fixtures
+# ---------------------------------------------------------------------------
+
+def _save_jpeg(path: Path, size=(800, 600), color="red") -> Path:
+    Image.new("RGB", size, color).save(path, "JPEG")
+    return path
+
+
+@pytest.fixture
+def evidence_folder(tmp_path):
+    """Minimal RPD evidence folder: 2-row CSV + 2 photos.
+
+    Returns a folder named ``2026-05-01-RPD`` so the CLI's folder-name
+    contract parses cleanly. The address-shaped string is embedded in
+    one observation so ``extract_site_address`` finds it.
+    """
+    folder = tmp_path / "2026-05-01-RPD"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,Edge protection missing on level 2 at "
+        "12 Smith Street site,EV_001.jpg\n"
+        "2026-05-01_09-30-05,Site sign current and clear,EV_002.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV_001.jpg", (1600, 1200))
+    _save_jpeg(folder / "EV_002.jpg", (1200, 1600), "blue")
+    return folder
+
+
+# ---------------------------------------------------------------------------
+# parse_evidence_csv
+# ---------------------------------------------------------------------------
+
+def test_parse_csv_basic_with_header(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs one,EV_001.jpg\n"
+        "2026-05-01_09-30-05,obs two,EV_002.jpg\n",
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert len(rows) == 2
+    assert warnings == []
+    assert rows[0].csv_row == 2  # header consumed from row 1
+    assert rows[0].timestamp_iso == "2026-05-01_09-15-22"
+    assert rows[0].csv_filename == "EV_001.jpg"
+
+
+def test_parse_csv_utf8_sig_encoded(tmp_path):
+    p = tmp_path / "ev.csv"
+    body = "timestamp,observation,filename\n2026-05-01_09-15-22,a,b.jpg\n"
+    p.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+    rows, warnings = parse_evidence_csv(p)
+    assert len(rows) == 1
+    assert warnings == []
+
+
+def test_parse_csv_bad_timestamp_kept_with_flag(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "not-a-time,obs text,EV.jpg\n",
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert len(rows) == 1
+    assert rows[0].timestamp_iso is None
+    assert rows[0].needs_review
+    assert "bad_timestamp" in rows[0].review_reasons
+    assert any(w.reason == "bad_timestamp" for w in warnings)
+
+
+def test_parse_csv_missing_filename_dropped(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs,\n",
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert rows == []
+    assert any(w.reason == "missing_filename" for w in warnings)
+
+
+def test_parse_csv_duplicate_filename_flagged_on_all(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,a,EV.jpg\n"
+        "2026-05-01_09-30-00,b,EV.jpg\n",
+        encoding="utf-8",
+    )
+    rows, _ = parse_evidence_csv(p)
+    assert len(rows) == 2
+    assert all(r.duplicate_filename for r in rows)
+    assert all("duplicate_filename" in r.review_reasons for r in rows)
+
+
+def test_parse_csv_quoted_commas_and_embedded_newlines(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        'timestamp,observation,filename\n'
+        '2026-05-01_09-15-22,"line one, line two\nline three",EV.jpg\n',
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert len(rows) == 1
+    assert "line three" in rows[0].observation_text
+    assert warnings == []
+
+
+def test_parse_csv_blank_rows_skipped(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "\n"
+        "2026-05-01_09-15-22,a,EV.jpg\n"
+        ",,\n",
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert len(rows) == 1
+    # Both the empty line and the all-commas line are blank-row-skipped
+    # silently per the parser contract.
+    assert warnings == []
+
+
+def test_parse_csv_bad_field_count_dropped(tmp_path):
+    p = tmp_path / "ev.csv"
+    p.write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs,EV.jpg,extra\n",
+        encoding="utf-8",
+    )
+    rows, warnings = parse_evidence_csv(p)
+    assert rows == []
+    assert any(w.reason == "bad_field_count" for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# match_photos
+# ---------------------------------------------------------------------------
+
+def _row(filename: str, csv_row: int = 1) -> ObservationRow:
+    return ObservationRow(
+        csv_row=csv_row,
+        timestamp_raw="2026-05-01_09-15-22",
+        timestamp_iso="2026-05-01_09-15-22",
+        observation_text="x",
+        csv_filename=filename,
+    )
+
+
+def test_match_photos_exact(tmp_path):
+    p = _save_jpeg(tmp_path / "EV_001.jpg")
+    rows = [_row("EV_001.jpg")]
+    warnings = match_photos(rows, [p])
+    assert warnings == []
+    assert rows[0].resolved_path == p
+
+
+def test_match_photos_jpeg_extension_normalisation(tmp_path):
+    """CSV says .jpeg, disk has .JPG — both canonicalise to .jpg so the
+    canonical-match rule (rule 2) wins. Verifies the JPEG-family case-
+    and extension-insensitivity built into ``_canonical_name``."""
+    p = _save_jpeg(tmp_path / "EV_001.JPG")
+    rows = [_row("EV_001.jpeg")]
+    warnings = match_photos(rows, [p])
+    assert rows[0].resolved_path == p
+    assert warnings == []
+
+
+def test_match_photos_suffix_prefixed_disk_name(tmp_path):
+    p = _save_jpeg(tmp_path / "6aFrancis_EV_001.jpg")
+    rows = [_row("EV_001.jpg")]
+    warnings = match_photos(rows, [p])
+    assert rows[0].resolved_path == p
+    assert any(w.reason == "prefix_match" for w in warnings)
+
+
+def test_match_photos_ambiguous_flags_no_silent_select(tmp_path):
+    a = _save_jpeg(tmp_path / "a" / "EV_001.jpg".replace("a/", "")) \
+        if False else _save_jpeg(tmp_path / "EV_001.jpg")
+    # Two distinct on-disk files with the same canonical name (different
+    # case → same .lower()). Use suffix match to manufacture ambiguity:
+    # two prefixed disk files, neither identical to the CSV token.
+    p1 = _save_jpeg(tmp_path / "siteA_EV_999.jpg")
+    p2 = _save_jpeg(tmp_path / "siteB_EV_999.jpg")
+    rows = [_row("EV_999.jpg")]
+    warnings = match_photos(rows, [p1, p2])
+    assert rows[0].resolved_path is None
+    assert "photo_match_ambiguous" in rows[0].review_reasons
+    assert any(w.reason == "photo_match_ambiguous" for w in warnings)
+
+
+def test_match_photos_missing_flags_needs_review(tmp_path):
+    rows = [_row("nope.jpg")]
+    warnings = match_photos(rows, [])
+    assert rows[0].resolved_path is None
+    assert "photo_missing" in rows[0].review_reasons
+    assert any(w.reason == "photo_missing" for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# extract_site_address
+# ---------------------------------------------------------------------------
+
+def test_extract_site_address_picks_first_address_shaped_hit():
+    rows = [_row("a.jpg"), _row("b.jpg", csv_row=2)]
+    rows[0].observation_text = "no address here"
+    rows[1].observation_text = "issue at 12 Smith Street, Sydney"
+    addr = extract_site_address(rows)
+    assert addr is not None
+    assert "12 Smith Street" in addr
+
+
+def test_extract_site_address_no_hit_returns_none():
+    rows = [_row("a.jpg")]
+    rows[0].observation_text = "site is generally tidy"
+    assert extract_site_address(rows) is None
+
+
+# ---------------------------------------------------------------------------
+# ChecklistLookup
+# ---------------------------------------------------------------------------
+
+def test_checklist_lookup_synthesises_code_from_leading_numbers():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    assert len(cl.by_code) > 0
+    m = cl.match("01.01")
+    assert m is not None
+    assert m.ccvs_code == "01.01"
+    assert "Planning" in m.ccvs_category
+    assert cl.match("nonexistent") is None
+
+
+def test_checklist_lookup_extracts_legal_ref_from_criteria_parens():
+    """``(WHS Reg cl.34-38)`` inside a Criteria cell becomes the
+    legal_ref when the column itself is blank — current xlsx case."""
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    m = cl.match("01.02")  # criteria mentions "(WHS Reg cl.34-38)"
+    assert m is not None
+    assert "WHS Reg cl.34" in m.legal_ref
+
+
+def test_checklist_lookup_maps_instruction_column_to_action_description():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    m = cl.match("01.02")
+    assert m is not None
+    # Instruction text in the xlsx for 01.02 is "Check risk assessment ..."
+    assert m.action_description.lower().startswith("check")
+
+
+def test_match_observation_confident_hit():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    m = cl.match_observation("first aid kit was incomplete")
+    assert m is not None
+    assert m.ccvs_code == "01.06"
+
+
+def test_match_observation_ambiguous_returns_none():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    # Tied across multiple plausible candidates — guard rejects.
+    assert cl.match_observation("guardrail missing at edge of slab") is None
+
+
+def test_match_observation_too_few_tokens_returns_none():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    assert cl.match_observation("the and of") is None
+    assert cl.match_observation("") is None
+
+
+# ---------------------------------------------------------------------------
+# enrich_observations
+# ---------------------------------------------------------------------------
+
+def test_enrich_observations_auto_matches_on_confident_hit():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    obs1 = _row("a.jpg", csv_row=1)
+    obs1.observation_text = "first aid kit was incomplete"
+    obs2 = _row("b.jpg", csv_row=2)
+    obs2.observation_text = "guardrail missing at edge of slab"  # ambiguous
+    enriched = enrich_observations([obs1, obs2], checklist=cl)
+    # Confident match: status lifts to Conditional, fields populated.
+    assert enriched[0].conformance_status == "Conditional"
+    assert enriched[0].ccvs_code == "01.06"
+    assert enriched[0].action_description != ""
+    # Ambiguous: stays Unmatched, fields blank.
+    assert enriched[1].conformance_status == "Unmatched"
+    assert enriched[1].ccvs_code == ""
+
+
+def test_enrich_observations_auto_match_disabled_keeps_unmatched():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    obs = _row("a.jpg", csv_row=1)
+    obs.observation_text = "first aid kit was incomplete"
+    enriched = enrich_observations([obs], checklist=cl, auto_match=False)
+    assert enriched[0].conformance_status == "Unmatched"
+    assert enriched[0].ccvs_code == ""
+
+
+def test_enrich_observations_explicit_ccvs_code_overrides_auto_match():
+    cl_path = Path(__file__).resolve().parent.parent / "pims" / "audit_checklist.xlsx"
+    cl = ChecklistLookup.from_xlsx(cl_path)
+    obs = _row("a.jpg", csv_row=1)
+    obs.observation_text = "first aid kit was incomplete"
+    enriched = enrich_observations(
+        [obs], checklist=cl, ccvs_codes={1: "01.01"},
+    )
+    # Explicit code wins over the auto-matcher's preferred 01.06.
+    assert enriched[0].ccvs_code == "01.01"
+    assert enriched[0].conformance_status == "Conditional"
+
+
+def test_enrich_observations_v1_defaults_every_row_unmatched():
+    obs = [
+        _row("a.jpg", csv_row=1),
+        _row("b.jpg", csv_row=2),
+    ]
+    obs[0].observation_text = "  edge   protection  missing  "
+    enriched = enrich_observations(obs)
+    assert len(enriched) == 2
+    for r in enriched:
+        assert r.conformance_status == "Unmatched"
+        assert r.action_required == "Yes"
+        assert r.needs_review
+        assert r.ccvs_code == "" and r.legal_ref == ""
+    # Light cleanup collapses runs of whitespace.
+    assert enriched[0].observation_text_clean == "edge protection missing"
+
+
+# ---------------------------------------------------------------------------
+# build_pims_enriched_xlsx
+# ---------------------------------------------------------------------------
+
+def test_build_enriched_xlsx_shape_and_photo_embed(tmp_path):
+    p1 = _save_jpeg(tmp_path / "a.jpg", (1200, 800))
+    p2 = _save_jpeg(tmp_path / "b.jpg", (800, 1200), "blue")
+    p_missing = tmp_path / "gone.jpg"
+    obs1 = ObservationRow(csv_row=1, timestamp_raw="2026-05-01_09-15-22",
+                          timestamp_iso="2026-05-01_09-15-22",
+                          observation_text="x", csv_filename="a.jpg",
+                          resolved_filename="a.jpg", resolved_path=p1)
+    obs2 = ObservationRow(csv_row=2, timestamp_raw="bogus",
+                          timestamp_iso=None,
+                          observation_text="y", csv_filename="b.jpg",
+                          resolved_filename="b.jpg", resolved_path=p2)
+    obs2.flag("bad_timestamp")
+    obs3 = ObservationRow(csv_row=3, timestamp_raw="2026-05-01_10-00-00",
+                          timestamp_iso="2026-05-01_10-00-00",
+                          observation_text="z", csv_filename="gone.jpg",
+                          resolved_filename="gone.jpg",
+                          resolved_path=p_missing)
+
+    rows = [
+        EnrichedRow(obs=obs1, conformance_status="NCR", ccvs_code="02.05"),
+        EnrichedRow(obs=obs2, conformance_status="Compliant"),
+        EnrichedRow(obs=obs3, conformance_status="Unmatched"),
+    ]
+    out = tmp_path / "enriched.xlsx"
+    diag = build_pims_enriched_xlsx(rows, out)
+
+    assert out.exists()
+    assert str(p_missing) in diag["photo_file_missing_at_render"]
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Enriched Register"]
+    headers = [c.value for c in ws[1]]
+    assert headers[0] == "#" and headers[3] == "Photo"
+
+    # Row 2: NCR row, embedded photo
+    assert ws.cell(row=2, column=1).value == 1
+    assert ws.cell(row=2, column=3).value == "P-0001"
+    assert ws.cell(row=2, column=10).value == "Yes"  # Action Required
+    # Row 3: bad timestamp → RAW: prefix
+    assert str(ws.cell(row=3, column=2).value).startswith("RAW: bogus")
+    # Row 4: Unmatched, missing photo, default row height
+    assert ws.cell(row=4, column=10).value == "Yes"  # Unmatched forces Yes
+    assert ws.row_dimensions[4].height in (None, 0)
+
+    # Two photos embedded (obs1, obs2); obs3 missing on disk → none
+    assert len(ws._images) == 2
+
+
+# ---------------------------------------------------------------------------
+# build_ssa_report_docx
+# ---------------------------------------------------------------------------
+
+def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
+    p1 = _save_jpeg(tmp_path / "a.jpg", (1200, 800))
+    p2 = _save_jpeg(tmp_path / "b.jpg", (800, 1200), "blue")
+    obs1 = ObservationRow(csv_row=1, timestamp_raw="", timestamp_iso=None,
+                          observation_text="x", csv_filename="a.jpg",
+                          resolved_filename="a.jpg", resolved_path=p1)
+    obs2 = ObservationRow(csv_row=2, timestamp_raw="", timestamp_iso=None,
+                          observation_text="y", csv_filename="b.jpg",
+                          resolved_filename="b.jpg", resolved_path=p2)
+    obs3 = ObservationRow(csv_row=3, timestamp_raw="", timestamp_iso=None,
+                          observation_text="z", csv_filename="m.jpg")
+    rows = [
+        EnrichedRow(obs=obs1, finding="Top rail missing.",
+                    conformance_status="NCR", legal_ref="WHS Reg cl.79"),
+        EnrichedRow(obs=obs2, observation_text_clean="Site sign clear.",
+                    conformance_status="Compliant", legal_ref="WHS Reg cl.34"),
+        EnrichedRow(obs=obs3, finding="Unmatched issue.",
+                    conformance_status="Unmatched"),
+    ]
+    out = tmp_path / "report.docx"
+    diag = build_ssa_report_docx(
+        rows=rows,
+        site_address="12 Test Street, Sydney NSW",
+        audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="Audit summary text.",
+        output_path=out,
+        prepared_by="Alan Richardson",
+    )
+    assert out.exists()
+    assert diag["missing_photo_obs"] == [2]  # obs3 → row 2 in register
+
+    # No leftover tokens in any document part.
+    with zipfile.ZipFile(out) as z:
+        for name in z.namelist():
+            if name.endswith(".xml"):
+                data = z.read(name).decode(errors="ignore")
+                assert "{{" not in data, name
+                assert "}}" not in data, name
+
+    doc = Document(out)
+    # p4 = site address (16 pt bold), p6 = narrative
+    assert doc.paragraphs[4].text == "12 Test Street, Sydney NSW"
+    assert doc.paragraphs[6].text == "Audit summary text."
+
+    # Footer carries DD/MM/YYYY + prepared_by
+    foot = doc.sections[1].footer.paragraphs[0].text
+    assert "01/05/2026" in foot
+    assert "Alan Richardson" in foot
+
+    # Positive Observations table → 1 Compliant row
+    pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
+               and "Reference" in t.rows[0].cells[2].text)
+    assert pos.rows[1].cells[1].text == "Site sign clear."
+
+    # Observations Register → 2 non-Compliant rows; second row has `*`
+    reg = next(t for t in doc.tables
+               if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
+    assert len(reg.rows) == 3  # header + 2 data
+    assert reg.rows[1].cells[0].text == "1"
+    assert reg.rows[2].cells[0].text == "2*"
+
+
+def test_build_ssa_report_docx_removes_per_location_placeholder(tmp_path):
+    """v1 always strips the per-location 2-col block per R-1.3(e).
+    Output should contain exactly 3 tables (Positive, Prior Recs,
+    Observations Register) and no 'Location' first-cell table."""
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[],
+        site_address="addr",
+        audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="",
+        output_path=out,
+    )
+    doc = Document(out)
+    assert len(doc.tables) == 3
+    for t in doc.tables:
+        assert t.rows[0].cells[0].text.strip() != "Location"
+
+
+def test_build_ssa_report_docx_no_findings_writes_placeholder(tmp_path):
+    out = tmp_path / "empty.docx"
+    build_ssa_report_docx(
+        rows=[],
+        site_address="addr",
+        audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="",
+        output_path=out,
+    )
+    doc = Document(out)
+    # Status of Previous Recs default placeholder.
+    prev = next(
+        t for t in doc.tables
+        if "Recommendation" in t.rows[0].cells[0].text and len(t.columns) == 4
+    )
+    assert "No prior recommendations" in prev.rows[1].cells[0].text
+
+
+# ---------------------------------------------------------------------------
+# build_pims_staging_xlsx
+# ---------------------------------------------------------------------------
+
+def test_build_staging_xlsx_row5_data_id_blank_due_category(tmp_path):
+    p1 = _save_jpeg(tmp_path / "a.jpg", (1200, 800))
+    obs1 = ObservationRow(csv_row=1, timestamp_raw="2026-05-01_09-15-22",
+                          timestamp_iso="2026-05-01_09-15-22",
+                          observation_text="x", csv_filename="a.jpg",
+                          resolved_filename="a.jpg", resolved_path=p1)
+    obs2 = ObservationRow(csv_row=2, timestamp_raw="bogus",
+                          timestamp_iso=None,
+                          observation_text="y", csv_filename="b.jpg")
+    obs2.flag("bad_timestamp")
+    rows = [
+        EnrichedRow(obs=obs1, conformance_status="NCR",
+                    ccvs_code="02.05", legal_ref="WHS Reg cl.79"),
+        EnrichedRow(obs=obs2, conformance_status="Compliant"),
+        EnrichedRow(
+            obs=ObservationRow(csv_row=3, timestamp_raw="",
+                               timestamp_iso=None, observation_text="z",
+                               csv_filename="c.jpg"),
+            conformance_status="Conditional"),
+    ]
+    out = tmp_path / "staging.xlsx"
+    diag = build_pims_staging_xlsx(
+        rows, out, site_address="12 Test St", audit_date_iso="2026-05-01",
+    )
+    assert diag["rows_written"] == 3
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Observations"]
+    # Row 3 = headers (snake_case)
+    headers = [c.value for c in ws[3]]
+    assert headers[:5] == [
+        "id", "photo", "site_address", "audit_date", "observation_text",
+    ]
+    # Data starts at row 5
+    assert ws.cell(row=5, column=1).value in (None, "")  # id ALWAYS blank
+    assert ws.cell(row=5, column=3).value == "12 Test St"
+    assert ws.cell(row=5, column=4).value == "2026-05-01"
+    assert ws.cell(row=5, column=12).value == "Immediate"   # NCR → due
+    assert ws.cell(row=5, column=20).value == "FALSE"        # NCR no flags
+    # Row 6: Compliant + bad_timestamp flag → needs_review TRUE
+    assert ws.cell(row=6, column=12).value == "N/A"
+    assert ws.cell(row=6, column=20).value == "TRUE"
+    # Row 7: Conditional → "Within 7 days"
+    assert ws.cell(row=7, column=12).value == "Within 7 days"
+
+
+# ---------------------------------------------------------------------------
+# build_pims_staging_xlsx_with_size_control
+# ---------------------------------------------------------------------------
+
+def _make_staging_rows(tmp_path, n: int, edge_px=(800, 600)):
+    """Build n EnrichedRows backed by simple synthetic JPEGs."""
+    out = []
+    for i in range(n):
+        p = tmp_path / f"EV_{i:04d}.jpg"
+        _save_jpeg(p, edge_px, color=(i * 5 % 255, 80, 80))
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs {i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        out.append(EnrichedRow(obs=obs, conformance_status="NCR"))
+    return out
+
+
+def test_size_control_small_audit_single_part_at_1600(tmp_path):
+    rows = _make_staging_rows(tmp_path, 10)
+    out = tmp_path / "s.xlsx"
+    r = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    assert r["split"] is False
+    assert r["split_reason"] is None
+    assert r["max_edge_px"] == 1600
+    assert len(r["parts"]) == 1
+    assert r["parts"][0] == out
+    assert out.exists()
+
+
+def test_size_control_row_count_split_above_500(tmp_path):
+    """Row count > 500 forces an immediate split, no size loop."""
+    rows = _make_staging_rows(tmp_path, 510, edge_px=(400, 300))
+    out = tmp_path / "s.xlsx"
+    r = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    assert r["split"] is True
+    assert r["split_reason"] == "row_count"
+    assert len(r["parts"]) == 2
+    assert r["parts"][0].name.endswith("-part1.xlsx")
+    assert r["parts"][1].name.endswith("-part2.xlsx")
+    # Single-file path was not written.
+    assert not out.exists()
+
+
+def test_size_control_size_driven_split_into_partN(tmp_path):
+    """Force a tiny budget that no full-set render can satisfy → recursive
+    halving + sequential renumbering of parts."""
+    rows = _make_staging_rows(tmp_path, 20, edge_px=(1200, 900))
+    out = tmp_path / "s.xlsx"
+    r = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+        max_bytes=12_000,
+    )
+    assert r["split"] is True
+    assert r["split_reason"] == "size"
+    assert len(r["parts"]) >= 2
+    # Sequential -part1, -part2, ... naming with no gaps.
+    for i, p in enumerate(r["parts"], start=1):
+        assert p.name.endswith(f"-part{i}.xlsx")
+        assert p.exists()
+
+
+# ---------------------------------------------------------------------------
+# run_ssa_pipeline.run_once — staging tri-state + freeze + idempotency
+# ---------------------------------------------------------------------------
+
+def test_run_once_rpd_bulk_uploadable(evidence_folder):
+    payload = run_once(evidence_folder)
+    assert payload["staging_status"] == "bulk_uploadable"
+    assert payload["blocker"] is None
+    assert payload["client_bulk_endpoint"] == "/pims/upload/observations"
+    for name in payload["outputs"]:
+        assert (evidence_folder / name).exists()
+
+
+def test_run_once_sdg_schema_valid_no_endpoint(tmp_path):
+    folder = tmp_path / "2026-05-02-SDG"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-02_09-00-00,obs at 12 Smith Street,EV.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV.jpg")
+    payload = run_once(folder)
+    assert payload["staging_status"] == "schema_valid_no_endpoint"
+    assert payload["client_bulk_endpoint"] is None
+    assert "STAGING-NO-BULK-ENDPOINT.txt" in payload["outputs"]
+    assert (folder / "STAGING-NO-BULK-ENDPOINT.txt").exists()
+
+
+def test_run_once_no_address_writes_not_uploadable_sentinel(tmp_path):
+    folder = tmp_path / "2026-05-03-RPD"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-03_09-00-00,no address text,EV.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV.jpg")
+    payload = run_once(folder)
+    assert payload["staging_status"] == "not_uploadable"
+    assert payload["blocker"] == "site_address_unresolved"
+    assert (folder / "STAGING-NOT-UPLOADABLE.txt").exists()
+
+
+def test_run_once_freeze_blocks_unless_ignore(evidence_folder):
+    run_once(evidence_folder)
+    (evidence_folder / ".ssa_freeze").touch()
+    with pytest.raises(RuntimeError, match="frozen"):
+        run_once(evidence_folder)
+    payload = run_once(evidence_folder, ignore_freeze=True)
+    assert payload["staging_status"] == "bulk_uploadable"
+
+
+def test_run_once_idempotent_skip_on_unchanged_inputs(evidence_folder):
+    p1 = run_once(evidence_folder)
+    enriched = evidence_folder / "PIMS-Enriched-260501-RPD.xlsx"
+    mtime_before = enriched.stat().st_mtime
+    time.sleep(1.05)
+    p2 = run_once(evidence_folder)
+    assert p2["skipped"] is True
+    assert enriched.stat().st_mtime == mtime_before
+    assert p2["inputs_sha256"] == p1["inputs_sha256"]
+
+
+def test_run_once_input_change_reruns_and_force_overrides(evidence_folder):
+    p1 = run_once(evidence_folder)
+    csv = evidence_folder / "Evidence_Master.csv"
+    csv.write_text(
+        csv.read_text()
+        + "2026-05-01_10-00-00,Hot works near combustibles,EV_003.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(evidence_folder / "EV_003.jpg")
+    p2 = run_once(evidence_folder)
+    assert p2["skipped"] is False
+    assert p2["inputs_sha256"] != p1["inputs_sha256"]
+    assert p2["row_count"] == 3
+
+    # --force overrides the skip when nothing changed.
+    p3 = run_once(evidence_folder)
+    assert p3["skipped"] is True
+    p4 = run_once(evidence_folder, force=True)
+    assert p4["skipped"] is False
+
+
+def test_run_once_partial_output_recovery(evidence_folder):
+    p = run_once(evidence_folder)
+    victim = evidence_folder / p["outputs"][0]
+    assert victim.exists()
+    victim.unlink()
+    p2 = run_once(evidence_folder)
+    assert p2["skipped"] is False
+    assert victim.exists()
+
+
+def test_run_once_prior_report_self_reference_excluded(evidence_folder):
+    """The current run's freshly-generated report must NOT be hashed
+    into the next manifest, otherwise reruns of the same folder would
+    flap the manifest and never converge."""
+    p = run_once(evidence_folder)
+    current = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
+    # Drop a qualifying older report; it should appear in the manifest
+    # source list while the current target stays out.
+    older = evidence_folder / "Site-Safety-Audit-Report-260330-RPD.docx"
+    older.write_bytes(current.read_bytes())
+    p2 = run_once(evidence_folder)
+    assert older.name in p2["prior_reports_used"]
+    assert current.name not in p2["prior_reports_used"]
+    # Stable across cycles.
+    p3 = run_once(evidence_folder)
+    assert p3["skipped"] is True
+
+
+def test_run_once_unparseable_prior_report_date_non_qualifying(evidence_folder):
+    run_once(evidence_folder)
+    (evidence_folder / "Site-Safety-Audit-Report-bogus-RPD.docx").write_bytes(
+        b"x"
+    )
+    p = run_once(evidence_folder, force=True)
+    assert "Site-Safety-Audit-Report-bogus-RPD.docx" not in p["prior_reports_used"]
+
+
+def test_run_once_llm_pass_disabled_by_default_in_tests(evidence_folder, monkeypatch):
+    """Tests run without ``PIMS_ENRICH_FINDINGS`` set, so the LLM pass
+    short-circuits via ``finding_enricher.is_enabled``. Verify that an
+    empty narrative flows through to the docx without raising and that
+    no Anthropic call is attempted (would have surfaced as an
+    environment / network error)."""
+    monkeypatch.delenv("PIMS_ENRICH_FINDINGS", raising=False)
+    payload = run_once(evidence_folder)
+    assert payload["staging_status"] == "bulk_uploadable"
+    # Docx exists; narrative paragraph (p6) is empty.
+    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
+    doc = Document(docx_path)
+    assert doc.paragraphs[6].text == ""
+
+
+def test_run_once_llm_pass_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
+    """Even with ``PIMS_ENRICH_FINDINGS=1``, ``enrich=False`` short-circuits
+    before the env-var gate. No Anthropic call attempted."""
+    monkeypatch.setenv("PIMS_ENRICH_FINDINGS", "1")
+    payload = run_once(evidence_folder, enrich=False)
+    assert payload["staging_status"] == "bulk_uploadable"
+    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
+    doc = Document(docx_path)
+    assert doc.paragraphs[6].text == ""
+
+
+def test_run_once_bad_folder_name_raises(tmp_path):
+    bad = tmp_path / "not-a-dated-folder"
+    bad.mkdir()
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        run_once(bad)
+
+
+# ---------------------------------------------------------------------------
+# ssa_watcher
+# ---------------------------------------------------------------------------
+
+def test_watcher_skips_ineligible_folder(tmp_path):
+    (tmp_path / "random").mkdir()
+    w = Watcher(watch_root=tmp_path, settle_seconds=0,
+                required_stable_polls=1, runner=lambda f: {})
+    results = w.tick()
+    assert all(r["action"] == "skip" for r in results)
+
+
+def test_watcher_quiescence_then_fires(tmp_path):
+    folder = tmp_path / "2026-05-01-RPD"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs at 12 Smith Street,EV.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV.jpg")
+
+    fake_now = [time.time() + 10_000]   # past settle window
+    calls = []
+
+    def runner(f):
+        calls.append(f.name)
+        return run_once(f)
+
+    w = Watcher(
+        watch_root=tmp_path, settle_seconds=120, required_stable_polls=4,
+        runner=runner, clock=lambda: fake_now[0],
+    )
+    # 3 polls — still waiting for stability
+    for _ in range(3):
+        results = w.tick()
+        assert any(r["action"] == "wait" for r in results
+                   if r["folder"] == folder.name)
+    # 4th poll fires
+    results = w.tick()
+    fired = [r for r in results if r["folder"] == folder.name]
+    assert fired and fired[0]["action"] == "ran"
+    assert fired[0]["skipped"] is False
+    assert calls == [folder.name]
+
+    # Next 4-poll window: idempotency yields skipped=True
+    for _ in range(4):
+        results = w.tick()
+    fired = [r for r in results if r["folder"] == folder.name]
+    assert fired[0]["action"] == "ran"
+    assert fired[0]["skipped"] is True
+
+
+def test_watcher_frozen_folder_skipped(tmp_path):
+    folder = tmp_path / "2026-05-01-RPD"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs at 12 Smith Street,EV.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV.jpg")
+    (folder / ".ssa_freeze").touch()
+
+    fake_now = [time.time() + 10_000]
+    calls = []
+
+    def runner(f):
+        calls.append(f.name)
+        return {}
+
+    w = Watcher(
+        watch_root=tmp_path, settle_seconds=0, required_stable_polls=1,
+        runner=runner, clock=lambda: fake_now[0],
+    )
+    results = w.tick()
+    fired = [r for r in results if r["folder"] == folder.name]
+    assert fired[0]["action"] == "frozen"
+    assert calls == []
+
+
+def test_watcher_runner_exception_writes_error_sentinel(tmp_path):
+    folder = tmp_path / "2026-05-01-RPD"
+    folder.mkdir()
+    (folder / "Evidence_Master.csv").write_text(
+        "timestamp,observation,filename\n"
+        "2026-05-01_09-15-22,obs at 12 Smith Street,EV.jpg\n",
+        encoding="utf-8",
+    )
+    _save_jpeg(folder / "EV.jpg")
+
+    def runner(f):
+        raise RuntimeError("simulated pipeline failure")
+
+    fake_now = [time.time() + 10_000]
+    w = Watcher(
+        watch_root=tmp_path, settle_seconds=0, required_stable_polls=1,
+        runner=runner, clock=lambda: fake_now[0],
+    )
+    results = w.tick()
+    fired = [r for r in results if r["folder"] == folder.name]
+    assert fired[0]["action"] == "error"
+    err = folder / ".ssa_run.error"
+    assert err.exists()
+    assert "simulated pipeline failure" in err.read_text(encoding="utf-8")
