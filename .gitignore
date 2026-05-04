@@ -28,6 +28,7 @@ patch_*.py
 !src/_SWMS-RPD-TASK-260318-V10_TEMPLATE.docx
 !pims/audit_report_template.docx
 !pims/RPD_SSA_template.docx
+!pims/templates/ssa/Site-Safety-Audit-Report.template.docx
 
 # PIMS audit-report runtime cache
 pims/data/
