@@ -293,7 +293,8 @@ _PIMS_REQUIRED_ENV_VARS = [
     "RPD_SUPABASE_ANON_KEY",
     "PIMS_RPD_TOKEN",
     "PIMS_SESSION_SECRET",
-    "PIMS_DASHBOARD_PASSWORD",
+    "PIMS_RPD_PASSWORD",
+    "PIMS_SDG_PASSWORD",
     "ANTHROPIC_API_KEY",
 ]
 
@@ -343,33 +344,51 @@ async def serve_pims():
     return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
 
+from api.pims_auth import PIMS_CLIENTS
+
+
 @app.get("/pims-login", response_class=HTMLResponse)
-async def pims_login_page(request: Request):
-    if verify_session_cookie(request.cookies.get(COOKIE_NAME)):
-        return RedirectResponse(url="/pims-rpd", status_code=302)
-    return HTMLResponse(content=_LOGIN_HTML)
+async def pims_login_landing(request: Request):
+    """Client picker. If already signed in, jump straight to that dashboard."""
+    cookie = request.cookies.get(COOKIE_NAME)
+    for slug in PIMS_CLIENTS:
+        if verify_session_cookie(cookie, slug):
+            return RedirectResponse(url=f"/pims-{slug}", status_code=302)
+    return HTMLResponse(content=_landing_html())
 
 
-@app.post("/pims-login")
+@app.get("/pims-login/{client}", response_class=HTMLResponse)
+async def pims_login_page(client: str, request: Request):
+    if client not in PIMS_CLIENTS:
+        raise HTTPException(status_code=404, detail="Unknown client")
+    if verify_session_cookie(request.cookies.get(COOKIE_NAME), client):
+        return RedirectResponse(url=f"/pims-{client}", status_code=302)
+    return HTMLResponse(content=_login_html_msg("", client=client))
+
+
+@app.post("/pims-login/{client}")
 @limiter.limit("10/minute")
 async def pims_login_submit(
+    client: str,
     request: Request,
     response: Response,
     password: str = Form(...),
 ):
+    if client not in PIMS_CLIENTS:
+        raise HTTPException(status_code=404, detail="Unknown client")
     env_err = check_env()
     if env_err:
         return HTMLResponse(
-            content=_login_html_msg(f"Configuration error: {env_err}"),
+            content=_login_html_msg(f"Configuration error: {env_err}", client=client),
             status_code=503,
         )
-    if not check_password(password):
+    if not check_password(password, client):
         return HTMLResponse(
-            content=_login_html_msg("Incorrect password. Try again."),
+            content=_login_html_msg("Incorrect password. Try again.", client=client),
             status_code=401,
         )
-    resp = RedirectResponse(url="/pims-rpd", status_code=303)
-    set_session_cookie(resp, make_session_cookie())
+    resp = RedirectResponse(url=f"/pims-{client}", status_code=303)
+    set_session_cookie(resp, make_session_cookie(client))
     return resp
 
 
@@ -382,8 +401,8 @@ async def pims_logout():
 
 @app.get("/pims-rpd", response_class=HTMLResponse)
 async def serve_pims_rpd(request: Request):
-    if not verify_session_cookie(request.cookies.get(COOKIE_NAME)):
-        return RedirectResponse(url="/pims-login", status_code=302)
+    if not verify_session_cookie(request.cookies.get(COOKIE_NAME), "rpd"):
+        return RedirectResponse(url="/pims-login/rpd", status_code=302)
     path = os.path.join(_FRONTEND_DIR, "pims_dashboard_rpd.html")
     with open(path, encoding="utf-8") as f:
         content = f.read()
@@ -394,8 +413,8 @@ async def serve_pims_rpd(request: Request):
 
 @app.get("/pims-sdgroup", response_class=HTMLResponse)
 async def serve_pims_sdgroup(request: Request):
-    if not verify_session_cookie(request.cookies.get(COOKIE_NAME)):
-        return RedirectResponse(url="/pims-login", status_code=302)
+    if not verify_session_cookie(request.cookies.get(COOKIE_NAME), "sdgroup"):
+        return RedirectResponse(url="/pims-login/sdgroup", status_code=302)
     path = os.path.join(_FRONTEND_DIR, "pims_dashboard_sdgroup.html")
     with open(path, encoding="utf-8") as f:
         content = f.read()
@@ -1907,7 +1926,28 @@ async def v1_render_pdf(request: dict, auth: dict = Depends(get_user_or_api_key)
         return JSONResponse(content={"detail": "An internal error occurred. Please try again."}, status_code=500)
 
 
-def _login_html_msg(msg: str = "") -> str:
+_PIMS_LOGIN_CSS = """
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:#0F172A;color:#E2E8F0;
+       display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#1E293B;border-radius:12px;padding:40px 36px;
+        width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .logo{color:#F47920;font-size:1.3rem;font-weight:700;margin-bottom:8px}
+  h1{color:#F1F5F9;font-size:1.1rem;font-weight:600;margin-bottom:28px}
+  label{display:block;color:#94A3B8;font-size:.8rem;margin-bottom:6px}
+  input{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #2E3D52;
+        background:#1E293B;color:#E2E8F0;font-size:.95rem;margin-bottom:20px}
+  input:focus{outline:2px solid #F47920;border-color:transparent}
+  button,a.btn{display:block;width:100%;padding:11px;background:#F47920;color:#0f172a;
+         font-weight:700;font-size:.95rem;border:none;border-radius:6px;cursor:pointer;
+         text-align:center;text-decoration:none;margin-bottom:10px}
+  button:hover,a.btn:hover{background:#f59e0b}
+"""
+
+
+def _login_html_msg(msg: str = "", client: str = "rpd") -> str:
+    from api.pims_auth import PIMS_CLIENTS as _CLIENTS
+    label = _CLIENTS.get(client, {}).get("label", client.upper())
     err = (
         f'<p style="color:#f87171;font-size:.82rem;margin-bottom:16px">{msg}</p>'
         if msg else ""
@@ -1917,30 +1957,15 @@ def _login_html_msg(msg: str = "") -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PIMS - Sign In</title>
-<style>
-  *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:system-ui,sans-serif;background:#0F172A;color:#E2E8F0;
-       display:flex;align-items:center;justify-content:center;min-height:100vh}}
-  .card{{background:#1E293B;border-radius:12px;padding:40px 36px;
-        width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.4)}}
-  .logo{{color:#F47920;font-size:1.3rem;font-weight:700;margin-bottom:8px}}
-  h1{{color:#F1F5F9;font-size:1.1rem;font-weight:600;margin-bottom:28px}}
-  label{{display:block;color:#94A3B8;font-size:.8rem;margin-bottom:6px}}
-  input{{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #2E3D52;
-        background:#1E293B;color:#E2E8F0;font-size:.95rem;margin-bottom:20px}}
-  input:focus{{outline:2px solid #F47920;border-color:transparent}}
-  button{{width:100%;padding:11px;background:#F47920;color:#0f172a;
-         font-weight:700;font-size:.95rem;border:none;border-radius:6px;cursor:pointer}}
-  button:hover{{background:#f59e0b}}
-</style>
+<title>PIMS {label} - Sign In</title>
+<style>{_PIMS_LOGIN_CSS}</style>
 </head>
 <body>
 <div class="card">
   <div class="logo">AuditCo</div>
-  <h1>PIMS Dashboard - Sign In</h1>
+  <h1>PIMS Dashboard - {label} Sign In</h1>
   {err}
-  <form method="POST" action="/pims-login">
+  <form method="POST" action="/pims-login/{client}">
     <label for="pw">Password</label>
     <input id="pw" name="password" type="password"
            placeholder="Enter password" autofocus required>
@@ -1951,7 +1976,28 @@ def _login_html_msg(msg: str = "") -> str:
 </html>"""
 
 
-_LOGIN_HTML = _login_html_msg()
+def _landing_html() -> str:
+    from api.pims_auth import PIMS_CLIENTS as _CLIENTS
+    buttons = "\n".join(
+        f'  <a class="btn" href="/pims-login/{slug}">{info["label"]}</a>'
+        for slug, info in _CLIENTS.items()
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIMS - Choose Client</title>
+<style>{_PIMS_LOGIN_CSS}</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">AuditCo</div>
+  <h1>PIMS Dashboard - Choose Client</h1>
+{buttons}
+</div>
+</body>
+</html>"""
 
 
 from pims.routes import router as pims_router

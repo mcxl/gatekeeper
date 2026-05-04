@@ -1428,9 +1428,9 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       </div>
       <div class="manager-controls">
         <div class="period-toggle">
-          <button class="period-btn active" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
+          <button class="period-btn" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
           <button class="period-btn" id="periodBtnMonth" onclick="setKpiPeriod('month')">Month</button>
-          <button class="period-btn" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
+          <button class="period-btn active" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
         </div>
         <button class="btn btn-orange" onclick="downloadManagerReport()">Download Report</button>
       </div>
@@ -1763,7 +1763,7 @@ let allAudits = [], allObs = [], filtered = [], editingId = null;
 let currentTab = 'live';
 let pendingStagingCount = 0;
 let tabDefaultResolved = false;
-let kpiPeriod = 'month';
+let kpiPeriod = 'quarter';
 let activeCcvsTooltip = null;
 const PAGE_SIZE = 25;
 let liveObsPage = 1;
