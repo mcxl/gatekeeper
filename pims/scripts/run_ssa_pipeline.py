@@ -1,0 +1,523 @@
+"""Manual CLI for the SSA evidence-folder → 3-deliverable pipeline.
+
+    python -m pims.scripts.run_ssa_pipeline "<folder>"
+
+Bypasses the watcher; runs the same pipeline once over the supplied
+folder. The watcher (added separately) is the long-running entry that
+drives this same orchestration on quiescent folders.
+
+v1 scope:
+  - parse Evidence_Master.csv, match photos, extract site address
+  - lift to EnrichedRow (every row Unmatched until CCVS auto-matcher
+    lands as a separate slice)
+  - build all three deliverables
+  - compute staging_status (tri-state per workflow plan)
+  - write sentinel file when applicable
+  - write .ssa_run.json with outputs + warnings + status
+
+v1 NON-scope (deferred slices, called out in the plan):
+  - input-manifest sha256 + idempotency skip (watcher concern)
+  - LLM finding-rewrite + narrative summary (separate async pass)
+  - staging 5 MB progressive-downscale + size-based split
+  - quiescence polling
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import hashlib
+import json
+import logging
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+from pims.services.ssa_checklist_lookup import ChecklistLookup
+from pims.services.ssa_pipeline import (
+    EnrichedRow,
+    build_pims_enriched_xlsx,
+    build_pims_staging_xlsx_with_size_control,
+    build_ssa_report_docx,
+    enrich_observations,
+    extract_site_address,
+    match_photos,
+    parse_evidence_csv,
+)
+
+log = logging.getLogger("ssa.cli")
+
+
+# Folder name contract: YYYY-MM-DD-<CLIENT>, CLIENT ∈ {RPD, SDG}
+_FOLDER_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)$")
+
+# Image extensions the watcher cares about. PNG-with-transparency is
+# legal but rare; HEIC explicitly out of scope (filename canonicalisation
+# rules in the plan).
+_IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+
+# Client-bulk-endpoint capability (gate 0). RPD has it today, SDG
+# doesn't — confirmed against pims/routes.py:2091.
+_BULK_ENDPOINT = {"RPD": "/pims/upload/observations", "SDG": None}
+
+
+def _parse_folder(folder: Path) -> tuple[str, str, str, str]:
+    """Return (audit_date_iso, audit_date_ddmmyyyy, yymmdd, client).
+
+    Raises ValueError when the folder name doesn't match the contract —
+    rerun with a renamed folder is the documented remediation.
+    """
+    m = _FOLDER_RE.match(folder.name)
+    if not m:
+        raise ValueError(
+            f"folder name {folder.name!r} does not match YYYY-MM-DD-<CLIENT> "
+            f"with CLIENT in (RPD, SDG)"
+        )
+    yyyy, mm, dd, client = m.groups()
+    iso = f"{yyyy}-{mm}-{dd}"
+    ddmmyyyy = f"{dd}/{mm}/{yyyy}"
+    yymmdd = f"{yyyy[2:]}{mm}{dd}"
+    # Sanity-check the date itself; ValueError on Feb 30 etc.
+    datetime.strptime(iso, "%Y-%m-%d")
+    return iso, ddmmyyyy, yymmdd, client
+
+
+def _output_names(yymmdd: str, client: str) -> dict[str, str]:
+    return {
+        "enriched": f"PIMS-Enriched-{yymmdd}-{client}.xlsx",
+        "report": f"Site-Safety-Audit-Report-{yymmdd}-{client}.docx",
+        "staging": f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}-{client}.xlsx",
+    }
+
+
+def _images_in(folder: Path) -> list[Path]:
+    return sorted(
+        p for p in folder.iterdir()
+        if p.is_file() and p.suffix.lower() in _IMAGE_EXTS
+    )
+
+
+# Filename-date-suffix on a prior SSA report: ``...YYMMDD-<CLIENT>.docx``.
+_PRIOR_REPORT_RE = re.compile(
+    r"^Site-Safety-Audit-Report-(\d{6})-(RPD|SDG)\.docx$"
+)
+
+
+def _qualifying_prior_reports(
+    folder: Path, current_iso: str, current_target: str,
+) -> list[Path]:
+    """Return prior SSA reports eligible for input-manifest inclusion.
+
+    Eligible iff ALL:
+      - filename matches ``Site-Safety-Audit-Report-YYMMDD-<CLIENT>.docx``
+      - parsed date strictly earlier than the current folder's audit date
+      - filename != the current target output filename
+
+    Per the plan's "Prior-report reuse policy". Files whose date suffix
+    is missing/unparseable are non-qualifying — never guessed from mtime.
+    """
+    out: list[Path] = []
+    for p in folder.iterdir():
+        if not p.is_file():
+            continue
+        if p.name == current_target:
+            continue
+        m = _PRIOR_REPORT_RE.match(p.name)
+        if not m:
+            continue
+        yymmdd = m.group(1)
+        try:
+            cand_iso = datetime.strptime(yymmdd, "%y%m%d").date().isoformat()
+        except ValueError:
+            continue
+        if cand_iso < current_iso:
+            out.append(p)
+    return sorted(out)
+
+
+def _file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 16), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _compute_manifest(
+    csv_path: Path, images: list[Path], prior_reports: list[Path],
+) -> str:
+    """Full-content sha256 over CSV + images + qualifying prior reports.
+
+    Per the watcher contract: hash the sorted ``filename || sha256(bytes)``
+    pairs so that any byte-level change in any input flips the manifest.
+    Filenames are lowercased for case-insensitive volumes (Windows).
+    """
+    parts: list[str] = []
+    for p in [csv_path, *images, *prior_reports]:
+        parts.append(f"{p.name.lower()}||{_file_sha256(p)}")
+    parts.sort()
+    h = hashlib.sha256()
+    for line in parts:
+        h.update(line.encode("utf-8"))
+        h.update(b"\n")
+    return h.hexdigest()
+
+
+def _existing_run_record(folder: Path) -> dict | None:
+    rj = folder / ".ssa_run.json"
+    if not rj.exists():
+        return None
+    try:
+        return json.loads(rj.read_text(encoding="utf-8"))
+    except Exception:
+        log.warning(".ssa_run.json unreadable; treating as missing")
+        return None
+
+
+def _write_sentinel(folder: Path, name: str, body: str) -> str:
+    path = folder / name
+    path.write_text(body, encoding="utf-8")
+    return path.name
+
+
+def _resolve_staging_status(
+    client: str, site_address: str | None,
+) -> tuple[str, str | None]:
+    """Return (staging_status, blocker) per the tri-state contract."""
+    if not site_address:
+        return "not_uploadable", "site_address_unresolved"
+    if _BULK_ENDPOINT.get(client) is None:
+        return "schema_valid_no_endpoint", None
+    return "bulk_uploadable", None
+
+
+def _apply_llm_pass(
+    enriched: list[EnrichedRow],
+    site_address: str | None,
+    audit_date_iso: str,
+    enable: bool,
+) -> str:
+    """Run the educational-tone finding rewrite + narrative summary.
+
+    Returns the narrative-summary paragraph (empty string when the LLM
+    is disabled, no Anthropic key is set, or the call fails — the docx
+    builder substitutes ``{{NARRATIVE_SUMMARY}}`` with whatever this
+    returns, so an empty string yields an empty Executive Summary
+    paragraph rather than a placeholder).
+
+    Side-effect: rewrites ``EnrichedRow.finding`` for every NCR /
+    Conditional row when the rewrite returns a non-empty string. Other
+    rows (Compliant, Unmatched) are not rewritten — finding_enricher's
+    eligibility gate is in finding_enricher.py and we don't widen it
+    from here.
+    """
+    if not enable or not enriched:
+        return ""
+
+    # Local import — keeps run_once importable without anthropic SDK
+    # installed when LLM mode is off.
+    from pims.services.audit_report_from_xlsx import ParsedObs
+    from pims.services.finding_enricher import (
+        enrich_findings,
+        generate_narrative_summary,
+        is_enabled,
+    )
+
+    # Honour the env-var gate on top of the CLI flag — the underlying
+    # functions also short-circuit, but checking here saves the
+    # adapter-build cost on a no-op run.
+    if not is_enabled():
+        return ""
+
+    # Build ParsedObs adapters keyed by index in `enriched` so we can
+    # write the rewritten finding back to the right row.
+    adapters: list[ParsedObs] = []
+    idx_for: dict[int, int] = {}  # adapter_idx → enriched_idx
+    for i, r in enumerate(enriched):
+        # Default to the cleaned observation text as the seed `finding`
+        # — gives the educational-tone rewrite a non-empty starting
+        # point on rows where the upstream stage left finding="".
+        seed = r.finding or r.observation_text_clean or r.obs.observation_text
+        ad = ParsedObs(
+            row_idx=i,
+            site_address=site_address or "",
+            audit_date=audit_date_iso,
+            observation_text=r.observation_text_clean or r.obs.observation_text,
+            finding=seed,
+            status=r.conformance_status,
+            ccvs_code=r.ccvs_code,
+            ccvs_category=r.ccvs_category,
+            action_description=r.action_description,
+            recommendation=r.recommendation,
+            monitoring_note=r.monitoring_note,
+            legal_ref=r.legal_ref,
+            prepared_by="",
+            due_category="",
+            photo_image=None,
+        )
+        idx_for[len(adapters)] = i
+        adapters.append(ad)
+
+    async def _drive() -> str:
+        await enrich_findings(adapters, tone="educational")
+        findings_payload = [
+            {
+                "status": ad.status,
+                "ccvs_category": ad.ccvs_category,
+                "finding": ad.finding,
+                "observation_text": ad.observation_text,
+            }
+            for ad in adapters
+        ]
+        return await generate_narrative_summary(
+            findings_payload, site_address or "", audit_date_iso,
+        )
+
+    try:
+        narrative = asyncio.run(_drive())
+    except Exception:
+        log.warning("LLM pass failed; continuing without rewrites",
+                    exc_info=True)
+        return ""
+
+    # Copy the rewritten findings back. Adapter indices map 1:1 to
+    # enriched-row indices via `idx_for`. Only NCR/Conditional rows are
+    # touched by enrich_findings (per its own eligibility gate).
+    for adapter_idx, ad in enumerate(adapters):
+        target = enriched[idx_for[adapter_idx]]
+        if ad.finding and ad.finding != (target.finding or ""):
+            target.finding = ad.finding
+
+    return narrative
+
+
+def run_once(
+    folder: Path,
+    prepared_by: str = "Alan Richardson",
+    ignore_freeze: bool = False,
+    checklist_path: Path | None = None,
+    force: bool = False,
+    enrich: bool = True,
+) -> dict:
+    """Run the pipeline once. Returns the .ssa_run.json payload.
+
+    Idempotency: when ``force`` is False and a prior ``.ssa_run.json``
+    is present whose ``inputs_sha256`` matches the current manifest AND
+    every recorded output still exists on disk, the run is a no-op and
+    the existing payload is returned with ``skipped=True`` set.
+    """
+    folder = folder.resolve()
+    if not folder.is_dir():
+        raise NotADirectoryError(folder)
+
+    freeze = folder / ".ssa_freeze"
+    if freeze.exists() and not ignore_freeze:
+        raise RuntimeError(
+            f"frozen — use --ignore-freeze to overwrite ({freeze})"
+        )
+
+    iso, ddmmyyyy, yymmdd, client = _parse_folder(folder)
+    csv_path = folder / "Evidence_Master.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Evidence_Master.csv missing in {folder}")
+
+    images = _images_in(folder)
+    if not images:
+        raise FileNotFoundError(f"no images found in {folder}")
+
+    # --- manifest + idempotency -------------------------------------
+    names = _output_names(yymmdd, client)
+    prior_reports = _qualifying_prior_reports(folder, iso, names["report"])
+    manifest = _compute_manifest(csv_path, images, prior_reports)
+
+    prior_record = _existing_run_record(folder)
+    if (
+        not force
+        and prior_record is not None
+        and prior_record.get("inputs_sha256") == manifest
+        and all((folder / n).exists() for n in prior_record.get("outputs", []))
+    ):
+        prior_record["skipped"] = True
+        log.info("manifest unchanged + outputs present — skipping")
+        return prior_record
+
+    # --- parse + match + address ------------------------------------
+    rows, csv_warnings = parse_evidence_csv(csv_path)
+    match_warnings = match_photos(rows, images)
+
+    cl_path = checklist_path or (
+        Path(__file__).resolve().parent.parent / "audit_checklist.xlsx"
+    )
+    checklist = (
+        ChecklistLookup.from_xlsx(cl_path) if cl_path.exists() else None
+    )
+
+    site_address = extract_site_address(rows)
+
+    enriched = enrich_observations(rows, checklist=checklist)
+
+    # When site_address is unresolved, every staging row must
+    # needs_review=TRUE (Field Defaults). enrich_observations already
+    # sets needs_review for Unmatched rows; flagging the obs surfaces
+    # the address-unresolved reason in the warning trail.
+    if site_address is None:
+        for r in enriched:
+            r.obs.flag("site_address_unresolved")
+
+    # --- build deliverables -----------------------------------------
+    enriched_path = folder / names["enriched"]
+    report_path = folder / names["report"]
+    staging_path = folder / names["staging"]
+
+    site_for_docx = site_address or "[Site address - to be confirmed]"
+    site_for_staging = site_address or ""
+
+    # LLM pass — rewrites NCR/Conditional findings under educational
+    # tone and produces the Executive Summary paragraph. No-op when
+    # ``--no-enrich`` was passed or ``PIMS_ENRICH_FINDINGS`` is unset.
+    narrative_summary = _apply_llm_pass(
+        enriched,
+        site_address=site_address,
+        audit_date_iso=iso,
+        enable=enrich,
+    )
+
+    enriched_diag = build_pims_enriched_xlsx(enriched, enriched_path)
+    report_diag = build_ssa_report_docx(
+        enriched,
+        site_address=site_for_docx,
+        audit_date_ddmmyyyy=ddmmyyyy,
+        narrative_summary=narrative_summary,
+        output_path=report_path,
+        prepared_by=prepared_by,
+    )
+    staging_result = build_pims_staging_xlsx_with_size_control(
+        enriched,
+        staging_path,
+        site_address=site_for_staging,
+        audit_date_iso=iso,
+        prepared_by=prepared_by,
+    )
+    staging_diag = {
+        "parts":         [p.name for p in staging_result["parts"]],
+        "max_edge_px":   staging_result["max_edge_px"],
+        "split":         staging_result["split"],
+        "split_reason":  staging_result["split_reason"],
+        "per_part":      staging_result["diagnostics"],
+    }
+
+    # --- staging tri-state ------------------------------------------
+    staging_status, blocker = _resolve_staging_status(client, site_address)
+    staging_part_names = [p.name for p in staging_result["parts"]]
+    outputs: list[str] = [
+        enriched_path.name,
+        report_path.name,
+        *staging_part_names,
+    ]
+
+    if staging_status == "not_uploadable":
+        outputs.append(_write_sentinel(
+            folder, "STAGING-NOT-UPLOADABLE.txt",
+            f"staging blocker: {blocker}\n"
+            f"folder: {folder.name}\n"
+            f"remediation: see .claude/plans/workflow-1 — for "
+            f"site_address_unresolved, add an address-shaped sentence to "
+            f"a row in Evidence_Master.csv and rerun.\n",
+        ))
+    elif staging_status == "schema_valid_no_endpoint":
+        outputs.append(_write_sentinel(
+            folder, "STAGING-NO-BULK-ENDPOINT.txt",
+            f"client: {client}\n"
+            f"the staging xlsx is schema-valid and forward-compatible.\n"
+            f"no bulk-upload endpoint exists for {client} today; post "
+            f"observations one-at-a-time via the single-observation API.\n",
+        ))
+
+    # --- run record --------------------------------------------------
+    payload = {
+        "folder": folder.name,
+        "client": client,
+        "audit_date": iso,
+        "inputs_sha256": manifest,
+        "prior_reports_used": [p.name for p in prior_reports],
+        "skipped": False,
+        "prepared_by": prepared_by,
+        "site_address": site_address,
+        "site_address_unresolved": site_address is None,
+        "staging_status": staging_status,
+        "blocker": blocker,
+        "client_bulk_endpoint": _BULK_ENDPOINT[client],
+        "outputs": outputs,
+        "row_count": len(enriched),
+        "csv_warnings": [w.to_dict() for w in csv_warnings],
+        "match_warnings": [w.to_dict() for w in match_warnings],
+        "review_reasons_per_row": [
+            {"csv_row": r.obs.csv_row, "reasons": list(r.obs.review_reasons)}
+            for r in enriched if r.obs.review_reasons
+        ],
+        "enriched_diagnostics": enriched_diag,
+        "report_diagnostics": report_diag,
+        "staging_diagnostics": staging_diag,
+        "completed_at": datetime.now(timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    (folder / ".ssa_run.json").write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return payload
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="run_ssa_pipeline")
+    ap.add_argument("folder", type=Path, help="audit evidence folder")
+    ap.add_argument("--prepared-by", default="Alan Richardson")
+    ap.add_argument("--ignore-freeze", action="store_true")
+    ap.add_argument(
+        "--force", action="store_true",
+        help="ignore the manifest-based idempotency skip",
+    )
+    ap.add_argument("--checklist", type=Path, default=None)
+    ap.add_argument(
+        "--no-enrich", action="store_true",
+        help="skip the LLM finding-rewrite + narrative-summary pass",
+    )
+    ap.add_argument("-v", "--verbose", action="store_true")
+    args = ap.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+    )
+
+    try:
+        payload = run_once(
+            args.folder,
+            prepared_by=args.prepared_by,
+            ignore_freeze=args.ignore_freeze,
+            checklist_path=args.checklist,
+            force=args.force,
+            enrich=not args.no_enrich,
+        )
+    except RuntimeError as e:
+        # Frozen folder — the documented exit signal for the manual CLI
+        # is non-zero with a clear message.
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    if payload.get("skipped"):
+        print("skipped: manifest unchanged + all outputs present")
+    print(f"staging_status: {payload['staging_status']}")
+    if payload.get("blocker"):
+        print(f"blocker:        {payload['blocker']}")
+    print(f"outputs:        {len(payload['outputs'])} files in {args.folder}")
+    for name in payload["outputs"]:
+        print(f"  - {name}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
