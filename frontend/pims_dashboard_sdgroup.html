@@ -1,0 +1,4170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIMS Dashboard — SDG</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:        #0F172A;
+  --navy-80:     rgba(15,23,42,0.88);
+  --blue:        #1E3A5F;
+  --blue-light:  #162032;
+  --blue-mid:    #2E6DA4;
+  --green:       #16a34a;
+  --green-bg:    rgba(22,163,74,0.18);
+  --green-text:  #86efac;
+  --amber:       #d97706;
+  --amber-bg:    rgba(217,119,6,0.2);
+  --amber-text:  #fbbf24;
+  --red:         #dc2626;
+  --red-bg:      rgba(220,38,38,0.2);
+  --red-text:    #fca5a5;
+  --info-bg:     rgba(46,109,164,0.2);
+  --info-text:   #2E6DA4;
+  --white:       #F1F5F9;
+  --surface:     #162032;
+  --card:        #1E293B;
+  --border:      #2E3D52;
+  --border-mid:  #2E3D52;
+  --text-primary:#F1F5F9;
+  --text-secondary:#CBD5E1;
+  --text-muted:  #94A3B8;
+  --text-light:  #94A3B8;
+  --font:        'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+  --r-sm:        8px;
+  --r-md:        14px;
+  --r-lg:        20px;
+  --r-xl:        28px;
+  --shadow-sm:   0 1px 3px rgba(10,22,40,0.06), 0 1px 2px rgba(10,22,40,0.04);
+  --shadow-md:   0 4px 16px rgba(10,22,40,0.08), 0 1px 4px rgba(10,22,40,0.04);
+  --shadow-lg:   0 12px 40px rgba(10,22,40,0.12), 0 4px 12px rgba(10,22,40,0.06);
+  --transition:  0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: #0F172A;
+  color: var(--text-primary);
+  font-size: 14px;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Background texture ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,87,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,196,140,0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--navy-80);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left { display: flex; align-items: center; gap: 14px; }
+
+.logo {
+  width: 32px; height: 32px;
+  background: var(--blue);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 4px 12px rgba(0,87,255,0.4);
+}
+.logo svg { width: 18px; height: 18px; }
+
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.2px;
+}
+.header-title span {
+  font-weight: 300;
+  opacity: 0.5;
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 100px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ADE80;
+  box-shadow: 0 0 6px #4ADE80;
+  animation: livepulse 2s infinite;
+}
+.live-dot.loading { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1s infinite; }
+.live-dot.error   { background: var(--red);   box-shadow: 0 0 6px var(--red); animation: none; }
+
+@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── Filters bar ── */
+.filters-bar {
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+  background: rgba(15,23,42,0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.filter-select {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1.5px solid var(--border-mid);
+  border-radius: var(--r-sm);
+  padding: 5px 28px 5px 10px;
+  color: var(--text-primary);
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  -webkit-appearance: none;
+  cursor: pointer;
+  min-width: 140px;
+  transition: border-color var(--transition);
+}
+.filter-select:focus { outline: none; border-color: var(--blue); }
+
+.divider { width: 1px; height: 20px; background: var(--border-mid); margin: 0 4px; }
+
+.btn {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: var(--r-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border-mid);
+}
+.btn-ghost:hover { border-color: var(--blue); color: var(--white); background: rgba(30,58,95,0.35); }
+
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(30,58,95,0.4);
+}
+.btn-primary:hover { background: #295488; box-shadow: 0 4px 14px rgba(30,58,95,0.5); transform: translateY(-1px); }
+
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover { background: #15803d; transform: translateY(-1px); }
+
+.ml-auto { margin-left: auto; }
+
+/* ── Main ── */
+.main { padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1; }
+
+/* ── KPI Cards ── */
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+
+.kpi-card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  padding: 20px 22px 18px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: cardReveal 0.5s forwards;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-card:nth-child(2) { animation-delay: 0.10s; }
+.kpi-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-card:nth-child(4) { animation-delay: 0.20s; }
+.kpi-card:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes cardReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.kpi-card.total::before     { background: var(--navy); }
+.kpi-card.compliant::before { background: var(--green); }
+.kpi-card.conditional::before { background: var(--amber); }
+.kpi-card.ncr::before       { background: var(--red); }
+.kpi-card.open::before      { background: var(--blue); }
+
+.kpi-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+.kpi-card.total     .kpi-icon { background: rgba(10,22,40,0.06); }
+.kpi-card.compliant .kpi-icon { background: var(--green-bg); }
+.kpi-card.conditional .kpi-icon { background: var(--amber-bg); }
+.kpi-card.ncr       .kpi-icon { background: var(--red-bg); }
+.kpi-card.open      .kpi-icon { background: var(--blue-light); }
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+.kpi-value {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 6px;
+}
+.kpi-card.total     .kpi-value { color: var(--navy); }
+.kpi-card.compliant .kpi-value { color: var(--green-text); }
+.kpi-card.conditional .kpi-value { color: var(--amber-text); }
+.kpi-card.ncr       .kpi-value { color: var(--red-text); }
+.kpi-card.open      .kpi-value { color: var(--blue); }
+
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* ── Charts row ── */
+.charts-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  opacity: 0;
+  animation: cardReveal 0.5s 0.3s forwards;
+}
+
+.card-header {
+  padding: 16px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #F1F5F9;
+  letter-spacing: -0.2px;
+}
+.card-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.card-body { padding: 18px 20px; }
+canvas { max-height: 220px; }
+
+/* ── Data tables ── */
+.table-wrap { overflow-x: auto; }
+
+table.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.dt thead tr {
+  background: var(--surface);
+}
+table.dt th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 1.5px solid var(--border-mid);
+}
+table.dt td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: #E2E8F0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+table.dt tbody tr { transition: background var(--transition); }
+table.dt tbody tr:hover td { background: rgba(30,58,95,0.35); }
+table.dt tbody tr:last-child td { border-bottom: none; }
+table.dt tbody tr.row-ncr td { background: rgba(220,38,38,0.12); }
+table.dt tbody tr.row-ncr:hover td { background: rgba(220,38,38,0.2); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.badge-compliant   { background: var(--green-bg);  color: var(--green-text); }
+.badge-conditional { background: var(--amber-bg);  color: var(--amber-text); }
+.badge-ncr         { background: var(--red-bg);    color: var(--red-text); }
+.badge-info        { background: var(--info-bg);   color: var(--info-text); }
+.badge-open        { background: var(--red-bg);    color: var(--red-text); }
+.badge-inprogress  { background: var(--amber-bg);  color: var(--amber-text); }
+.badge-closed      { background: var(--green-bg);  color: var(--green-text); }
+.badge-na          { background: var(--surface);   color: var(--text-light); }
+
+/* ── Field Captures pills (light-theme, AA contrast) ── */
+.field-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.field-badge-compliant,
+.field-badge-approved    { background: #dcfce7; color: #14532d; }
+.field-badge-conditional,
+.field-badge-pending     { background: #fef9c3; color: #713f12; }
+.field-badge-ncr,
+.field-badge-rejected    { background: #fee2e2; color: #7f1d1d; }
+.field-badge-info        { background: #e0e7ff; color: #1e1b4b; }
+.field-badge-na          { background: #f1f5f9; color: #334155; }
+
+/* ── CCVS code chip ── */
+.ccvs-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--navy);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+/* ── Due labels ── */
+.due-immediate { color: var(--red-text); font-weight: 700; font-size: 11px; }
+.due-next      { color: var(--amber-text); font-weight: 600; font-size: 11px; }
+.due-ongoing   { color: var(--blue); font-size: 11px; }
+.due-na        { color: var(--text-light); font-size: 11px; }
+
+/* ── Progress bar ── */
+.prog-wrap { display: flex; align-items: center; gap: 8px; }
+.prog-bar  { flex: 1; height: 5px; background: var(--surface); border-radius: 100px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 100px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.prog-pct  { font-size: 11px; font-weight: 700; min-width: 34px; text-align: right; }
+
+/* ── Update button ── */
+.btn-update {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--border-mid);
+  background: var(--surface);
+  color: var(--blue);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-update:hover {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+  box-shadow: 0 2px 8px rgba(30,58,95,0.4);
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(10,22,40,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--card);
+  border-radius: var(--r-xl);
+  width: 520px;
+  max-width: 95vw;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  background: var(--navy);
+  color: white;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+.modal-close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: white;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition);
+  line-height: 1;
+}
+.modal-close:hover { background: rgba(255,255,255,0.2); }
+
+.modal-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+
+.obs-card {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border-left: 3px solid var(--blue);
+}
+.action-card {
+  background: var(--red-bg);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--red-text);
+  border-left: 3px solid var(--red);
+  font-weight: 500;
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.form-input, .form-select, .form-textarea {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  border: 1.5px solid var(--border-mid);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  color: var(--text-primary);
+  background: var(--card);
+  transition: border-color var(--transition);
+  width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(30,58,95,0.4);
+}
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-input:disabled { background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
+
+.modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--surface);
+}
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: var(--navy);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+.loading-overlay.active { display: flex; }
+
+.loader-logo {
+  width: 56px; height: 56px;
+  background: var(--blue);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 40px rgba(0,87,255,0.5);
+  animation: logoPulse 1.5s ease-in-out infinite;
+}
+@keyframes logoPulse { 0%,100%{box-shadow:0 0 40px rgba(0,87,255,0.5)} 50%{box-shadow:0 0 60px rgba(0,87,255,0.8)} }
+
+.loader-logo svg { width: 28px; height: 28px; }
+.loader-title { font-size: 20px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+.loader-sub   { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 300; }
+
+.loader-bar-wrap { width: 200px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 100px; overflow: hidden; margin-top: 4px; }
+.loader-bar { height: 100%; width: 40%; background: var(--blue); border-radius: 100px; animation: loaderSlide 1.2s ease-in-out infinite; }
+@keyframes loaderSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(600%)} }
+
+/* ── Section label ── */
+.section-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+/* ── Needs-review amber border ── */
+table.dt tbody tr.row-review td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+
+/* ── Staging / Live toggle button ── */
+.btn-staging {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: all var(--transition);
+}
+.btn-staging.is-staging { background: var(--amber-bg); color: var(--amber-text); }
+.btn-staging.is-live    { background: var(--green-bg); color: var(--green-text); cursor: default; }
+
+/* ── Inline editable cell ── */
+.inline-edit {
+  font-family: var(--font);
+  font-size: 12px;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  color: var(--text-primary);
+  width: 100%;
+  transition: border-color var(--transition), background var(--transition);
+  cursor: text;
+}
+.inline-edit:hover { border-color: var(--border-mid); background: var(--surface); }
+.inline-edit:focus { outline: none; border-color: var(--blue); background: var(--card); box-shadow: 0 0 0 3px rgba(30,58,95,0.4); }
+
+/* ── Needs-review badge ── */
+.badge-review { background: var(--amber-bg); color: var(--amber-text); }
+
+/* ── Expandable text ── */
+.expand-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.expand-text.expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* ── Top view tabs ── */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px;
+}
+.view-tab {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.view-tab.active {
+  background: var(--blue);
+  color: white;
+}
+.view-tab:hover:not(.active) { background: rgba(30,58,95,0.35); color: var(--white); }
+.tab-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tab-badge.pending {
+  background: #fef9c3;
+  color: #713f12;
+}
+.tab-badge.clear {
+  background: rgba(22,163,74,0.22);
+  color: #86efac;
+}
+.kpi-scope-note {
+  margin-top: -2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.btn-orange {
+  background: #F47920;
+  color: #fff;
+  border: none;
+}
+.btn-orange:hover {
+  background: #e16d18;
+  transform: translateY(-1px);
+}
+
+.manager-board {
+  padding: 0;
+}
+.manager-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.manager-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.manager-period {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.manager-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.period-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.period-btn {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.period-btn.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+.manager-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 3fr) minmax(170px, 1fr) minmax(170px, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+.manager-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.manager-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 1100px) {
+  .manager-main { grid-template-columns: 1fr; }
+}
+.manager-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.manager-ccvs-panel {
+  overflow: visible;
+}
+.manager-panel-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.manager-site-table td {
+  font-size: 11px;
+}
+.manager-site-table tr.site-alert td {
+  background: rgba(220, 38, 38, 0.14);
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px 10px;
+}
+.metric-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.metric-value {
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  font-weight: 800;
+  margin-top: 3px;
+}
+.metric-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-light);
+}
+.metric-progress {
+  margin-top: 5px;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--card);
+  overflow: hidden;
+}
+.metric-progress > div {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+  transition: width 0.3s ease;
+}
+.metric-delta {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.delta-good { color: var(--green-text); }
+.delta-bad { color: var(--red-text); }
+.delta-flat { color: var(--text-light); }
+
+.metric-compliance .metric-value {
+  color: var(--green-text);
+}
+.metric-compliance.metric-warn .metric-value,
+.metric-conditional .metric-value {
+  color: var(--amber-text);
+}
+.metric-compliance.metric-bad .metric-value,
+.metric-ncr .metric-value,
+.metric-open .metric-value {
+  color: var(--red-text);
+}
+
+.ccvs-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+}
+.ccvs-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+}
+.ccvs-badge-wrap {
+  position: relative;
+}
+.ccvs-code-btn {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.ccvs-code-btn.tone-red { background: var(--red); }
+.ccvs-code-btn.tone-amber { background: var(--amber); }
+.ccvs-code-btn.tone-green { background: var(--green); }
+.ccvs-code-btn.tone-blue { background: var(--blue); }
+
+.ccvs-info-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.45);
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+.ccvs-track {
+  height: 24px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  display: flex;
+}
+.ccvs-seg {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ccvs-seg.ncr { background: var(--red); }
+.ccvs-seg.conditional { background: var(--amber); }
+.ccvs-seg.compliant { background: var(--green); }
+.ccvs-total {
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.ccvs-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  width: 260px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: var(--shadow-md);
+  display: none;
+}
+.ccvs-tooltip.open { display: block; }
+.ccvs-tip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ccvs-tip-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ccvs-tip-pill {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.ccvs-tip-pill.high { background: var(--red-bg); color: var(--red-text); }
+.ccvs-tip-pill.medium { background: var(--amber-bg); color: var(--amber-text); }
+.ccvs-tip-pill.low { background: var(--green-bg); color: var(--green-text); }
+.ccvs-tip-meta {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+.ccvs-tip-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.ccvs-tip-stat {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 6px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ccvs-tip-stat strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.ccvs-tip-line {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.ccvs-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+/* ── Dark-theme overrides for inline-styled staging/upload blocks ── */
+#staging-section,
+#staging-section h2,
+#staging-section h3,
+#staging-section td,
+#staging-section th,
+#staging-section span:not(.field-badge),
+#staging-section p {
+  color: var(--text-primary) !important;
+}
+#staging-section td {
+  color: #E2E8F0 !important;
+}
+#staging-section h2,
+#staging-section h3 {
+  color: #F1F5F9 !important;
+  font-weight: 500 !important;
+}
+#actionsSiteFilterInput,
+#liveObsSiteFilterInput,
+#stagingPdfSiteFilter {
+  background: var(--card) !important;
+  color: #E2E8F0 !important;
+  border-color: var(--border) !important;
+}
+#staging-section table thead tr {
+  background: var(--surface) !important;
+}
+#staging-section table th,
+#staging-section table td {
+  border-color: var(--border) !important;
+}
+#staging-section input,
+#staging-section select,
+#staging-section textarea {
+  background: var(--card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+#staging-section input::placeholder,
+#staging-section textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+#staging-section code {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+#xlsx-upload-panel,
+#xlsxUploadBody {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+  .manager-grid { grid-template-columns: 1fr; }
+  .manager-side { flex-direction: row; flex-wrap: wrap; }
+  .manager-side .metric-card { flex: 1 1 220px; }
+}
+
+/* ── Mobile (≤640px) ── */
+@media (max-width: 640px) {
+  /* Layout */
+  .main        { padding: 12px; gap: 12px; }
+  .header      { padding: 0 14px; height: 52px; }
+  .header-title span { display: none; }
+
+  /* Filters — collapsible drawer */
+  .filters-bar {
+    top: 52px;
+    padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden;
+    max-height: 52px;
+    transition: max-height 0.3s ease;
+  }
+  .filters-bar.open { max-height: 400px; }
+
+  .filter-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+  }
+  .filter-toggle-icon { font-size: 10px; transition: transform 0.2s; }
+  .filters-bar.open .filter-toggle-icon { transform: rotate(180deg); }
+
+  .filters-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0 12px;
+  }
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 16px;
+    gap: 4px;
+  }
+  .filter-select { min-width: unset; width: 100%; font-size: 14px; padding: 8px 32px 8px 12px; }
+  .divider { display: none; }
+  .btn-ghost { margin: 6px 16px 0; }
+  .ml-auto { margin-left: 0; display: none; }
+  .view-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .view-tab {
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  /* Manager board */
+  .manager-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .manager-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .period-toggle {
+    width: 100%;
+  }
+  .period-btn {
+    flex: 1 1 0;
+    text-align: center;
+  }
+  .manager-grid {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .manager-side {
+    flex-direction: column;
+  }
+  .metric-value {
+    font-size: 26px;
+  }
+  .ccvs-row {
+    grid-template-columns: 84px 1fr 40px;
+    gap: 8px;
+  }
+  .ccvs-tooltip {
+    width: min(260px, calc(100vw - 56px));
+  }
+
+  /* Cards */
+  .card { border-radius: var(--r-md); }
+  .card-header { padding: 12px 14px 10px; flex-wrap: wrap; gap: 4px; }
+  .card-meta { font-size: 10px; width: 100%; }
+
+  /* Hide desktop tables on mobile */
+  .dt-desktop { display: none; }
+
+  /* Mobile card list for actions */
+  .mobile-cards { display: flex; flex-direction: column; gap: 0; }
+  .m-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .m-card:last-child { border-bottom: none; }
+  .m-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .m-card-seq { font-size: 12px; font-weight: 700; color: var(--text-light); }
+  .m-card-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .m-card-action { font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+  .m-card-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .m-card-meta-item { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .m-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .m-card-monitoring { font-size: 11px; color: var(--text-light); line-height: 1.4; font-style: italic; }
+
+  /* Modal — full screen on mobile */
+  .modal-overlay { align-items: flex-end; }
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    max-height: 92vh;
+    overflow-y: auto;
+    animation: modalUp 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  }
+  @keyframes modalUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-header { padding: 14px 18px; }
+  .modal-body   { padding: 16px 18px; }
+  .modal-footer { padding: 12px 18px; }
+  .form-row     { grid-template-columns: 1fr; }
+
+  /* Export button — move to header */
+  .header-export { display: flex !important; }
+  .btn-primary { font-size: 11px; padding: 6px 12px; }
+
+  /* CCVS table — keep but scroll */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dt th, .dt td { white-space: nowrap; font-size: 11px; padding: 8px 10px; }
+}
+
+/* Hide mobile-only elements on desktop */
+@media (min-width: 641px) {
+  .filter-toggle  { display: none; }
+  .filters-inner  { display: contents; }
+  .mobile-cards   { display: none; }
+  .header-export  { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- CONFIG -->
+<script>
+const SUPABASE_URL  = '__SUPABASE_URL__';
+const SUPABASE_ANON = '__SUPABASE_ANON__';
+</script>
+
+<!-- Loading screen -->
+<div class="loading-overlay active" id="loadingOverlay">
+  <div class="loader-logo">
+    <svg viewBox="0 0 28 28" fill="none"><path d="M7 14l5 5 9-9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div class="loader-title">PIMS Dashboard</div>
+  <div class="loader-sub">Safe Method</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+</div>
+
+<!-- Close-out modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Update Close-out</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="obs-card" id="modalObsText"></div>
+      <div class="form-group">
+        <label class="form-label">Site Address</label>
+        <input class="form-input" id="modalSiteAddress" placeholder="Site address">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Finding (observation)</label>
+        <textarea class="form-textarea" id="modalFinding" placeholder="Observation / finding text..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="modalConformance">
+            <option value="">—</option>
+            <option value="Compliant">Compliant</option>
+            <option value="Conditional">Conditional</option>
+            <option value="NCR">NCR</option>
+            <option value="Info">Info</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CCVS Code</label>
+          <div style="display:flex;gap:6px;">
+            <input class="form-input" id="modalCcvs" placeholder="e.g. ENE-M4" style="flex:1;">
+            <select class="form-select" id="modalCcvsPicker" onchange="if(this.value){document.getElementById('modalCcvs').value=this.value;this.selectedIndex=0;}" style="max-width:180px;">
+              <option value="">Pick…</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="modalActionRequired" style="width:16px;height:16px;cursor:pointer">
+          <span>Action Required</span>
+        </label>
+        <textarea class="form-textarea" id="modalAction" placeholder="Describe the corrective action required..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Responsible</label>
+          <input class="form-input" id="modalResponsible" placeholder="Name / role">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due</label>
+          <select class="form-select" id="modalDue">
+            <option value="">—</option>
+            <option value="Immediate">Immediate</option>
+            <option value="Next audit">Next audit</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="N/A">N/A</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monitoring Note</label>
+        <input class="form-input" id="modalMonitoringNote" placeholder="Monitoring note">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Close-out Status</label>
+        <select class="form-select" id="modalStatus">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Closed Date</label>
+          <input type="date" class="form-input" id="modalClosedDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Closed By</label>
+          <input type="text" class="form-input" id="modalClosedBy" placeholder="Name / role">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Close-out Notes</label>
+        <textarea class="form-textarea" id="modalNotes" placeholder="Describe action taken, evidence sighted, or reason for deferral..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="saveCloseout()">Save Close-out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><path d="M7 14l5 5 9-9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="header-title">PIMS Dashboard <span>/ SDG</span></div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot loading" id="statusDot"></div>
+      <span id="connStatus">Connecting</span>
+    </div>
+    <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-primary" onclick="openAuditReportModal()">📄 Generate Site Visit Report</button>
+    <a href="/pims-logout" style="font-size:0.78rem;color:#94a3b8;text-decoration:none;padding:4px 10px;border:1px solid #334155;border-radius:5px;">Sign out</a>
+  </div>
+</header>
+
+<!-- Filters -->
+<div class="filters-bar" id="filtersBar">
+  <div class="filter-toggle" onclick="toggleFilters()">
+    <span>🔍 Filter observations</span>
+    <span class="filter-toggle-icon">▼</span>
+  </div>
+  <div class="filters-inner">
+    <div class="filter-group">
+      <span class="filter-label">Site</span>
+      <select class="filter-select" id="filterSite" onchange="applyFilters()"><option value="">All Sites</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Audit</span>
+      <select class="filter-select" id="filterAudit" onchange="applyFilters()"><option value="">All Audits</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Status</span>
+      <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="Compliant">Compliant</option>
+        <option value="Conditional">Conditional</option>
+        <option value="NCR">NCR</option>
+        <option value="Info">Info</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">CCVS</span>
+      <select class="filter-select" id="filterCcvs" onchange="applyFilters()"><option value="">All CCVS</option></select>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
+  </div>
+</div>
+
+<!-- Main -->
+<main class="main">
+
+  <div class="view-tabs" id="viewTabs">
+    <button class="view-tab active" data-tab="live" onclick="setActiveTab('live')">Live Audits</button>
+    <button class="view-tab" data-tab="staging" onclick="setActiveTab('staging')">
+      Staging Review
+      <span id="staging-tab-badge" class="tab-badge pending">0</span>
+    </button>
+    <button class="view-tab" data-tab="historical" onclick="setActiveTab('historical')">Historical</button>
+  </div>
+  <!-- Live Manager Board -->
+  <section class="card manager-board" id="live-manager-board">
+    <div class="manager-head">
+      <div>
+        <div class="manager-title">Live Audit Manager Board</div>
+        <div class="manager-period" id="managerPeriodLabel">Week --</div>
+      </div>
+      <div class="manager-controls">
+        <div class="period-toggle">
+          <button class="period-btn active" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
+          <button class="period-btn" id="periodBtnMonth" onclick="setKpiPeriod('month')">Month</button>
+          <button class="period-btn" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
+        </div>
+        <button class="btn btn-orange" onclick="downloadManagerReport()">Download Report</button>
+      </div>
+    </div>
+    <div class="manager-grid">
+      <div class="manager-main">
+        <div class="manager-panel">
+          <div class="manager-panel-title">Site Breakdown</div>
+          <div class="table-wrap">
+            <table class="dt manager-site-table">
+              <thead>
+                <tr>
+                  <th style="padding-left:14px;">Site Address</th>
+                  <th style="text-align:center;">NCR</th>
+                  <th style="text-align:center;">Conditional</th>
+                  <th style="text-align:center;">Compliant</th>
+                  <th style="text-align:center;padding-right:14px;">Total</th>
+                </tr>
+              </thead>
+              <tbody id="managerSiteBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="manager-panel manager-ccvs-panel">
+          <div class="manager-panel-title">CCVS Monitoring & Measurement</div>
+          <div id="managerCcvsBars" class="ccvs-bars"></div>
+        </div>
+      </div>
+      <div class="manager-side">
+        <div class="metric-card metric-compliance">
+          <div class="metric-label">Compliance Rate</div>
+          <div class="metric-value" id="metricComplianceValue">0%</div>
+          <div class="metric-sub" id="metricComplianceTarget">Target: 85%</div>
+          <div class="metric-progress"><div id="metricComplianceProgress"></div></div>
+          <div class="metric-delta" id="metricComplianceDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Observations</div>
+          <div class="metric-value" id="metricTotalValue">0</div>
+          <div class="metric-delta" id="metricTotalDelta">- 0 vs prev week</div>
+        </div>
+      </div>
+      <div class="manager-side">
+        <div class="metric-card metric-ncr">
+          <div class="metric-label">NCR</div>
+          <div class="metric-value" id="metricNcrValue">0</div>
+          <div class="metric-delta" id="metricNcrDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card metric-open">
+          <div class="metric-label">Open Actions</div>
+          <div class="metric-value" id="metricOpenValue">0</div>
+          <div class="metric-delta" id="metricOpenDelta">- 0 vs prev week</div>
+        </div>
+        <div class="metric-card metric-conditional">
+          <div class="metric-label">Conditional</div>
+          <div class="metric-value" id="metricConditionalValue">0</div>
+          <div class="metric-delta" id="metricConditionalDelta">- 0 vs prev week</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="kpi-scope-note" id="kpi-scope-note">Live audit records only</div>
+
+  <!-- Open Actions -->
+  <div class="card" id="live-actions-card">
+    <div class="card-header">
+      <span class="card-title">Open Actions Register</span>
+      <span class="card-meta" id="openActionsCount"></span>
+    </div>
+    <div class="dt-desktop" style="padding:12px 14px 0 14px;">
+      <input
+        id="actionsSiteFilterInput"
+        type="text"
+        oninput="onActionsSiteSearch()"
+        placeholder="🔍 Filter by site address..."
+        style="margin-bottom:12px;width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
+    </div>
+    <div class="card-body table-wrap dt-desktop" style="padding:0">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th style="padding-left:20px">#</th>
+            <th>Photo</th>
+            <th>Site Address</th>
+            <th>Status</th>
+            <th>CCVS</th>
+            <th>Action Required</th>
+            <th>Responsible</th>
+            <th>Due</th>
+            <th style="padding-right:20px">Close-out</th>
+          </tr>
+        </thead>
+        <tbody id="actionsTableBody"></tbody>
+      </table>
+    </div>
+    <div class="mobile-cards" id="actionsMobileCards"></div>
+  </div>
+
+  <!-- All Observations -->
+  <div class="card" id="all-obs-card">
+    <div class="card-header">
+      <span class="card-title" id="allObsTitle">Live Audit Observations</span>
+      <span class="card-meta" id="allObsCount">Live audit records</span>
+    </div>
+    <div class="dt-desktop" style="padding:12px 14px 0 14px;">
+      <input
+        id="liveObsSiteFilterInput"
+        type="text"
+        oninput="onLiveObsSiteSearch()"
+        placeholder="🔍 Filter by site address..."
+        style="margin-bottom:12px;width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
+    </div>
+    <div class="card-body table-wrap dt-desktop" style="padding:0">
+      <table class="dt">
+        <thead>
+          <tr id="allObsHeadRow"></tr>
+        </thead>
+        <tbody id="allObsTableBody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 14px;" class="dt-desktop">
+      <button class="btn btn-ghost" id="allObsPrevBtn" onclick="changeAllObsPage(-1)">Prev</button>
+      <span id="allObsPageInfo" style="font-size:0.78rem;color:#64748b;min-width:160px;text-align:center;"></span>
+      <button class="btn btn-ghost" id="allObsNextBtn" onclick="changeAllObsPage(1)">Next</button>
+    </div>
+    <div class="mobile-cards" id="allObsMobileCards"></div>
+  </div>
+
+  <!-- ── Staging Inbox ─────────────────────────────── -->
+  <section class="card" id="staging-section">
+    <!-- Collapsible header -->
+    <div onclick="toggleStaging()" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
+      <h2 style="margin:0; font-size:1.05rem;">
+        📥 Staging Inbox
+        <span id="staging-badge" class="field-badge field-badge-pending" style="
+          margin-left:8px; padding:2px 9px;
+          font-size:0.75rem; font-weight:700; vertical-align:middle;">
+          0
+        </span>
+      </h2>
+      <span id="staging-chevron" style="font-size:1.1rem; color:#94a3b8; transition:transform 0.2s; transform:rotate(180deg);">▼</span>
+    </div>
+
+    <!-- Collapsible body -->
+    <div id="staging-body" style="display:block; margin-top:14px;">
+
+      <!-- Toolbar -->
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <button onclick="loadStaging()" style="
+          padding:4px 12px; font-size:0.78rem; font-weight:600;
+          background:transparent; border:1px solid #cbd5e1;
+          border-radius:6px; cursor:pointer;">
+          ↻ Refresh
+        </button>
+        <button onclick="downloadStagingXLSX()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#2563eb; border:none; border-radius:6px; cursor:pointer;">
+          ⬇ Download XLSX
+        </button>
+        <button onclick="downloadStagingDOCX()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#1e3a5f; border:none; border-radius:6px; cursor:pointer;">
+          ⬇ Download DOCX
+        </button>
+        <button id="xlsxUploadToolbarBtn" onclick="toggleXlsxUploadPanel()" style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#F47920; border:none; border-radius:6px; cursor:pointer;">
+          &#8593; Upload XLSX
+        </button>
+        <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">Field Captures</h3>
+          <span id="staging-field-count" style="font-size:0.75rem;color:#64748b;"></span>
+        </div>
+        <div class="period-toggle" style="margin-bottom:8px;">
+          <button class="period-btn active" id="stagingFieldFilterPending"  onclick="setStagingFieldFilter('Pending')">Pending</button>
+          <button class="period-btn"        id="stagingFieldFilterApproved" onclick="setStagingFieldFilter('Approved')">Approved</button>
+          <button class="period-btn"        id="stagingFieldFilterAll"      onclick="setStagingFieldFilter('All')">All</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead>
+              <tr style="background:#f8fafc; text-align:left;">
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; width:32px;">
+                  <input type="checkbox" id="staging-select-all" onchange="toggleSelectAll(this)" title="Select all">
+                </th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Date</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Seq</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Site Address</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">Photo</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">CCVS</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Conformance</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Finding</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Approve</th>
+              </tr>
+            </thead>
+            <tbody id="staging-field-tbody">
+              <tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">Click ▼ above to load staging records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn btn-ghost" onclick="changeStagingFieldPage(-1)" id="stagingFieldPrevBtn">Prev</button>
+          <span id="stagingFieldPageInfo" style="font-size:0.75rem;color:#64748b;min-width:160px;text-align:center;"></span>
+          <button class="btn btn-ghost" onclick="changeStagingFieldPage(1)" id="stagingFieldNextBtn">Next</button>
+        </div>
+      </div>
+
+      <div id="xlsx-upload-panel" style="display:none; margin-bottom:16px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+        <div id="xlsxUploadBody" style="display:block; padding:12px;">
+          <div style="margin-bottom:10px;">
+            <button onclick="downloadXlsxTemplate()" style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;background:#0f766e;border:none;border-radius:6px;cursor:pointer;">
+              Download Template
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <label for="xlsxUploadInput" style="font-size:0.78rem;font-weight:600;color:#334155;">Choose file:</label>
+            <input id="xlsxUploadInput" type="file" accept=".xlsx" onchange="handleXlsxFileSelect(event)" style="font-size:0.78rem;">
+            <span id="xlsxUploadFileName" style="font-size:0.75rem;color:#64748b;">No file selected</span>
+          </div>
+
+          <div style="margin-bottom:8px;font-size:0.78rem;font-weight:700;color:#1e293b;">Preview (first 10 rows)</div>
+          <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:6px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+              <thead>
+                <tr style="background:#f8fafc;text-align:left;">
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Site Address</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Audit Date</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Observation</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">Status</th>
+                  <th style="padding:7px 8px;border-bottom:1px solid #e2e8f0;">CCVS</th>
+                </tr>
+              </thead>
+              <tbody id="xlsxUploadPreviewBody">
+                <tr><td colspan="5" style="padding:12px;text-align:center;color:#94a3b8;">Select an .xlsx file to preview rows.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="xlsxUploadSummary" style="margin-top:8px;font-size:0.75rem;color:#64748b;">
+            0 rows detected · 0 skipped · 0 warnings
+          </div>
+
+          <div style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;">
+            <label for="xlsxCurrentAuditToggle" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+              <input id="xlsxCurrentAuditToggle" type="checkbox" onchange="updateXlsxCurrentAuditHint()" style="margin-top:2px;">
+              <span>
+                <div style="font-size:0.78rem;font-weight:700;color:#0f172a;">These are current audit observations</div>
+                <div id="xlsxCurrentAuditHint" style="font-size:0.74rem;color:#64748b;">Historical record (PDF/report import)</div>
+              </span>
+            </label>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;">
+            <button class="btn btn-ghost" onclick="cancelXlsxUpload()">Cancel</button>
+            <button id="xlsxUploadSubmitBtn" onclick="uploadObservationsXlsx()" disabled style="padding:4px 12px;font-size:0.78rem;font-weight:700;color:#fff;background:#2563eb;border:none;border-radius:6px;cursor:not-allowed;opacity:0.6;">
+              Upload 0 rows to Staging
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:0.92rem;color:#0f172a;">PDF Imports (Grouped by Site)</h3>
+          <span id="staging-pdf-count" style="font-size:0.75rem;color:#64748b;"></span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <input
+            id="stagingPdfSiteFilter"
+            type="text"
+            oninput="onStagingPdfSiteSearch()"
+            placeholder="🔍 Filter by site address..."
+            style="width:100%;max-width:420px;padding:7px 10px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#0f172a;">
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead>
+              <tr style="background:#f8fafc; text-align:left;">
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Site Address</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Audit Date</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Section</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Observation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Status</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Recommendation</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Legal Ref</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Needs Review</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Source PDF</th>
+                <th style="padding:8px 10px; border-bottom:1px solid #e2e8f0;">Promote</th>
+              </tr>
+            </thead>
+            <tbody id="staging-pdf-tbody">
+              <tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">No PDF import rows.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn btn-ghost" onclick="changeStagingPdfPage(-1)" id="stagingPdfPrevBtn">Prev</button>
+          <span id="stagingPdfPageInfo" style="font-size:0.75rem;color:#64748b;min-width:160px;text-align:center;"></span>
+          <button class="btn btn-ghost" onclick="changeStagingPdfPage(1)" id="stagingPdfNextBtn">Next</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── Init Supabase ──
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── State ──
+let allAudits = [], allObs = [], filtered = [], editingId = null;
+let currentTab = 'live';
+let pendingStagingCount = 0;
+let tabDefaultResolved = false;
+let kpiPeriod = 'month';
+let activeCcvsTooltip = null;
+const PAGE_SIZE = 25;
+let liveObsPage = 1;
+let historicalObsPage = 1;
+
+// ── Helpers ──
+function badge(status) {
+  const map = { Compliant:'compliant', Conditional:'conditional', NCR:'ncr', Info:'info', Open:'open', 'In Progress':'inprogress', Closed:'closed', 'N/A':'na' };
+  return `<span class="badge badge-${map[status]||'na'}">${esc(status || 'N/A')}</span>`;
+}
+function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
+  const normalized = String(code || '').trim();
+  if (!normalized) return '<span style="color:var(--text-light)">—</span>';
+
+  const info = CCVS_INFO[normalized] || {};
+  const conformanceStatus = typeof conformanceStatusOrCount === 'string'
+    ? conformanceStatusOrCount
+    : null;
+  const count = typeof conformanceStatusOrCount === 'number'
+    ? conformanceStatusOrCount
+    : Number(detail.total || 0);
+
+  let ncr = Math.max(0, Number(detail.ncr || 0));
+  let conditional = Math.max(0, Number(detail.conditional || 0));
+  let compliant = Math.max(0, Number(detail.compliant || 0));
+  if (!ncr && !conditional && !compliant && conformanceStatus) {
+    const status = String(conformanceStatus).trim().toLowerCase();
+    if (status === 'ncr') ncr = 1;
+    else if (status === 'conditional') conditional = 1;
+    else if (status === 'compliant') compliant = 1;
+  }
+  let total = Math.max(0, Number(count || 0));
+
+  if (!total) total = ncr + conditional + compliant;
+  if (!total) total = 1;
+  if (!compliant && ncr + conditional < total) compliant = total - ncr - conditional;
+
+  const tone = badgeToneForCounts(ncr, conditional, compliant);
+  const risk = riskLevelForCode(normalized, ncr, conditional);
+  const tooltipId = `ccvsTip-${ccvsCodeToId(normalized)}-${Math.random().toString(36).slice(2, 8)}`;
+  const compareLabel = detail.compareLabel || 'period';
+  const category = detail.category || info.category || 'General';
+
+  return `
+    <div class="ccvs-badge-wrap">
+      <button class="ccvs-code-btn tone-${tone}" onclick="toggleCcvsTooltip(event, '${tooltipId}')">
+        ${esc(normalized)} <span class="ccvs-info-dot">i</span>
+      </button>
+      <div class="ccvs-tooltip" id="${tooltipId}">
+        <div class="ccvs-tip-head">
+          <span class="ccvs-tip-code">${esc(normalized)}</span>
+          <span class="ccvs-tip-pill ${riskClass(risk)}">${risk} risk</span>
+        </div>
+        <div class="ccvs-tip-meta">${esc(category)}</div>
+        <div class="ccvs-tip-stats">
+          <div class="ccvs-tip-stat">NCR<strong>${ncr}</strong></div>
+          <div class="ccvs-tip-stat">Cond<strong>${conditional}</strong></div>
+          <div class="ccvs-tip-stat">OK<strong>${compliant}</strong></div>
+        </div>
+        <div class="ccvs-tip-line">${esc(info.description || 'Control code summary for current period activity.')}</div>
+        <div class="ccvs-tip-line"><strong>Key controls:</strong> ${esc(info.controls || 'Apply risk controls, supervision, and verified close-out actions.')}</div>
+        <div class="ccvs-tip-line"><strong>Regulation references:</strong> ${esc(info.regs || 'WHS Act and Regulations relevant to this control.')}</div>
+        <div class="ccvs-tip-meta">Current ${esc(compareLabel)}</div>
+      </div>
+    </div>`;
+}
+
+function ccvs(code, conformanceStatus = null) {
+  return renderCcvsBadge(code, conformanceStatus);
+}
+
+function dueLabel(d) {
+  if (d==='Immediate') return `<span class="due-immediate">⚡ Immediate</span>`;
+  if (d==='Next audit') return `<span class="due-next">Next audit</span>`;
+  if (d==='Ongoing')    return `<span class="due-ongoing">Ongoing</span>`;
+  return `<span class="due-na">—</span>`;
+}
+function trunc(t, n=80) {
+  const s = String(t == null ? '' : t);
+  return esc(s && s.length > n ? s.slice(0, n) + '…' : (s || '—'));
+}
+
+function animateCount(el, target) {
+  const start = 0, duration = 600;
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + (target - start) * ease);
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// ── Load ──
+async function loadData() {
+  setStatus('loading');
+  try {
+    const [aRes, oRes] = await Promise.all([
+      db.from('pims_audits').select('*').order('audit_date', { ascending: false }),
+      db.from('pims_observations').select('*, pims_audits!left(site_name,audit_date,audit_ref,principal_contractor)').order('created_at', { ascending: false }),
+    ]);
+    if (aRes.error) throw aRes.error;
+    if (oRes.error) throw oRes.error;
+    allAudits = aRes.data;
+    allObs    = oRes.data;
+    populateFilters();
+    applyFilters();
+    setStatus('ok');
+  } catch (err) {
+    setStatus('error', err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+}
+
+function setStatus(state, msg) {
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('connStatus');
+  dot.className = 'live-dot' + (state==='loading' ? ' loading' : state==='error' ? ' error' : '');
+  text.textContent = state==='ok' ? `${allObs.length} records` : state==='error' ? `Error: ${msg}` : 'Loading…';
+}
+
+function populateFilters() {
+  const siteEl  = document.getElementById('filterSite');
+  const auditEl = document.getElementById('filterAudit');
+  const ccvsEl  = document.getElementById('filterCcvs');
+  // Combine audit site_name and flat-import site_address
+  const sites = new Set([
+    ...allAudits.map(a=>a.site_name),
+    ...allObs.map(o=>o.site_address).filter(Boolean),
+  ]);
+  [...sites].sort().forEach(s => siteEl.appendChild(new Option(s,s)));
+  allAudits.forEach(a => auditEl.appendChild(new Option(`${a.site_name} — ${a.audit_date}`, a.id)));
+  [...new Set(allObs.map(o=>o.ccvs_code).filter(Boolean))].sort().forEach(c => ccvsEl.appendChild(new Option(c,c)));
+}
+
+function isLiveAuditRecord(o) {
+  return o.staging === false && !o.source_pdf;
+}
+
+function isHistoricalRecord(o) {
+  return o.staging === false && Boolean(o.source_pdf);
+}
+
+function updateTabButtons() {
+  document.querySelectorAll('.view-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === currentTab);
+  });
+}
+
+function updateTabSections() {
+  const showLive = currentTab === 'live';
+  const showHistorical = currentTab === 'historical';
+  const showStaging = currentTab === 'staging';
+
+  ['live-manager-board', 'kpi-scope-note', 'live-actions-card']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = showLive ? '' : 'none';
+    });
+
+  const allObsCard = document.getElementById('all-obs-card');
+  if (allObsCard) allObsCard.style.display = (showLive || showHistorical) ? '' : 'none';
+
+  const allObsTitle = document.getElementById('allObsTitle');
+  if (allObsTitle) {
+    allObsTitle.textContent = showHistorical ? 'Historical Register' : 'Live Audit Observations';
+  }
+
+  const stagingSection = document.getElementById('staging-section');
+  if (stagingSection) stagingSection.style.display = showStaging ? '' : 'none';
+}
+
+function setActiveTab(tab, options = {}) {
+  currentTab = tab;
+  updateTabButtons();
+  updateTabSections();
+  if (tab === 'staging' && !options.skipLoad && stagingData.length === 0) {
+    loadStaging();
+  }
+  applyFilters({ resetPages: false });
+}
+
+function applyFilters(options = {}) {
+  const { resetPages = true } = options;
+  const site   = document.getElementById('filterSite').value;
+  const audit  = document.getElementById('filterAudit').value;
+  const status = document.getElementById('filterStatus').value;
+  const cat    = document.getElementById('filterCcvs').value;
+  const baseFiltered = allObs.filter(o => {
+    if (site   && o.pims_audits?.site_name !== site && o.site_address !== site) return false;
+    if (audit  && o.audit_id !== audit) return false;
+    if (status && o.conformance_status !== status) return false;
+    if (cat    && o.ccvs_code !== cat && o.ccvs_category !== cat) return false;
+    return true;
+  });
+
+  const byDateDesc = (a, b) => {
+    const da = a.observation_date || a.audit_date || '';
+    const dbb = b.observation_date || b.audit_date || '';
+    if (da === dbb) return (b.seq_no ?? 0) - (a.seq_no ?? 0);
+    return dbb.localeCompare(da);
+  };
+  const liveOnly = baseFiltered.filter(isLiveAuditRecord).sort(byDateDesc);
+  const historicalOnly = baseFiltered.filter(isHistoricalRecord).sort(byDateDesc);
+  if (resetPages) {
+    liveObsPage = 1;
+    historicalObsPage = 1;
+  }
+
+  if (currentTab === 'live') {
+    filtered = liveOnly;
+    renderManagerBoard();
+    renderActions();
+    renderAllObs();
+    return;
+  }
+
+  if (currentTab === 'historical') {
+    filtered = historicalOnly;
+    renderAllObs();
+    return;
+  }
+
+  filtered = [];
+  if (resetPages) stagingPdfPage = 1;
+  renderStagingPdfRows();
+}
+
+function resetFilters() {
+  ['filterSite','filterAudit','filterStatus','filterCcvs'].forEach(id => { document.getElementById(id).value=''; });
+  const siteInput = document.getElementById('stagingPdfSiteFilter');
+  if (siteInput) siteInput.value = '';
+  stagingPdfPage = 1;
+  stagingPdfGroupExpanded = {};
+  applyFilters();
+}
+
+function updateStagingBadges() {
+  const sectionBadge = document.getElementById('staging-badge');
+  if (sectionBadge) {
+    sectionBadge.textContent = pendingStagingCount;
+    sectionBadge.classList.toggle('field-badge-pending',  pendingStagingCount > 0);
+    sectionBadge.classList.toggle('field-badge-approved', pendingStagingCount === 0);
+  }
+
+  const tabBadge = document.getElementById('staging-tab-badge');
+  if (tabBadge) {
+    tabBadge.className = `tab-badge ${pendingStagingCount > 0 ? 'pending' : 'clear'}`;
+    tabBadge.textContent = pendingStagingCount > 0 ? String(pendingStagingCount) : '✓';
+  }
+}
+
+// ── KPIs ──
+const CCVS_INFO = {
+  'WAH-H6': { category: 'Work at Height', description: 'Scaffold, edge and fall exposure control.', controls: 'Certified scaffolds, exclusion zones, compliant anchors.', regs: 'WHS Regs: falls and temporary works.' },
+  'WAH-H9': { category: 'Work at Height', description: 'High-risk edge protection and rescue readiness.', controls: 'Restraint systems, rescue planning, permit checks.', regs: 'WHS Regs: fall prevention and rescue.' },
+  'IRA-H6': { category: 'Industrial Rope Access', description: 'Rope access operations and anchor integrity.', controls: 'IRATA methods, anchor inspection, dual-rope setup.', regs: 'WHS Regs: high-risk work at height.' },
+  'IRA-H9': { category: 'Industrial Rope Access', description: 'Complex rope access with elevated risk profile.', controls: 'Supervisor sign-off, rescue drills, weather hold points.', regs: 'WHS Regs: high-risk access systems.' },
+  'SIL-H6': { category: 'Silica', description: 'Respirable crystalline silica generation controls.', controls: 'Wet-cutting, extraction, fit-tested RPE.', regs: 'WHS Regs: hazardous chemicals and airborne contaminants.' },
+  'SIL-H9': { category: 'Silica', description: 'High-exposure silica task management.', controls: 'Task isolation, exposure monitoring, health surveillance.', regs: 'WHS Regs: silica and worker exposure limits.' },
+  'STR-H6': { category: 'Structural', description: 'Structural stability and temporary support risks.', controls: 'Engineer hold points, shoring verification, load limits.', regs: 'WHS Regs: structural safety and temporary works.' },
+  'STR-H9': { category: 'Structural', description: 'Critical structural defect or instability concerns.', controls: 'Immediate barricade, engineer escalation, stop-work.', regs: 'WHS Regs: principal contractor duties.' },
+  'MOB-H6': { category: 'Mobile Plant', description: 'Plant movement and strike risk in work zones.', controls: 'Spotters, separation, traffic management plan.', regs: 'WHS Regs: powered mobile plant operations.' },
+  'MOB-M4': { category: 'Mobile Plant', description: 'Moderate plant interaction and control checks.', controls: 'Pre-start checks, operator competency, exclusion zones.', regs: 'WHS Regs: plant safety obligations.' },
+  'CHM-M3': { category: 'Chemicals', description: 'Chemical handling and storage control quality.', controls: 'SDS access, labelling, bunding and spill readiness.', regs: 'WHS Regs: hazardous chemical management.' },
+  'CHM-H6': { category: 'Chemicals', description: 'High-risk chemical use or incompatible storage.', controls: 'Segregation, ventilation, PPE and emergency controls.', regs: 'WHS Regs: hazardous substances and incident response.' },
+  'ENE-M4': { category: 'Energy Isolation', description: 'Isolation controls for plant and energy sources.', controls: 'LOTO process, test-for-dead verification.', regs: 'WHS Regs: electrical and stored energy controls.' },
+  'ENE-H6': { category: 'Energy Isolation', description: 'High-risk live energy or inadequate isolation.', controls: 'Isolation authority, permit to work, lock verification.', regs: 'WHS Regs: electrical safety and permit systems.' },
+  'SYS-L1': { category: 'Systems', description: 'Low-risk system conformance observation.', controls: 'Routine checks, record integrity, supervision.', regs: 'WHS Act: primary duty of care.' },
+  'SYS-L2': { category: 'Systems', description: 'Minor systems gap requiring close follow-up.', controls: 'Update procedures, toolbox communication, verification.', regs: 'WHS Act: consultation and training.' },
+  'SYS-M3': { category: 'Systems', description: 'Moderate system weakness affecting control reliability.', controls: 'Management review, corrective action assignment.', regs: 'WHS Act: risk management obligations.' },
+  'SYS-M4': { category: 'Systems', description: 'Material system failure trending toward NCR exposure.', controls: 'Escalation, assurance checks, close-out tracking.', regs: 'WHS Act: officer due diligence duties.' },
+  'SYS-H6': { category: 'Systems', description: 'High-risk control system failure requiring urgent action.', controls: 'Immediate corrective controls and executive escalation.', regs: 'WHS Act and Regulations: critical risk controls.' },
+};
+
+function parseIsoDate(value) {
+  const text = String(value == null ? '' : value).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]) - 1;
+  const d = Number(match[3]);
+  const dt = new Date(y, m, d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function addDays(dateObj, days) {
+  const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function addMonths(dateObj, months) {
+  return new Date(dateObj.getFullYear(), dateObj.getMonth() + months, 1);
+}
+
+function startOfIsoWeek(dateObj) {
+  const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  const day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function getIsoWeekNumber(dateObj) {
+  const tmp = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+}
+
+function formatShortDate(dateObj) {
+  return dateObj.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
+// Custom-window state set by the period picker. When non-null these
+// override the "current" period derivation in getPeriodWindow.
+let kpiCustomStart = null; // Date — inclusive start
+let kpiCustomEnd = null;   // Date — exclusive end (next-day-after)
+let kpiCustomLabel = null;
+
+function getPeriodWindow(period, offset = 0) {
+  if (kpiCustomStart && kpiCustomEnd && offset === 0) {
+    return {
+      start: kpiCustomStart,
+      end: kpiCustomEnd,
+      label: kpiCustomLabel || '',
+      compareLabel: period,
+    };
+  }
+  if (kpiCustomStart && kpiCustomEnd && offset === -1) {
+    const span = kpiCustomEnd.getTime() - kpiCustomStart.getTime();
+    const prevEnd = new Date(kpiCustomStart);
+    const prevStart = new Date(kpiCustomStart.getTime() - span);
+    return {
+      start: prevStart,
+      end: prevEnd,
+      label: '',
+      compareLabel: period,
+    };
+  }
+  const now = new Date();
+  if (period === 'month') {
+    const start = addMonths(new Date(now.getFullYear(), now.getMonth(), 1), offset);
+    const end = addMonths(start, 1);
+    return {
+      start,
+      end,
+      label: start.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' }),
+      compareLabel: 'month',
+    };
+  }
+  if (period === 'quarter') {
+    const qMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = addMonths(new Date(now.getFullYear(), qMonth, 1), offset * 3);
+    const end = addMonths(start, 3);
+    const q = Math.floor(start.getMonth() / 3) + 1;
+    return {
+      start,
+      end,
+      label: `Q${q} ${start.getFullYear()}`,
+      compareLabel: 'quarter',
+    };
+  }
+  const thisWeekStart = startOfIsoWeek(now);
+  const start = addDays(thisWeekStart, offset * 7);
+  const end = addDays(start, 7);
+  const weekNo = getIsoWeekNumber(start);
+  const rangeEnd = addDays(end, -1);
+  return {
+    start,
+    end,
+    label: `Week ${weekNo} · ${formatShortDate(start)}-${formatShortDate(rangeEnd)}`,
+    compareLabel: 'week',
+  };
+}
+
+function getRowDate(row) {
+  return parseIsoDate(row.observation_date || row.audit_date);
+}
+
+function rowsForWindow(rows, window) {
+  return rows.filter(row => {
+    const dt = getRowDate(row);
+    return dt && dt >= window.start && dt < window.end;
+  });
+}
+
+function computeLiveMetrics(rows) {
+  const total = rows.length;
+  const compliant = rows.filter(r => r.conformance_status === 'Compliant').length;
+  const conditional = rows.filter(r => r.conformance_status === 'Conditional').length;
+  const ncr = rows.filter(r => r.conformance_status === 'NCR').length;
+  const open = rows.filter(r => r.action_required && r.closeout_status !== 'Closed').length;
+  return { total, compliant, conditional, ncr, open };
+}
+
+function deltaMarkup(currentValue, previousValue, compareLabel, upIsGood = true, asPercent = false) {
+  const delta = currentValue - previousValue;
+  if (delta === 0) {
+    return `<span class="delta-flat">— 0${asPercent ? '%' : ''} vs prev ${compareLabel}</span>`;
+  }
+  const isUp = delta > 0;
+  const isGood = upIsGood ? isUp : !isUp;
+  const cls = isGood ? 'delta-good' : 'delta-bad';
+  const arrow = isUp ? '▲' : '▼';
+  const magnitude = Math.abs(delta);
+  return `<span class="${cls}">${arrow} ${isUp ? '+' : '-'}${magnitude}${asPercent ? '%' : ''} vs prev ${compareLabel}</span>`;
+}
+
+function badgeToneForCounts(ncr, conditional, compliant) {
+  if (ncr > 0) return 'red';
+  if (conditional > 0) return 'amber';
+  if (compliant > 0) return 'green';
+  return 'blue';
+}
+
+function riskLevelForCode(code, ncr, conditional) {
+  if (ncr > 0) return 'High';
+  if (conditional > 0) return 'Medium';
+  if (/-L\d$/i.test(code || '')) return 'Low';
+  if (/-M\d$/i.test(code || '')) return 'Medium';
+  return 'High';
+}
+
+function riskClass(level) {
+  if (level === 'High') return 'high';
+  if (level === 'Medium') return 'medium';
+  return 'low';
+}
+
+function ccvsCodeToId(code) {
+  return String(code || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+async function setKpiPeriod(period) {
+  if (!['week', 'month', 'quarter'].includes(period)) return;
+  const win = await openPeriodPicker(period);
+  if (!win) return; // user cancelled
+  kpiPeriod = period;
+  kpiCustomStart = win.start;
+  kpiCustomEnd = win.end;
+  kpiCustomLabel = win.label;
+  renderManagerBoard();
+}
+
+function openPeriodPicker(period) {
+  return new Promise(resolve => {
+    const today = new Date();
+    const iso = d => d.toISOString().slice(0, 10);
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;padding:20px;border-radius:8px;min-width:340px;max-width:90vw;color:#111;font-family:inherit;';
+    let bodyHtml = '';
+    if (period === 'week') {
+      const past = new Date(today.getTime() - 6 * 86400000);
+      bodyHtml = `
+        <h3 style="margin-top:0;">Pick date range</h3>
+        <div style="display:flex;gap:12px;">
+          <label style="flex:1;font-size:12px;">From
+            <input type="date" id="ppFrom" value="${iso(past)}" style="width:100%;padding:6px;">
+          </label>
+          <label style="flex:1;font-size:12px;">To
+            <input type="date" id="ppTo" value="${iso(today)}" style="width:100%;padding:6px;">
+          </label>
+        </div>`;
+    } else if (period === 'month') {
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const yr = today.getFullYear();
+      const mo = today.getMonth();
+      bodyHtml = `
+        <h3 style="margin-top:0;">Pick calendar month</h3>
+        <div style="display:flex;gap:12px;">
+          <label style="flex:1;font-size:12px;">Month
+            <select id="ppMonth" style="width:100%;padding:6px;">
+              ${months.map((n, i) => `<option value="${i}" ${i===mo?'selected':''}>${n}</option>`).join('')}
+            </select>
+          </label>
+          <label style="flex:1;font-size:12px;">Year
+            <input type="number" id="ppYear" value="${yr}" min="2020" max="2099" style="width:100%;padding:6px;">
+          </label>
+        </div>`;
+    } else {
+      const yr = today.getFullYear();
+      const q = Math.floor(today.getMonth() / 3) + 1;
+      bodyHtml = `
+        <h3 style="margin-top:0;">Pick quarter</h3>
+        <div style="display:flex;gap:12px;">
+          <label style="flex:1;font-size:12px;">Quarter
+            <select id="ppQuarter" style="width:100%;padding:6px;">
+              <option value="1" ${q===1?'selected':''}>Q1 (Jan-Mar)</option>
+              <option value="2" ${q===2?'selected':''}>Q2 (Apr-Jun)</option>
+              <option value="3" ${q===3?'selected':''}>Q3 (Jul-Sep)</option>
+              <option value="4" ${q===4?'selected':''}>Q4 (Oct-Dec)</option>
+            </select>
+          </label>
+          <label style="flex:1;font-size:12px;">Year
+            <input type="number" id="ppYear" value="${yr}" min="2020" max="2099" style="width:100%;padding:6px;">
+          </label>
+        </div>`;
+    }
+    box.innerHTML = bodyHtml + `
+      <div style="margin-top:16px;text-align:right;">
+        <button class="btn" id="ppCancel">Cancel</button>
+        <button class="btn btn-primary" id="ppOk">OK</button>
+      </div>`;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const close = result => { document.body.removeChild(overlay); resolve(result); };
+    box.querySelector('#ppCancel').onclick = () => close(null);
+    box.querySelector('#ppOk').onclick = () => {
+      try {
+        if (period === 'week') {
+          const f = box.querySelector('#ppFrom').value;
+          const t = box.querySelector('#ppTo').value;
+          if (!f || !t || f > t) { alert('From must be on or before To'); return; }
+          const start = new Date(f + 'T00:00:00');
+          const end = new Date(t + 'T00:00:00');
+          end.setDate(end.getDate() + 1);
+          close({ start, end, label: `${formatShortDate(start)} – ${formatShortDate(new Date(end.getTime() - 86400000))}` });
+        } else if (period === 'month') {
+          const mo = parseInt(box.querySelector('#ppMonth').value, 10);
+          const yr = parseInt(box.querySelector('#ppYear').value, 10);
+          const start = new Date(yr, mo, 1);
+          const end = new Date(yr, mo + 1, 1);
+          close({ start, end, label: start.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' }) });
+        } else {
+          const q = parseInt(box.querySelector('#ppQuarter').value, 10);
+          const yr = parseInt(box.querySelector('#ppYear').value, 10);
+          const startMonth = (q - 1) * 3;
+          const start = new Date(yr, startMonth, 1);
+          const end = new Date(yr, startMonth + 3, 1);
+          close({ start, end, label: `Q${q} ${yr}` });
+        }
+      } catch (e) {
+        alert('Invalid selection: ' + e.message);
+      }
+    };
+  });
+}
+
+function closeCcvsTooltips(exceptId = null) {
+  document.querySelectorAll('.ccvs-tooltip.open').forEach(el => {
+    if (!exceptId || el.id !== exceptId) el.classList.remove('open');
+  });
+  if (!exceptId) activeCcvsTooltip = null;
+}
+
+function toggleCcvsTooltip(event, tooltipId) {
+  if (event) event.stopPropagation();
+  const tip = document.getElementById(tooltipId);
+  if (!tip) return;
+  const willOpen = !tip.classList.contains('open');
+  closeCcvsTooltips(tooltipId);
+  tip.classList.toggle('open', willOpen);
+  if (willOpen) {
+    tip.style.top = '';
+    tip.style.bottom = '';
+    let badge = null;
+    if (event && event.currentTarget && typeof event.currentTarget.closest === 'function') {
+      badge = event.currentTarget.closest('.ccvs-badge-wrap');
+    }
+    if (badge) {
+      const rect = badge.getBoundingClientRect();
+      const tooltipHeight = 220;
+      if (rect.bottom + tooltipHeight > window.innerHeight) {
+        tip.style.top = 'auto';
+        tip.style.bottom = 'calc(100% + 6px)';
+      } else {
+        tip.style.top = 'calc(100% + 6px)';
+        tip.style.bottom = 'auto';
+      }
+    }
+  }
+  activeCcvsTooltip = willOpen ? tooltipId : null;
+}
+
+function buildCcvsSummary(rows) {
+  const map = new Map();
+  rows.forEach(row => {
+    const code = String(row.ccvs_code || '').trim();
+    if (!code) return;
+    if (!map.has(code)) {
+      map.set(code, {
+        code,
+        category: row.ccvs_category || CCVS_INFO[code]?.category || 'General',
+        total: 0,
+        ncr: 0,
+        conditional: 0,
+        compliant: 0,
+      });
+    }
+    const s = map.get(code);
+    s.total += 1;
+    if (row.conformance_status === 'NCR') s.ncr += 1;
+    else if (row.conformance_status === 'Conditional') s.conditional += 1;
+    else if (row.conformance_status === 'Compliant') s.compliant += 1;
+  });
+  return Array.from(map.values()).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code));
+}
+
+function renderCcvsBars(containerId, rows, compareLabel) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const summary = buildCcvsSummary(rows);
+  if (!summary.length) {
+    container.innerHTML = '<div class="ccvs-empty">No CCVS observations for current period.</div>';
+    return;
+  }
+  container.innerHTML = summary.map(item => {
+    const total = item.total || 1;
+    const ncrPct = (item.ncr / total) * 100;
+    const condPct = (item.conditional / total) * 100;
+    const compPct = Math.max(0, 100 - ncrPct - condPct);
+    return `
+      <div class="ccvs-row">
+        ${renderCcvsBadge(item.code, item.total, {
+          ncr: item.ncr,
+          conditional: item.conditional,
+          compliant: item.compliant,
+          category: item.category,
+          compareLabel,
+        })}
+        <div class="ccvs-track">
+          ${ncrPct > 0 ? `<div class="ccvs-seg ncr" style="width:${ncrPct.toFixed(4)}%">${ncrPct >= 18 ? item.ncr : ''}</div>` : ''}
+          ${condPct > 0 ? `<div class="ccvs-seg conditional" style="width:${condPct.toFixed(4)}%">${condPct >= 18 ? item.conditional : ''}</div>` : ''}
+          ${compPct > 0 ? `<div class="ccvs-seg compliant" style="width:${compPct.toFixed(4)}%">${compPct >= 18 ? item.compliant : ''}</div>` : ''}
+        </div>
+        <div class="ccvs-total">${item.total}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderManagerSiteTable(rows) {
+  const tbody = document.getElementById('managerSiteBody');
+  if (!tbody) return;
+  const siteMap = new Map();
+  rows.forEach(row => {
+    const site = String(row.site_address || '').trim() || 'No site address';
+    if (!siteMap.has(site)) {
+      siteMap.set(site, { site, ncr: 0, conditional: 0, compliant: 0, total: 0 });
+    }
+    const s = siteMap.get(site);
+    s.total += 1;
+    if (row.conformance_status === 'NCR') s.ncr += 1;
+    else if (row.conformance_status === 'Conditional') s.conditional += 1;
+    else if (row.conformance_status === 'Compliant') s.compliant += 1;
+  });
+  const rowsOut = Array.from(siteMap.values())
+    .sort((a, b) => b.ncr - a.ncr || b.total - a.total || a.site.localeCompare(b.site));
+  if (!rowsOut.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No live observations in selected period.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rowsOut.map(site => `
+    <tr class="${site.ncr > 0 ? 'site-alert' : ''}">
+      <td style="padding-left:14px;max-width:260px;">${esc(site.site)}</td>
+      <td style="text-align:center;font-weight:700;color:${site.ncr > 0 ? 'var(--red-text)' : 'var(--text-light)'};">${site.ncr}</td>
+      <td style="text-align:center;font-weight:700;color:${site.conditional > 0 ? 'var(--amber-text)' : 'var(--text-light)'};">${site.conditional}</td>
+      <td style="text-align:center;font-weight:700;color:${site.compliant > 0 ? 'var(--green-text)' : 'var(--text-light)'};">${site.compliant}</td>
+      <td style="text-align:center;padding-right:14px;font-weight:700;">${site.total}</td>
+    </tr>
+  `).join('');
+}
+
+function renderManagerBoard() {
+  const currentWindow = getPeriodWindow(kpiPeriod, 0);
+  const previousWindow = getPeriodWindow(kpiPeriod, -1);
+  closeCcvsTooltips();
+  const currentRows = rowsForWindow(filtered, currentWindow);
+  const previousRows = rowsForWindow(filtered, previousWindow);
+  const current = computeLiveMetrics(currentRows);
+  const previous = computeLiveMetrics(previousRows);
+  const currentRate = current.total > 0 ? Math.round((current.compliant / current.total) * 100) : 0;
+  const previousRate = previous.total > 0 ? Math.round((previous.compliant / previous.total) * 100) : 0;
+
+  const periodLabel = document.getElementById('managerPeriodLabel');
+  if (periodLabel) periodLabel.textContent = currentWindow.label;
+  ['Week', 'Month', 'Quarter'].forEach(label => {
+    const period = label.toLowerCase();
+    const btn = document.getElementById(`periodBtn${label}`);
+    if (btn) btn.classList.toggle('active', kpiPeriod === period);
+  });
+
+  renderManagerSiteTable(currentRows);
+  renderCcvsBars('managerCcvsBars', currentRows, currentWindow.compareLabel);
+
+  const complianceCard = document.querySelector('.metric-compliance');
+  if (complianceCard) {
+    complianceCard.classList.remove('metric-warn', 'metric-bad');
+    if (currentRate < 60) complianceCard.classList.add('metric-bad');
+    else if (currentRate < 85) complianceCard.classList.add('metric-warn');
+  }
+
+  const complianceVal = document.getElementById('metricComplianceValue');
+  const complianceTarget = document.getElementById('metricComplianceTarget');
+  const complianceProgress = document.getElementById('metricComplianceProgress');
+  const complianceDelta = document.getElementById('metricComplianceDelta');
+  if (complianceVal) complianceVal.textContent = `${currentRate}%`;
+  if (complianceTarget) complianceTarget.textContent = 'Target: 85%';
+  if (complianceProgress) complianceProgress.style.width = `${Math.min(100, Math.round((currentRate / 85) * 100))}%`;
+  if (complianceDelta) complianceDelta.innerHTML = deltaMarkup(currentRate, previousRate, currentWindow.compareLabel, true, true);
+
+  const totalVal = document.getElementById('metricTotalValue');
+  const totalDelta = document.getElementById('metricTotalDelta');
+  const ncrVal = document.getElementById('metricNcrValue');
+  const ncrDelta = document.getElementById('metricNcrDelta');
+  const openVal = document.getElementById('metricOpenValue');
+  const openDelta = document.getElementById('metricOpenDelta');
+  const condVal = document.getElementById('metricConditionalValue');
+  const condDelta = document.getElementById('metricConditionalDelta');
+
+  if (totalVal) totalVal.textContent = String(current.total);
+  if (totalDelta) totalDelta.innerHTML = deltaMarkup(current.total, previous.total, currentWindow.compareLabel, true);
+  if (ncrVal) ncrVal.textContent = String(current.ncr);
+  if (ncrDelta) ncrDelta.innerHTML = deltaMarkup(current.ncr, previous.ncr, currentWindow.compareLabel, false);
+  if (openVal) openVal.textContent = String(current.open);
+  if (openDelta) openDelta.innerHTML = deltaMarkup(current.open, previous.open, currentWindow.compareLabel, false);
+  if (condVal) condVal.textContent = String(current.conditional);
+  if (condDelta) condDelta.innerHTML = deltaMarkup(current.conditional, previous.conditional, currentWindow.compareLabel, false);
+}
+
+async function downloadManagerReport() {
+  try {
+    let url = `/pims/report/sdgroup?period=${encodeURIComponent(kpiPeriod)}`;
+    if (kpiCustomStart && kpiCustomEnd) {
+      const iso = d => d.toISOString().slice(0, 10);
+      const inclusiveEnd = new Date(kpiCustomEnd.getTime() - 86400000);
+      url += `&start=${iso(kpiCustomStart)}&end=${iso(inclusiveEnd)}`;
+    }
+    const resp = await fetch(url, {
+      method: 'GET',
+      credentials: 'same-origin',
+    });
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => resp.statusText);
+      throw new Error(`${resp.status}: ${detail}`);
+    }
+    const blob = await resp.blob();
+    const stamp = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `PIMS_Manager_Report_${kpiPeriod}_${stamp}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    showToast('Report download failed: ' + err.message, 'error');
+  }
+}
+function renderActions() {
+  const tbody = document.getElementById('actionsTableBody');
+  tbody.innerHTML = '';
+  const siteSearch = (document.getElementById('actionsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const actions = filtered
+    .filter(o => o.action_required && o.closeout_status !== 'Closed')
+    .filter(o => !siteSearch || String(o.site_address || '').toLowerCase().includes(siteSearch));
+  document.getElementById('openActionsCount').textContent = `${actions.length} open`;
+  if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
+  actions.forEach(o => {
+    const tr = document.createElement('tr');
+    if (o.conformance_status==='NCR') tr.className='row-ncr';
+    tr.innerHTML = `
+      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
+      <td style="text-align:center;">
+        ${o.photo_url
+          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
+               <img src="${esc(o.photo_url)}"
+                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+             </a>`
+          : `<span style="color:var(--text-light)">—</span>`}
+      </td>
+      <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
+      <td>${badge(o.conformance_status)}</td>
+      <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+      <td style="max-width:420px;white-space:normal;line-height:1.4;">${esc(o.action_description || '—')}</td>
+      <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
+      <td>${dueLabel(o.due_category)}</td>
+      <td style="padding-right:20px;white-space:nowrap;">
+        ${badge(o.closeout_status)}
+        <button class="btn-update" onclick="openModal('${o.id}')" style="margin-left:8px;">Update</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  renderActionsMobile(actions);
+}
+
+// ── All obs table ──
+function fmtDateDMY(iso) {
+  if (!iso) return '—';
+  const parts = iso.split('-');
+  if (parts.length !== 3) return esc(iso);
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function changeAllObsPage(delta) {
+  const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
+  const liveSiteSearch = (document.getElementById('liveObsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const tableRows = (currentTab === 'live' && liveSiteSearch)
+    ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
+    : filtered;
+  const totalPages = Math.max(1, Math.ceil(tableRows.length / PAGE_SIZE));
+  const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
+  if (currentTab === 'historical') {
+    historicalObsPage = nextPage;
+  } else {
+    liveObsPage = nextPage;
+  }
+  renderAllObs();
+}
+
+function onActionsSiteSearch() {
+  renderActions();
+}
+
+function onLiveObsSiteSearch() {
+  liveObsPage = 1;
+  renderAllObs();
+}
+
+function renderAllObs() {
+  const headRow = document.getElementById('allObsHeadRow');
+  const tbody = document.getElementById('allObsTableBody');
+  const prevBtn = document.getElementById('allObsPrevBtn');
+  const nextBtn = document.getElementById('allObsNextBtn');
+  const pageInfo = document.getElementById('allObsPageInfo');
+
+  if (!headRow || !tbody) return;
+
+  const liveSiteSearch = (document.getElementById('liveObsSiteFilterInput')?.value || '').trim().toLowerCase();
+  const tableRows = (currentTab === 'live' && liveSiteSearch)
+    ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
+    : filtered;
+  const total = tableRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
+  const safePage = Math.min(totalPages, Math.max(1, currentPage));
+  if (currentTab === 'historical') {
+    historicalObsPage = safePage;
+  } else {
+    liveObsPage = safePage;
+  }
+
+  const start = (safePage - 1) * PAGE_SIZE;
+  const pageRows = tableRows.slice(start, start + PAGE_SIZE);
+
+  if (prevBtn) prevBtn.disabled = safePage <= 1;
+  if (nextBtn) nextBtn.disabled = safePage >= totalPages;
+  if (pageInfo) pageInfo.textContent = `Page ${safePage} of ${totalPages} (${total} total rows)`;
+  document.getElementById('allObsCount').textContent = `${total} records`;
+
+  if (currentTab === 'live') {
+    headRow.innerHTML = `
+      <th style="padding-left:20px">Seq</th>
+      <th>Photo</th>
+      <th>Date</th>
+      <th>Site Address</th>
+      <th>Finding</th>
+      <th>Status</th>
+      <th>CCVS</th>
+      <th>Action Required</th>
+      <th>Responsible</th>
+      <th>Monitoring Note</th>
+      <th style="padding-right:20px"></th>`;
+  } else {
+    headRow.innerHTML = `
+      <th style="padding-left:20px">Site Address</th>
+      <th>Audit Date</th>
+      <th>Section</th>
+      <th>Observation</th>
+      <th>Status</th>
+      <th>CCVS</th>
+      <th>Action</th>
+      <th>Recommendation</th>
+      <th>Legal Ref</th>
+      <th style="padding-right:20px">Source PDF</th>`;
+  }
+
+  tbody.innerHTML = '';
+  pageRows.forEach(o => {
+    const tr = document.createElement('tr');
+    if (o.conformance_status==='NCR') tr.classList.add('row-ncr');
+    if (o.needs_review) tr.classList.add('row-review');
+    if (currentTab === 'live') {
+      tr.innerHTML = `
+        <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
+      <td style="text-align:center;">
+        ${o.photo_url
+          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
+               <img src="${esc(o.photo_url)}"
+                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+             </a>`
+          : `<span style="color:var(--text-light)">—</span>`}
+      </td>
+        <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
+        <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
+        <td style="max-width:420px;white-space:normal;line-height:1.4;" title="${esc(o.observation_text || '')}">${esc(o.observation_text_enriched || o.observation_text || '—')}</td>
+        <td>${badge(o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+        <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
+        <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
+        <td style="max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>
+        <td style="padding-right:20px;white-space:nowrap;">
+          <button onclick="openModal('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:5px;cursor:pointer;margin-right:4px;">✎ Edit</button>
+          ${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">↩ Send back</button>` : ''}
+        </td>`;
+    } else {
+      tr.innerHTML = `
+        <td style="padding-left:20px;min-width:160px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
+        <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.audit_date || o.observation_date)}</td>
+        <td style="max-width:140px;color:var(--text-muted)">${esc(o.section || o.ccvs_code || o.ccvs_category)||'—'}</td>
+        <td style="max-width:340px">${trunc(o.observation_text,140)}</td>
+        <td>${badge(o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+        <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,90)}</td>
+        <td style="max-width:240px;color:var(--text-muted)">${trunc(o.recommendation || o.action_description,90)}</td>
+        <td style="max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>
+        <td style="padding-right:20px;max-width:220px;color:var(--text-light)">${trunc(o.source_pdf,90)}</td>`;
+    }
+    tbody.appendChild(tr);
+  });
+
+  if (!pageRows.length) {
+    const colspan = currentTab === 'live' ? 11 : 10;
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">No records for current filters</td></tr>`;
+  }
+
+  renderAllObsMobile(pageRows);
+}
+
+// ── Inline PATCH helpers ──
+async function patchStagingField(input) {
+  const id = input.dataset.id;
+  const field = input.dataset.field;
+  let val = (input.value || '').trim();
+  if (val === '' && field !== 'review_status') val = null;
+  const row = stagingFieldRows.find(r => r.id === id);
+  if (!row || row[field] === val) return;
+  try {
+    const { error } = await db.from('pims_staging').update({ [field]: val }).eq('id', id);
+    if (error) throw error;
+    row[field] = val;
+    input.style.borderColor = '#16a34a';
+    setTimeout(() => { input.style.borderColor = '#cbd5e1'; }, 1200);
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+    input.value = row[field] || '';
+  }
+}
+
+async function patchField(input) {
+  const id = input.dataset.id;
+  const field = input.dataset.field;
+  const val = input.value.trim() || null;
+  // Find original value
+  const obs = allObs.find(o => o.id === id);
+  if (!obs || obs[field] === val) return; // no change
+  try {
+    const { error } = await db.from('pims_observations').update({ [field]: val }).eq('id', id);
+    if (error) throw error;
+    obs[field] = val;
+    input.style.borderColor = 'var(--green)';
+    setTimeout(() => { input.style.borderColor = 'transparent'; }, 1200);
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+    input.value = obs[field] || '';
+  }
+}
+
+// ── Modal ──
+function openModal(id) {
+  const o = allObs.find(x=>x.id===id);
+  if (!o) return;
+  editingId = id;
+  // Populate CCVS picker from existing codes in the dataset.
+  const picker = document.getElementById('modalCcvsPicker');
+  if (picker) {
+    const seen = new Map();
+    allObs.forEach(x => {
+      const code = (x.ccvs_code || '').trim();
+      if (!code) return;
+      if (!seen.has(code)) seen.set(code, x.ccvs_category || '');
+    });
+    const sorted = [...seen.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+    picker.innerHTML = '<option value="">Pick…</option>' + sorted.map(([code,cat]) => {
+      const label = cat ? `${code} — ${cat}` : code;
+      return `<option value="${code.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`;
+    }).join('');
+  }
+  document.getElementById('modalObsText').textContent  = o.observation_text||'—';
+  document.getElementById('modalSiteAddress').value    = o.site_address||'';
+  document.getElementById('modalFinding').value        = o.observation_text_enriched || o.observation_text || '';
+  document.getElementById('modalConformance').value    = o.conformance_status||'';
+  document.getElementById('modalAction').value        = o.action_description||'';
+  document.getElementById('modalActionRequired').checked = !!o.action_required;
+  document.getElementById('modalCcvs').value           = o.ccvs_code||'';
+  document.getElementById('modalResponsible').value    = o.responsible||'';
+  document.getElementById('modalDue').value            = o.due_category||'';
+  document.getElementById('modalMonitoringNote').value = o.monitoring_note||'';
+  document.getElementById('modalStatus').value         = (o.closeout_status && o.closeout_status!=='N/A') ? o.closeout_status : 'Open';
+  document.getElementById('modalClosedDate').value     = o.closed_date||'';
+  document.getElementById('modalClosedBy').value       = o.closed_by||'';
+  document.getElementById('modalNotes').value          = o.closeout_notes||'';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  editingId = null;
+}
+
+async function saveCloseout() {
+  if (!editingId) return;
+  const conf = document.getElementById('modalConformance').value;
+  const actionText = document.getElementById('modalAction').value.trim();
+  const requiresAction = document.getElementById('modalActionRequired').checked;
+  const payload = {
+    site_address:       document.getElementById('modalSiteAddress').value.trim() || null,
+    observation_text_enriched: document.getElementById('modalFinding').value.trim() || null,
+    conformance_status: conf || null,
+    ccvs_code:          document.getElementById('modalCcvs').value.trim() || null,
+    action_description: actionText || null,
+    action_required:    requiresAction,
+    responsible:        document.getElementById('modalResponsible').value.trim() || null,
+    due_category:       document.getElementById('modalDue').value || null,
+    monitoring_note:    document.getElementById('modalMonitoringNote').value.trim() || null,
+    closeout_status:    document.getElementById('modalStatus').value || 'Open',
+    closed_date:        document.getElementById('modalClosedDate').value || null,
+    closed_by:          document.getElementById('modalClosedBy').value   || null,
+    closeout_notes:     document.getElementById('modalNotes').value      || null,
+  };
+  try {
+    const { error } = await db.from('pims_observations').update(payload).eq('id', editingId);
+    if (error) throw error;
+    const idx = allObs.findIndex(o=>o.id===editingId);
+    if (idx>-1) Object.assign(allObs[idx], payload);
+    closeModal();
+    applyFilters();
+  } catch(err) { alert('Save failed: ' + err.message); }
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target===document.getElementById('modalOverlay')) closeModal(); });
+document.addEventListener('click', e => { if (!e.target.closest('.ccvs-badge-wrap')) closeCcvsTooltips(); });
+
+// ── Export ──
+function csvField(val) {
+  const s = String(val == null ? '' : val);
+  const safe = s.match(/^[=+\-@]/) ? "'" + s : s;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+
+async function openAuditReportModal() {
+  let modal = document.getElementById('auditReportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'auditReportModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    modal.innerHTML = `
+      <div style="background:#fff;padding:24px;border-radius:8px;min-width:480px;max-width:90vw;max-height:85vh;overflow:auto;color:#111;">
+        <h3 style="margin-top:0;">Generate Site Visit Report (xlsx)</h3>
+        <p style="font-size:13px;color:#555;margin:0 0 6px;">Tick one or more sites and pick the observation date range. Output is the PIMS_Staging xlsx format with photo thumbnails.</p>
+        <div id="auditReportError" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:6px;"></div>
+        <label style="font-size:12px;color:#374151;display:block;margin-bottom:4px;">
+          <input type="checkbox" id="auditReportSelectAll" onchange="toggleAuditReportAll()"> Select all
+        </label>
+        <div id="auditReportSites" style="width:100%;max-height:280px;overflow-y:auto;border:1px solid #d1d5db;border-radius:4px;padding:6px 10px;background:#fff;"></div>
+        <div style="display:flex;gap:12px;margin-top:12px;">
+          <label style="flex:1;font-size:12px;color:#374151;">From
+            <input type="date" id="auditReportFrom" style="width:100%;padding:6px;">
+          </label>
+          <label style="flex:1;font-size:12px;color:#374151;">To
+            <input type="date" id="auditReportTo" style="width:100%;padding:6px;">
+          </label>
+        </div>
+        <div style="margin-top:16px;text-align:right;">
+          <button class="btn" onclick="document.getElementById('auditReportModal').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitAuditReport()">Generate</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const tgt = document.getElementById('auditReportSites');
+  const err = document.getElementById('auditReportError');
+  tgt.innerHTML = '';
+  err.style.display = 'none';
+  err.textContent = '';
+  try {
+    const resp = await fetch('/pims/sites/active', { credentials: 'include' });
+    if (!resp.ok) {
+      err.textContent = 'Failed to load sites (' + resp.status + ').';
+      err.style.display = 'block';
+      return;
+    }
+    const sites = await resp.json();
+    if (!Array.isArray(sites) || sites.length === 0) {
+      err.textContent = 'No active sites found.';
+      err.style.display = 'block';
+      return;
+    }
+    sites.forEach(site => {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:#111;cursor:pointer;border-bottom:1px solid #f3f4f6;';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'auditReportSiteCb';
+      cb.value = site.id;
+      const span = document.createElement('span');
+      span.textContent = site.address_raw;
+      row.appendChild(cb);
+      row.appendChild(span);
+      tgt.appendChild(row);
+    });
+    // Default date range: last 30 days through today.
+    const today = new Date();
+    const past = new Date(today.getTime() - 30 * 86400000);
+    const iso = d => d.toISOString().slice(0, 10);
+    document.getElementById('auditReportFrom').value = iso(past);
+    document.getElementById('auditReportTo').value = iso(today);
+    document.getElementById('auditReportSelectAll').checked = false;
+  } catch (e) {
+    err.textContent = 'Failed to load eligible sites: ' + e.message;
+    err.style.display = 'block';
+  }
+}
+
+function toggleAuditReportAll() {
+  const all = document.getElementById('auditReportSelectAll').checked;
+  document.querySelectorAll('#auditReportSites .auditReportSiteCb')
+    .forEach(cb => { cb.checked = all; });
+}
+
+async function submitAuditReport() {
+  const site_ids = Array.from(
+    document.querySelectorAll('#auditReportSites .auditReportSiteCb:checked')
+  ).map(cb => cb.value);
+  if (site_ids.length === 0) { alert('Select at least one site.'); return; }
+  const date_from = document.getElementById('auditReportFrom').value;
+  const date_to = document.getElementById('auditReportTo').value;
+  if (!date_from || !date_to) { alert('Pick a From and To date.'); return; }
+  if (date_from > date_to) { alert('From date must be on or before To date.'); return; }
+  const resp = await fetch('/pims/site-visit-report/xlsx', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({site_ids, date_from, date_to}),
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    alert('Site Visit Report failed: ' + txt);
+    return;
+  }
+  const blob = await resp.blob();
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `Site_Visit_Report_${new Date().toISOString().slice(0,10)}.xlsx`,
+  });
+  a.click();
+  document.getElementById('auditReportModal').remove();
+}
+
+function exportCSV() {
+  const h = ['#','Photo ID','Date','Observation','Status','CCVS Code','CCVS Category','Action Required','Action','Responsible','Due','Monitoring Note','Close-out','Closed Date','Closed By','Notes'];
+  const rows = filtered.map(o=>[
+    csvField(o.seq_no),
+    csvField(o.photo_id),
+    csvField(o.observation_date),
+    csvField(o.observation_text),
+    csvField(o.conformance_status),
+    csvField(o.ccvs_code),
+    csvField(o.ccvs_category),
+    csvField(o.action_required ? 'Yes' : 'No'),
+    csvField(o.action_description),
+    csvField(o.responsible),
+    csvField(o.due_category),
+    csvField(o.monitoring_note),
+    csvField(o.closeout_status),
+    csvField(o.closed_date),
+    csvField(o.closed_by),
+    csvField(o.closeout_notes)
+  ].join(','));
+  const csv  = [h.join(','),...rows].join('\n');
+  const a    = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download:`PIMS_Export_${new Date().toISOString().slice(0,10)}.csv` });
+  a.click();
+}
+
+
+// ── Mobile helpers ──
+const isMobile = () => window.innerWidth <= 640;
+
+function toggleFilters() {
+  document.getElementById('filtersBar').classList.toggle('open');
+}
+
+function renderActionsMobile(actions) {
+  const el = document.getElementById('actionsMobileCards');
+  if (!el) return;
+  if (!actions.length) {
+    el.innerHTML = '<div class="empty-state">No open actions for current filters</div>';
+    return;
+  }
+  el.innerHTML = actions.map(o => `
+    <div class="m-card${o.conformance_status==='NCR'?' row-ncr':''}">
+      <div class="m-card-top">
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''}</span>
+        <div class="m-card-badges">
+          ${badge(o.conformance_status)}
+          ${ccvs(o.ccvs_code, o.conformance_status)}
+        </div>
+      </div>
+      <div class="m-card-action">${esc(o.action_description)||'—'}</div>
+      <div class="m-card-meta">
+        <span class="m-card-meta-item">👤 ${esc(o.responsible)||'—'}</span>
+        <span class="m-card-meta-item">${dueLabel(o.due_category)}</span>
+        <span class="m-card-meta-item">${badge(o.closeout_status)}</span>
+      </div>
+      <div class="m-card-bottom">
+        <span></span>
+        <button class="btn-update" style="padding:8px 18px;font-size:12px" onclick="openModal('${o.id}')">Update close-out</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAllObsMobile(obs) {
+  const el = document.getElementById('allObsMobileCards');
+  if (!el) return;
+  if (!obs.length) {
+    el.innerHTML = '<div class="empty-state">No records for current filters</div>';
+    return;
+  }
+  el.innerHTML = obs.map(o => `
+    <div class="m-card">
+      <div class="m-card-top">
+        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
+        <div class="m-card-badges">
+          ${badge(o.conformance_status)}
+          ${o.ccvs_code ? ccvs(o.ccvs_code, o.conformance_status) : ''}
+        </div>
+      </div>
+      <div class="m-card-action">${trunc(o.observation_text, 140)}</div>
+      ${o.action_description ? `<div class="m-card-meta"><span class="m-card-meta-item" style="color:var(--red-text)">⚡ ${trunc(o.action_description,80)}</span></div>` : ''}
+      ${o.monitoring_note ? `<div class="m-card-monitoring">${trunc(o.monitoring_note,100)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+    // ── Staging Inbox ──────────────────────────────────────────
+
+    let stagingData = []; // cache for XLSX/DOCX export
+    let stagingFieldRows = [];
+    let stagingPdfRows = [];
+    let stagingFieldFilter = 'Pending';
+    let stagingFieldPage = 1;
+    let stagingPdfPage = 1;
+    let stagingPdfGroupExpanded = {};
+    let _stagingLoading = false;
+    let _bulkPromoteInProgress = false;
+    let _xlsxUploadOpen = false;
+    let _xlsxUploadUploading = false;
+    let _xlsxUploadState = {
+      file: null,
+      rows: [],
+      skipped: 0,
+      warnings: 0,
+      fatalErrors: [],
+    };
+
+    const XLSX_UPLOAD_MAX_ROWS = 500;
+    const XLSX_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+    const XLSX_REQUIRED_HEADERS = ['site_address', 'audit_date', 'observation_text'];
+    const XLSX_STATUS_MAP = {
+      ncr: 'NCR',
+      compliant: 'Compliant',
+      conditional: 'Conditional',
+      info: 'Info',
+    };
+    const XLSX_VALID_CCVS = new Set([
+      'WAH-H6', 'WAH-H9', 'IRA-H6', 'IRA-H9', 'SIL-H6', 'SIL-H9',
+      'STR-H6', 'STR-H9', 'MOB-H6', 'MOB-M4', 'CHM-M3', 'CHM-H6',
+      'ENE-M4', 'ENE-H6', 'SYS-L1', 'SYS-L2', 'SYS-M3', 'SYS-M4', 'SYS-H6',
+    ]);
+
+    let stagingOpen = true;
+
+    function toggleStaging() {
+      stagingOpen = !stagingOpen;
+      const body = document.getElementById('staging-body');
+      const chev = document.getElementById('staging-chevron');
+      body.style.display = stagingOpen ? 'block' : 'none';
+      chev.style.transform = stagingOpen ? 'rotate(180deg)' : '';
+      if (stagingOpen && stagingData.length === 0 && stagingPdfRows.length === 0) loadStaging();
+    }
+
+    function pdfGroupKey(row) {
+      const site = String(row.site_address || '').trim();
+      return site || '__NO_SITE__';
+    }
+
+    function pdfDateIso(row) {
+      const raw = (row.audit_date || row.observation_date || '').slice(0, 10);
+      return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+    }
+
+    function buildPdfGroups(rows) {
+      const map = new Map();
+      rows.forEach(row => {
+        const key = pdfGroupKey(row);
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            site: key === '__NO_SITE__' ? '' : key,
+            isNoSite: key === '__NO_SITE__',
+            rows: [],
+            count: 0,
+            earliest: '',
+            latest: '',
+          });
+        }
+        const group = map.get(key);
+        group.rows.push(row);
+        group.count += 1;
+        const iso = pdfDateIso(row);
+        if (iso) {
+          if (!group.earliest || iso < group.earliest) group.earliest = iso;
+          if (!group.latest || iso > group.latest) group.latest = iso;
+        }
+      });
+      const groups = Array.from(map.values())
+        .sort((a, b) => {
+          if (a.isNoSite && !b.isNoSite) return 1;
+          if (!a.isNoSite && b.isNoSite) return -1;
+          if (b.count !== a.count) return b.count - a.count;
+          return a.site.localeCompare(b.site);
+        });
+      const orderedRows = groups.flatMap(g => g.rows);
+      return { groups, orderedRows };
+    }
+
+    function _getStagingPdfFilters() {
+      const siteSelect = document.getElementById('filterSite')?.value || '';
+      const status = document.getElementById('filterStatus')?.value || '';
+      const ccvs = document.getElementById('filterCcvs')?.value || '';
+      const siteSearch = document.getElementById('stagingPdfSiteFilter')?.value || '';
+      return { siteSelect, status, ccvs, siteSearch };
+    }
+
+    function _hasStagingPdfFilters(filters) {
+      return Boolean(
+        (filters.siteSelect && filters.siteSelect.trim()) ||
+        (filters.status && filters.status.trim()) ||
+        (filters.ccvs && filters.ccvs.trim()) ||
+        (filters.siteSearch && filters.siteSearch.trim())
+      );
+    }
+
+    function _filterStagingPdfRows(rows, filters) {
+      const siteNeedle = String(filters.siteSelect || '').trim().toLowerCase();
+      const siteSearchNeedle = String(filters.siteSearch || '').trim().toLowerCase();
+      const statusNeedle = String(filters.status || '').trim().toLowerCase();
+      const ccvsNeedle = String(filters.ccvs || '').trim().toLowerCase();
+
+      return rows.filter(row => {
+        const site = String(row.site_address || '').toLowerCase();
+        const status = String(row.conformance_status || '').toLowerCase();
+        const ccvsCode = String(row.ccvs_code || '').toLowerCase();
+        const ccvsCategory = String(row.ccvs_category || '').toLowerCase();
+
+        if (siteNeedle && !site.includes(siteNeedle)) return false;
+        if (siteSearchNeedle && !site.includes(siteSearchNeedle)) return false;
+        if (statusNeedle && status !== statusNeedle) return false;
+        if (ccvsNeedle && ccvsCode !== ccvsNeedle && ccvsCategory !== ccvsNeedle) return false;
+        return true;
+      });
+    }
+
+    function onStagingPdfSiteSearch() {
+      const inputVal = document.getElementById('stagingPdfSiteFilter')?.value || '';
+      stagingPdfPage = 1;
+      if (!String(inputVal).trim()) {
+        stagingPdfGroupExpanded = {};
+      }
+      renderStagingPdfRows();
+    }
+
+    function isGroupExpandable(groupRowsOnPage) {
+      return groupRowsOnPage && groupRowsOnPage.length > 0;
+    }
+
+    const selectedStagingIds = new Set();
+
+    function _eligibleStagingIds() {
+      return (stagingFieldRows || [])
+        .filter(r => r && r.id && r.review_status !== 'Approved')
+        .map(r => r.id);
+    }
+
+    function toggleSelectAll(cb) {
+      if (cb.checked) {
+        _eligibleStagingIds().forEach(id => selectedStagingIds.add(id));
+      } else {
+        selectedStagingIds.clear();
+      }
+      document.querySelectorAll('.staging-cb').forEach(c => {
+        if (!c.disabled) c.checked = cb.checked;
+      });
+      updateSelectCount();
+    }
+
+    function onStagingRowToggle(cb) {
+      const id = cb.dataset.id;
+      if (!id) return;
+      if (cb.checked) selectedStagingIds.add(id);
+      else selectedStagingIds.delete(id);
+      updateSelectCount();
+    }
+
+    function applyStagingSelectionToDom() {
+      document.querySelectorAll('.staging-cb').forEach(c => {
+        if (!c.disabled) c.checked = selectedStagingIds.has(c.dataset.id);
+      });
+      const selAll = document.getElementById('staging-select-all');
+      if (selAll) {
+        const eligible = _eligibleStagingIds();
+        selAll.checked = eligible.length > 0 && eligible.every(id => selectedStagingIds.has(id));
+      }
+    }
+
+    function updateSelectCount() {
+      const eligible = new Set(_eligibleStagingIds());
+      for (const id of [...selectedStagingIds]) {
+        if (!eligible.has(id)) selectedStagingIds.delete(id);
+      }
+      const total = eligible.size;
+      const checked = selectedStagingIds.size;
+      const el = document.getElementById('staging-select-count');
+      if (el) el.textContent = checked > 0 ? `${checked} of ${total} selected (all pages)` : '';
+      applyStagingSelectionToDom();
+    }
+
+    function _getExportIds() {
+      if (!selectedStagingIds.size) {
+        alert('Please select at least one row to export.');
+        return null;
+      }
+      return Array.from(selectedStagingIds);
+    }
+
+    function _setPager(prefix, page, totalRows) {
+      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+      const info = document.getElementById(`${prefix}PageInfo`);
+      const prev = document.getElementById(`${prefix}PrevBtn`);
+      const next = document.getElementById(`${prefix}NextBtn`);
+      if (info) info.textContent = `Page ${page} of ${totalPages} (${totalRows} total rows)`;
+      if (prev) prev.disabled = page <= 1;
+      if (next) next.disabled = page >= totalPages;
+    }
+
+    function changeStagingFieldPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(stagingFieldRows.length / PAGE_SIZE));
+      stagingFieldPage = Math.min(totalPages, Math.max(1, stagingFieldPage + delta));
+      renderStagingFieldRows();
+    }
+
+    function changeStagingPdfPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(stagingPdfRows.length / PAGE_SIZE));
+      stagingPdfPage = Math.min(totalPages, Math.max(1, stagingPdfPage + delta));
+      renderStagingPdfRows();
+    }
+
+    function _xlsxHeaderKey(value) {
+      return String(value == null ? '' : value).trim().toLowerCase();
+    }
+
+    function _xlsxCellText(value) {
+      return String(value == null ? '' : value).trim();
+    }
+
+    function _xlsxParseDate(value) {
+      if (value == null || value === '') return '';
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toISOString().slice(0, 10);
+      }
+      if (typeof value === 'number') {
+        const parsed = (XLSX && XLSX.SSF && typeof XLSX.SSF.parse_date_code === 'function')
+          ? XLSX.SSF.parse_date_code(value)
+          : null;
+        if (parsed && parsed.y && parsed.m && parsed.d) {
+          const y = String(parsed.y).padStart(4, '0');
+          const m = String(parsed.m).padStart(2, '0');
+          const d = String(parsed.d).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+      }
+      const text = _xlsxCellText(value);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+      if (text.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+      return '';
+    }
+
+    function _xlsxSetUploadButtonState() {
+      const btn = document.getElementById('xlsxUploadSubmitBtn');
+      if (!btn) return;
+      const rowCount = _xlsxUploadState.rows.length;
+      const hasBlockingErrors = _xlsxUploadState.fatalErrors.length > 0;
+      const disabled = _xlsxUploadUploading || !rowCount || hasBlockingErrors;
+      btn.disabled = disabled;
+      btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+      btn.style.opacity = disabled ? '0.6' : '1';
+      btn.textContent = _xlsxUploadUploading
+        ? 'Uploading...'
+        : `Upload ${rowCount} row${rowCount === 1 ? '' : 's'} to Staging`;
+    }
+
+    function updateXlsxCurrentAuditHint() {
+      const toggle = document.getElementById('xlsxCurrentAuditToggle');
+      const hint = document.getElementById('xlsxCurrentAuditHint');
+      if (!hint) return;
+      hint.textContent = toggle && toggle.checked
+        ? 'Current audit (will appear in Live Audits)'
+        : 'Historical record (PDF/report import)';
+    }
+
+    function _xlsxResetState(clearInput = true) {
+      _xlsxUploadState = {
+        file: null,
+        rows: [],
+        skipped: 0,
+        warnings: 0,
+        fatalErrors: [],
+      };
+      if (clearInput) {
+        const input = document.getElementById('xlsxUploadInput');
+        if (input) input.value = '';
+        const toggle = document.getElementById('xlsxCurrentAuditToggle');
+        if (toggle) toggle.checked = false;
+      }
+      const fileName = document.getElementById('xlsxUploadFileName');
+      if (fileName) fileName.textContent = 'No file selected';
+      updateXlsxCurrentAuditHint();
+      _xlsxRenderPreview();
+    }
+
+    function _xlsxRenderPreview() {
+      const body = document.getElementById('xlsxUploadPreviewBody');
+      const summary = document.getElementById('xlsxUploadSummary');
+      if (!body || !summary) return;
+
+      const previewRows = _xlsxUploadState.rows.slice(0, 10);
+      if (!previewRows.length) {
+        body.innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center;color:#94a3b8;">Select an .xlsx file to preview rows.</td></tr>';
+      } else {
+        body.innerHTML = previewRows.map(row => {
+          const observation = row.observation.length > 60
+            ? `${row.observation.slice(0, 60)}...`
+            : row.observation;
+          const statusText = row.status || 'NULL';
+          const ccvsText = row.ccvsCode || 'NULL';
+          const statusHint = row.statusWarning
+            ? `<div style="font-size:0.68rem;color:#64748b;margin-top:2px;">${esc(row.statusWarning)}</div>`
+            : '';
+          const ccvsHint = row.ccvsWarning
+            ? `<div style="font-size:0.68rem;color:#92400e;margin-top:2px;">${esc(row.ccvsWarning)}</div>`
+            : '';
+          const siteHint = row.siteWarning
+            ? `<div style="font-size:0.68rem;color:#92400e;margin-top:2px;">${esc(row.siteWarning)}</div>`
+            : '';
+          return `
+            <tr>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;max-width:220px;">
+                ${esc(row.siteAddress || 'NULL')}
+                ${siteHint}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(row.auditDate)}</td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;max-width:320px;">${esc(observation)}</td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;${row.statusWarning ? 'background:#f8fafc;' : ''}">
+                ${esc(statusText)}
+                ${statusHint}
+              </td>
+              <td style="padding:7px 8px;border-bottom:1px solid #f1f5f9;${row.ccvsWarning ? 'background:#fef3c7;' : ''}">
+                ${esc(ccvsText)}
+                ${ccvsHint}
+              </td>
+            </tr>`;
+        }).join('');
+      }
+
+      const detected = _xlsxUploadState.rows.length;
+      let summaryText = `${detected} row${detected === 1 ? '' : 's'} detected · ${_xlsxUploadState.skipped} skipped · ${_xlsxUploadState.warnings} warnings`;
+      if (_xlsxUploadState.fatalErrors.length) {
+        summaryText += ` · ${_xlsxUploadState.fatalErrors.length} blocking error${_xlsxUploadState.fatalErrors.length === 1 ? '' : 's'}`;
+      }
+      summary.textContent = summaryText;
+      _xlsxSetUploadButtonState();
+    }
+
+    function toggleXlsxUploadPanel() {
+      _xlsxUploadOpen = !_xlsxUploadOpen;
+      const panel = document.getElementById('xlsx-upload-panel');
+      const toolbarBtn = document.getElementById('xlsxUploadToolbarBtn');
+      if (panel) panel.style.display = _xlsxUploadOpen ? 'block' : 'none';
+      if (toolbarBtn) toolbarBtn.style.filter = _xlsxUploadOpen ? 'brightness(0.92)' : '';
+      if (_xlsxUploadOpen) _xlsxRenderPreview();
+    }
+
+    function closeXlsxUploadPanel() {
+      _xlsxUploadOpen = false;
+      const panel = document.getElementById('xlsx-upload-panel');
+      const toolbarBtn = document.getElementById('xlsxUploadToolbarBtn');
+      if (panel) panel.style.display = 'none';
+      if (toolbarBtn) toolbarBtn.style.filter = '';
+    }
+
+    function cancelXlsxUpload() {
+      _xlsxResetState();
+      closeXlsxUploadPanel();
+    }
+
+    function downloadXlsxTemplate() {
+      const a = document.createElement('a');
+      a.href = '/static/PIMS_Upload_Template.xlsx';
+      a.download = 'PIMS_Upload_Template.xlsx';
+      a.click();
+    }
+
+    async function handleXlsxFileSelect(event) {
+      const file = event?.target?.files?.[0];
+      _xlsxResetState(false);
+      if (!file) return;
+
+      const fileName = document.getElementById('xlsxUploadFileName');
+      if (fileName) fileName.textContent = file.name;
+
+      if (!file.name.toLowerCase().endsWith('.xlsx')) {
+        showToast('Invalid file type. Please select an .xlsx file.', 'error');
+        return;
+      }
+      if (file.size > XLSX_UPLOAD_MAX_BYTES) {
+        showToast('File exceeds 5MB limit.', 'error');
+        return;
+      }
+
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+        const sheet = wb.Sheets['Observations'];
+        if (!sheet) {
+          throw new Error("Sheet 'Observations' not found");
+        }
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+        const headerRow = rows[2] || [];
+        const headerMap = {};
+        headerRow.forEach((header, idx) => {
+          const key = _xlsxHeaderKey(header);
+          if (key) headerMap[key] = idx;
+        });
+
+        const missing = XLSX_REQUIRED_HEADERS.filter(h => headerMap[h] === undefined);
+        if (missing.length) {
+          throw new Error(`Missing required column(s): ${missing.join(', ')}`);
+        }
+
+        const parsed = [];
+        const fatalErrors = [];
+        let skipped = 0;
+        let warnings = 0;
+
+        for (let i = 4; i < rows.length; i += 1) {
+          const rawRow = Array.isArray(rows[i]) ? rows[i] : [];
+          const get = (name) => rawRow[headerMap[name]];
+
+          const observation = _xlsxCellText(get('observation_text'));
+          if (!observation) {
+            skipped += 1;
+            continue;
+          }
+
+          const auditDate = _xlsxParseDate(get('audit_date'));
+          if (!auditDate) {
+            fatalErrors.push({
+              row: i + 1,
+              field: 'audit_date',
+              message: 'Invalid date format - use YYYY-MM-DD',
+            });
+            continue;
+          }
+
+          const statusRaw = _xlsxCellText(get('conformance_status'));
+          let status = '';
+          let statusWarning = '';
+          if (statusRaw) {
+            status = XLSX_STATUS_MAP[statusRaw.toLowerCase()] || '';
+            if (!status) {
+              fatalErrors.push({
+                row: i + 1,
+                field: 'conformance_status',
+                message: 'Invalid value. Use NCR, Compliant, Conditional, Info, or blank.',
+              });
+              continue;
+            }
+          } else {
+            statusWarning = 'will store as NULL';
+            warnings += 1;
+          }
+
+          const ccvsRaw = _xlsxCellText(get('ccvs_code')).toUpperCase();
+          let ccvsCode = ccvsRaw;
+          let ccvsWarning = '';
+          if (ccvsCode && !XLSX_VALID_CCVS.has(ccvsCode)) {
+            ccvsCode = '';
+            ccvsWarning = 'will store as NULL';
+            warnings += 1;
+          }
+
+          const siteAddress = _xlsxCellText(get('site_address'));
+          let siteWarning = '';
+          if (!siteAddress) {
+            siteWarning = 'enter before promoting';
+            warnings += 1;
+          }
+
+          parsed.push({
+            rowNumber: i + 1,
+            siteAddress,
+            auditDate,
+            observation,
+            status,
+            statusWarning,
+            ccvsCode,
+            ccvsWarning,
+            siteWarning,
+          });
+        }
+
+        if (!parsed.length) {
+          throw new Error('No data rows with observation_text found from row 5 onward');
+        }
+        if (parsed.length > XLSX_UPLOAD_MAX_ROWS) {
+          throw new Error(`Upload limit is ${XLSX_UPLOAD_MAX_ROWS} rows. ${parsed.length} provided.`);
+        }
+
+        _xlsxUploadState = {
+          file,
+          rows: parsed,
+          skipped,
+          warnings,
+          fatalErrors,
+        };
+        _xlsxRenderPreview();
+
+        if (fatalErrors.length) {
+          const first = fatalErrors[0];
+          showToast(
+            `${fatalErrors.length} blocking validation error(s). First: row ${first.row} ${first.field} - ${first.message}`,
+            'error'
+          );
+        }
+      } catch (err) {
+        _xlsxResetState(false);
+        showToast(`Failed to parse XLSX: ${err.message}`, 'error');
+      }
+    }
+
+    async function uploadObservationsXlsx() {
+      if (_xlsxUploadUploading) return;
+      if (!_xlsxUploadState.file || !_xlsxUploadState.rows.length) {
+        showToast('No rows ready for upload.', 'warning');
+        return;
+      }
+      if (_xlsxUploadState.fatalErrors.length) {
+        showToast('Resolve blocking validation errors before upload.', 'error');
+        return;
+      }
+
+      _xlsxUploadUploading = true;
+      _xlsxSetUploadButtonState();
+      try {
+        const formData = new FormData();
+        formData.append('file', _xlsxUploadState.file, _xlsxUploadState.file.name);
+        const currentAuditToggle = document.getElementById('xlsxCurrentAuditToggle');
+        const isCurrentAudit = Boolean(currentAuditToggle && currentAuditToggle.checked);
+        formData.append('is_current_audit', isCurrentAudit ? 'true' : 'false');
+        const resp = await fetch('/pims/upload/observations', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData,
+        });
+        if (!resp.ok) {
+          let msg = `${resp.status}: ${resp.statusText}`;
+          try {
+            const payload = await resp.json();
+            if (payload?.detail) msg = payload.detail;
+          } catch (_ignore) {
+            const text = await resp.text().catch(() => '');
+            if (text) msg = text;
+          }
+          throw new Error(msg);
+        }
+
+        const summary = await resp.json();
+        const inserted = Number(summary.inserted || 0);
+        const updated = Number(summary.updated || 0);
+        const skipped = Number(summary.skipped || 0);
+        const flagged = Number(summary.flagged || 0);
+        const errCount = Array.isArray(summary.errors) ? summary.errors.length : 0;
+
+        if (!skipped && !flagged && !errCount) {
+          showToast(
+            `${inserted} inserted, ${updated} updated.`,
+            'success'
+          );
+        } else {
+          showToast(
+            `${inserted} inserted, ${updated} updated, ${skipped} skipped (duplicates), ${flagged} flagged for review${errCount ? `, ${errCount} row error(s)` : ''}.`,
+            'warning'
+          );
+        }
+
+        _xlsxResetState();
+        closeXlsxUploadPanel();
+        await loadStaging();
+      } catch (err) {
+        showToast(`Upload failed: ${err.message}`, 'error');
+      } finally {
+        _xlsxUploadUploading = false;
+        _xlsxSetUploadButtonState();
+      }
+    }
+
+    async function _stagingExport(endpoint, filename) {
+      const ids = _getExportIds();
+      if (!ids) return;
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        alert('Export failed: ' + err.message);
+      }
+    }
+
+    function downloadStagingXLSX() {
+      _stagingExport(
+        '/pims/staging/sdgroup/xlsx',
+        `PIMS_Staging_${new Date().toISOString().slice(0,10)}.xlsx`
+      );
+    }
+
+    function downloadStagingDOCX() {
+      _stagingExport(
+        '/pims/staging/sdgroup/docx',
+        `PIMS_Report_${new Date().toISOString().slice(0,10)}.docx`
+      );
+    }
+
+    function renderStagingFieldRows() {
+      const tbody = document.getElementById('staging-field-tbody');
+      const count = document.getElementById('staging-field-count');
+      if (!tbody) return;
+      if (count) count.textContent = `${stagingFieldRows.length} rows`;
+
+      const totalPages = Math.max(1, Math.ceil(stagingFieldRows.length / PAGE_SIZE));
+      if (stagingFieldPage > totalPages) stagingFieldPage = totalPages;
+      const start = (stagingFieldPage - 1) * PAGE_SIZE;
+      const rows = stagingFieldRows.slice(start, start + PAGE_SIZE);
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="padding:16px;text-align:center;color:#94a3b8;">No field capture rows.</td></tr>';
+        _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
+        return;
+      }
+
+      const editStyle = "width:100%;padding:4px 6px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#0f172a;";
+      const confOptions = ['','Compliant','Conditional','NCR','Info'];
+      const reviewOptions = ['Pending','Approved','Rejected'];
+      tbody.innerHTML = rows.map(row => {
+        const confRaw = row.conformance_status || '';
+        const conf = esc(confRaw);
+        const confClass = confRaw ? `field-badge-${confRaw.toLowerCase()}` : 'field-badge-na';
+        const approved = row.review_status === 'Approved';
+        const ro = approved ? 'disabled' : '';
+        const thumb = row.photo_url
+          ? `<a href="${esc(row.photo_url)}" target="_blank" rel="noopener" title="${esc(row.filename) || 'View photo'}">
+               <img src="${esc(row.photo_url)}" alt="photo"
+                 style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;display:block;"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+               <span style="display:none;font-size:0.72rem;color:#2563eb;">📷 View</span>
+             </a>`
+          : '<span style="color:#cbd5e1;font-size:0.72rem;">—</span>';
+        return `
+          <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">
+              <input type="checkbox" class="staging-cb" data-id="${row.id}" onchange="onStagingRowToggle(this)" ${approved ? 'disabled' : ''}>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.observation_date || '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${row.seq_no ?? '—'}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">
+              <input ${ro} type="text" data-id="${row.id}" data-field="site_address" value="${esc(row.site_address) || ''}" onblur="patchStagingField(this)" style="${editStyle}">
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:center;">${thumb}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:300px;">
+              <textarea ${ro} rows="2" data-id="${row.id}" data-field="observation_text" onblur="patchStagingField(this)" style="${editStyle}resize:vertical;">${esc(row.observation_text) || ''}</textarea>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <input ${ro} type="text" data-id="${row.id}" data-field="ccvs_code" value="${esc(row.ccvs_code) || ''}" onblur="patchStagingField(this)" style="${editStyle}font-family:monospace;width:110px;">
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+              <select ${ro} data-id="${row.id}" data-field="conformance_status" onchange="patchStagingField(this)" style="${editStyle}">
+                ${confOptions.map(v => `<option value="${v}"${v===confRaw?' selected':''}>${v||'—'}</option>`).join('')}
+              </select>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:320px;">
+              <textarea ${ro} rows="2" data-id="${row.id}" data-field="observation_text_enriched" onblur="patchStagingField(this)" placeholder="— not enriched —" style="${editStyle}resize:vertical;">${esc(row.observation_text_enriched) || ''}</textarea>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;" id="status-${row.id}">
+              <select data-id="${row.id}" data-field="review_status" onchange="patchStagingField(this)" style="${editStyle}">
+                ${reviewOptions.map(v => `<option value="${v}"${v===(row.review_status||'Pending')?' selected':''}>${v}</option>`).join('')}
+              </select>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;white-space:nowrap;">
+              <button
+                id="btn-${row.id}"
+                onclick="approveStagingRecord('${row.id}')"
+                ${approved ? 'disabled' : ''}
+                style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:${approved ? '#9ca3af' : '#16a34a'};border:none;
+                  border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
+                ${approved ? '✓ Approved' : '✓ Approve'}
+              </button>
+              <button
+                onclick="deleteStagingRecord('${row.id}')"
+                title="Delete this staging row"
+                style="margin-left:6px;padding:4px 10px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:#dc2626;border:none;border-radius:5px;cursor:pointer;">
+                🗑
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+      _setPager('stagingField', stagingFieldPage, stagingFieldRows.length);
+      applyStagingSelectionToDom();
+      updateSelectCount();
+    }
+
+    function renderStagingPdfRows() {
+      const tbody = document.getElementById('staging-pdf-tbody');
+      const count = document.getElementById('staging-pdf-count');
+      if (!tbody) return;
+
+      const filters = _getStagingPdfFilters();
+      const hasFilters = _hasStagingPdfFilters(filters);
+      const filteredRows = _filterStagingPdfRows(stagingPdfRows, filters);
+      const allPendingRows = stagingPdfRows.filter(r => r.staging !== false).length;
+      const pendingRows = filteredRows.filter(r => r.staging !== false).length;
+      if (count) {
+        count.textContent = hasFilters
+          ? `${pendingRows} of ${allPendingRows} rows pending review`
+          : `${pendingRows} rows pending review`;
+      }
+
+      const allGroups = buildPdfGroups(stagingPdfRows).groups;
+      const totalCountByKey = new Map(allGroups.map(g => [g.key, g.count]));
+      const { groups, orderedRows } = buildPdfGroups(filteredRows);
+      const totalRows = orderedRows.length;
+      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+      if (stagingPdfPage > totalPages) stagingPdfPage = totalPages;
+      if (stagingPdfPage < 1) stagingPdfPage = 1;
+      const start = (stagingPdfPage - 1) * PAGE_SIZE;
+      const pageRows = orderedRows.slice(start, start + PAGE_SIZE);
+
+      if (!pageRows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;">No PDF import rows.</td></tr>';
+        _setPager('stagingPdf', stagingPdfPage, totalRows);
+        return;
+      }
+
+      const validKeys = new Set(groups.map(g => g.key));
+      Object.keys(stagingPdfGroupExpanded).forEach(key => {
+        if (!validKeys.has(key)) delete stagingPdfGroupExpanded[key];
+      });
+      groups.forEach(g => {
+        if (hasFilters) {
+          stagingPdfGroupExpanded[g.key] = true;
+        } else if (stagingPdfGroupExpanded[g.key] === undefined) {
+          stagingPdfGroupExpanded[g.key] = false;
+        }
+      });
+
+      const pageByGroup = new Map();
+      pageRows.forEach(row => {
+        const key = pdfGroupKey(row);
+        if (!pageByGroup.has(key)) pageByGroup.set(key, []);
+        pageByGroup.get(key).push(row);
+      });
+
+      const html = [];
+      groups.forEach(group => {
+        const groupRowsOnPage = pageByGroup.get(group.key);
+        if (!isGroupExpandable(groupRowsOnPage)) return;
+
+        const encodedKey = encodeURIComponent(group.key);
+        const expanded = Boolean(stagingPdfGroupExpanded[group.key]);
+        const pendingInGroup = group.rows.filter(r => r.staging !== false).length;
+        const noSite = group.isNoSite;
+        const promoteGroupDisabled = noSite || pendingInGroup === 0;
+        const totalCount = totalCountByKey.get(group.key) || group.count;
+        const countLabel = hasFilters
+          ? `${group.count} of ${totalCount}`
+          : `${group.count}`;
+        const groupLabel = noSite
+          ? (hasFilters ? `No site address (${countLabel})` : `No site address (${countLabel} rows)`)
+          : (hasFilters ? `${esc(group.site)} (${countLabel})` : `${esc(group.site)} (${countLabel} observations)`);
+        const rangeText = group.earliest
+          ? `${fmtDateDMY(group.earliest)} – ${fmtDateDMY(group.latest || group.earliest)}`
+          : 'No dates';
+
+        html.push(`
+          <tr>
+            <td colspan="10" style="padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <button onclick="togglePdfGroup('${encodedKey}')"
+                  style="border:none;background:transparent;cursor:pointer;font-weight:700;color:#334155;padding:0;text-align:left;">
+                  ${expanded ? '▼' : '▶'} ${groupLabel}
+                </button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:0.72rem;color:#64748b;">${rangeText}</span>
+                  <button
+                    onclick="promotePdfGroup('${encodedKey}')"
+                    ${promoteGroupDisabled ? 'disabled' : ''}
+                    title="${promoteGroupDisabled ? (noSite ? 'Enter site address before promoting' : 'No pending rows in this group') : 'Promote all pending rows in this group'}"
+                    style="padding:3px 10px;font-size:0.72rem;font-weight:700;color:#fff;border:none;border-radius:5px;
+                      background:${promoteGroupDisabled ? '#94a3b8' : '#2563eb'};
+                      cursor:${promoteGroupDisabled ? 'not-allowed' : 'pointer'};">
+                    Promote All
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>`);
+
+        if (!expanded) return;
+
+        groupRowsOnPage.forEach(row => {
+          const approved = row.staging === false;
+          const hasSiteAddress = String(row.site_address || '').trim().length > 0;
+          const canPromote = !approved && hasSiteAddress;
+          const legalRefDisplay = row.legal_ref || row.legal_reference;
+          html.push(`
+            <tr id="staging-row-${row.id}" style="${approved ? 'opacity:0.45;' : ''}">
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; min-width:180px;">
+                <input class="inline-edit" type="text" value="${esc(row.site_address || '')}"
+                  data-id="${row.id}" data-field="site_address"
+                  onblur="patchStagingField(this)" placeholder="No site address">
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${fmtDateDMY(row.audit_date || row.observation_date)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${esc(row.section || row.ccvs_code || row.ccvs_category) || '—'}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:320px;">${trunc(row.observation_text, 140)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">${badge(row.conformance_status)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.recommendation || row.action_description, 90)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:180px;">${trunc(legalRefDisplay, 70)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+                ${row.needs_review ? '<span class="field-badge field-badge-pending">Needs review</span>' : '—'}
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9; max-width:220px;">${trunc(row.source_pdf, 90)}</td>
+              <td style="padding:8px 10px; border-bottom:1px solid #f1f5f9;">
+                <button
+                  id="btn-${row.id}"
+                  onclick="approvePdfObservationRow('${row.id}')"
+                  ${canPromote ? '' : 'disabled'}
+                  title="${canPromote ? 'Promote this row' : (!hasSiteAddress ? 'Enter site address before promoting' : 'Already approved')}"
+                  style="padding:4px 12px;font-size:0.78rem;font-weight:600;color:#fff;
+                    background:${canPromote ? '#16a34a' : '#9ca3af'};border:none;
+                    border-radius:5px;cursor:${canPromote ? 'pointer' : 'not-allowed'};">
+                  ${approved ? '✓ Approved' : '✓ Promote'}
+                </button>
+              </td>
+            </tr>`);
+        });
+      });
+
+      tbody.innerHTML = html.join('');
+      _setPager('stagingPdf', stagingPdfPage, totalRows);
+    }
+
+    function togglePdfGroup(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      stagingPdfGroupExpanded[key] = !stagingPdfGroupExpanded[key];
+      renderStagingPdfRows();
+    }
+
+    async function promotePdfGroup(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      if (key === '__NO_SITE__') {
+        showToast('Enter site address before promoting this group.', 'warning');
+        return;
+      }
+      const candidates = stagingPdfRows.filter(
+        r => pdfGroupKey(r) === key && r.staging !== false
+      );
+      if (!candidates.length) {
+        showToast('No pending rows to promote in this group.', 'info');
+        return;
+      }
+      if (!confirm(`Promote ${candidates.length} row(s) for ${key}?`)) return;
+
+      _bulkPromoteInProgress = true;
+      let successCount = 0;
+      for (const row of candidates) {
+        const ok = await approvePdfObservationRow(row.id, {
+          skipConfirm: true,
+          skipReload: true,
+          suppressToast: true,
+        });
+        if (ok) successCount += 1;
+      }
+      _bulkPromoteInProgress = false;
+      await loadStaging();
+      const allSucceeded = successCount === candidates.length;
+      showToast(
+        `Promoted ${successCount} of ${candidates.length} row(s) for ${key}.`,
+        allSucceeded ? 'success' : 'warning'
+      );
+    }
+
+    async function approvePdfObservationRow(observationId, options = {}) {
+      const {
+        skipConfirm = false,
+        skipReload = false,
+        suppressToast = false,
+      } = options;
+      const btn = document.getElementById(`btn-${observationId}`);
+      const hasButton = Boolean(btn);
+      if (hasButton && btn.disabled) return false;
+      if (!skipConfirm && !confirm('Promote this observation to live records?')) return false;
+
+      if (hasButton) {
+        btn.disabled = true;
+        btn.textContent = 'Promoting…';
+      }
+
+      try {
+        const { error } = await db
+          .from('pims_observations')
+          .update({ staging: false })
+          .eq('id', observationId);
+        if (error) throw error;
+
+        if (hasButton) {
+          btn.textContent = '✓ Promoted';
+          btn.style.background = '#9ca3af';
+          btn.style.cursor = 'not-allowed';
+        }
+
+        if (!skipReload && !_bulkPromoteInProgress) {
+          await loadStaging();
+        }
+        if (!suppressToast) {
+          showToast('Record promoted to live observations.', 'success');
+        }
+        return true;
+      } catch (err) {
+        if (hasButton) {
+          btn.disabled = false;
+          btn.textContent = '✓ Promote';
+        }
+        if (!suppressToast) {
+          showToast('Promotion failed: ' + err.message, 'error');
+        }
+        return false;
+      }
+    }
+
+    async function patchStagingField(input) {
+      const id = input.dataset.id;
+      const field = input.dataset.field;
+      const val = input.value.trim() || null;
+      const row = stagingData.find(r => r.id === id) || stagingPdfRows.find(r => r.id === id);
+      if (!row || row[field] === val) return;
+      const tableName = stagingData.some(r => r.id === id) ? 'pims_staging' : 'pims_observations';
+      try {
+        const { error } = await db.from(tableName).update({ [field]: val }).eq('id', id);
+        if (error) throw error;
+        row[field] = val;
+        input.style.borderColor = 'var(--green)';
+        setTimeout(() => { input.style.borderColor = 'transparent'; }, 1000);
+      } catch (err) {
+        input.value = row[field] || '';
+        showToast('Site address update failed: ' + err.message, 'error');
+      }
+    }
+
+    async function setStagingFieldFilter(filter) {
+      if (!['Pending', 'Approved', 'All'].includes(filter)) return;
+      stagingFieldFilter = filter;
+      ['Pending', 'Approved', 'All'].forEach(f => {
+        const btn = document.getElementById('stagingFieldFilter' + f);
+        if (btn) btn.classList.toggle('active', f === filter);
+      });
+      stagingFieldPage = 1;
+      await loadStaging();
+    }
+
+    async function loadStaging() {
+      if (_stagingLoading) return;
+      _stagingLoading = true;
+      const refreshBtn = document.querySelector('[onclick="loadStaging()"]');
+      if (refreshBtn) refreshBtn.disabled = true;
+      const fieldBody = document.getElementById('staging-field-tbody');
+      const pdfBody = document.getElementById('staging-pdf-tbody');
+      if (fieldBody) fieldBody.innerHTML = '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+      if (pdfBody) pdfBody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Loading…</td></tr>';
+
+      try {
+        let fieldQuery = db.from('pims_staging').select('*');
+        if (stagingFieldFilter === 'Pending' || stagingFieldFilter === 'Approved') {
+          fieldQuery = fieldQuery.eq('review_status', stagingFieldFilter);
+        }
+        const { data, error } = await fieldQuery.order('submitted_at', { ascending: false });
+        const { data: pdfObsData, error: pdfObsError } = await db
+          .from('pims_observations')
+          .select('*')
+          .eq('staging', true)
+          .not('source_pdf', 'is', null)
+          .order('audit_date', { ascending: false });
+
+        if (error || !data) {
+          const msg = `Failed to load staging: ${error?.message || 'Unknown error'}`;
+          if (fieldBody) fieldBody.innerHTML = `<tr><td colspan="11" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
+          if (pdfBody) pdfBody.innerHTML = `<tr><td colspan="10" style="padding:20px;text-align:center;color:#ef4444;">${esc(msg)}</td></tr>`;
+          return;
+        }
+        if (pdfObsError) {
+          console.warn('Failed to load PDF import rows from pims_observations:', pdfObsError.message || pdfObsError);
+        }
+
+        stagingData = data || [];
+        stagingFieldRows = data || [];
+        stagingPdfRows = pdfObsData || [];
+        stagingFieldPage = 1;
+        stagingPdfPage = 1;
+        stagingPdfGroupExpanded = {};
+
+        const pendingField = stagingFieldRows.filter(r => r.review_status !== 'Approved').length;
+        const pendingPdf = stagingPdfRows.filter(r => r.staging !== false).length;
+        pendingStagingCount = pendingField + pendingPdf;
+        updateStagingBadges();
+
+        if (!tabDefaultResolved) {
+          tabDefaultResolved = true;
+      setActiveTab('live', { skipLoad: true });
+        }
+
+        renderStagingFieldRows();
+        renderStagingPdfRows();
+      } finally {
+        _stagingLoading = false;
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
+    }
+
+    async function sendObservationToStaging(observationId) {
+      if (!confirm('Send this row back to Staging Review for editing?')) return;
+      try {
+        const resp = await fetch(`/pims/observation/${observationId}/send-to-staging`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        await Promise.all([loadData(), loadStaging()]);
+      } catch (err) {
+        alert('Send back failed: ' + err.message);
+      }
+    }
+
+    async function deleteStagingRecord(stagingId) {
+      if (!confirm('Delete this staging row? This cannot be undone.')) return;
+      try {
+        const resp = await fetch(`/pims/staging/${stagingId}/delete`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        selectedStagingIds.delete(stagingId);
+        stagingFieldRows = stagingFieldRows.filter(r => r.id !== stagingId);
+        renderStagingFieldRows();
+        showToast('Staging row deleted.', 'success');
+      } catch (err) {
+        showToast('Delete failed: ' + (err.message || err), 'error');
+      }
+    }
+
+    async function approveStagingRecord(stagingId, options = {}) {
+      const {
+        skipConfirm = false,
+        skipReload = false,
+        suppressToast = false,
+      } = options;
+      const btn = document.getElementById(`btn-${stagingId}`);
+      if (!btn || btn.disabled) return false;
+      if (!skipConfirm && !confirm('Promote this observation to PIMS records?')) return false;
+
+      btn.disabled    = true;
+      btn.textContent = 'Approving…';
+
+      try {
+        const resp = await fetch(`/pims/staging/${stagingId}/approve`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+
+        const row = document.getElementById(`staging-row-${stagingId}`);
+        if (row) row.style.opacity = '0.45';
+        btn.textContent      = '✓ Approved';
+        btn.style.background = '#9ca3af';
+        btn.style.cursor     = 'not-allowed';
+
+        const statusCell = document.getElementById(`status-${stagingId}`);
+        if (statusCell) statusCell.innerHTML = `
+          <span style="padding:2px 8px;border-radius:12px;font-size:0.72rem;
+            font-weight:600;background:#dcfce7;color:#15803d;">Approved</span>`;
+
+        const cb = document.querySelector(`.staging-cb[data-id="${stagingId}"]`);
+        if (cb) cb.checked = false;
+        updateSelectCount();
+
+        if (!skipReload && !_bulkPromoteInProgress) {
+          await Promise.all([loadData(), loadStaging()]);
+        }
+        if (!suppressToast) {
+          showToast('Record promoted to PIMS observations.', 'success');
+        }
+        return true;
+
+      } catch (err) {
+        btn.disabled    = false;
+        btn.textContent = '✓ Approve';
+        if (!suppressToast) {
+          showToast('Approval failed: ' + err.message, 'error');
+        }
+        return false;
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const colours = { success:'#16a34a', warning:'#d97706', error:'#dc2626', info:'#2563eb' };
+      const el = document.createElement('div');
+      el.textContent = message;
+      Object.assign(el.style, {
+        position:'fixed', bottom:'24px', right:'24px', padding:'12px 20px',
+        background: colours[type] || colours.info, color:'#fff',
+        borderRadius:'8px', fontWeight:'600', fontSize:'0.875rem',
+        boxShadow:'0 4px 12px rgba(0,0,0,.2)', zIndex:'9999',
+        maxWidth:'400px', lineHeight:'1.4',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),350); }, 4500);
+    }
+
+_xlsxRenderPreview();
+closeXlsxUploadPanel();
+
+setActiveTab('live', { skipLoad: true });
+updateStagingBadges();
+
+async function initDashboard() {
+  await Promise.all([loadData(), loadStaging()]);
+  if (!tabDefaultResolved) {
+    tabDefaultResolved = true;
+    setActiveTab('live', { skipLoad: true });
+  }
+}
+
+initDashboard();
+</script>
+</body>
+</html>
+

@@ -392,6 +392,18 @@ async def serve_pims_rpd(request: Request):
     return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/pims-sdgroup", response_class=HTMLResponse)
+async def serve_pims_sdgroup(request: Request):
+    if not verify_session_cookie(request.cookies.get(COOKIE_NAME)):
+        return RedirectResponse(url="/pims-login", status_code=302)
+    path = os.path.join(_FRONTEND_DIR, "pims_dashboard_sdgroup.html")
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    content = content.replace("__SUPABASE_URL__", os.getenv("SDG_SUPABASE_URL", ""))
+    content = content.replace("__SUPABASE_ANON__", os.getenv("SDG_SUPABASE_ANON_KEY", ""))
+    return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/ra", response_class=HTMLResponse)
 async def serve_ra():
     return _html_response(os.path.join(_FRONTEND_DIR, "dev.html"))
