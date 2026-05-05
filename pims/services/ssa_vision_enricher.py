@@ -113,13 +113,25 @@ _SYSTEM_PROMPT = (
     '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
     '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
     '  ccvs_category        plain-English category for the chosen stream, or ""\n'
-    '  location             short site/area anchor (e.g. "Mile End Road frontage", '
-    '"Tilt-up panel zone, north elevation", "Site office area"), or ""\n'
+    '  finding_title        3-6 word descriptive title for the finding, e.g. '
+    '"EWP Exclusion Zone", "Fire Extinguisher Mounting", "Pre-Start Logbook Gap" — '
+    'used as the #N heading\n'
+    '  location             site/area anchor with concrete reference, e.g. '
+    '"Unit 1 shell", "Tilt-up panel zone, north elevation", "Site office area"\n'
     '  finding              2–4 sentence narrative, year-12 plain English\n'
-    '  hierarchy_of_control one of: Elimination / Substitution / Isolation / '
-    'Engineering / Administrative / PPE — pick the tier the recommendation lands in\n'
-    '  legal_ref            NSW WHS Reg / AS / SafeWork NSW citation, or ""\n'
-    '  recommendation       one short sentence, or ""\n'
+    '  hierarchy_of_control "<Tier>: <specific control>" — Tier is one of '
+    'Elimination / Substitution / Isolation / Engineering / Administrative / PPE; '
+    'specific control is the actual physical or procedural step, e.g. '
+    '"Engineering: Re-establish physical barriers at unit entry openings"\n'
+    '  required_action      "<Urgency> – <action>" where Urgency is one of '
+    'Immediate / Within 7 days / Next audit / Ongoing, e.g. '
+    '"Immediate – exclusion zones to be maintained at all times"\n'
+    '  timeframe            one of: Immediate / Within 7 days / Next audit / '
+    'Ongoing / N/A — matches the urgency in required_action\n'
+    '  legal_ref            multi-instrument citation separated by "; " — '
+    'e.g. "WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW Code of Practice: '
+    'Managing the Risk of Falls", or ""\n'
+    '  recommendation       one short sentence (paraphrase of required_action), or ""\n'
     '  monitoring_note      one short sentence reviewer cue, or ""\n\n'
     "STREAM PREFIXES (pick exactly one):\n"
     f"{_STREAM_LIST}\n\n"
@@ -308,24 +320,30 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
         code = ""
     category = category_for(code) if code else ""
 
-    # Hierarchy of Control — narrow the LLM's output to the canonical
-    # WHS hierarchy tier list. Anything else collapses to "" so the
-    # template cell stays blank instead of carrying a fabricated label.
-    hoc_raw = _s("hierarchy_of_control").title()
-    hoc = hoc_raw if hoc_raw in {
-        "Elimination", "Substitution", "Isolation",
-        "Engineering", "Administrative", "Ppe",
-    } else ""
-    if hoc == "Ppe":
-        hoc = "PPE"
+    # Hierarchy of Control — accept "<Tier>: <control>" or bare tier;
+    # validate the tier prefix against the canonical WHS hierarchy.
+    # Anything else collapses to "" so the template cell stays blank
+    # rather than carrying a fabricated label.
+    hoc_raw = _s("hierarchy_of_control").strip()
+    hoc = ""
+    if hoc_raw:
+        head = hoc_raw.split(":", 1)[0].strip().title()
+        if head == "Ppe":
+            head = "PPE"
+        if head in {"Elimination", "Substitution", "Isolation",
+                    "Engineering", "Administrative", "PPE"}:
+            hoc = hoc_raw  # preserve the "Tier: control" full string
 
     return {
         "status": status,
         "ccvs_code": code,
         "ccvs_category": category,
+        "finding_title": _s("finding_title"),
         "location": _s("location"),
         "finding": _s("finding"),
         "hierarchy_of_control": hoc,
+        "required_action": _s("required_action"),
+        "timeframe": _s("timeframe"),
         "legal_ref": _s("legal_ref"),
         "recommendation": _s("recommendation"),
         "monitoring_note": _s("monitoring_note"),
@@ -429,6 +447,8 @@ async def enrich_rows_with_vision(
         row.conformance_status = rec["status"]
         row.ccvs_code = rec["ccvs_code"]
         row.ccvs_category = rec["ccvs_category"]
+        if rec["finding_title"]:
+            row.finding_title = rec["finding_title"]
         if rec["location"]:
             row.location = rec["location"]
         if rec["finding"]:
@@ -437,10 +457,25 @@ async def enrich_rows_with_vision(
             row.hierarchy_of_control = rec["hierarchy_of_control"]
         if rec["legal_ref"]:
             row.legal_ref = rec["legal_ref"]
-        if rec["recommendation"]:
+        # Required-action and timeframe overlap with recommendation /
+        # due_category. Prefer the LLM's tier-prefixed strings — they
+        # render cleanly in the per-finding detail table — but fall
+        # back to recommendation when required_action is blank.
+        if rec["required_action"]:
+            row.recommendation = rec["required_action"]
+        elif rec["recommendation"]:
             row.recommendation = rec["recommendation"]
         if rec["monitoring_note"]:
             row.monitoring_note = rec["monitoring_note"]
+        # timeframe — LLM's pick (Immediate / Within 7 days / Next
+        # audit / Ongoing / N/A) overrides the status-derived default
+        # so the docx Timeframe cell reflects the model's judgement
+        # for context-specific items (e.g. "Ongoing" maintenance vs
+        # one-shot "Immediate").
+        tf = rec["timeframe"].strip()
+        if tf in {"Immediate", "Within 7 days", "Next audit",
+                  "Ongoing", "N/A"}:
+            row.timeframe = tf
         diag["rows_ok"] += 1
 
     diag["errors"] = sorted(seen_errors)

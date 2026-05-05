@@ -340,11 +340,21 @@ def run_once(
     if ra_path is None:
         ra_path = autodiscover_in_folder(folder)
     ra_context = ""
+    ra_project_name = ""
     ra_summary: dict[str, object] = {"path": None, "phases": 0, "activities": 0,
                                      "hold_points": 0}
     if ra_path is not None:
         ra = parse_risk_assessment(ra_path)
         ra_context = compact_context_block(ra)
+        # Strip the "— N Industrial Warehouse Units" suffix that some
+        # RA project names carry; the cover line wants just the venue.
+        if ra.project_name:
+            for sep in (" — ", " – ", " - "):
+                if sep in ra.project_name:
+                    ra_project_name = ra.project_name.split(sep, 1)[0].strip()
+                    break
+            else:
+                ra_project_name = ra.project_name.strip()
         ra_summary = {
             "path": ra_path.name,
             "project": ra.project_name,
@@ -374,11 +384,39 @@ def run_once(
     # prior report so the SSA report's "Status of Previous
     # Recommendations" table actually carries content.
     prior_recs: list[dict] = []
+    prior_audit_date_ddmmyy = ""
     if prior_reports:
         newest_prior = prior_reports[-1]
         prior_recs = parse_prior_report_recommendations(newest_prior)
+        # Extract YYMMDD date from filename, format as DD/MM/YY for the
+        # canonical "Status (DD/MM/YY)" header in the prior-recs table.
+        m = re.search(r"-(\d{6})-(?:RPD|SDG)\.docx$", newest_prior.name)
+        if m:
+            yymmdd = m.group(1)
+            prior_audit_date_ddmmyy = (
+                f"{yymmdd[4:6]}/{yymmdd[2:4]}/{yymmdd[0:2]}"
+            )
 
-    enriched_diag = build_pims_enriched_xlsx(enriched, enriched_path)
+    # Pull principal contractor + project metadata from the parsed RA
+    # so the Enriched workbook's Summary sheet matches the canonical
+    # sample's title block / metadata rows.
+    principal_contractor = ""
+    if ra_path is not None:
+        # Re-parse for the metadata only (compact_context_block already
+        # consumed the parsed object once). Cheap; one xlsx-style read.
+        try:
+            ra_meta = parse_risk_assessment(ra_path)
+            principal_contractor = ra_meta.principal_contractor
+        except Exception:
+            log.warning("RA principal-contractor lookup failed", exc_info=True)
+
+    enriched_diag = build_pims_enriched_xlsx(
+        enriched, enriched_path,
+        project_name=ra_project_name,
+        site_address=site_address or "",
+        principal_contractor=principal_contractor,
+        audit_date_ddmmyyyy=ddmmyyyy,
+    )
     report_diag = build_ssa_report_docx(
         enriched,
         site_address=site_for_docx,
@@ -387,6 +425,8 @@ def run_once(
         output_path=report_path,
         prepared_by=prepared_by,
         prior_recs=prior_recs,
+        project_name=ra_project_name,
+        prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
     staging_result = build_pims_staging_xlsx_with_size_control(

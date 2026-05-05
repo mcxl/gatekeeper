@@ -391,6 +391,8 @@ class EnrichedRow:
     # Isolation / Engineering / Administrative / PPE.
     location: str = ""
     hierarchy_of_control: str = ""
+    finding_title: str = ""        # 3-6 word descriptive title for #N heading
+    timeframe: str = ""            # LLM override for the per-finding Timeframe cell
 
     @property
     def action_required(self) -> str:
@@ -639,15 +641,170 @@ def _row_value(row: EnrichedRow, header_lc: str) -> object:
         # for upstream paths that populated it directly. Compliant rows
         # leave both empty per the sample's pattern.
         return row.action_description or row.recommendation
+    if header_lc == "responsible":
+        # Sample defaults to "PC" (Principal Contractor) on every row.
+        # Reviewer overrides at QA when a specific subcontractor owns
+        # the action.
+        return "PC"
+    if header_lc == "due":
+        # Sample maps status → due slot:
+        #   Compliant / Info → N/A
+        #   NCR              → Immediate
+        #   Conditional      → Next audit
+        #   Unmatched        → Next audit (forces review attention)
+        if row.conformance_status == "NCR":
+            return "Immediate"
+        if row.conformance_status in {"Conditional", "Unmatched"}:
+            return "Next audit"
+        return "N/A"
     if header_lc == "monitoring note":
         return row.monitoring_note
+    if header_lc == "close-out status":
+        # Compliant / Info rows close-out to N/A immediately; non-
+        # Compliant rows leave it blank for QA / close-out tracking.
+        if row.conformance_status in {"Compliant", "Info"}:
+            return "N/A"
+        return ""
     return ""
+
+
+def _populate_enriched_summary_sheet(
+    wb,
+    rows: list[EnrichedRow],
+    project_name: str,
+    site_address: str,
+    principal_contractor: str,
+    audit_date_ddmmyyyy: str,
+) -> None:
+    """Write the Summary sheet of PIMS-Enriched per the canonical
+    sample. Layout mirrors ``PIMS-Enriched - Sample.xlsx`` Summary:
+
+      r1: title "PIMS Audit Summary — <project>"
+      r2-r4: Audit Date / Site / Principal Contractor
+      r6: header   "Conformance Status | Count | %"
+      r7-r10: Compliant / Conditional / NCR / Info row
+      r12: Total
+      r14: header  "CCVS Category | Total | NCR | Conditional | Open Actions"
+      r15+: per-category breakdown
+      r21: heading "Open Actions"
+      r22: header  "# | Status | CCVS Code | Action Description | Responsible | Due"
+      r23+: one row per non-Compliant / non-Info finding
+
+    No-op when the Summary sheet is missing or empty.
+    """
+    if "Summary" not in wb.sheetnames:
+        return
+    ws = wb["Summary"]
+    # Wipe any prior data so reruns don't leave stale rows.
+    if ws.max_row > 0:
+        ws.delete_rows(1, ws.max_row)
+
+    title = (
+        f"PIMS Audit Summary — {project_name}"
+        if project_name else "PIMS Audit Summary"
+    )
+    ws.cell(row=1, column=1, value=title)
+    ws.cell(row=2, column=1, value="Audit Date")
+    ws.cell(row=2, column=2, value=audit_date_ddmmyyyy or "")
+    ws.cell(row=3, column=1, value="Site")
+    ws.cell(row=3, column=2, value=site_address or "")
+    ws.cell(row=4, column=1, value="Principal Contractor")
+    ws.cell(row=4, column=2, value=principal_contractor or "")
+
+    # Status conformance count + percentage.
+    statuses = ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]
+    counts: dict[str, int] = {s: 0 for s in statuses}
+    for r in rows:
+        s = r.conformance_status
+        if s in counts:
+            counts[s] += 1
+        else:
+            counts[s] = counts.get(s, 0) + 1
+    total = sum(counts.values())
+
+    ws.cell(row=6, column=1, value="Conformance Status")
+    ws.cell(row=6, column=2, value="Count")
+    ws.cell(row=6, column=3, value="%")
+    for i, s in enumerate(statuses, start=7):
+        c = counts.get(s, 0)
+        ws.cell(row=i, column=1, value=s)
+        ws.cell(row=i, column=2, value=c)
+        pct = (c / total * 100) if total else 0
+        ws.cell(row=i, column=3, value=f"{pct:.1f}%")
+    ws.cell(row=12, column=1, value="Total")
+    ws.cell(row=12, column=2, value=total)
+
+    # CCVS category breakdown.
+    by_cat: dict[str, dict[str, int]] = {}
+    for r in rows:
+        cat = r.ccvs_category or "(Unmatched)"
+        agg = by_cat.setdefault(
+            cat, {"total": 0, "NCR": 0, "Conditional": 0, "Open": 0},
+        )
+        agg["total"] += 1
+        s = r.conformance_status
+        if s == "NCR":
+            agg["NCR"] += 1
+            agg["Open"] += 1
+        elif s == "Conditional":
+            agg["Conditional"] += 1
+            agg["Open"] += 1
+
+    ws.cell(row=14, column=1, value="CCVS Category")
+    ws.cell(row=14, column=2, value="Total Observations")
+    ws.cell(row=14, column=3, value="NCR")
+    ws.cell(row=14, column=4, value="Conditional")
+    ws.cell(row=14, column=5, value="Open Actions")
+    cat_row = 15
+    for cat in sorted(by_cat):
+        agg = by_cat[cat]
+        ws.cell(row=cat_row, column=1, value=cat)
+        ws.cell(row=cat_row, column=2, value=agg["total"])
+        ws.cell(row=cat_row, column=3, value=agg["NCR"])
+        ws.cell(row=cat_row, column=4, value=agg["Conditional"])
+        ws.cell(row=cat_row, column=5, value=agg["Open"])
+        cat_row += 1
+
+    # Open Actions list — every NCR / Conditional / Unmatched row
+    # appears with the action register fields. Compliant / Info rows
+    # are skipped (no action expected).
+    actions_start = cat_row + 2
+    ws.cell(row=actions_start, column=1, value="Open Actions")
+    hdr_row = actions_start + 1
+    ws.cell(row=hdr_row, column=1, value="#")
+    ws.cell(row=hdr_row, column=2, value="Status")
+    ws.cell(row=hdr_row, column=3, value="CCVS Code")
+    ws.cell(row=hdr_row, column=4, value="Action Description")
+    ws.cell(row=hdr_row, column=5, value="Responsible")
+    ws.cell(row=hdr_row, column=6, value="Due")
+    next_row = hdr_row + 1
+    for idx, r in enumerate(rows, start=1):
+        if r.conformance_status not in {"NCR", "Conditional", "Unmatched"}:
+            continue
+        ws.cell(row=next_row, column=1, value=idx)
+        ws.cell(row=next_row, column=2, value=r.conformance_status)
+        ws.cell(row=next_row, column=3, value=r.ccvs_code)
+        ws.cell(row=next_row, column=4,
+                value=r.recommendation or r.action_description or "")
+        ws.cell(row=next_row, column=5, value="PC")
+        due = "Immediate" if r.conformance_status == "NCR" else "Next audit"
+        ws.cell(row=next_row, column=6, value=due)
+        next_row += 1
+
+    # Modest column widths so the Summary sheet reads well on open.
+    from openpyxl.utils import get_column_letter
+    for i, w in enumerate([24, 20, 12, 60, 16, 14], start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
 
 def build_pims_enriched_xlsx(
     rows: list[EnrichedRow],
     output_path: Path,
     template_path: Path = PIMS_ENRICHED_TEMPLATE,
+    project_name: str = "",
+    site_address: str = "",
+    principal_contractor: str = "",
+    audit_date_ddmmyyyy: str = "",
 ) -> dict:
     """Write the PIMS-Enriched register per Appendix B.
 
@@ -734,6 +891,18 @@ def build_pims_enriched_xlsx(
         data_first_row=2,
         col_widths=_ENRICHED_COL_WIDTHS,
         status_header="conformance status",
+    )
+
+    # Populate the Summary sheet — the canonical sample carries a
+    # full audit-summary dashboard (status counts + CCVS breakdown +
+    # Open Actions list); without this the Summary sheet renders as
+    # an empty page.
+    _populate_enriched_summary_sheet(
+        wb, rows,
+        project_name=project_name,
+        site_address=site_address,
+        principal_contractor=principal_contractor,
+        audit_date_ddmmyyyy=audit_date_ddmmyyyy,
     )
 
     wb.save(tmp)
@@ -929,9 +1098,13 @@ _FINDING_DETAIL_LABEL_TO_VALUE = {
 def _timeframe_for(row: EnrichedRow) -> str:
     """Plain-English timeframe label for the per-finding detail table.
 
-    Mirrors the staging xlsx's due_category mapping but uses the
-    detail-table's reviewer-facing wording.
+    LLM-supplied ``row.timeframe`` wins when set (lets the model say
+    ``Ongoing`` for monitoring items, ``Next audit`` for record-keeping
+    follow-ups). Falls back to a status-derived default for rows the
+    LLM didn't classify.
     """
+    if row.timeframe:
+        return row.timeframe
     if row.conformance_status == "NCR":
         return "Immediate"
     if row.conformance_status == "Conditional":
@@ -989,17 +1162,81 @@ def _set_cell_text_oxml(tc_element, text: str) -> None:
             parent.remove(extra)
 
 
+def _to_long_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1 May 2026``. Returns ``""`` on parse failure.
+
+    Avoids platform-specific strftime tokens (``%-d`` POSIX vs ``%#d``
+    Windows) by composing the day integer manually.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        return f"{dt.day} {dt.strftime('%B %Y')}"
+    except Exception:
+        return ""
+
+
+def _split_narrative_paragraph(doc, narrative_combined: str) -> None:
+    """Two-paragraph Executive Summary per the canonical sample.
+
+    Searches the body for the paragraph that ended up carrying the
+    combined narrative (scope intro + ``\\n\\n`` + audit summary)
+    after token substitution, splits on the literal ``\\n\\n``, mutates
+    the existing paragraph to hold only the first part, and inserts a
+    deepcopy after it carrying the second part. Both paragraphs
+    inherit the template's Normal style and any ``rPr`` on the
+    placeholder run.
+
+    No-op when the narrative carries no ``\\n\\n`` separator (single
+    paragraph or LLM disabled).
+    """
+    import copy
+    from docx.oxml.ns import qn
+    if "\n\n" not in narrative_combined:
+        return
+    parts = narrative_combined.split("\n\n", 1)
+    intro, follow = parts[0].strip(), parts[1].strip()
+    if not (intro and follow):
+        return
+
+    body = doc.element.body
+    target_p = None
+    for child in body.iterchildren():
+        if child.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in child.iter(qn("w:t")))
+        # The whole combined narrative landed in one paragraph during
+        # substitution — find it by checking it equals or starts with
+        # the intro text.
+        if text.strip().startswith(intro[:60]):
+            target_p = child
+            break
+    if target_p is None:
+        return
+
+    _set_paragraph_runs_text(target_p, intro)
+    new_p = copy.deepcopy(target_p)
+    _set_paragraph_runs_text(new_p, follow)
+    target_p.addnext(new_p)
+
+
 def _finding_heading_text(idx: int, row: EnrichedRow) -> str:
-    """``#3 NCR — WAH-H6`` or ``#3 — WAH-H6`` if status is empty."""
-    parts = [f"#{idx}"]
-    if row.conformance_status:
-        parts.append(row.conformance_status)
+    """``#3 EWP Exclusion Zone`` per the canonical sample.
+
+    Uses the LLM-provided 3-6 word descriptive ``finding_title`` when
+    available. Falls back to ``ccvs_category`` (e.g. ``#3 Mobile
+    Plant``) and finally to ``CCVS code + status`` for rows the LLM
+    didn't get to.
+    """
+    if row.finding_title:
+        return f"#{idx} {row.finding_title}"
+    if row.ccvs_category:
+        return f"#{idx} {row.ccvs_category}"
     if row.ccvs_code:
-        parts.append(row.ccvs_code)
-    if len(parts) == 1:
-        return parts[0]
-    return f"{parts[0]} {parts[1]} — {parts[2]}" if len(parts) == 3 \
-        else f"{parts[0]} — {parts[1]}"
+        return f"#{idx} {row.ccvs_code}"
+    return f"#{idx}"
 
 
 def _set_paragraph_runs_text(p_element, text: str) -> None:
@@ -1209,6 +1446,8 @@ def build_ssa_report_docx(
     prepared_by: str = "Alan Richardson",
     prior_recs: list[dict] | None = None,
     template_path: Path = SSA_REPORT_TEMPLATE,
+    project_name: str = "",
+    prior_audit_date_ddmmyy: str = "",
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -1230,6 +1469,7 @@ def build_ssa_report_docx(
     """
     import os
     from docx import Document
+    from docx.oxml.ns import qn
 
     if not template_path.exists():
         raise FileNotFoundError(
@@ -1245,13 +1485,42 @@ def build_ssa_report_docx(
     # Walk the body part AND every header/footer part. Body-paragraph
     # iteration alone misses tokens inside text boxes (e.g. cover-page
     # site address frame); the part-level walk covers those.
+    #
+    # Site address prepends the project name when supplied so the
+    # cover line reads "Unitas Business Park 4-6 Mile End Rd ..." per
+    # the canonical sample's p4 paragraph.
+    full_site = (
+        f"{project_name} {site_address}".strip()
+        if project_name and site_address else (site_address or project_name or "")
+    )
+    # Two-paragraph Executive Summary per the canonical sample:
+    # paragraph 1 is the standard scope intro, paragraph 2 is the
+    # audit-specific narrative the LLM produced. We compose both into
+    # the {{NARRATIVE_SUMMARY}} placeholder text and split into two
+    # paragraphs at the cloning step below.
+    audit_date_long = _to_long_date(audit_date_ddmmyyyy)
+    scope_intro = (
+        f"This report presents the findings of a site safety audit "
+        f"conducted on {audit_date_long}. The focus is to confirm the "
+        f"principal contractor's WHS controls are in place at the time "
+        f"of inspection, identify any non-conformances against the "
+        f"project Risk Assessment, and record positive observations for "
+        f"continued monitoring."
+    ) if audit_date_long else ""
+    combined_narrative = (
+        f"{scope_intro}\n\n{narrative_summary}".strip()
+        if scope_intro else (narrative_summary or "")
+    )
     all_replacements = {
-        "{{SITE_ADDRESS}}": site_address or "",
-        "{{NARRATIVE_SUMMARY}}": narrative_summary or "",
+        "{{SITE_ADDRESS}}": full_site,
+        "{{NARRATIVE_SUMMARY}}": combined_narrative,
         "{{AUDIT_DATE}}": audit_date_ddmmyyyy or "",
         "{{PREPARED_BY}}": prepared_by or "",
     }
     _replace_tokens_in_part(doc.part, all_replacements)
+    # Split the combined narrative into the canonical two-paragraph
+    # Executive Summary. No-op when scope_intro was empty.
+    _split_narrative_paragraph(doc, combined_narrative)
     for sec in doc.sections:
         for hf in (
             sec.header, sec.first_page_header,
@@ -1300,6 +1569,21 @@ def build_ssa_report_docx(
     # --- Status of Previous Recommendations table (4 cols) ----------
     prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
     if prev_tbl is not None and len(prev_tbl.rows) >= 2:
+        # Substitute the prior audit date into the header cell —
+        # canonical sample reads "Status (30/03/26)", template carries
+        # the literal "Status (DD/MM/YY)" placeholder.
+        if prior_audit_date_ddmmyy:
+            hdr_cell = prev_tbl.rows[0].cells[2]
+            for p_el in hdr_cell._tc.iter(qn("w:p")):
+                t_text = "".join(
+                    t.text or "" for t in p_el.iter(qn("w:t"))
+                )
+                if "DD/MM/YY" in t_text:
+                    new_text = t_text.replace(
+                        "DD/MM/YY", prior_audit_date_ddmmyy,
+                    )
+                    _set_paragraph_runs_text(p_el, new_text)
+                    break
         placeholder = prev_tbl.rows[1]
         recs = list(prior_recs or [])
         if recs:

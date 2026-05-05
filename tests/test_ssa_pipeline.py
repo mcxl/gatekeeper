@@ -726,7 +726,11 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     doc = Document(out)
     # p4 = site address (16 pt bold), p6 = narrative
     assert doc.paragraphs[4].text == "12 Test Street, Sydney NSW"
-    assert doc.paragraphs[6].text == "Audit summary text."
+    # Two-paragraph Executive Summary: p6 = scope intro (with long-
+    # format date "1 May 2026"), p7 = the audit-specific narrative we
+    # passed in. Both inherit Normal style.
+    assert "site safety audit conducted on 1 May 2026" in doc.paragraphs[6].text
+    assert doc.paragraphs[7].text == "Audit summary text."
 
     # Footer carries DD/MM/YYYY + prepared_by
     foot = doc.sections[1].footer.paragraphs[0].text
@@ -1271,30 +1275,31 @@ def test_run_once_unparseable_prior_report_date_non_qualifying(evidence_folder):
     assert "Site-Safety-Audit-Report-bogus-RPD.docx" not in p["prior_reports_used"]
 
 
-def test_run_once_llm_pass_disabled_by_default_in_tests(evidence_folder, monkeypatch):
-    """Tests run without ``PIMS_ENRICH_FINDINGS`` set, so the LLM pass
-    short-circuits via ``finding_enricher.is_enabled``. Verify that an
-    empty narrative flows through to the docx without raising and that
-    no Anthropic call is attempted (would have surfaced as an
-    environment / network error)."""
-    monkeypatch.delenv("PIMS_ENRICH_FINDINGS", raising=False)
+def test_run_once_llm_pass_disabled_no_api_key(evidence_folder, monkeypatch):
+    """Without ``ANTHROPIC_API_KEY`` the vision enricher returns the
+    missing-key reason and rows stay Unmatched. The pipeline still
+    produces a docx — the scope-intro paragraph renders from the
+    folder date, the dynamic narrative paragraph is empty."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     payload = run_once(evidence_folder)
     assert payload["staging_status"] == "bulk_uploadable"
-    # Docx exists; narrative paragraph (p6) is empty.
     docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
     doc = Document(docx_path)
-    assert doc.paragraphs[6].text == ""
+    # Scope intro (deterministic) — always present.
+    assert "site safety audit conducted on" in doc.paragraphs[6].text
+    # Dynamic narrative was empty (no LLM); paragraph still exists but
+    # has no content.
+    # (Two-paragraph split only fires when both halves are non-empty.)
+    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
 
 
-def test_run_once_llm_pass_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
-    """Even with ``PIMS_ENRICH_FINDINGS=1``, ``enrich=False`` short-circuits
-    before the env-var gate. No Anthropic call attempted."""
-    monkeypatch.setenv("PIMS_ENRICH_FINDINGS", "1")
+def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
+    """``enrich=False`` short-circuits before the API call regardless
+    of API key presence."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
     payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
-    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
-    doc = Document(docx_path)
-    assert doc.paragraphs[6].text == ""
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_run_once_bad_folder_name_raises(tmp_path):
