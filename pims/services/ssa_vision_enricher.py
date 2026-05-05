@@ -250,6 +250,60 @@ _SYSTEM_PROMPT = (
 _TRANSIENT_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 
 
+def _parse_json_object(text: str) -> dict[str, Any]:
+    """Forgiving JSON-object parse for LLM output.
+
+    Step 1: strip code fences if present.
+    Step 2: try ``json.loads`` directly.
+    Step 3: on failure, locate the first ``{`` and walk forward
+    counting brace depth (respecting strings and escapes) until the
+    matching ``}``; parse that substring. Handles cases where the
+    model wraps the JSON in prose like ``"Here is the result: { ... }"``
+    despite the explicit "JSON ONLY" instruction.
+
+    Raises ``json.JSONDecodeError`` (passed through) when no valid
+    JSON object can be extracted — caller wraps in try/except and
+    falls back to Unmatched.
+    """
+    s = text.strip()
+    if s.startswith("```"):
+        s = s.split("```", 2)[1]
+        if s.startswith("json"):
+            s = s[4:]
+        s = s.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Walk to find a balanced { ... } substring. Respect strings so
+    # braces inside string literals don't fool the depth counter.
+    start = s.find("{")
+    if start < 0:
+        raise json.JSONDecodeError("no { found in LLM output", s, 0)
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(s[start:i + 1])
+    raise json.JSONDecodeError("unbalanced { in LLM output", s, start)
+
+
 async def _vision_call(
     photo_b64: str, photo_mime: str, observation_text: str,
     site_address: str, audit_date_iso: str, api_key: str,
@@ -347,13 +401,7 @@ async def _vision_call(
             await asyncio.sleep(1.5 * (attempt + 1))
     else:  # pragma: no cover — loop never falls through; either break or raise
         raise RuntimeError(f"vision call failed after retries: {last_exc}")
-    # Strip code fences if the model wrapped output despite instruction.
-    if text.startswith("```"):
-        text = text.split("```", 2)[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.rsplit("```", 1)[0].strip()
-    return json.loads(text)
+    return _parse_json_object(text)
 
 
 def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:

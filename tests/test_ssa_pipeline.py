@@ -867,6 +867,24 @@ def test_staging_xlsx_writes_ra_columns_swms_and_risk(tmp_path):
     assert ws.cell(row=5, column=col["residual_risk"]).value == "Medium"
 
 
+def test_vision_parse_json_object_handles_prose_and_fences():
+    """LLM occasionally wraps output in prose or markdown despite the
+    JSON-ONLY instruction. The forgiving parser strips code fences
+    AND locates a balanced { ... } substring inside surrounding text."""
+    from pims.services.ssa_vision_enricher import _parse_json_object
+    # Plain JSON
+    assert _parse_json_object('{"status":"NCR"}') == {"status": "NCR"}
+    # Code-fenced
+    assert _parse_json_object('```json\n{"a":1}\n```') == {"a": 1}
+    # Prose-wrapped (the failure mode that broke 5/21 rows on real data)
+    assert _parse_json_object(
+        'Here is the result: {"status":"NCR","ccvs_code":"WAH-H6"} done.'
+    ) == {"status": "NCR", "ccvs_code": "WAH-H6"}
+    # Braces inside string literals don't fool the depth walker.
+    assert _parse_json_object('{"finding":"site has {bad} stuff"}') \
+        == {"finding": "site has {bad} stuff"}
+
+
 def test_vision_coerce_record_swms_and_risk_normalisation():
     """Gap-5/6: vision coercion gates SWMS + risk fields to canonical
     enums; bogus values collapse to safe defaults instead of being
