@@ -393,6 +393,17 @@ class EnrichedRow:
     hierarchy_of_control: str = ""
     finding_title: str = ""        # 3-6 word descriptive title for #N heading
     timeframe: str = ""            # LLM override for the per-finding Timeframe cell
+    # RA cross-reference fields populated by the vision enricher when
+    # the project Risk Assessment is loaded. Empty strings when no RA
+    # was supplied or the LLM couldn't anchor the row.
+    phase: str = ""           # e.g. "6 — Tilt-Up Panel Erection"
+    activity_ref: str = ""    # e.g. "TP-05"
+    hold_point: str = ""      # e.g. "HP-06"
+    hrcw: str = ""            # RA's HRCW codes, e.g. "H14, H15"
+    swms_required: bool = False   # gap-5: explicit SWMS verification flag
+    swms_present: str = ""        # one of: "yes" / "no" / "unknown" / ""
+    initial_risk: str = ""        # gap-6: H/M/L per RA scheme
+    residual_risk: str = ""       # gap-6: H/M/L
 
     @property
     def action_required(self) -> str:
@@ -517,6 +528,17 @@ _STAGING_COL_WIDTHS: dict[str, float] = {
     "source_pdf": 14,
     "section": 14,
     "needs_review": 12,
+    # gap-4 columns (RA cross-reference)
+    "phase": 22,
+    "activity_ref": 12,
+    "hold_point": 12,
+    "hrcw": 14,
+    # gap-5 columns (SWMS verification)
+    "swms_required": 14,
+    "swms_present": 14,
+    # gap-6 columns (initial/residual risk axis)
+    "initial_risk": 12,
+    "residual_risk": 12,
 }
 
 # Headers that need wrap_text=True applied to data cells. Without wrap
@@ -1942,6 +1964,25 @@ def _staging_row_value(
         return ""  # PIMS auto-derives server-side from CCVS category
     if header == "needs_review":
         return "TRUE" if row.needs_review else "FALSE"
+    # --- gap-4 fields (RA cross-references) ----
+    if header == "phase":
+        return row.phase
+    if header == "activity_ref":
+        return row.activity_ref
+    if header == "hold_point":
+        return row.hold_point
+    if header == "hrcw":
+        return row.hrcw
+    # --- gap-5 fields (SWMS verification) ----
+    if header == "swms_required":
+        return "TRUE" if row.swms_required else "FALSE"
+    if header == "swms_present":
+        return row.swms_present
+    # --- gap-6 fields (initial/residual risk axis) ----
+    if header == "initial_risk":
+        return row.initial_risk
+    if header == "residual_risk":
+        return row.residual_risk
     return ""
 
 

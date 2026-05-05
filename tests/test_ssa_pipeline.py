@@ -823,6 +823,84 @@ def test_positive_observations_use_p_numbering_and_pims_obs_xref(tmp_path):
     assert pos_rows[1].cells[2].text == "PIMS Obs 4 | NSW WHS Reg cl.43"
 
 
+def test_staging_xlsx_writes_ra_columns_swms_and_risk(tmp_path):
+    """Gap-4/5/6: staging xlsx carries phase / activity_ref /
+    hold_point / hrcw / swms_required / swms_present / initial_risk
+    / residual_risk columns and writes the EnrichedRow values."""
+    p = _save_jpeg(tmp_path / "a.jpg", (800, 600))
+    obs = ObservationRow(
+        csv_row=1, timestamp_raw="2026-05-01_09-00-00",
+        timestamp_iso="2026-05-01_09-00-00",
+        observation_text="x", csv_filename="a.jpg",
+        resolved_filename="a.jpg", resolved_path=p,
+    )
+    rows = [
+        EnrichedRow(
+            obs=obs, conformance_status="NCR", ccvs_code="WAH-H6",
+            phase="6 — Tilt-Up Panel Erection", activity_ref="TP-05",
+            hold_point="HP-06", hrcw="H14, H15",
+            swms_required=True, swms_present="no",
+            initial_risk="High", residual_risk="Medium",
+        ),
+    ]
+    out = tmp_path / "staging.xlsx"
+    build_pims_staging_xlsx(
+        rows, out, site_address="addr", audit_date_iso="2026-05-01",
+    )
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Observations"]
+    headers = [c.value for c in ws[3]]
+    # Schema columns are present in row 3.
+    for h in ("phase", "activity_ref", "hold_point", "hrcw",
+              "swms_required", "swms_present",
+              "initial_risk", "residual_risk"):
+        assert h in headers, f"missing column: {h}"
+    # Helper to look up the data cell by column name.
+    col = {h: i + 1 for i, h in enumerate(headers)}
+    assert ws.cell(row=5, column=col["phase"]).value == "6 — Tilt-Up Panel Erection"
+    assert ws.cell(row=5, column=col["activity_ref"]).value == "TP-05"
+    assert ws.cell(row=5, column=col["hold_point"]).value == "HP-06"
+    assert ws.cell(row=5, column=col["hrcw"]).value == "H14, H15"
+    assert ws.cell(row=5, column=col["swms_required"]).value == "TRUE"
+    assert ws.cell(row=5, column=col["swms_present"]).value == "no"
+    assert ws.cell(row=5, column=col["initial_risk"]).value == "High"
+    assert ws.cell(row=5, column=col["residual_risk"]).value == "Medium"
+
+
+def test_vision_coerce_record_swms_and_risk_normalisation():
+    """Gap-5/6: vision coercion gates SWMS + risk fields to canonical
+    enums; bogus values collapse to safe defaults instead of being
+    written verbatim."""
+    from pims.services.ssa_vision_enricher import _coerce_record
+    r = _coerce_record({
+        "status": "NCR", "ccvs_code": "WAH-H6",
+        "swms_required": "true",
+        "swms_present": "Yes",
+        "initial_risk": "High (3)",
+        "residual_risk": "Medium (2)",
+    })
+    assert r["swms_required"] is True
+    assert r["swms_present"] == "yes"
+    assert r["initial_risk"] == "High"
+    assert r["residual_risk"] == "Medium"
+
+    # When swms_required is false, swms_present is forced to "" so a
+    # stale "yes" doesn't leak into the staging cell.
+    r2 = _coerce_record({
+        "status": "Compliant", "ccvs_code": "SYS-L1",
+        "swms_required": False, "swms_present": "yes",
+    })
+    assert r2["swms_required"] is False
+    assert r2["swms_present"] == ""
+
+    # Bogus risk word collapses to "" rather than being copied through.
+    r3 = _coerce_record({
+        "status": "NCR", "ccvs_code": "WAH-H6",
+        "initial_risk": "Definitely-something",
+    })
+    assert r3["initial_risk"] == ""
+
+
 def test_observations_register_includes_all_with_finding_xref(tmp_path):
     """Gap-3: Observations Register carries every observation
     (Compliant + non-Compliant); status column cross-references the

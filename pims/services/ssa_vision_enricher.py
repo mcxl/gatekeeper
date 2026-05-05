@@ -165,7 +165,15 @@ _SYSTEM_PROMPT = (
     'e.g. "WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW Code of Practice: '
     'Managing the Risk of Falls", or ""\n'
     '  recommendation       one short sentence (paraphrase of required_action), or ""\n'
-    '  monitoring_note      one short sentence reviewer cue, or ""\n\n'
+    '  monitoring_note      one short sentence reviewer cue, or ""\n'
+    '  phase                "<phase number> — <phase name>" copied from the RA when the activity matches a phase, e.g. "6 — Tilt-Up Panel Erection"; "" if no RA / no clear match\n'
+    '  activity_ref         RA activity ref the observation maps to, e.g. "TP-05"; "" if none\n'
+    '  hold_point           RA Hold Point code if the activity is gated by one, e.g. "HP-06"; "" otherwise\n'
+    '  hrcw                 RA HRCW codes for the activity, comma-separated, e.g. "H14, H15"; "" if RA does not classify\n'
+    '  swms_required        true ONLY when the RA / WHS Reg requires a SWMS for this activity (HRCW work, scaffold, demolition, asbestos, height >2m, etc.). Otherwise false.\n'
+    '  swms_present         "yes" if a SWMS sign-on / sighted on site evidence is in the photo or note; "no" if SWMS required but absent / undated; "unknown" if not visible; "" when swms_required is false\n'
+    '  initial_risk         RA Initial Risk word for the matching activity ("High" / "Medium" / "Low") if the RA carries it for this activity; "" otherwise. Do not invent a rating from the photo alone.\n'
+    '  residual_risk        RA Residual Risk word for the matching activity if the RA carries it; "" otherwise. Do not invent.\n\n'
     "STREAM PREFIXES (pick exactly one):\n"
     f"{_STREAM_LIST}\n\n"
     "SEVERITY TIERS:\n"
@@ -385,6 +393,29 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
                     "Engineering", "Administrative", "PPE"}:
             hoc = hoc_raw  # preserve the "Tier: control" full string
 
+    # gap-5: SWMS verification — coerce truthy values to bool, gate
+    # swms_present to the canonical {yes,no,unknown,""} set so the
+    # staging xlsx column never carries a fabricated label.
+    swms_required = raw.get("swms_required")
+    if isinstance(swms_required, str):
+        swms_required = swms_required.strip().lower() in {"true", "yes", "1"}
+    else:
+        swms_required = bool(swms_required)
+    swms_present = _s("swms_present").lower()
+    if swms_present not in {"yes", "no", "unknown", ""}:
+        swms_present = "unknown"
+    if not swms_required:
+        # Unset swms_present when the row doesn't need a SWMS — keeps
+        # the staging cell clean and prevents accidental yes/no carry.
+        swms_present = ""
+
+    # gap-6: initial/residual risk — accept only the canonical H/M/L
+    # vocabulary. RA carries "High (3)" / "Medium (2)" / "Low (1)";
+    # the LLM may return either form, so collapse to the bare word.
+    def _risk(key: str) -> str:
+        v = _s(key).strip().split(" ", 1)[0].title()
+        return v if v in {"High", "Medium", "Low"} else ""
+
     return {
         "status": status,
         "ccvs_code": code,
@@ -398,6 +429,14 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
         "legal_ref": _s("legal_ref"),
         "recommendation": _s("recommendation"),
         "monitoring_note": _s("monitoring_note"),
+        "phase": _s("phase"),
+        "activity_ref": _s("activity_ref"),
+        "hold_point": _s("hold_point"),
+        "hrcw": _s("hrcw"),
+        "swms_required": swms_required,
+        "swms_present": swms_present,
+        "initial_risk": _risk("initial_risk"),
+        "residual_risk": _risk("residual_risk"),
     }
 
 
@@ -527,6 +566,24 @@ async def enrich_rows_with_vision(
         if tf in {"Immediate", "Within 7 days", "Next audit",
                   "Ongoing", "N/A"}:
             row.timeframe = tf
+        # gap-4: RA cross-reference fields.
+        if rec["phase"]:
+            row.phase = rec["phase"]
+        if rec["activity_ref"]:
+            row.activity_ref = rec["activity_ref"]
+        if rec["hold_point"]:
+            row.hold_point = rec["hold_point"]
+        if rec["hrcw"]:
+            row.hrcw = rec["hrcw"]
+        # gap-5: SWMS verification.
+        row.swms_required = rec["swms_required"]
+        if rec["swms_present"]:
+            row.swms_present = rec["swms_present"]
+        # gap-6: Initial / Residual risk axis (RA H/M/L).
+        if rec["initial_risk"]:
+            row.initial_risk = rec["initial_risk"]
+        if rec["residual_risk"]:
+            row.residual_risk = rec["residual_risk"]
         diag["rows_ok"] += 1
 
     diag["errors"] = sorted(seen_errors)
