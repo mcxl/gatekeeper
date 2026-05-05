@@ -947,9 +947,11 @@ def test_build_ssa_report_docx_findings_block_per_non_compliant(tmp_path):
         # 2-col, 6 rows: Location, Observation, Regulatory Basis,
         # Hierarchy of Control, Required Action, Timeframe.
         labels = [r.cells[0].text.strip() for r in t.rows]
+        # "Required Action" template label is rewritten to
+        # "Recommendation" at render time per the canonical wording.
         assert labels == [
             "Location", "Observation", "Regulatory Basis",
-            "Hierarchy of Control", "Required Action", "Timeframe",
+            "Hierarchy of Control", "Recommendation", "Timeframe",
         ]
         values = [r.cells[1].text.strip() for r in t.rows]
         assert values[0] == f"area-{i}"

@@ -1090,8 +1090,19 @@ _FINDING_DETAIL_LABEL_TO_VALUE = {
     ),
     "regulatory basis": lambda r: r.legal_ref or "",
     "hierarchy of control": lambda r: r.hierarchy_of_control or "",
+    # Template label was "Required Action"; canonical reviewer wording
+    # is "Recommendation". Keep both as match keys so the resolver
+    # works whether the template was relabelled in-place or not.
     "required action": lambda r: (r.recommendation or r.action_description or ""),
+    "recommendation": lambda r: (r.recommendation or r.action_description or ""),
     "timeframe": lambda r: _timeframe_for(r),
+}
+
+# Label rewrites applied to the LEFT cell at render time. Lets the
+# template ship with the legacy "Required Action" wording while the
+# rendered deliverable reads with the canonical "Recommendation".
+_FINDING_DETAIL_LABEL_REWRITES: dict[str, str] = {
+    "Required Action": "Recommendation",
 }
 
 
@@ -1116,17 +1127,27 @@ def _timeframe_for(row: EnrichedRow) -> str:
 
 def _populate_finding_detail_table(tbl_element, row: EnrichedRow) -> None:
     """Walk the cloned 2-col table, write each label's value into
-    that row's right cell. Left cells (the labels) are preserved
-    verbatim from the template."""
+    that row's right cell. Left cells (the labels) inherit the
+    template wording; ``_FINDING_DETAIL_LABEL_REWRITES`` rewrites a
+    handful of legacy labels at render time (e.g. ``Required Action``
+    → ``Recommendation``) without touching the frozen template."""
     from docx.oxml.ns import qn
     for tr in tbl_element.iter(qn("w:tr")):
         cells = list(tr.iter(qn("w:tc")))
         if len(cells) < 2:
             continue
-        label = "".join(
+        label_raw = "".join(
             t.text or "" for t in cells[0].iter(qn("w:t"))
-        ).strip().lower()
-        resolver = _FINDING_DETAIL_LABEL_TO_VALUE.get(label)
+        ).strip()
+        # Rewrite the label cell first so the rendered deliverable
+        # carries the reviewer-facing wording.
+        new_label = _FINDING_DETAIL_LABEL_REWRITES.get(label_raw)
+        if new_label and new_label != label_raw:
+            _set_cell_text_oxml(cells[0], new_label)
+        # Resolver lookup is case-insensitive against the ORIGINAL
+        # template label so existing templates keep matching even
+        # after the relabel.
+        resolver = _FINDING_DETAIL_LABEL_TO_VALUE.get(label_raw.lower())
         if resolver is None:
             continue
         _set_cell_text_oxml(cells[1], resolver(row))
