@@ -7,65 +7,109 @@ Use this to diff plan vs. implementation and surface drift.
 ## What this bundle is for
 
 The original plan was written before any of the canonical sample
-deliverables had been opened. Real-folder runs (specifically
-`G:/My Drive/alan_mcxico/SSA-evidence/2026-05-01-SDG/`) revealed
-several contract mismatches between the plan and what the user
-considers canonical. Most of those were corrected during the build
-and are listed in the **Drift between plan and shipped** section
-below.
+deliverables had been opened. Real-folder runs against
+`G:/My Drive/alan_mcxico/SSA-evidence/2026-05-01-SDG/` (with
+`Unitas_Risk_Assessment_all.docx`, prior `260330-SDG.docx`, 21
+photos, and the three canonical sample files in the parent folder)
+revealed many contract mismatches between the plan and what Alan
+considers canonical. The shipped pipeline has been progressively
+re-aligned with the samples through a sequence of bug-fix and
+delta-closure commits.
 
 Use this document to:
 
 1. Identify any remaining drift (places where the plan still differs
-   from what the code actually does).
-2. Catch quality / correctness issues the test suite (69 pytest
+   from what the code actually does, or where the code still
+   differs from the canonical samples).
+2. Catch quality / correctness issues the test suite (70 pytest
    cases, all green; flake8 clean) does not assert against.
 3. Suggest improvements to the plan itself so future work has a
    spec that matches the canonical samples.
 
-## Drift between plan and shipped (already-known deltas)
+## Drift between plan and shipped (current state)
 
-These are deliberate departures from the plan, made because the
-canonical samples (`PIMS-Enriched - Sample.xlsx`,
-`Site-Visit-Report- Upload to PIMS Staging.xlsx`,
-`Site-Safety-Audit-Report - new Sample.docx`,
-`Unitas_Risk_Assessment_all.docx`) showed the plan's contract was
-wrong on these axes:
-
-| Axis | Plan says | Shipped reality | Why |
+| Axis | Plan / template said | Shipped reality | Why |
 |---|---|---|---|
-| CCVS code source | `pims/audit_checklist.xlsx` (Category/Criteria/Instruction; numeric `01.01` synthesised from leading digits) | Canonical 25 × 6 = 150 codes from `renderers/docx_renderer.py:_VALID_CCVS_STREAMS` + `SYS` extension; tier suffixes H6/H9/M3/M4/L1/L2 | Sample uses `SYS-M3`, `MOB-H6`, `WAH-H6`, `STR-H9`, `ELE-H6`. The 01.01 scheme has no relationship to the canonical taxonomy. |
-| Status assignment | Keyword auto-matcher (difflib token recall) emits Conditional/Unmatched only | Vision Anthropic call (Opus 4.7) emits Compliant/Conditional/NCR/Info/Unmatched | Sample is Compliant-heavy (39/64). A classifier that never produces Compliant cannot match the contract. |
-| LLM gating | `PIMS_ENRICH_FINDINGS` env var, default OFF | Default ON; `--no-enrich` opts out; `ANTHROPIC_API_KEY` required at runtime | Sample observation/finding cells are LLM-rewritten multi-sentence narratives citing WHS Reg / AS / SafeWork NSW inline. |
-| Vision support | text-only enrichment | photo (downscaled to 1024 px, EXIF-normalised, JPEG q85, base64) sent to vision model | Photo is the primary evidence the human reviewer uses; required for status assignment. |
-| Project context | none | RA-aware: auto-discovers `*Risk_Assessment*.docx` in the audit folder, parses metadata + 9 hold points + 66 phase activities, injects into vision prompt | Without RA awareness the audit cannot reference HP-04 / TP-05 / HRCW H14, etc. — reviewer can't trace findings back to the principal contractor's WHS contract. |
-| `#N` Findings cloning | R-1.3 forbids paragraph-level cloning at body level | Cloning enabled for Findings list (heading + body pair per non-Compliant row) | R-1.3 conflicts with V-10.5 ("count of #N paragraphs equals count of non-Compliant"). Without cloning, the rendered docx leaves only the template's `#1` placeholder visible. |
-| Per-location 2-col block | Clone N times per detected location | Always remove (R-1.3(e) explicitly permits removal) | Location detection is out of scope for v1. Removing avoids a stale 6-row scaffold in the output. |
-| Status of Previous Recs | Parse prior report (deferred slice in plan) | Implemented: `parse_prior_report_recommendations` extracts NCR/Conditional rows from the prior report's Observations Register | Reviewer needs carry-forward visibility; placeholder text wasn't acceptable. |
-| Staging xlsx polish | Plan said embed thumbnails; nothing about column widths / wrap / status fills | Column widths set, wrap_text on long-content columns, status colour fills (NCR red, Conditional amber, Compliant green, Info blue-grey, Unmatched neutral) | Sample uses these conventions; without them long enriched findings render truncated and reviewer can't scan status at a glance. |
-| `_clone_row` insertion order | not specified beyond "deepcopy and append" | append to END of `<w:tbl>` parent (was: `addnext` after placeholder, with `rows[-1]` returning the wrong row) | The first attempt used `addnext` which silently corrupted multi-row tables — every clone except the last carried the placeholder content. Caught by visual inspection of the docx; a regression test now locks the failure mode in. |
-| Network retry | not specified | retries=2 on `httpx.ConnectError/ReadError/WriteError/TimeoutException/RemoteProtocolError` + HTTP 408/429/500/502/503/504; immediate raise on other 4xx | Real-folder run dropped 2 of 21 rows to transient network errors mid-batch; retry recovers cleanly. |
-| Model | claude-sonnet-4-5-20250929 (initial) | claude-opus-4-7 (after user direction) | Most capable model; supports vision. |
+| CCVS code source | `pims/audit_checklist.xlsx` (Category / Criteria / Instruction; numeric `01.01` synthesised from leading digits) | Canonical 25 × 6 = 150 codes — 24 streams from `renderers/docx_renderer.py:_VALID_CCVS_STREAMS` plus `SYS` extension; suffixes H6 / H9 / M3 / M4 / L1 / L2 | Samples use `SYS-M3`, `MOB-H6`, `WAH-H6`, `STR-H9`, `ELE-H6`. The numeric scheme has no relationship to the canonical taxonomy. |
+| Status assignment | Keyword auto-matcher (difflib token recall) emits Conditional / Unmatched only | Vision Anthropic call (Opus 4.7) emits Compliant / Conditional / NCR / Info / Unmatched | Sample is Compliant-heavy (39 / 64). A classifier that never produces Compliant cannot match the contract. |
+| LLM gating | `PIMS_ENRICH_FINDINGS` env var, default OFF | Default ON; `--no-enrich` opts out; `ANTHROPIC_API_KEY` required at runtime | Sample observation / finding cells are LLM-rewritten multi-sentence narratives citing WHS Reg / AS / SafeWork NSW inline. |
+| Vision support | text-only enrichment | Photo downscaled to 1024 px, EXIF-normalised, JPEG q85, base64-encoded; sent to vision model alongside the auditor's note | Photo is the primary evidence the human reviewer uses; required for accurate status assignment. |
+| Project context | none | RA-aware: auto-discovers `*Risk_Assessment*.docx` in the audit folder, parses 9 hold points + 66 phase activities + project metadata, injects into the vision prompt | Without RA awareness the audit cannot reference `HP-04`, `TP-05`, `HRCW H14`, etc. — reviewer can't trace findings back to the principal contractor's WHS contract. |
+| `#N` Findings layout | R-1.3 forbids paragraph-level cloning at body level | Cloning enabled for Findings list. Each finding renders as a `(#N <descriptive title>` heading + a 2-col 6-row detail table. Per-finding detail labels: `Location / Observation / Regulatory Basis / Hierarchy of Control / Recommendation / Timeframe`. The literal cell label `Required Action` from the template is rewritten to `Recommendation` at render time. | R-1.3 conflicts with V-10.5 ("count of #N paragraphs equals count of non-Compliant"). The canonical sample shows each finding rendering as a 6-row detail table with these specific labels. |
+| Per-location 2-col block | Clone N times per detected location | Used as the per-finding detail block (per the canonical sample) — cloned once per non-Compliant row | The template's `Location / Observation / Regulatory Basis / Hierarchy of Control / Required Action / Timeframe` block is the per-finding detail card, not a per-location scaffold. |
+| Status of Previous Recs | Parse prior report (deferred slice in plan) | `parse_prior_report_recommendations` extracts NCR / Conditional rows from the prior report's Observations Register; carry-forward dict written into the table. Header reads `Status (DD/MM/YY)` with the prior audit date substituted. | Reviewer needs carry-forward visibility; placeholder text wasn't acceptable. |
+| Site address line | `{{SITE_ADDRESS}}` | Project name (from RA) prepended → `Unitas Business Park 4-6 Mile End Rd Rouse Hill NSW 2155` | Sample p4 carries the venue prefix. |
+| Executive Summary | one paragraph (`{{NARRATIVE_SUMMARY}}`) | Two paragraphs — fixed scope intro ("This report presents the findings of a site safety audit conducted on `<long date>`...") plus dynamic LLM-generated narrative. Split via `_split_narrative_paragraph` after token substitution. | Sample carries both. |
+| Per-finding detail table column language | Plan didn't specify | LLM produces tier-prefixed control language (`Engineering: <control>`), urgency-prefixed Recommendation (`Within 7 days – mount extinguishers on compliant brackets with location signage`, ≤15 words, paired-verb `establish and maintain` pattern for persistent controls), multi-instrument legal_ref (`WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW COP: …`), Timeframe one of `Immediate / Within 7 days / Next audit / Ongoing / N/A` | Sample uses these conventions consistently. |
+| Findings `#N` heading | Plan didn't specify | Descriptive title from the LLM (`#1 Steel Erection Exclusion Zone`); space-before of 240 twentieths-of-a-point (≈12 pt) on every `#N` heading so each finding visually breathes from the previous detail table | Sample uses descriptive titles, not `STATUS – CCVS-CODE`. |
+| Positive Observations table | column widths inherited from template | column widths `1.5 / 7 / 9.5 cm`, bold header row, header repeats across page breaks (`<w:tblHeader/>`) | User direction. |
+| Status of Previous Recs table | column widths inherited from template | column widths `6.5 / 4 / 2.5 / 4.75 cm` | User direction. |
+| Observations Register table | header didn't repeat across pages | `<w:tblHeader/>` set on first row | User direction. |
+| Staging xlsx polish | Plan said embed thumbnails; nothing about column widths / wrap / status fills | Column widths set, wrap_text on long-content columns, status colour fills (NCR red `FFC7CE`, Conditional amber `FFE699`, Compliant green `C6EFCE`, Info blue-grey `D9E1F2`, Unmatched neutral `F2F2F2`) | Sample uses these conventions; without them long enriched findings render truncated. |
+| Enriched xlsx Summary sheet | Plan said write into named cells only | `_populate_enriched_summary_sheet` builds the canonical dashboard: title row + Audit Date / Site / Principal Contractor + Conformance Status counts + percentages + CCVS Category breakdown (Total / NCR / Conditional / Open Actions) + Open Actions list (#, Status, CCVS Code, Action Description, Responsible="PC", Due) | Sample carries this whole dashboard; mine had been rendering an empty Summary sheet. |
+| Enriched Register field defaults | Plan said leave Responsible / Due / Close-out blank | Responsible="PC" on every row; Due = Immediate (NCR) / Next audit (Conditional / Unmatched) / N/A (Compliant / Info); Close-out Status="N/A" for Compliant / Info, blank for non-Compliant | Sample fills these deterministically. |
+| `_clone_row` insertion order | not specified beyond "deepcopy and append" | append to END of `<w:tbl>` parent. The first attempt used `addnext` after placeholder + `rows[-1]` which silently corrupted every multi-row table (every clone except the last carried the placeholder content) | Caught by visual inspection of the docx; a regression test now locks the failure mode in. |
+| Network retry | not specified | retries=2 on `httpx.ConnectError / ReadError / WriteError / TimeoutException / RemoteProtocolError` + HTTP 408 / 429 / 500 / 502 / 503 / 504; immediate raise on other 4xx (auth / billing) | Real-folder run dropped 2 of 21 rows to transient network errors mid-batch; retry recovers cleanly. |
+| API error reporting | not specified | HTTP error tag now includes the API's own `error.type` + `error.message` so billing / auth issues surface as e.g. `"http 400 invalid_request_error: Your credit balance is too low"` instead of generic "bad request" | Surfaced when a credit-exhaustion failure was misread as a code defect. |
+| Humaniser ruleset | Plan listed banned vocab + em-dash / signposting / sycophantic / emoji / curly-quote / passive-without-named-actor bans | All plan-listed bans are in both system prompts. Plus three additions caught in user review: rule-of-three constructions (with the actual phrases user highlighted as bad — `"available, accessible, and clearly identified"`, `"obscured, kicked, or removed"`); negative parallelism (`"not just X, but Y"`); legalistic connectors (`"contrary to"`, `"in breach of"`, `"in violation of"`, `"non-compliant with"`, `"pursuant to"`) — replaced by plain-English regulation framing (`"WHS Reg X requires Y; the site does not meet that standard"`) | Self-inflicted humaniser violations the original prompt taught the LLM to produce; user caught each on review. |
+| Recommendation verb selection | not specified | Paired-verb pattern `"establish and maintain"` for persistent controls (exclusion zones, barriers, edge protection, traffic controls); single-shot `install / mount / fit` for fixtures; `complete / sign` for records; `verify / audit / check` for monitoring; `stop / stand down` for halt-work | User caught `"demarcate"` as too narrow — captures setup but not maintenance obligation. |
+| Model | initial: `claude-sonnet-4-5-20250929` | `claude-opus-4-7` per user direction | Most capable model; supports vision. |
 
 ## Known remaining gaps (not yet shipped)
 
-- **HRCW / Hold Point cross-reference columns**: vision findings reference HP/activity refs inside finding text, but no dedicated `phase` / `activity_ref` / `hold_point` columns in the staging xlsx. Reviewer reads them as part of the narrative.
-- **Compliant / Info SWMS verification**: RA mandates SWMS verification across nearly every activity row; the audit doesn't generally check for SWMS presence beyond the rows where the auditor noted it.
-- **Initial / Residual risk axis**: RA uses H/M/L 3/2/1 rubric for both initial and residual risk. SSA tier suffix (H6/H9/M3/M4/L1/L2) carries severity but uses a different rubric.
-- **Image preprocessing cache (Appendix C §C.6)**: the staging size-control wrapper re-renders at progressively smaller caps but doesn't share preprocessed BytesIO across rerenders; cache key is implicit per-call. Functional but wastes CPU on large audits that need progressive downscale.
-- **`audit_checklist.xlsx` legacy fallback**: still single-source-of-truth for the legacy keyword matcher when `--no-enrich`. Could be retired once vision is the only supported path.
+These are still drift items between the shipped output and the
+canonical samples.
+
+- **Positive Observations row IDs and cross-references**: sample uses
+  `P1 / P2 / P3` numbering with `"PIMS Obs N | <reg ref>"` cross-
+  references in the Reference column. Mine uses plain `1 / 2 / 3`
+  with the `legal_ref` alone. Needs a row-id assigner + cross-ref
+  builder that links Positive rows back to Enriched register row
+  numbers.
+- **Observations Register scope**: sample carries ALL observations
+  (Compliant + non-Compliant) with free-form status text such as
+  `"See F1 re exclusion zone"` / `"Non-compliant – See F2"` /
+  `"Noted"` / `"Partially complete – monitor"` referencing the
+  finding numbers from the Findings section. Mine carries only
+  non-Compliant rows with the canonical status set. Needs the
+  register to be the master observation list + a finding-cross-
+  reference text generator.
+- **HRCW / Hold Point cross-reference columns in staging xlsx**:
+  vision findings reference HP / activity refs inside the finding
+  text, but no dedicated `phase` / `activity_ref` / `hold_point`
+  columns are added to the staging xlsx. Reviewer reads them as
+  part of the narrative.
+- **Compliant / Info SWMS verification**: RA mandates SWMS
+  verification across nearly every activity row; the audit doesn't
+  generally check for SWMS presence beyond the rows where the
+  auditor noted it.
+- **Initial / Residual risk axis**: RA uses H / M / L 3 / 2 / 1
+  rubric for both initial and residual risk. SSA tier suffix
+  (H6 / H9 / M3 / M4 / L1 / L2) carries severity but uses a
+  different rubric.
+- **Image preprocessing cache (Appendix C §C.6)**: the staging
+  size-control wrapper re-renders at progressively smaller caps but
+  doesn't share preprocessed `BytesIO` across rerenders; cache key
+  is implicit per-call. Functional but wastes CPU on large audits
+  that need progressive downscale.
+- **`audit_checklist.xlsx` legacy fallback**: still single-source-
+  of-truth for the legacy keyword matcher (`enrich_observations(...,
+  auto_match=True)`). Default is now `auto_match=False` so vision
+  is the only path the orchestrator uses. The xlsx-based path could
+  be retired entirely once vision is confirmed as the canonical
+  classifier.
 
 ## File inventory
 
-- **`pims/services/ssa_pipeline.py`** (1755 lines) — Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion, xlsx polish helper.
+- **`pims/services/ssa_pipeline.py`** (2270 lines) — Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion, xlsx polish helper.
 - **`pims/services/ssa_checklist_lookup.py`** (279 lines) — Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a deterministic fallback for --no-enrich mode; bypassed when vision is on.
 - **`pims/services/ssa_ccvs_taxonomy.py`** (100 lines) — Canonical 25-stream x 6-tier CCVS taxonomy. Replaces the audit_checklist.xlsx-derived 01.01 numeric scheme with the real WAH-H6 / SYS-M3 / etc. coding the canonical samples use.
-- **`pims/services/ssa_vision_enricher.py`** (476 lines) — Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding / legal_ref / recommendation / monitoring_note. Transient-error retry.
+- **`pims/services/ssa_vision_enricher.py`** (614 lines) — Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding / legal_ref / recommendation / monitoring_note. Transient-error retry.
 - **`pims/services/ssa_ra_parser.py`** (281 lines) — Project Risk Assessment docx parser. Extracts metadata + 9 hold points + N phase activities; compact-context-block packs into the vision prompt so findings cite HP-04 / TP-05 / HRCW H14 inline.
 - **`pims/services/ssa_watcher.py`** (309 lines) — Quiescence-gated folder watcher: settle_seconds + N stable polls; exclusions cover every watcher-owned artifact. Manifest-sha256 idempotency lives in the orchestrator.
-- **`pims/scripts/run_ssa_pipeline.py`** (529 lines) — CLI orchestrator. Folder-name parse, manifest sha256, freeze escape hatch, sentinels (NOT_UPLOADABLE / NO_BULK_ENDPOINT), RA auto-discover, vision wiring, .ssa_run.json payload.
+- **`pims/scripts/run_ssa_pipeline.py`** (569 lines) — CLI orchestrator. Folder-name parse, manifest sha256, freeze escape hatch, sentinels (NOT_UPLOADABLE / NO_BULK_ENDPOINT), RA auto-discover, vision wiring, .ssa_run.json payload.
 - **`pims/scripts/start_ssa_watcher.py`** (66 lines) — Long-run entry for the watcher. Rotating-file logging.
-- **`tests/test_ssa_pipeline.py`** (1353 lines) — 69-case regression net. Covers parser, matcher, three builders, size-control, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion, status colour fills, freeze, idempotency, partial-output recovery.
+- **`tests/test_ssa_pipeline.py`** (1419 lines) — 69-case regression net. Covers parser, matcher, three builders, size-control, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion, status colour fills, freeze, idempotency, partial-output recovery.
 
 ---
 
@@ -1358,6 +1402,16 @@ class EnrichedRow:
     recommendation: str = ""
     legal_ref: str = ""
     monitoring_note: str = ""
+    # Vision-derived per-finding block fields (template's 2-col detail
+    # table). ``location`` is a short reviewer-facing place anchor
+    # (e.g. "Mile End Road frontage", "Tilt-up panel zone, north
+    # elevation"). ``hierarchy_of_control`` names the WHS hierarchy
+    # tier the recommendation lands in: Elimination / Substitution /
+    # Isolation / Engineering / Administrative / PPE.
+    location: str = ""
+    hierarchy_of_control: str = ""
+    finding_title: str = ""        # 3-6 word descriptive title for #N heading
+    timeframe: str = ""            # LLM override for the per-finding Timeframe cell
 
     @property
     def action_required(self) -> str:
@@ -1606,15 +1660,170 @@ def _row_value(row: EnrichedRow, header_lc: str) -> object:
         # for upstream paths that populated it directly. Compliant rows
         # leave both empty per the sample's pattern.
         return row.action_description or row.recommendation
+    if header_lc == "responsible":
+        # Sample defaults to "PC" (Principal Contractor) on every row.
+        # Reviewer overrides at QA when a specific subcontractor owns
+        # the action.
+        return "PC"
+    if header_lc == "due":
+        # Sample maps status → due slot:
+        #   Compliant / Info → N/A
+        #   NCR              → Immediate
+        #   Conditional      → Next audit
+        #   Unmatched        → Next audit (forces review attention)
+        if row.conformance_status == "NCR":
+            return "Immediate"
+        if row.conformance_status in {"Conditional", "Unmatched"}:
+            return "Next audit"
+        return "N/A"
     if header_lc == "monitoring note":
         return row.monitoring_note
+    if header_lc == "close-out status":
+        # Compliant / Info rows close-out to N/A immediately; non-
+        # Compliant rows leave it blank for QA / close-out tracking.
+        if row.conformance_status in {"Compliant", "Info"}:
+            return "N/A"
+        return ""
     return ""
+
+
+def _populate_enriched_summary_sheet(
+    wb,
+    rows: list[EnrichedRow],
+    project_name: str,
+    site_address: str,
+    principal_contractor: str,
+    audit_date_ddmmyyyy: str,
+) -> None:
+    """Write the Summary sheet of PIMS-Enriched per the canonical
+    sample. Layout mirrors ``PIMS-Enriched - Sample.xlsx`` Summary:
+
+      r1: title "PIMS Audit Summary — <project>"
+      r2-r4: Audit Date / Site / Principal Contractor
+      r6: header   "Conformance Status | Count | %"
+      r7-r10: Compliant / Conditional / NCR / Info row
+      r12: Total
+      r14: header  "CCVS Category | Total | NCR | Conditional | Open Actions"
+      r15+: per-category breakdown
+      r21: heading "Open Actions"
+      r22: header  "# | Status | CCVS Code | Action Description | Responsible | Due"
+      r23+: one row per non-Compliant / non-Info finding
+
+    No-op when the Summary sheet is missing or empty.
+    """
+    if "Summary" not in wb.sheetnames:
+        return
+    ws = wb["Summary"]
+    # Wipe any prior data so reruns don't leave stale rows.
+    if ws.max_row > 0:
+        ws.delete_rows(1, ws.max_row)
+
+    title = (
+        f"PIMS Audit Summary — {project_name}"
+        if project_name else "PIMS Audit Summary"
+    )
+    ws.cell(row=1, column=1, value=title)
+    ws.cell(row=2, column=1, value="Audit Date")
+    ws.cell(row=2, column=2, value=audit_date_ddmmyyyy or "")
+    ws.cell(row=3, column=1, value="Site")
+    ws.cell(row=3, column=2, value=site_address or "")
+    ws.cell(row=4, column=1, value="Principal Contractor")
+    ws.cell(row=4, column=2, value=principal_contractor or "")
+
+    # Status conformance count + percentage.
+    statuses = ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]
+    counts: dict[str, int] = {s: 0 for s in statuses}
+    for r in rows:
+        s = r.conformance_status
+        if s in counts:
+            counts[s] += 1
+        else:
+            counts[s] = counts.get(s, 0) + 1
+    total = sum(counts.values())
+
+    ws.cell(row=6, column=1, value="Conformance Status")
+    ws.cell(row=6, column=2, value="Count")
+    ws.cell(row=6, column=3, value="%")
+    for i, s in enumerate(statuses, start=7):
+        c = counts.get(s, 0)
+        ws.cell(row=i, column=1, value=s)
+        ws.cell(row=i, column=2, value=c)
+        pct = (c / total * 100) if total else 0
+        ws.cell(row=i, column=3, value=f"{pct:.1f}%")
+    ws.cell(row=12, column=1, value="Total")
+    ws.cell(row=12, column=2, value=total)
+
+    # CCVS category breakdown.
+    by_cat: dict[str, dict[str, int]] = {}
+    for r in rows:
+        cat = r.ccvs_category or "(Unmatched)"
+        agg = by_cat.setdefault(
+            cat, {"total": 0, "NCR": 0, "Conditional": 0, "Open": 0},
+        )
+        agg["total"] += 1
+        s = r.conformance_status
+        if s == "NCR":
+            agg["NCR"] += 1
+            agg["Open"] += 1
+        elif s == "Conditional":
+            agg["Conditional"] += 1
+            agg["Open"] += 1
+
+    ws.cell(row=14, column=1, value="CCVS Category")
+    ws.cell(row=14, column=2, value="Total Observations")
+    ws.cell(row=14, column=3, value="NCR")
+    ws.cell(row=14, column=4, value="Conditional")
+    ws.cell(row=14, column=5, value="Open Actions")
+    cat_row = 15
+    for cat in sorted(by_cat):
+        agg = by_cat[cat]
+        ws.cell(row=cat_row, column=1, value=cat)
+        ws.cell(row=cat_row, column=2, value=agg["total"])
+        ws.cell(row=cat_row, column=3, value=agg["NCR"])
+        ws.cell(row=cat_row, column=4, value=agg["Conditional"])
+        ws.cell(row=cat_row, column=5, value=agg["Open"])
+        cat_row += 1
+
+    # Open Actions list — every NCR / Conditional / Unmatched row
+    # appears with the action register fields. Compliant / Info rows
+    # are skipped (no action expected).
+    actions_start = cat_row + 2
+    ws.cell(row=actions_start, column=1, value="Open Actions")
+    hdr_row = actions_start + 1
+    ws.cell(row=hdr_row, column=1, value="#")
+    ws.cell(row=hdr_row, column=2, value="Status")
+    ws.cell(row=hdr_row, column=3, value="CCVS Code")
+    ws.cell(row=hdr_row, column=4, value="Action Description")
+    ws.cell(row=hdr_row, column=5, value="Responsible")
+    ws.cell(row=hdr_row, column=6, value="Due")
+    next_row = hdr_row + 1
+    for idx, r in enumerate(rows, start=1):
+        if r.conformance_status not in {"NCR", "Conditional", "Unmatched"}:
+            continue
+        ws.cell(row=next_row, column=1, value=idx)
+        ws.cell(row=next_row, column=2, value=r.conformance_status)
+        ws.cell(row=next_row, column=3, value=r.ccvs_code)
+        ws.cell(row=next_row, column=4,
+                value=r.recommendation or r.action_description or "")
+        ws.cell(row=next_row, column=5, value="PC")
+        due = "Immediate" if r.conformance_status == "NCR" else "Next audit"
+        ws.cell(row=next_row, column=6, value=due)
+        next_row += 1
+
+    # Modest column widths so the Summary sheet reads well on open.
+    from openpyxl.utils import get_column_letter
+    for i, w in enumerate([24, 20, 12, 60, 16, 14], start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
 
 def build_pims_enriched_xlsx(
     rows: list[EnrichedRow],
     output_path: Path,
     template_path: Path = PIMS_ENRICHED_TEMPLATE,
+    project_name: str = "",
+    site_address: str = "",
+    principal_contractor: str = "",
+    audit_date_ddmmyyyy: str = "",
 ) -> dict:
     """Write the PIMS-Enriched register per Appendix B.
 
@@ -1703,6 +1912,18 @@ def build_pims_enriched_xlsx(
         status_header="conformance status",
     )
 
+    # Populate the Summary sheet — the canonical sample carries a
+    # full audit-summary dashboard (status counts + CCVS breakdown +
+    # Open Actions list); without this the Summary sheet renders as
+    # an empty page.
+    _populate_enriched_summary_sheet(
+        wb, rows,
+        project_name=project_name,
+        site_address=site_address,
+        principal_contractor=principal_contractor,
+        audit_date_ddmmyyyy=audit_date_ddmmyyyy,
+    )
+
     wb.save(tmp)
     wb.close()
     os.replace(tmp, output_path)
@@ -1722,6 +1943,94 @@ _TABLE_SIGNATURES = {
     "prior_recs": ("Recommendation", "Required Actions", "Status", "Commentary"),
     "obs_register": ("Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"),
 }
+
+# Per-table column widths in centimetres (from user direction). The
+# helper below converts cm → twips (Word's table-cell width unit) and
+# writes <w:tcW w:w=... w:type="dxa"/> on every cell in every row of
+# the table so the column widths are deterministic across all clones.
+_TABLE_COL_WIDTHS_CM: dict[str, tuple[float, ...]] = {
+    "positive":     (1.5, 7.0, 9.5),
+    "prior_recs":   (6.5, 4.0, 2.5, 4.75),
+}
+
+# Tables whose first row should:
+#   - be bold (header styling)
+#   - repeat across page breaks (Word's tblHeader flag)
+_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive"})
+_TABLE_HEADER_REPEAT: frozenset[str] = frozenset({
+    "positive", "obs_register",
+})
+
+
+def _cm_to_twips(cm: float) -> int:
+    """1 cm = 567 twips (Word table width unit, 'dxa')."""
+    return int(round(cm * 567))
+
+
+def _apply_table_format(
+    tbl,
+    col_widths_cm: tuple[float, ...] | None,
+    bold_header: bool,
+    repeat_header: bool,
+) -> None:
+    """Set deterministic column widths, optional bold first row, and
+    optional header-repeat-across-pages on a python-docx Table.
+
+    Column widths are written on every row's cell so that cloned rows
+    inherit the same widths. ``bold_header`` walks the first row's
+    runs and sets ``bold=True``. ``repeat_header`` adds the
+    ``<w:tblHeader/>`` element to the first row's ``<w:trPr>`` so
+    Word repeats the header on each new page.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    if col_widths_cm:
+        twip_widths = [_cm_to_twips(w) for w in col_widths_cm]
+        # Update <w:gridCol> entries on the table's <w:tblGrid> first
+        # — Word reads these to size the columns initially.
+        grid = tbl._tbl.find(qn("w:tblGrid"))
+        if grid is not None:
+            grid_cols = grid.findall(qn("w:gridCol"))
+            for i, gc in enumerate(grid_cols):
+                if i < len(twip_widths):
+                    gc.set(qn("w:w"), str(twip_widths[i]))
+        # Then write per-cell widths on every row.
+        for row in tbl.rows:
+            for i, cell in enumerate(row.cells):
+                if i >= len(twip_widths):
+                    break
+                tcPr = cell._tc.get_or_add_tcPr()
+                tcW = tcPr.find(qn("w:tcW"))
+                if tcW is None:
+                    tcW = OxmlElement("w:tcW")
+                    tcPr.append(tcW)
+                tcW.set(qn("w:w"), str(twip_widths[i]))
+                tcW.set(qn("w:type"), "dxa")
+
+    if not tbl.rows:
+        return
+    header_row = tbl.rows[0]
+
+    if bold_header:
+        for cell in header_row.cells:
+            for p in cell.paragraphs:
+                if p.runs:
+                    for r in p.runs:
+                        r.bold = True
+                else:
+                    # Empty paragraph — append a bold run so any
+                    # existing header text on a clean cell still
+                    # renders bold (defensive; templates carry text).
+                    pass
+
+    if repeat_header:
+        trPr = header_row._tr.find(qn("w:trPr"))
+        if trPr is None:
+            trPr = OxmlElement("w:trPr")
+            header_row._tr.insert(0, trPr)
+        if trPr.find(qn("w:tblHeader")) is None:
+            trPr.append(OxmlElement("w:tblHeader"))
 
 # Per-location 2-col detail block: first row first cell == "Location",
 # 2 columns. Distinct enough from every other table in the template to
@@ -1794,99 +2103,287 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
 
 
 def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
-    """Materialise the ``#N`` Findings sub-list per non-Compliant row.
+    """Materialise the ``Findings`` section per non-Compliant row.
 
-    The canonical template has a placeholder shape:
+    The canonical template lays each finding out as a heading + a
+    6-row 2-col detail table (per the screenshot the user shared):
 
-        Findings              (14pt bold)
-        #1                    (12pt bold) — placeholder heading
-        (empty paragraph)     — body slot
-        Status of Previous Recommendations …
+        #N                        (12pt bold heading)
+        +---------------------+----------------+
+        | Location            | <site/area>    |
+        | Observation         | <finding text> |
+        | Regulatory Basis    | <legal_ref>    |
+        | Hierarchy of Control| <hierarchy>    |
+        | Required Action     | <recommend>    |
+        | Timeframe           | <due timeframe>|
+        +---------------------+----------------+
 
-    For each register row this function lays down:
+    Per R-1.3(e) block-level cloning of (heading + 2-col table) is
+    permitted. For idx==1 we mutate the existing pair in-place; for
+    idx>=2 we deepcopy and insert before the Status heading so
+    iteration order is preserved.
 
-        #N STATUS — CCVS-CODE          (12pt bold heading clone)
-        <finding text>                 (body paragraph clone)
-
-    Inserted in CSV order before the ``Status of Previous
-    Recommendations`` heading paragraph. Without this, V-10.5 fails
-    and the rendered docx shows an empty ``#1`` placeholder regardless
-    of how many findings the audit produced.
-
-    Returns the number of `#N` headings written. ``0`` is a no-op (no
-    placeholder found, or no non-Compliant rows).
+    Returns the number of finding blocks written.
     """
     import copy
     from docx.oxml.ns import qn
 
     body = doc.element.body
 
-    # Locate the `#1 ` heading and the Status heading. The status
-    # heading is locked text per A.8 R-8.1.
+    # Locate the placeholder #1 heading + the 2-col detail table that
+    # follows it + the Status of Previous Recommendations heading.
     heading_p = None
+    detail_tbl = None
     status_p = None
     for child in body.iterchildren():
-        if child.tag != qn("w:p"):
-            continue
-        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
-        if heading_p is None and text.startswith("#1"):
-            heading_p = child
-        elif heading_p is not None and text.startswith(
-            "Status of Previous Recommendations"
-        ):
-            status_p = child
-            break
-    if heading_p is None or status_p is None:
-        return 0
-
-    # The placeholder body paragraph sits between the `#1 ` heading and
-    # the Status heading. Walk forward from heading_p until we hit a
-    # paragraph that's not the heading itself; that's the body slot.
-    body_p = heading_p.getnext()
-    if body_p is None or body_p.tag != qn("w:p"):
+        tag = child.tag
+        if tag == qn("w:p"):
+            text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+            if heading_p is None and text.startswith("#1"):
+                heading_p = child
+            elif heading_p is not None and text.startswith(
+                "Status of Previous Recommendations"
+            ):
+                status_p = child
+                break
+        elif tag == qn("w:tbl") and heading_p is not None and detail_tbl is None:
+            # The first <w:tbl> after the #1 heading is the per-finding
+            # detail block. Confirm by checking it's 2-col and the first
+            # row's first cell carries the literal ``Location``.
+            first_row = next(child.iter(qn("w:tr")), None)
+            if first_row is not None:
+                cells = list(first_row.iter(qn("w:tc")))
+                if len(cells) == 2:
+                    label_text = "".join(
+                        t.text or "" for t in cells[0].iter(qn("w:t"))
+                    ).strip()
+                    if label_text.startswith("Location"):
+                        detail_tbl = child
+    if heading_p is None or status_p is None or detail_tbl is None:
         return 0
 
     if not register_rows:
-        # Empty audit — collapse the Findings list to a single
-        # placeholder row noting "no findings recorded" so the section
-        # header still renders meaningfully.
         _set_paragraph_runs_text(heading_p, "No findings recorded.")
-        _set_paragraph_runs_text(body_p, "")
+        # Wipe the detail table's right-column cells.
+        for row in detail_tbl.iter(qn("w:tr")):
+            cells = list(row.iter(qn("w:tc")))
+            if len(cells) >= 2:
+                _set_cell_text_oxml(cells[1], "")
         return 0
 
-    # i==1: mutate the existing heading + body in-place. i>=2: deepcopy
-    # the (heading, body) pair and insert before the Status heading so
-    # iteration order is preserved.
     written = 0
     for idx, row in enumerate(register_rows, start=1):
         title = _finding_heading_text(idx, row)
-        text = (row.finding or row.observation_text_clean
-                or row.obs.observation_text or "").strip()
         if idx == 1:
             _set_paragraph_runs_text(heading_p, title)
-            _set_paragraph_runs_text(body_p, text)
+            _set_paragraph_space_before(heading_p, twentieths_of_a_point=240)
+            _populate_finding_detail_table(detail_tbl, row)
         else:
             new_h = copy.deepcopy(heading_p)
-            new_b = copy.deepcopy(body_p)
+            new_t = copy.deepcopy(detail_tbl)
             _set_paragraph_runs_text(new_h, title)
-            _set_paragraph_runs_text(new_b, text)
+            _set_paragraph_space_before(new_h, twentieths_of_a_point=240)
+            _populate_finding_detail_table(new_t, row)
             status_p.addprevious(new_h)
-            status_p.addprevious(new_b)
+            status_p.addprevious(new_t)
         written += 1
     return written
 
 
+def _set_paragraph_space_before(p_element, twentieths_of_a_point: int) -> None:
+    """Add ``<w:spacing w:before="N"/>`` so each cloned ``#N`` heading
+    breathes from the previous finding's table. ``N`` is in
+    twentieths of a point — 240 ≈ 12 pt of leading whitespace."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    pPr = p_element.find(qn("w:pPr"))
+    if pPr is None:
+        pPr = OxmlElement("w:pPr")
+        p_element.insert(0, pPr)
+    spacing = pPr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        pPr.append(spacing)
+    spacing.set(qn("w:before"), str(twentieths_of_a_point))
+
+
+# Row-label → EnrichedRow attribute resolver. Header (left-cell) text
+# is matched case-insensitively against the canonical labels.
+_FINDING_DETAIL_LABEL_TO_VALUE = {
+    "location": lambda r: r.location or "",
+    "observation": lambda r: (
+        r.finding or r.observation_text_clean or r.obs.observation_text or ""
+    ),
+    "regulatory basis": lambda r: r.legal_ref or "",
+    "hierarchy of control": lambda r: r.hierarchy_of_control or "",
+    # Template label was "Required Action"; canonical reviewer wording
+    # is "Recommendation". Keep both as match keys so the resolver
+    # works whether the template was relabelled in-place or not.
+    "required action": lambda r: (r.recommendation or r.action_description or ""),
+    "recommendation": lambda r: (r.recommendation or r.action_description or ""),
+    "timeframe": lambda r: _timeframe_for(r),
+}
+
+# Label rewrites applied to the LEFT cell at render time. Lets the
+# template ship with the legacy "Required Action" wording while the
+# rendered deliverable reads with the canonical "Recommendation".
+_FINDING_DETAIL_LABEL_REWRITES: dict[str, str] = {
+    "Required Action": "Recommendation",
+}
+
+
+def _timeframe_for(row: EnrichedRow) -> str:
+    """Plain-English timeframe label for the per-finding detail table.
+
+    LLM-supplied ``row.timeframe`` wins when set (lets the model say
+    ``Ongoing`` for monitoring items, ``Next audit`` for record-keeping
+    follow-ups). Falls back to a status-derived default for rows the
+    LLM didn't classify.
+    """
+    if row.timeframe:
+        return row.timeframe
+    if row.conformance_status == "NCR":
+        return "Immediate"
+    if row.conformance_status == "Conditional":
+        return "Within 7 days"
+    if row.conformance_status == "Info":
+        return "Monitor"
+    return "N/A"
+
+
+def _populate_finding_detail_table(tbl_element, row: EnrichedRow) -> None:
+    """Walk the cloned 2-col table, write each label's value into
+    that row's right cell. Left cells (the labels) inherit the
+    template wording; ``_FINDING_DETAIL_LABEL_REWRITES`` rewrites a
+    handful of legacy labels at render time (e.g. ``Required Action``
+    → ``Recommendation``) without touching the frozen template."""
+    from docx.oxml.ns import qn
+    for tr in tbl_element.iter(qn("w:tr")):
+        cells = list(tr.iter(qn("w:tc")))
+        if len(cells) < 2:
+            continue
+        label_raw = "".join(
+            t.text or "" for t in cells[0].iter(qn("w:t"))
+        ).strip()
+        # Rewrite the label cell first so the rendered deliverable
+        # carries the reviewer-facing wording.
+        new_label = _FINDING_DETAIL_LABEL_REWRITES.get(label_raw)
+        if new_label and new_label != label_raw:
+            _set_cell_text_oxml(cells[0], new_label)
+        # Resolver lookup is case-insensitive against the ORIGINAL
+        # template label so existing templates keep matching even
+        # after the relabel.
+        resolver = _FINDING_DETAIL_LABEL_TO_VALUE.get(label_raw.lower())
+        if resolver is None:
+            continue
+        _set_cell_text_oxml(cells[1], resolver(row))
+
+
+def _set_cell_text_oxml(tc_element, text: str) -> None:
+    """Replace the cell's text content while preserving the first
+    paragraph's pPr/rPr (so the cloned cell inherits the template's
+    font, alignment, indent). Drops trailing paragraphs and runs to
+    avoid placeholder ghosts."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    paragraphs = list(tc_element.iter(qn("w:p")))
+    if not paragraphs:
+        # No paragraph — Word will reject the cell. Append one with
+        # the text. python-docx auto-fixes on save but we do it here
+        # to keep the XML well-formed in flight.
+        p = OxmlElement("w:p")
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        r.append(t)
+        p.append(r)
+        tc_element.append(p)
+        return
+    first_p = paragraphs[0]
+    _set_paragraph_runs_text(first_p, text)
+    # Remove sibling paragraphs after the first to avoid stale lines.
+    for extra in paragraphs[1:]:
+        parent = extra.getparent()
+        if parent is not None:
+            parent.remove(extra)
+
+
+def _to_long_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1 May 2026``. Returns ``""`` on parse failure.
+
+    Avoids platform-specific strftime tokens (``%-d`` POSIX vs ``%#d``
+    Windows) by composing the day integer manually.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        return f"{dt.day} {dt.strftime('%B %Y')}"
+    except Exception:
+        return ""
+
+
+def _split_narrative_paragraph(doc, narrative_combined: str) -> None:
+    """Two-paragraph Executive Summary per the canonical sample.
+
+    Searches the body for the paragraph that ended up carrying the
+    combined narrative (scope intro + ``\\n\\n`` + audit summary)
+    after token substitution, splits on the literal ``\\n\\n``, mutates
+    the existing paragraph to hold only the first part, and inserts a
+    deepcopy after it carrying the second part. Both paragraphs
+    inherit the template's Normal style and any ``rPr`` on the
+    placeholder run.
+
+    No-op when the narrative carries no ``\\n\\n`` separator (single
+    paragraph or LLM disabled).
+    """
+    import copy
+    from docx.oxml.ns import qn
+    if "\n\n" not in narrative_combined:
+        return
+    parts = narrative_combined.split("\n\n", 1)
+    intro, follow = parts[0].strip(), parts[1].strip()
+    if not (intro and follow):
+        return
+
+    body = doc.element.body
+    target_p = None
+    for child in body.iterchildren():
+        if child.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in child.iter(qn("w:t")))
+        # The whole combined narrative landed in one paragraph during
+        # substitution — find it by checking it equals or starts with
+        # the intro text.
+        if text.strip().startswith(intro[:60]):
+            target_p = child
+            break
+    if target_p is None:
+        return
+
+    _set_paragraph_runs_text(target_p, intro)
+    new_p = copy.deepcopy(target_p)
+    _set_paragraph_runs_text(new_p, follow)
+    target_p.addnext(new_p)
+
+
 def _finding_heading_text(idx: int, row: EnrichedRow) -> str:
-    """``#3 NCR — WAH-H6`` or ``#3 — WAH-H6`` if status is empty."""
-    parts = [f"#{idx}"]
-    if row.conformance_status:
-        parts.append(row.conformance_status)
+    """``#3 EWP Exclusion Zone`` per the canonical sample.
+
+    Uses the LLM-provided 3-6 word descriptive ``finding_title`` when
+    available. Falls back to ``ccvs_category`` (e.g. ``#3 Mobile
+    Plant``) and finally to ``CCVS code + status`` for rows the LLM
+    didn't get to.
+    """
+    if row.finding_title:
+        return f"#{idx} {row.finding_title}"
+    if row.ccvs_category:
+        return f"#{idx} {row.ccvs_category}"
     if row.ccvs_code:
-        parts.append(row.ccvs_code)
-    if len(parts) == 1:
-        return parts[0]
-    return f"{parts[0]} {parts[1]} — {parts[2]}" if len(parts) == 3 \
-        else f"{parts[0]} — {parts[1]}"
+        return f"#{idx} {row.ccvs_code}"
+    return f"#{idx}"
 
 
 def _set_paragraph_runs_text(p_element, text: str) -> None:
@@ -2096,6 +2593,8 @@ def build_ssa_report_docx(
     prepared_by: str = "Alan Richardson",
     prior_recs: list[dict] | None = None,
     template_path: Path = SSA_REPORT_TEMPLATE,
+    project_name: str = "",
+    prior_audit_date_ddmmyy: str = "",
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -2117,6 +2616,7 @@ def build_ssa_report_docx(
     """
     import os
     from docx import Document
+    from docx.oxml.ns import qn
 
     if not template_path.exists():
         raise FileNotFoundError(
@@ -2132,13 +2632,42 @@ def build_ssa_report_docx(
     # Walk the body part AND every header/footer part. Body-paragraph
     # iteration alone misses tokens inside text boxes (e.g. cover-page
     # site address frame); the part-level walk covers those.
+    #
+    # Site address prepends the project name when supplied so the
+    # cover line reads "Unitas Business Park 4-6 Mile End Rd ..." per
+    # the canonical sample's p4 paragraph.
+    full_site = (
+        f"{project_name} {site_address}".strip()
+        if project_name and site_address else (site_address or project_name or "")
+    )
+    # Two-paragraph Executive Summary per the canonical sample:
+    # paragraph 1 is the standard scope intro, paragraph 2 is the
+    # audit-specific narrative the LLM produced. We compose both into
+    # the {{NARRATIVE_SUMMARY}} placeholder text and split into two
+    # paragraphs at the cloning step below.
+    audit_date_long = _to_long_date(audit_date_ddmmyyyy)
+    scope_intro = (
+        f"This report presents the findings of a site safety audit "
+        f"conducted on {audit_date_long}. The focus is to confirm the "
+        f"principal contractor's WHS controls are in place at the time "
+        f"of inspection, identify any non-conformances against the "
+        f"project Risk Assessment, and record positive observations for "
+        f"continued monitoring."
+    ) if audit_date_long else ""
+    combined_narrative = (
+        f"{scope_intro}\n\n{narrative_summary}".strip()
+        if scope_intro else (narrative_summary or "")
+    )
     all_replacements = {
-        "{{SITE_ADDRESS}}": site_address or "",
-        "{{NARRATIVE_SUMMARY}}": narrative_summary or "",
+        "{{SITE_ADDRESS}}": full_site,
+        "{{NARRATIVE_SUMMARY}}": combined_narrative,
         "{{AUDIT_DATE}}": audit_date_ddmmyyyy or "",
         "{{PREPARED_BY}}": prepared_by or "",
     }
     _replace_tokens_in_part(doc.part, all_replacements)
+    # Split the combined narrative into the canonical two-paragraph
+    # Executive Summary. No-op when scope_intro was empty.
+    _split_narrative_paragraph(doc, combined_narrative)
     for sec in doc.sections:
         for hf in (
             sec.header, sec.first_page_header,
@@ -2150,15 +2679,12 @@ def build_ssa_report_docx(
     positive = [r for r in rows if r.conformance_status == "Compliant"]
     register = [r for r in rows if r.conformance_status != "Compliant"]
 
-    # Strip the per-location placeholder block (R-1.3(e)). v1 never
-    # populates it — keeps the deliverable clean instead of leaving a
-    # stale 6-row scaffold visible in the output.
-    _remove_per_location_block(doc)
-
-    # Materialise the `#N` Findings sub-list — one heading + body pair
-    # per non-Compliant row. Without this the rendered docx leaves
-    # only the template's `#1` placeholder visible regardless of how
-    # many findings the audit produced.
+    # Materialise the Findings section: clone the (#N heading + 2-col
+    # detail table) block per non-Compliant row. Per the canonical
+    # template each finding renders as a 6-row table (Location /
+    # Observation / Regulatory Basis / Hierarchy of Control /
+    # Required Action / Timeframe). R-1.3(e) explicitly permits this
+    # block-level operation on the per-finding detail table.
     _expand_findings_list(doc, register)
 
     diagnostics: dict[str, list] = {
@@ -2170,6 +2696,12 @@ def build_ssa_report_docx(
     # --- Positive Observations table (3 cols) ------------------------
     pos_tbl = _find_table(doc, _TABLE_SIGNATURES["positive"])
     if pos_tbl is not None and len(pos_tbl.rows) >= 2:
+        _apply_table_format(
+            pos_tbl,
+            col_widths_cm=_TABLE_COL_WIDTHS_CM["positive"],
+            bold_header="positive" in _TABLE_HEADER_BOLD,
+            repeat_header="positive" in _TABLE_HEADER_REPEAT,
+        )
         placeholder = pos_tbl.rows[1]
         if positive:
             for idx, row in enumerate(positive, start=1):
@@ -2190,6 +2722,27 @@ def build_ssa_report_docx(
     # --- Status of Previous Recommendations table (4 cols) ----------
     prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
     if prev_tbl is not None and len(prev_tbl.rows) >= 2:
+        _apply_table_format(
+            prev_tbl,
+            col_widths_cm=_TABLE_COL_WIDTHS_CM["prior_recs"],
+            bold_header=False,
+            repeat_header=False,
+        )
+        # Substitute the prior audit date into the header cell —
+        # canonical sample reads "Status (30/03/26)", template carries
+        # the literal "Status (DD/MM/YY)" placeholder.
+        if prior_audit_date_ddmmyy:
+            hdr_cell = prev_tbl.rows[0].cells[2]
+            for p_el in hdr_cell._tc.iter(qn("w:p")):
+                t_text = "".join(
+                    t.text or "" for t in p_el.iter(qn("w:t"))
+                )
+                if "DD/MM/YY" in t_text:
+                    new_text = t_text.replace(
+                        "DD/MM/YY", prior_audit_date_ddmmyy,
+                    )
+                    _set_paragraph_runs_text(p_el, new_text)
+                    break
         placeholder = prev_tbl.rows[1]
         recs = list(prior_recs or [])
         if recs:
@@ -2210,6 +2763,12 @@ def build_ssa_report_docx(
     # --- Observations Register table (6 cols, photos in col 1) -------
     reg_tbl = _find_table(doc, _TABLE_SIGNATURES["obs_register"])
     if reg_tbl is not None and len(reg_tbl.rows) >= 2:
+        _apply_table_format(
+            reg_tbl,
+            col_widths_cm=None,  # use template's existing widths
+            bold_header=False,   # template already styles the header
+            repeat_header="obs_register" in _TABLE_HEADER_REPEAT,
+        )
         placeholder = reg_tbl.rows[1]
         if register:
             for idx, row in enumerate(register, start=1):
@@ -3240,13 +3799,62 @@ _SYSTEM_PROMPT = (
     "review-ready finding.\n\n"
     "OUTPUT JSON ONLY — no prose, no markdown fences. The JSON object "
     "must carry exactly these keys:\n"
-    '  status            ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
-    '  ccvs_code         "<STREAM>-<TIER>" or "" if no clear match\n'
-    '  ccvs_category     plain-English category for the chosen stream, or ""\n'
-    '  finding           2–4 sentence narrative, year-12 plain English\n'
-    '  legal_ref         NSW WHS Reg / AS / SafeWork NSW citation, or ""\n'
-    '  recommendation    one short sentence, or ""\n'
-    '  monitoring_note   one short sentence reviewer cue, or ""\n\n'
+    '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
+    '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
+    '  ccvs_category        plain-English category for the chosen stream, or ""\n'
+    '  finding_title        3-6 word descriptive title for the finding, e.g. '
+    '"EWP Exclusion Zone", "Fire Extinguisher Mounting", "Pre-Start Logbook Gap" — '
+    'used as the #N heading\n'
+    '  location             site/area anchor with concrete reference, e.g. '
+    '"Unit 1 shell", "Tilt-up panel zone, north elevation", "Site office area"\n'
+    '  finding              2–4 sentence narrative, year-12 plain English\n'
+    '  hierarchy_of_control "<Tier>: <specific control>" — Tier is one of '
+    'Elimination / Substitution / Isolation / Engineering / Administrative / PPE; '
+    'specific control is the actual physical or procedural step, e.g. '
+    '"Engineering: Re-establish physical barriers at unit entry openings"\n'
+    '  required_action      SHORT directive sentence, max 15 words, '
+    'starting with "<Urgency> – " where Urgency is one of '
+    'Immediate / Within 7 days / Next audit / Ongoing.\n'
+    '\n'
+    '    VERB SELECTION — pick the verb that captures BOTH the '
+    'initial action AND any ongoing obligation. Australian WHS '
+    'reviewer language prefers paired verbs for controls that must '
+    'persist (exclusion zones, barriers, edge protection, signage, '
+    'permits in force):\n'
+    '      - "establish and maintain" — for exclusion zones, '
+    'barriers, edge protection, traffic controls, permits, '
+    'monitoring regimes (anything that has to be set up AND held '
+    'in place across the work). Use this in preference to '
+    '"demarcate", "set up", "implement" alone.\n'
+    '      - "install" / "mount" / "fit" — for one-shot physical '
+    'fixtures (extinguisher brackets, signage, cable trays).\n'
+    '      - "complete" / "sign" — for record-keeping (logbook '
+    'entries, pre-starts, SWMS sign-on).\n'
+    '      - "verify" / "audit" / "check" — for monitoring or '
+    'verification actions.\n'
+    '      - "stop" / "stand down" — when the corrective action '
+    'is to halt work until a control is in place.\n'
+    '\n'
+    '    EXAMPLES (good):\n'
+    '      "Immediate – establish and maintain an exclusion zone '
+    'beneath suspended steel works"\n'
+    '      "Within 7 days – mount extinguishers on compliant brackets '
+    'with location signage"\n'
+    '      "Immediate – stop telehandler use until pre-start and VOC '
+    'are completed"\n'
+    '      "Ongoing – maintain daily register with time-in / time-out '
+    'entries"\n'
+    '\n'
+    '    Do NOT name specific personnel, hold points, or activity '
+    'refs in this field — those belong in the finding text. Keep to '
+    'a directive verb phrase that fits a single line in a table cell.\n'
+    '  timeframe            one of: Immediate / Within 7 days / Next audit / '
+    'Ongoing / N/A — matches the urgency in required_action\n'
+    '  legal_ref            multi-instrument citation separated by "; " — '
+    'e.g. "WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW Code of Practice: '
+    'Managing the Risk of Falls", or ""\n'
+    '  recommendation       one short sentence (paraphrase of required_action), or ""\n'
+    '  monitoring_note      one short sentence reviewer cue, or ""\n\n'
     "STREAM PREFIXES (pick exactly one):\n"
     f"{_STREAM_LIST}\n\n"
     "SEVERITY TIERS:\n"
@@ -3267,13 +3875,42 @@ _SYSTEM_PROMPT = (
     "- 2–4 sentences. Describe what was observed, why it matters, and "
     "  what good looks like. Do not paraphrase the raw note — write "
     "  the reviewer-grade finding.\n"
-    "- Cite the legal_ref inside the finding sentence when one applies "
-    "  (e.g. \"contrary to WHS Regulation 2017 cl.79\").\n"
+    "- Reference the relevant regulation in plain English. Good: "
+    "  \"WHS Regulation 2017 cl.79 requires edge protection at this "
+    "  height; the site does not meet that standard.\" or \"This "
+    "  falls below the WHS Regulation 2017 cl.79 minimum.\" Bad: "
+    "  \"contrary to WHS Regulation 2017 cl.79\", \"in breach of\", "
+    "  \"in violation of\", \"non-compliant with\". The bad forms read "
+    "  as legal template phrasing; the good forms describe what the "
+    "  rule says and how the observation falls short.\n"
     "- Banned vocabulary: crucial, pivotal, landscape, ensure, "
     "  leverage, robust, comprehensive, navigate, delve, it's "
-    "  important to note, serves as, at its core. No em-dash clusters, "
-    "  no signposting, no sycophantic openers/closers, no emoji, no "
-    "  curly quotes.\n"
+    "  important to note, serves as, at its core.\n"
+    "- Banned constructions:\n"
+    "  * No em-dash clusters.\n"
+    "  * No rule-of-three lists. Examples that are FORBIDDEN: "
+    "    \"available, accessible, and clearly identified\", "
+    "    \"obscured, kicked, or removed\", "
+    "    \"fast, cheap, and reliable\". When citing what a rule "
+    "    requires, name ONE primary requirement and let the rule "
+    "    speak for itself, e.g. \"AS 2444 requires extinguishers "
+    "    to be mounted at marked locations\" — not \"AS 2444 "
+    "    requires extinguishers to be available, accessible, and "
+    "    clearly identified\".\n"
+    "  * No negative parallelism (\"not just X, but Y\", \"not only "
+    "    X but also Y\").\n"
+    "  * No signposting (\"firstly\", \"in conclusion\", \"to "
+    "    summarise\").\n"
+    "  * No sycophantic openers or closers (\"great question\", "
+    "    \"I hope this helps\").\n"
+    "  * No emoji, no curly quotes.\n"
+    "  * No passive voice without a named actor — write \"the "
+    "    auditor observed X\" or \"X was observed by the SD Group "
+    "    site manager\", not bare \"X was observed\".\n"
+    "  * No legalistic connectors — never write \"contrary to\", "
+    "    \"in breach of\", \"in violation of\", \"non-compliant "
+    "    with\", \"pursuant to\". Reference regulations by stating "
+    "    what the rule requires and how the observation falls short.\n"
     "- Do not invent measurements, names, dates, or evidence not "
     "  present in the photo or note.\n"
     "- For Compliant rows, the finding describes what was seen and "
@@ -3423,11 +4060,30 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
         code = ""
     category = category_for(code) if code else ""
 
+    # Hierarchy of Control — accept "<Tier>: <control>" or bare tier;
+    # validate the tier prefix against the canonical WHS hierarchy.
+    # Anything else collapses to "" so the template cell stays blank
+    # rather than carrying a fabricated label.
+    hoc_raw = _s("hierarchy_of_control").strip()
+    hoc = ""
+    if hoc_raw:
+        head = hoc_raw.split(":", 1)[0].strip().title()
+        if head == "Ppe":
+            head = "PPE"
+        if head in {"Elimination", "Substitution", "Isolation",
+                    "Engineering", "Administrative", "PPE"}:
+            hoc = hoc_raw  # preserve the "Tier: control" full string
+
     return {
         "status": status,
         "ccvs_code": code,
         "ccvs_category": category,
+        "finding_title": _s("finding_title"),
+        "location": _s("location"),
         "finding": _s("finding"),
+        "hierarchy_of_control": hoc,
+        "required_action": _s("required_action"),
+        "timeframe": _s("timeframe"),
         "legal_ref": _s("legal_ref"),
         "recommendation": _s("recommendation"),
         "monitoring_note": _s("monitoring_note"),
@@ -3495,9 +4151,22 @@ async def enrich_rows_with_vision(
             )
         except httpx.HTTPStatusError as exc:
             diag["rows_failed"] += 1
-            seen_errors.add(
-                f"http {exc.response.status_code} on row {row.obs.csv_row}"
-            )
+            # Surface the API's own error message body so billing /
+            # auth / model-not-found issues don't read as "bad request"
+            # to the orchestrator.
+            try:
+                api_err = exc.response.json().get("error", {})
+                api_msg = api_err.get("message", "")[:160]
+                api_type = api_err.get("type", "")
+            except Exception:
+                api_msg = ""
+                api_type = ""
+            tag = f"http {exc.response.status_code}"
+            if api_type:
+                tag = f"{tag} {api_type}"
+            if api_msg:
+                tag = f"{tag}: {api_msg}"
+            seen_errors.add(tag)
             continue
         except Exception as exc:
             diag["rows_failed"] += 1
@@ -3518,14 +4187,35 @@ async def enrich_rows_with_vision(
         row.conformance_status = rec["status"]
         row.ccvs_code = rec["ccvs_code"]
         row.ccvs_category = rec["ccvs_category"]
+        if rec["finding_title"]:
+            row.finding_title = rec["finding_title"]
+        if rec["location"]:
+            row.location = rec["location"]
         if rec["finding"]:
             row.finding = rec["finding"]
+        if rec["hierarchy_of_control"]:
+            row.hierarchy_of_control = rec["hierarchy_of_control"]
         if rec["legal_ref"]:
             row.legal_ref = rec["legal_ref"]
-        if rec["recommendation"]:
+        # Required-action and timeframe overlap with recommendation /
+        # due_category. Prefer the LLM's tier-prefixed strings — they
+        # render cleanly in the per-finding detail table — but fall
+        # back to recommendation when required_action is blank.
+        if rec["required_action"]:
+            row.recommendation = rec["required_action"]
+        elif rec["recommendation"]:
             row.recommendation = rec["recommendation"]
         if rec["monitoring_note"]:
             row.monitoring_note = rec["monitoring_note"]
+        # timeframe — LLM's pick (Immediate / Within 7 days / Next
+        # audit / Ongoing / N/A) overrides the status-derived default
+        # so the docx Timeframe cell reflects the model's judgement
+        # for context-specific items (e.g. "Ongoing" maintenance vs
+        # one-shot "Immediate").
+        tf = rec["timeframe"].strip()
+        if tf in {"Immediate", "Within 7 days", "Next audit",
+                  "Ongoing", "N/A"}:
+            row.timeframe = tf
         diag["rows_ok"] += 1
 
     diag["errors"] = sorted(seen_errors)
@@ -3571,10 +4261,17 @@ async def generate_narrative_summary(
         "monitor Conditional). Australian English, year-12 plain "
         "English. Banned vocabulary: crucial, pivotal, landscape, "
         "ensure, leverage, robust, comprehensive, navigate, delve, "
-        "it's important to note, serves as, at its core. Do not "
-        "invent counts, names, dates, or breaches not in the input. "
-        "Return ONLY the paragraph text — no JSON, no quotes, no "
-        "markdown."
+        "it's important to note, serves as, at its core. Banned "
+        "constructions: no em-dash clusters, no rule-of-three lists, "
+        "no negative parallelism (\"not just X, but Y\"), no "
+        "signposting (\"firstly\", \"in conclusion\"), no "
+        "sycophantic openers/closers, no emoji, no curly quotes, no "
+        "passive voice without a named actor, no legalistic "
+        "connectors (\"contrary to\", \"in breach of\", \"in "
+        "violation of\", \"non-compliant with\", \"pursuant to\"). "
+        "Do not invent counts, names, dates, or breaches not in the "
+        "input. Return ONLY the paragraph text — no JSON, no quotes, "
+        "no markdown."
     )
     user_text = (
         f"SITE: {site_address or '(unresolved)'}\n"
@@ -4557,11 +5254,21 @@ def run_once(
     if ra_path is None:
         ra_path = autodiscover_in_folder(folder)
     ra_context = ""
+    ra_project_name = ""
     ra_summary: dict[str, object] = {"path": None, "phases": 0, "activities": 0,
                                      "hold_points": 0}
     if ra_path is not None:
         ra = parse_risk_assessment(ra_path)
         ra_context = compact_context_block(ra)
+        # Strip the "— N Industrial Warehouse Units" suffix that some
+        # RA project names carry; the cover line wants just the venue.
+        if ra.project_name:
+            for sep in (" — ", " – ", " - "):
+                if sep in ra.project_name:
+                    ra_project_name = ra.project_name.split(sep, 1)[0].strip()
+                    break
+            else:
+                ra_project_name = ra.project_name.strip()
         ra_summary = {
             "path": ra_path.name,
             "project": ra.project_name,
@@ -4591,11 +5298,39 @@ def run_once(
     # prior report so the SSA report's "Status of Previous
     # Recommendations" table actually carries content.
     prior_recs: list[dict] = []
+    prior_audit_date_ddmmyy = ""
     if prior_reports:
         newest_prior = prior_reports[-1]
         prior_recs = parse_prior_report_recommendations(newest_prior)
+        # Extract YYMMDD date from filename, format as DD/MM/YY for the
+        # canonical "Status (DD/MM/YY)" header in the prior-recs table.
+        m = re.search(r"-(\d{6})-(?:RPD|SDG)\.docx$", newest_prior.name)
+        if m:
+            yymmdd = m.group(1)
+            prior_audit_date_ddmmyy = (
+                f"{yymmdd[4:6]}/{yymmdd[2:4]}/{yymmdd[0:2]}"
+            )
 
-    enriched_diag = build_pims_enriched_xlsx(enriched, enriched_path)
+    # Pull principal contractor + project metadata from the parsed RA
+    # so the Enriched workbook's Summary sheet matches the canonical
+    # sample's title block / metadata rows.
+    principal_contractor = ""
+    if ra_path is not None:
+        # Re-parse for the metadata only (compact_context_block already
+        # consumed the parsed object once). Cheap; one xlsx-style read.
+        try:
+            ra_meta = parse_risk_assessment(ra_path)
+            principal_contractor = ra_meta.principal_contractor
+        except Exception:
+            log.warning("RA principal-contractor lookup failed", exc_info=True)
+
+    enriched_diag = build_pims_enriched_xlsx(
+        enriched, enriched_path,
+        project_name=ra_project_name,
+        site_address=site_address or "",
+        principal_contractor=principal_contractor,
+        audit_date_ddmmyyyy=ddmmyyyy,
+    )
     report_diag = build_ssa_report_docx(
         enriched,
         site_address=site_for_docx,
@@ -4604,6 +5339,8 @@ def run_once(
         output_path=report_path,
         prepared_by=prepared_by,
         prior_recs=prior_recs,
+        project_name=ra_project_name,
+        prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
     staging_result = build_pims_staging_xlsx_with_size_control(
@@ -5552,7 +6289,11 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     doc = Document(out)
     # p4 = site address (16 pt bold), p6 = narrative
     assert doc.paragraphs[4].text == "12 Test Street, Sydney NSW"
-    assert doc.paragraphs[6].text == "Audit summary text."
+    # Two-paragraph Executive Summary: p6 = scope intro (with long-
+    # format date "1 May 2026"), p7 = the audit-specific narrative we
+    # passed in. Both inherit Normal style.
+    assert "site safety audit conducted on 1 May 2026" in doc.paragraphs[6].text
+    assert doc.paragraphs[7].text == "Audit summary text."
 
     # Footer carries DD/MM/YYYY + prepared_by
     foot = doc.sections[1].footer.paragraphs[0].text
@@ -5602,10 +6343,19 @@ def test_findings_list_expands_per_non_compliant_row(tmp_path):
     assert len(headings) == 2
     assert any(h.startswith("#1") and "WAH-H6" in h for h in headings)
     assert any(h.startswith("#2") and "WAH-H6" in h for h in headings)
-    # Finding body text must appear as separate paragraphs.
-    body_texts = [p.text for p in doc.paragraphs]
-    assert any("FINDING-0" in t for t in body_texts)
-    assert any("FINDING-2" in t for t in body_texts)
+    # Finding body text now lives in the cloned 2-col detail table's
+    # Observation row, not in a body paragraph. Verify it landed there.
+    detail_obs = []
+    for t in doc.tables:
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location":
+            obs_row = next(
+                (r for r in t.rows if r.cells[0].text.strip() == "Observation"),
+                None,
+            )
+            if obs_row is not None:
+                detail_obs.append(obs_row.cells[1].text)
+    assert any("FINDING-0" in t for t in detail_obs)
+    assert any("FINDING-2" in t for t in detail_obs)
 
 
 def test_findings_list_no_register_rows_writes_placeholder(tmp_path):
@@ -5717,22 +6467,74 @@ def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
     assert len(set(reg_data)) == len(reg_data)
 
 
-def test_build_ssa_report_docx_removes_per_location_placeholder(tmp_path):
-    """v1 always strips the per-location 2-col block per R-1.3(e).
-    Output should contain exactly 3 tables (Positive, Prior Recs,
-    Observations Register) and no 'Location' first-cell table."""
+def test_build_ssa_report_docx_findings_block_per_non_compliant(tmp_path):
+    """Each non-Compliant finding renders as a (#N heading + 6-row
+    2-col detail table) block per the canonical template. The
+    detail table's right column carries Location / Observation /
+    Regulatory Basis / Hierarchy of Control / Required Action /
+    Timeframe values."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(3)]
+    rows = []
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs-{i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            finding=f"FINDING-{i} narrative.",
+            conformance_status="NCR",
+            ccvs_code="WAH-H6",
+            legal_ref=f"WHS Reg cl.{79 + i}",
+            recommendation=f"do action {i}",
+            location=f"area-{i}",
+            hierarchy_of_control="Engineering" if i == 0 else "Administrative",
+        ))
     out = tmp_path / "r.docx"
     build_ssa_report_docx(
-        rows=[],
-        site_address="addr",
-        audit_date_ddmmyyyy="01/01/2026",
-        narrative_summary="",
-        output_path=out,
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="", output_path=out,
     )
     doc = Document(out)
-    assert len(doc.tables) == 3
-    for t in doc.tables:
-        assert t.rows[0].cells[0].text.strip() != "Location"
+    # 3 NCR rows → 3 cloned per-finding detail tables, plus Positive
+    # Observations + Prior Recs + Observations Register = 6 tables.
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2
+        and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    assert len(detail_tables) == 3
+    # Each detail table carries the right field values for its row.
+    for i, t in enumerate(detail_tables):
+        # 2-col, 6 rows: Location, Observation, Regulatory Basis,
+        # Hierarchy of Control, Required Action, Timeframe.
+        labels = [r.cells[0].text.strip() for r in t.rows]
+        # "Required Action" template label is rewritten to
+        # "Recommendation" at render time per the canonical wording.
+        assert labels == [
+            "Location", "Observation", "Regulatory Basis",
+            "Hierarchy of Control", "Recommendation", "Timeframe",
+        ]
+        values = [r.cells[1].text.strip() for r in t.rows]
+        assert values[0] == f"area-{i}"
+        assert f"FINDING-{i}" in values[1]
+        assert values[2] == f"WHS Reg cl.{79 + i}"
+        assert values[3] in {"Engineering", "Administrative"}
+        assert values[4] == f"do action {i}"
+        assert values[5] == "Immediate"  # NCR → Immediate
+
+
+def test_build_ssa_report_docx_no_findings_collapses_detail_table(tmp_path):
+    """Empty audit collapses the Findings detail table's right-column
+    cells to blank and writes the placeholder heading."""
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[], site_address="addr", audit_date_ddmmyyyy="01/01/2026",
+        narrative_summary="", output_path=out,
+    )
+    doc = Document(out)
+    assert any("No findings recorded." in p.text for p in doc.paragraphs)
 
 
 def test_build_ssa_report_docx_no_findings_writes_placeholder(tmp_path):
@@ -6038,30 +6840,31 @@ def test_run_once_unparseable_prior_report_date_non_qualifying(evidence_folder):
     assert "Site-Safety-Audit-Report-bogus-RPD.docx" not in p["prior_reports_used"]
 
 
-def test_run_once_llm_pass_disabled_by_default_in_tests(evidence_folder, monkeypatch):
-    """Tests run without ``PIMS_ENRICH_FINDINGS`` set, so the LLM pass
-    short-circuits via ``finding_enricher.is_enabled``. Verify that an
-    empty narrative flows through to the docx without raising and that
-    no Anthropic call is attempted (would have surfaced as an
-    environment / network error)."""
-    monkeypatch.delenv("PIMS_ENRICH_FINDINGS", raising=False)
+def test_run_once_llm_pass_disabled_no_api_key(evidence_folder, monkeypatch):
+    """Without ``ANTHROPIC_API_KEY`` the vision enricher returns the
+    missing-key reason and rows stay Unmatched. The pipeline still
+    produces a docx — the scope-intro paragraph renders from the
+    folder date, the dynamic narrative paragraph is empty."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     payload = run_once(evidence_folder)
     assert payload["staging_status"] == "bulk_uploadable"
-    # Docx exists; narrative paragraph (p6) is empty.
     docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
     doc = Document(docx_path)
-    assert doc.paragraphs[6].text == ""
+    # Scope intro (deterministic) — always present.
+    assert "site safety audit conducted on" in doc.paragraphs[6].text
+    # Dynamic narrative was empty (no LLM); paragraph still exists but
+    # has no content.
+    # (Two-paragraph split only fires when both halves are non-empty.)
+    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
 
 
-def test_run_once_llm_pass_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
-    """Even with ``PIMS_ENRICH_FINDINGS=1``, ``enrich=False`` short-circuits
-    before the env-var gate. No Anthropic call attempted."""
-    monkeypatch.setenv("PIMS_ENRICH_FINDINGS", "1")
+def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
+    """``enrich=False`` short-circuits before the API call regardless
+    of API key presence."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
     payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
-    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
-    doc = Document(docx_path)
-    assert doc.paragraphs[6].text == ""
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_run_once_bad_folder_name_raises(tmp_path):
