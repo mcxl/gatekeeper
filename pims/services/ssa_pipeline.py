@@ -925,6 +925,94 @@ _TABLE_SIGNATURES = {
     "obs_register": ("Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"),
 }
 
+# Per-table column widths in centimetres (from user direction). The
+# helper below converts cm → twips (Word's table-cell width unit) and
+# writes <w:tcW w:w=... w:type="dxa"/> on every cell in every row of
+# the table so the column widths are deterministic across all clones.
+_TABLE_COL_WIDTHS_CM: dict[str, tuple[float, ...]] = {
+    "positive":     (1.5, 7.0, 9.5),
+    "prior_recs":   (6.5, 4.0, 2.5, 4.75),
+}
+
+# Tables whose first row should:
+#   - be bold (header styling)
+#   - repeat across page breaks (Word's tblHeader flag)
+_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive"})
+_TABLE_HEADER_REPEAT: frozenset[str] = frozenset({
+    "positive", "obs_register",
+})
+
+
+def _cm_to_twips(cm: float) -> int:
+    """1 cm = 567 twips (Word table width unit, 'dxa')."""
+    return int(round(cm * 567))
+
+
+def _apply_table_format(
+    tbl,
+    col_widths_cm: tuple[float, ...] | None,
+    bold_header: bool,
+    repeat_header: bool,
+) -> None:
+    """Set deterministic column widths, optional bold first row, and
+    optional header-repeat-across-pages on a python-docx Table.
+
+    Column widths are written on every row's cell so that cloned rows
+    inherit the same widths. ``bold_header`` walks the first row's
+    runs and sets ``bold=True``. ``repeat_header`` adds the
+    ``<w:tblHeader/>`` element to the first row's ``<w:trPr>`` so
+    Word repeats the header on each new page.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    if col_widths_cm:
+        twip_widths = [_cm_to_twips(w) for w in col_widths_cm]
+        # Update <w:gridCol> entries on the table's <w:tblGrid> first
+        # — Word reads these to size the columns initially.
+        grid = tbl._tbl.find(qn("w:tblGrid"))
+        if grid is not None:
+            grid_cols = grid.findall(qn("w:gridCol"))
+            for i, gc in enumerate(grid_cols):
+                if i < len(twip_widths):
+                    gc.set(qn("w:w"), str(twip_widths[i]))
+        # Then write per-cell widths on every row.
+        for row in tbl.rows:
+            for i, cell in enumerate(row.cells):
+                if i >= len(twip_widths):
+                    break
+                tcPr = cell._tc.get_or_add_tcPr()
+                tcW = tcPr.find(qn("w:tcW"))
+                if tcW is None:
+                    tcW = OxmlElement("w:tcW")
+                    tcPr.append(tcW)
+                tcW.set(qn("w:w"), str(twip_widths[i]))
+                tcW.set(qn("w:type"), "dxa")
+
+    if not tbl.rows:
+        return
+    header_row = tbl.rows[0]
+
+    if bold_header:
+        for cell in header_row.cells:
+            for p in cell.paragraphs:
+                if p.runs:
+                    for r in p.runs:
+                        r.bold = True
+                else:
+                    # Empty paragraph — append a bold run so any
+                    # existing header text on a clean cell still
+                    # renders bold (defensive; templates carry text).
+                    pass
+
+    if repeat_header:
+        trPr = header_row._tr.find(qn("w:trPr"))
+        if trPr is None:
+            trPr = OxmlElement("w:trPr")
+            header_row._tr.insert(0, trPr)
+        if trPr.find(qn("w:tblHeader")) is None:
+            trPr.append(OxmlElement("w:tblHeader"))
+
 # Per-location 2-col detail block: first row first cell == "Location",
 # 2 columns. Distinct enough from every other table in the template to
 # match unambiguously.
@@ -1069,16 +1157,35 @@ def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
         title = _finding_heading_text(idx, row)
         if idx == 1:
             _set_paragraph_runs_text(heading_p, title)
+            _set_paragraph_space_before(heading_p, twentieths_of_a_point=240)
             _populate_finding_detail_table(detail_tbl, row)
         else:
             new_h = copy.deepcopy(heading_p)
             new_t = copy.deepcopy(detail_tbl)
             _set_paragraph_runs_text(new_h, title)
+            _set_paragraph_space_before(new_h, twentieths_of_a_point=240)
             _populate_finding_detail_table(new_t, row)
             status_p.addprevious(new_h)
             status_p.addprevious(new_t)
         written += 1
     return written
+
+
+def _set_paragraph_space_before(p_element, twentieths_of_a_point: int) -> None:
+    """Add ``<w:spacing w:before="N"/>`` so each cloned ``#N`` heading
+    breathes from the previous finding's table. ``N`` is in
+    twentieths of a point — 240 ≈ 12 pt of leading whitespace."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    pPr = p_element.find(qn("w:pPr"))
+    if pPr is None:
+        pPr = OxmlElement("w:pPr")
+        p_element.insert(0, pPr)
+    spacing = pPr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        pPr.append(spacing)
+    spacing.set(qn("w:before"), str(twentieths_of_a_point))
 
 
 # Row-label → EnrichedRow attribute resolver. Header (left-cell) text
@@ -1570,6 +1677,12 @@ def build_ssa_report_docx(
     # --- Positive Observations table (3 cols) ------------------------
     pos_tbl = _find_table(doc, _TABLE_SIGNATURES["positive"])
     if pos_tbl is not None and len(pos_tbl.rows) >= 2:
+        _apply_table_format(
+            pos_tbl,
+            col_widths_cm=_TABLE_COL_WIDTHS_CM["positive"],
+            bold_header="positive" in _TABLE_HEADER_BOLD,
+            repeat_header="positive" in _TABLE_HEADER_REPEAT,
+        )
         placeholder = pos_tbl.rows[1]
         if positive:
             for idx, row in enumerate(positive, start=1):
@@ -1590,6 +1703,12 @@ def build_ssa_report_docx(
     # --- Status of Previous Recommendations table (4 cols) ----------
     prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
     if prev_tbl is not None and len(prev_tbl.rows) >= 2:
+        _apply_table_format(
+            prev_tbl,
+            col_widths_cm=_TABLE_COL_WIDTHS_CM["prior_recs"],
+            bold_header=False,
+            repeat_header=False,
+        )
         # Substitute the prior audit date into the header cell —
         # canonical sample reads "Status (30/03/26)", template carries
         # the literal "Status (DD/MM/YY)" placeholder.
@@ -1625,6 +1744,12 @@ def build_ssa_report_docx(
     # --- Observations Register table (6 cols, photos in col 1) -------
     reg_tbl = _find_table(doc, _TABLE_SIGNATURES["obs_register"])
     if reg_tbl is not None and len(reg_tbl.rows) >= 2:
+        _apply_table_format(
+            reg_tbl,
+            col_widths_cm=None,  # use template's existing widths
+            bold_header=False,   # template already styles the header
+            repeat_header="obs_register" in _TABLE_HEADER_REPEAT,
+        )
         placeholder = reg_tbl.rows[1]
         if register:
             for idx, row in enumerate(register, start=1):
