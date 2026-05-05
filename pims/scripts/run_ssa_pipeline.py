@@ -343,16 +343,34 @@ def run_once(
     rows, csv_warnings = parse_evidence_csv(csv_path)
     match_warnings = match_photos(rows, images)
 
-    cl_path = checklist_path or (
-        Path(__file__).resolve().parent.parent / "audit_checklist.xlsx"
-    )
-    checklist = (
-        ChecklistLookup.from_xlsx(cl_path) if cl_path.exists() else None
-    )
+    # Gap-8: Vision is the canonical classifier. The legacy keyword
+    # matcher in ChecklistLookup.match_observation produced 5/21 hits
+    # with one outright misroute on real audit data — it's only kept
+    # for the offline (--no-enrich) path AND only when the operator
+    # explicitly passes --checklist. The default (vision) path skips
+    # the xlsx load entirely so a missing audit_checklist.xlsx never
+    # silently degrades the run.
+    checklist = None
+    if not enrich and checklist_path is not None:
+        if checklist_path.exists():
+            checklist = ChecklistLookup.from_xlsx(checklist_path)
+        else:
+            log.warning(
+                "--checklist %s does not exist; offline run continues "
+                "with no keyword fallback", checklist_path,
+            )
 
     site_address = extract_site_address(rows)
 
-    enriched = enrich_observations(rows, checklist=checklist)
+    # When vision is on, enrich_observations builds shells only — the
+    # vision pass downstream does the real classification. When vision
+    # is off and a checklist was loaded, enable the keyword auto-match
+    # path so the run produces something better than all-Unmatched.
+    enriched = enrich_observations(
+        rows,
+        checklist=checklist,
+        auto_match=(checklist is not None and not enrich),
+    )
 
     # When site_address is unresolved, every staging row must
     # needs_review=TRUE (Field Defaults). enrich_observations already

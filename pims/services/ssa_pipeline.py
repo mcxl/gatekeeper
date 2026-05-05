@@ -420,6 +420,49 @@ class EnrichedRow:
 # Photo preprocessing — Appendix A R-7.4.1 / Appendix B R-B-3.1
 # ---------------------------------------------------------------------------
 
+# Image preprocessing cache — Appendix C §C.6 + gap-7. Keyed by
+# (source_abs_path_str, max_edge_px). Each entry stores a snapshot of
+# the encoded image bytes plus pixel dimensions so callers receive a
+# fresh BytesIO cursor on every cache hit (BytesIO is mutable; sharing
+# the same instance would let one caller's read() consume bytes for
+# the next).
+#
+# Cache lifetime is the running process — for a single CLI run the
+# orchestrator initialises and the watcher likewise. _PHOTO_CACHE_HITS
+# / MISSES counters expose how many rerenders the cache saved; the
+# size-control wrapper records both into the run diagnostics so we
+# can verify on real folders that the cache actually fires.
+_PHOTO_CACHE: dict[tuple[str, int], tuple[bytes, str, int, int]] = {}
+_PHOTO_CACHE_HITS = 0
+_PHOTO_CACHE_MISSES = 0
+
+
+def _photo_cache_clear() -> None:
+    """Drop every cached entry; reset hit/miss counters."""
+    global _PHOTO_CACHE_HITS, _PHOTO_CACHE_MISSES
+    _PHOTO_CACHE.clear()
+    _PHOTO_CACHE_HITS = 0
+    _PHOTO_CACHE_MISSES = 0
+
+
+def _photo_cache_stats() -> dict[str, int]:
+    return {
+        "hits": _PHOTO_CACHE_HITS,
+        "misses": _PHOTO_CACHE_MISSES,
+        "entries": len(_PHOTO_CACHE),
+    }
+
+
+def _cache_delta(snapshot: dict[str, int]) -> dict[str, int]:
+    """Diff the photo cache against ``snapshot`` so the size-control
+    wrapper reports just the hits / misses it drove."""
+    now = _photo_cache_stats()
+    return {
+        "hits":   now["hits"] - snapshot.get("hits", 0),
+        "misses": now["misses"] - snapshot.get("misses", 0),
+    }
+
+
 def _preprocess_photo(
     source: Path,
     max_edge_px: int = 1600,
@@ -429,7 +472,24 @@ def _preprocess_photo(
     Returns (BytesIO, format, width_px, height_px) or None on load
     failure / missing source. ``format`` is ``"JPEG"`` or ``"PNG"``
     (PNG only when the source was PNG with transparency).
+
+    Result is cached by ``(source_path, max_edge_px)`` so the staging
+    size-control wrapper can re-render at progressively smaller caps
+    without paying the EXIF / downscale / JPEG-encode cost on every
+    pass. Cache hits return a fresh ``BytesIO`` cursor over the
+    stored bytes.
     """
+    global _PHOTO_CACHE_HITS, _PHOTO_CACHE_MISSES
+    try:
+        cache_key = (str(source.resolve()), int(max_edge_px))
+    except Exception:
+        cache_key = (str(source), int(max_edge_px))
+    cached = _PHOTO_CACHE.get(cache_key)
+    if cached is not None:
+        _PHOTO_CACHE_HITS += 1
+        data, fmt, w, h = cached
+        return BytesIO(data), fmt, w, h
+    _PHOTO_CACHE_MISSES += 1
     try:
         from PIL import Image, ImageOps
     except Exception:
@@ -456,7 +516,9 @@ def _preprocess_photo(
                 rgb.save(buf, format="JPEG", quality=85, optimize=False)
                 fmt = "JPEG"
             buf.seek(0)
-            return buf, fmt, im.width, im.height
+            data = buf.getvalue()
+            _PHOTO_CACHE[cache_key] = (data, fmt, im.width, im.height)
+            return BytesIO(data), fmt, im.width, im.height
     except FileNotFoundError:
         return None
     except Exception:
@@ -2160,6 +2222,10 @@ def build_pims_staging_xlsx_with_size_control(
     want a single render at a fixed cap (tests, debugging).
     """
     diags: list[dict] = []
+    # Snapshot cache stats at entry so the wrapper's diagnostics
+    # report the hits / misses it actually drove (rather than the
+    # whole-process running totals).
+    cache_at_entry = _photo_cache_stats()
 
     def _render_at(rs: list[EnrichedRow], path: Path, edge_px: int) -> dict:
         return build_pims_staging_xlsx(
@@ -2187,6 +2253,7 @@ def build_pims_staging_xlsx_with_size_control(
             "split": True,
             "split_reason": "row_count",
             "diagnostics": diags,
+            "cache": _cache_delta(cache_at_entry),
         }
 
     # --- Path 2-3: progressive downscale on a single part ----------
@@ -2200,9 +2267,12 @@ def build_pims_staging_xlsx_with_size_control(
                 "split": False,
                 "split_reason": None,
                 "diagnostics": diags,
+                "cache": _cache_delta(cache_at_entry),
             }
 
     # --- Path 4: size-driven split at the smallest cap -------------
+    # _cache_delta is defined locally below the top-level builder and
+    # bound here at call time — see helper at module level.
     # Bisect the row set; each half is recursed into the same wrapper
     # so a half that fits short-circuits cleanly. Halves render at the
     # smallest cap because anything larger has already been rejected
@@ -2269,6 +2339,7 @@ def build_pims_staging_xlsx_with_size_control(
             *left.get("diagnostics", []),
             *right.get("diagnostics", []),
         ],
+        "cache": _cache_delta(cache_at_entry),
     }
 
 

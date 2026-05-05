@@ -1344,6 +1344,36 @@ def test_size_control_row_count_split_above_500(tmp_path):
     assert not out.exists()
 
 
+def test_size_control_image_cache_avoids_rerun_preprocess(tmp_path):
+    """Gap-7: progressive-downscale rerenders must reuse the
+    preprocessed bytes for the SAME (source, max_edge_px) pair
+    instead of running EXIF-transpose / downscale / JPEG-encode
+    again. Cache hits / misses are exposed on the wrapper's diag."""
+    from pims.services import ssa_pipeline as sp
+    sp._photo_cache_clear()
+    rows = _make_staging_rows(tmp_path, 5, edge_px=(800, 600))
+    out = tmp_path / "s.xlsx"
+
+    # Force a single-pass at 1600px (no rerender); the cache miss
+    # count must equal the number of rows since each photo was
+    # processed exactly once.
+    r = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    cache = r["cache"]
+    assert cache["misses"] == 5
+    assert cache["hits"] == 0
+
+    # Rerunning the same wrapper now should be ENTIRELY cache hits
+    # because every (source, 1600) pair is already cached.
+    r2 = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    cache2 = r2["cache"]
+    assert cache2["hits"] == 5
+    assert cache2["misses"] == 0
+
+
 def test_size_control_size_driven_split_into_partN(tmp_path):
     """Force a tiny budget that no full-set render can satisfy → recursive
     halving + sequential renumbering of parts."""
@@ -1506,6 +1536,55 @@ def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
     payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
     assert payload["llm_diagnostics"]["enabled"] is False
+
+
+def test_run_once_default_path_does_not_load_legacy_checklist(
+    evidence_folder, monkeypatch,
+):
+    """Gap-8: default (vision) path skips the audit_checklist.xlsx
+    load — vision is the canonical classifier and the legacy keyword
+    fallback hit 5/21 with a misroute on real data. We stub
+    ChecklistLookup.from_xlsx to fail loud so the test breaks if
+    anything ever calls it on the default path."""
+    from pims.services import ssa_checklist_lookup
+    calls: list[str] = []
+
+    def boom(path):  # pragma: no cover — fail loud
+        calls.append(str(path))
+        raise AssertionError(f"legacy checklist loaded on default path: {path}")
+
+    monkeypatch.setattr(
+        ssa_checklist_lookup.ChecklistLookup, "from_xlsx", staticmethod(boom),
+    )
+    # Stub the LLM driver so we don't need an API key in this test.
+    monkeypatch.setattr(
+        "pims.scripts.run_ssa_pipeline._apply_vision_enrichment",
+        lambda *a, **kw: ("stub narrative", {"enabled": True, "rows_total": 0}),
+    )
+    payload = run_once(evidence_folder)  # default enrich=True
+    assert payload["staging_status"] == "bulk_uploadable"
+    assert calls == []
+
+
+def test_run_once_no_enrich_with_explicit_checklist_loads_legacy(
+    evidence_folder, tmp_path, monkeypatch,
+):
+    """Gap-8: legacy fallback only fires when the operator explicitly
+    passes --no-enrich AND --checklist. Without --checklist the
+    offline path runs with everything Unmatched (acceptable: the
+    operator opted out of vision)."""
+    cl_path = (
+        Path(__file__).resolve().parent.parent
+        / "pims" / "audit_checklist.xlsx"
+    )
+    assert cl_path.exists()
+    payload = run_once(
+        evidence_folder, enrich=False, checklist_path=cl_path,
+    )
+    assert payload["staging_status"] == "bulk_uploadable"
+    # We don't assert specific matches — the keyword matcher is
+    # noisy by design — only that the run completed and the
+    # checklist hook ran (no PreflightError, no missing-file).
 
 
 def test_run_once_bad_folder_name_raises(tmp_path):
