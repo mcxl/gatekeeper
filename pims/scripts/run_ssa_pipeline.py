@@ -28,6 +28,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -247,6 +248,41 @@ def _apply_vision_enrichment(
     return narrative, diag
 
 
+class PreflightError(RuntimeError):
+    """Raised when a required runtime precondition is missing.
+
+    Distinct from generic ``RuntimeError`` so the CLI can surface the
+    failure with a clean exit code and human-readable message before
+    any rows are processed (rather than silently producing
+    semantically-degraded output).
+    """
+
+
+def _preflight(enrich: bool) -> None:
+    """Fail loud BEFORE any row processing when required runtime
+    preconditions are missing.
+
+    Currently checks:
+      - When ``enrich`` is True, ``ANTHROPIC_API_KEY`` must be set in
+        the environment. Without it the vision enricher silently
+        leaves every row at ``status="Unmatched"``, and operators
+        have hit this twice — once mistaking the result for a code
+        bug, once for a billing problem. A loud preflight failure
+        prevents both.
+
+    Caller can short-circuit with ``--no-enrich`` when they
+    deliberately want the offline path.
+    """
+    if enrich and not os.environ.get("ANTHROPIC_API_KEY"):
+        raise PreflightError(
+            "ANTHROPIC_API_KEY is not set in the environment. "
+            "Either set the key (load .env, run with the key exported, "
+            "or invoke from a shell that already has it) or pass "
+            "--no-enrich to run the deterministic offline path "
+            "(every row will land Unmatched)."
+        )
+
+
 def run_once(
     folder: Path,
     prepared_by: str = "Alan Richardson",
@@ -266,6 +302,11 @@ def run_once(
     folder = folder.resolve()
     if not folder.is_dir():
         raise NotADirectoryError(folder)
+
+    # Runtime preflight — must happen before any row processing so a
+    # missing API key (or other config gap) fails loud rather than
+    # producing a structurally-valid but semantically-degraded run.
+    _preflight(enrich=enrich)
 
     freeze = folder / ".ssa_freeze"
     if freeze.exists() and not ignore_freeze:
@@ -544,6 +585,12 @@ def main(argv: list[str] | None = None) -> int:
             enrich=not args.no_enrich,
             risk_assessment_path=args.risk_assessment,
         )
+    except PreflightError as e:
+        # Preflight blocked the run before any rows processed; rc=3
+        # distinguishes a config gap from a frozen folder (rc=2) and
+        # an input/argument error (rc=1).
+        print(f"preflight: {e}", file=sys.stderr)
+        return 3
     except RuntimeError as e:
         # Frozen folder — the documented exit signal for the manual CLI
         # is non-zero with a clear message.

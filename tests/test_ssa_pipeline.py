@@ -74,6 +74,18 @@ def _save_jpeg(path: Path, size=(800, 600), color="red") -> Path:
     return path
 
 
+@pytest.fixture(autouse=True)
+def _stub_anthropic_key(monkeypatch):
+    """Most tests don't exercise the live vision path — they either
+    pass ``enrich=False`` to run_once or stub the runner. The new
+    runtime preflight requires ``ANTHROPIC_API_KEY`` to be set when
+    ``enrich`` is True (default), so we stub a placeholder key here
+    by default. Tests that specifically exercise the missing-key
+    branch delete this with their own monkeypatch."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
+    yield
+
+
 @pytest.fixture
 def evidence_folder(tmp_path):
     """Minimal RPD evidence folder: 2-row CSV + 2 photos.
@@ -504,14 +516,30 @@ def test_vision_coerce_record_unknown_status_falls_to_unmatched():
     assert r["status"] == "Unmatched"
 
 
-def test_vision_enrichment_no_api_key_skips_cleanly(evidence_folder, monkeypatch):
-    """ANTHROPIC_API_KEY missing → vision enricher returns diagnostics
-    with the missing-key reason and rows stay Unmatched. Pipeline does
-    not raise."""
+def test_vision_enrichment_no_api_key_preflight_fails_loud(
+    evidence_folder, monkeypatch,
+):
+    """``ANTHROPIC_API_KEY`` missing + ``enrich=True`` (default) →
+    ``PreflightError`` raised before any row processing. This is the
+    new gap-1 contract: silent semantically-degraded output is
+    forbidden; the operator must either supply the key or pass
+    ``enrich=False``."""
+    from pims.scripts.run_ssa_pipeline import PreflightError
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    payload = run_once(evidence_folder)
+    with pytest.raises(PreflightError, match="ANTHROPIC_API_KEY"):
+        run_once(evidence_folder)
+
+
+def test_vision_enrichment_no_api_key_with_no_enrich_runs(
+    evidence_folder, monkeypatch,
+):
+    """Operator can opt out of the preflight by passing ``enrich=False``;
+    the deterministic offline path still produces all 3 deliverables
+    (every row Unmatched as documented)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
-    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_checklist_lookup_synthesises_code_from_leading_numbers():
@@ -1277,22 +1305,19 @@ def test_run_once_unparseable_prior_report_date_non_qualifying(evidence_folder):
     assert "Site-Safety-Audit-Report-bogus-RPD.docx" not in p["prior_reports_used"]
 
 
-def test_run_once_llm_pass_disabled_no_api_key(evidence_folder, monkeypatch):
-    """Without ``ANTHROPIC_API_KEY`` the vision enricher returns the
-    missing-key reason and rows stay Unmatched. The pipeline still
-    produces a docx — the scope-intro paragraph renders from the
-    folder date, the dynamic narrative paragraph is empty."""
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    payload = run_once(evidence_folder)
+def test_run_once_llm_pass_no_enrich_produces_scope_intro_only(
+    evidence_folder, monkeypatch,
+):
+    """``enrich=False`` skips the LLM cleanly (no preflight trip,
+    no Anthropic call). The deterministic scope-intro paragraph still
+    renders; the dynamic narrative is empty."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
+    payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
     docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
     doc = Document(docx_path)
-    # Scope intro (deterministic) — always present.
     assert "site safety audit conducted on" in doc.paragraphs[6].text
-    # Dynamic narrative was empty (no LLM); paragraph still exists but
-    # has no content.
-    # (Two-paragraph split only fires when both halves are non-empty.)
-    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
