@@ -37,6 +37,7 @@ from pathlib import Path
 from pims.services.ssa_checklist_lookup import ChecklistLookup
 from pims.services.ssa_pipeline import (
     EnrichedRow,
+    apply_ra_labels_to_rows,
     build_pims_enriched_xlsx,
     build_pims_staging_xlsx_with_size_control,
     build_ssa_report_docx,
@@ -45,6 +46,7 @@ from pims.services.ssa_pipeline import (
     match_photos,
     parse_evidence_csv,
     parse_prior_report_recommendations,
+    split_multi_issue_observations,
 )
 
 log = logging.getLogger("ssa.cli")
@@ -343,6 +345,12 @@ def run_once(
     rows, csv_warnings = parse_evidence_csv(csv_path)
     match_warnings = match_photos(rows, images)
 
+    # Item 11: split composite "(1) X (2) Y" notes into atomic
+    # observations BEFORE photo-match metadata is consumed downstream.
+    # Each split shares the same csv_row, photo and timestamp; only
+    # the observation_text differs.
+    rows = split_multi_issue_observations(rows)
+
     # Gap-8: Vision is the canonical classifier. The legacy keyword
     # matcher in ChecklistLookup.match_observation produced 5/21 hits
     # with one outright misroute on real audit data — it's only kept
@@ -400,10 +408,12 @@ def run_once(
         ra_path = autodiscover_in_folder(folder)
     ra_context = ""
     ra_project_name = ""
+    ra_obj = None
     ra_summary: dict[str, object] = {"path": None, "phases": 0, "activities": 0,
                                      "hold_points": 0}
     if ra_path is not None:
         ra = parse_risk_assessment(ra_path)
+        ra_obj = ra
         ra_context = compact_context_block(ra)
         # Strip the "— N Industrial Warehouse Units" suffix that some
         # RA project names carry; the cover line wants just the venue.
@@ -438,6 +448,17 @@ def run_once(
         ra_context=ra_context,
     )
     llm_diag["ra"] = ra_summary
+
+    # Items 9 + 14: apply "SDG Project Risk Assessment code: <CODE>"
+    # labelling with first-use shorthand expansion to every row's
+    # text fields. Runs once after vision enrichment so the
+    # downstream enriched xlsx / docx / staging xlsx all carry the
+    # same labelled output.
+    apply_ra_labels_to_rows(enriched, ra=ra_obj)
+    # Item 9: label RA codes inside the executive summary too.
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    if narrative_summary:
+        narrative_summary = apply_ra_code_labels(narrative_summary, ra=ra_obj)
 
     # Parse carry-forward recommendations from the newest qualifying
     # prior report so the SSA report's "Status of Previous
@@ -486,6 +507,7 @@ def run_once(
         prior_recs=prior_recs,
         project_name=ra_project_name,
         prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
+        risk_assessment=ra_obj,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
     staging_result = build_pims_staging_xlsx_with_size_control(

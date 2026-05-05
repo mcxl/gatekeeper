@@ -404,6 +404,10 @@ class EnrichedRow:
     swms_present: str = ""        # one of: "yes" / "no" / "unknown" / ""
     initial_risk: str = ""        # gap-6: H/M/L per RA scheme
     residual_risk: str = ""       # gap-6: H/M/L
+    # Item 12: when several photos provide evidence for the same
+    # consolidated finding, the canonical row carries each contributing
+    # csv_idx here for cross-referencing.
+    evidence_csv_indices: list[int] = field(default_factory=list)
 
     @property
     def action_required(self) -> str:
@@ -1167,6 +1171,122 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
     return out
 
 
+def _build_findings_index_table(doc, register_rows: list[EnrichedRow]) -> int:
+    """Insert a 2-col index table directly below the "Findings"
+    heading paragraph (item 15 of the gap-closure brief).
+
+    Columns: Finding | Recommendation
+    One row per detail block, in the same significance order as the
+    detail blocks themselves. Uses python-docx's built-in
+    ``Table Grid`` style so the table matches the surrounding tables
+    visually.
+
+    Returns the count of finding rows written (header excluded);
+    ``0`` is a no-op (no Findings heading or no findings).
+    """
+    from docx.oxml.ns import qn
+    body = doc.element.body
+    findings_p = None
+    for child in body.iterchildren():
+        if child.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+        if text == "Findings":
+            findings_p = child
+            break
+    if findings_p is None or not register_rows:
+        return 0
+
+    # Build the index table programmatically. python-docx's table
+    # API requires inserting through ``Document.add_table`` then
+    # moving the element; we do it via XML manipulation so the table
+    # lands exactly after the "Findings" heading paragraph.
+    from docx.oxml import OxmlElement
+    tbl = OxmlElement("w:tbl")
+
+    # tblPr — borders + Table Grid style for visual parity with the
+    # surrounding tables.
+    tblPr = OxmlElement("w:tblPr")
+    tblStyle = OxmlElement("w:tblStyle")
+    tblStyle.set(qn("w:val"), "TableGrid")
+    tblPr.append(tblStyle)
+    tblW = OxmlElement("w:tblW")
+    tblW.set(qn("w:w"), "0")
+    tblW.set(qn("w:type"), "auto")
+    tblPr.append(tblW)
+    tbl_borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), "single")
+        b.set(qn("w:sz"), "4")
+        b.set(qn("w:color"), "auto")
+        tbl_borders.append(b)
+    tblPr.append(tbl_borders)
+    tbl.append(tblPr)
+
+    # tblGrid — two columns, Finding wider than Recommendation per
+    # the canonical sample's read order.
+    tbl_grid = OxmlElement("w:tblGrid")
+    for w_twips in (5500, 4500):  # ~9.7 cm + ~7.9 cm
+        gc = OxmlElement("w:gridCol")
+        gc.set(qn("w:w"), str(w_twips))
+        tbl_grid.append(gc)
+    tbl.append(tbl_grid)
+
+    def _make_cell(text: str, bold: bool = False, width_twips: int = 0):
+        tc = OxmlElement("w:tc")
+        tcPr = OxmlElement("w:tcPr")
+        tcW = OxmlElement("w:tcW")
+        tcW.set(qn("w:w"), str(width_twips))
+        tcW.set(qn("w:type"), "dxa")
+        tcPr.append(tcW)
+        tc.append(tcPr)
+        p = OxmlElement("w:p")
+        if bold:
+            pPr = OxmlElement("w:pPr")
+            p.append(pPr)
+        r = OxmlElement("w:r")
+        if bold:
+            rPr = OxmlElement("w:rPr")
+            b = OxmlElement("w:b")
+            rPr.append(b)
+            r.append(rPr)
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        r.append(t)
+        p.append(r)
+        tc.append(p)
+        return tc
+
+    # Header row.
+    header_tr = OxmlElement("w:tr")
+    trPr = OxmlElement("w:trPr")
+    tbl_header = OxmlElement("w:tblHeader")
+    trPr.append(tbl_header)
+    header_tr.append(trPr)
+    header_tr.append(_make_cell("Finding", bold=True, width_twips=5500))
+    header_tr.append(_make_cell("Recommendation", bold=True, width_twips=4500))
+    tbl.append(header_tr)
+
+    # Data rows — one per finding in register order. The Finding
+    # column carries the descriptive title; Recommendation carries
+    # the short directive sentence (already tier-prefixed by the
+    # vision enricher).
+    written = 0
+    for row in register_rows:
+        title = row.finding_title or row.ccvs_category or "Finding"
+        rec = (row.recommendation or row.action_description or "").strip()
+        tr = OxmlElement("w:tr")
+        tr.append(_make_cell(title, width_twips=5500))
+        tr.append(_make_cell(rec, width_twips=4500))
+        tbl.append(tr)
+        written += 1
+
+    findings_p.addnext(tbl)
+    return written
+
+
 def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
     """Materialise the ``Findings`` section per non-Compliant row.
 
@@ -1372,6 +1492,381 @@ def _set_cell_text_oxml(tc_element, text: str) -> None:
         parent = extra.getparent()
         if parent is not None:
             parent.remove(extra)
+
+
+# --- RA code labelling (items 9 + 14) ------------------------------------
+#
+# Reviewer requirement: every reference to an RA code (TP-07, HP-04,
+# H14, etc.) inside finding text / recommendations / hierarchy / staging
+# narrative should carry the explicit prefix
+#   "SDG Project Risk Assessment code: <CODE>"
+# and the first occurrence inside any one block of text expands the
+# shorthand once (e.g. "TP-07 (Tilt-up panel activity 07)") so the
+# downstream reader doesn't need to flip back to the RA to decode it.
+#
+# RA-derived expansions come from the parsed RiskAssessment object;
+# HRCW codes use a static map (the RA's HRCW column carries them as
+# free-text descriptions, not a structured table).
+
+# RA reference patterns. Activity refs: 2-letter package + 2-3 digits +
+# optional letter suffix (TP-01A, MR-02). HP codes: HP-01 .. HP-99.
+# HRCW codes: H01..H99 (not preceded by a hyphen, so we don't match
+# CCVS tier suffix like "WAH-H6").
+_RA_ACTIVITY_RE = re.compile(r"\b([A-Z]{2}-\d{1,3}[A-Z]?)\b")
+_RA_HP_RE = re.compile(r"\b(HP-\d{2})\b")
+_RA_HRCW_RE = re.compile(r"(?<![-A-Za-z0-9])(H\d{1,2})\b")
+
+# Static HRCW expansions — H-codes from NSW WHS Reg 2017 cl.291 plus
+# the project-RA's H01-H15 set used in Unitas_Risk_Assessment_all.docx.
+_HRCW_EXPANSIONS: dict[str, str] = {
+    "H01": "fall risk",
+    "H02": "telecommunication tower work",
+    "H03": "demolition",
+    "H04": "asbestos disturbance",
+    "H05": "structural alteration",
+    "H06": "confined space",
+    "H07": "trench / shaft >1.5 m",
+    "H08": "tunnels",
+    "H09": "explosives",
+    "H10": "pressurised gas distribution",
+    "H11": "energised electrical installations",
+    "H12": "contaminated atmospheres",
+    "H13": "tilt-up or precast concrete",
+    "H14": "traffic corridor",
+    "H15": "powered mobile plant",
+    "H16": "extreme temperatures",
+    "H17": "drowning hazards",
+    "H18": "diving work",
+}
+
+
+def _ra_code_expansion(code: str, ra) -> str:
+    """Plain-English expansion of an RA code, used on first occurrence.
+
+    ``ra`` is a ``RiskAssessment`` (or None when no RA was loaded).
+    Returns the parenthesised expansion text WITHOUT the surrounding
+    parens (caller wraps); empty string when no expansion is known.
+    """
+    code = code.upper()
+    if code.startswith("HP-"):
+        if ra is not None:
+            for hp in getattr(ra, "hold_points", []) or []:
+                if hp.code == code:
+                    return f"Hold Point {code[3:]}: {hp.description}"
+        return f"Hold Point {code[3:]}"
+    if "-" in code and code[:2].isalpha():
+        # Activity ref like TP-07. Look up in the RA's activities list
+        # and use the phase title + activity number for the expansion.
+        if ra is not None:
+            for act in getattr(ra, "activities", []) or []:
+                if act.ref == code:
+                    phase_title = act.phase
+                    # Strip the leading "N — " from "6 — Tilt-Up Panel
+                    # Erection" so the parens read cleanly.
+                    for sep in (" — ", " – ", " - "):
+                        if sep in phase_title:
+                            phase_title = phase_title.split(sep, 1)[1]
+                            break
+                    suffix = code.split("-", 1)[1]
+                    return f"{phase_title.strip()} activity {suffix}"
+        return ""
+    if code in _HRCW_EXPANSIONS:
+        return f"HRCW {_HRCW_EXPANSIONS[code]}"
+    return ""
+
+
+_RA_LABEL_PREFIX = "SDG Project Risk Assessment code"
+
+
+def apply_ra_code_labels(text: str, ra=None) -> str:
+    """Wrap RA codes in the canonical reviewer-facing prefix.
+
+    First occurrence of each distinct code in ``text`` becomes:
+        SDG Project Risk Assessment code: TP-07 (Tilt-up Panel
+        Erection activity 07)
+    Subsequent occurrences (if any in the same block) become:
+        SDG Project Risk Assessment code: TP-07
+    Codes already wrapped in the prefix are left alone (idempotent
+    on re-runs / chained labelling). Multiple consecutive codes that
+    cluster in one phrase collapse into a single
+    "SDG Project Risk Assessment codes: A, B, C" prefix on first hit.
+    """
+    if not text:
+        return text
+    if _RA_LABEL_PREFIX in text:
+        return text  # already labelled
+
+    # Collect every code occurrence with span and category.
+    matches: list[tuple[int, int, str, str]] = []  # (start, end, code, kind)
+    for m in _RA_HP_RE.finditer(text):
+        matches.append((m.start(), m.end(), m.group(1), "hp"))
+    for m in _RA_ACTIVITY_RE.finditer(text):
+        code = m.group(1)
+        if code.startswith("HP-"):
+            continue  # already covered by _RA_HP_RE
+        matches.append((m.start(), m.end(), code, "activity"))
+    for m in _RA_HRCW_RE.finditer(text):
+        matches.append((m.start(), m.end(), m.group(1), "hrcw"))
+    if not matches:
+        return text
+
+    matches.sort(key=lambda t: t[0])
+
+    # Cluster matches that sit within a small gap (e.g. "HP-04 / TP-05"
+    # or "TP-05 (HRCW H14)") into one labelled phrase. Threshold: 6
+    # characters between match end and next match start (covers
+    # ", ", " / ", " (HRCW ", " and ").
+    clusters: list[list[tuple[int, int, str, str]]] = []
+    for tup in matches:
+        if not clusters:
+            clusters.append([tup])
+            continue
+        prev_end = clusters[-1][-1][1]
+        if tup[0] - prev_end <= 6:
+            clusters[-1].append(tup)
+        else:
+            clusters.append([tup])
+
+    seen: set[str] = set()
+    out_parts: list[str] = []
+    cursor = 0
+    for cluster in clusters:
+        c_start = cluster[0][0]
+        c_end = cluster[-1][1]
+        out_parts.append(text[cursor:c_start])
+        codes = [c for _s, _e, c, _k in cluster]
+        # First-use expansions for any unseen codes in this cluster.
+        expansions: list[str] = []
+        for code in codes:
+            if code in seen:
+                continue
+            seen.add(code)
+            exp = _ra_code_expansion(code, ra)
+            if exp:
+                expansions.append(f"{code} ({exp})")
+            else:
+                expansions.append(code)
+        # Any later codes in the cluster that were already seen still
+        # need to appear — we emit them as bare codes alongside the
+        # expansions, in original order.
+        rendered_codes: list[str] = []
+        seen_in_cluster: set[str] = set()
+        for code in codes:
+            if code in seen_in_cluster:
+                continue
+            seen_in_cluster.add(code)
+            # Find the matching expansion (if we just emitted one).
+            for ex in expansions:
+                if ex.startswith(code):
+                    rendered_codes.append(ex)
+                    break
+            else:
+                rendered_codes.append(code)
+        prefix_word = (
+            _RA_LABEL_PREFIX
+            if len(rendered_codes) == 1
+            else _RA_LABEL_PREFIX + "s"
+        )
+        out_parts.append(f"{prefix_word}: {', '.join(rendered_codes)}")
+        cursor = c_end
+    out_parts.append(text[cursor:])
+    return "".join(out_parts)
+
+
+def cap_executive_summary(text: str, max_lines: int = 20) -> str:
+    """Hard-cap the Executive Summary to ``max_lines`` lines.
+
+    "Lines" is interpreted as visual lines on the rendered page. We
+    approximate by counting ~14 words per line on A4 with the SSA
+    template's body width and capping the input at
+    ``max_lines * 14`` words. The text is truncated at the last
+    sentence boundary that fits, and an ellipsis is NOT added — the
+    LLM prompt already targets ≤140 words; this is a defensive
+    safety net for when the model overshoots.
+    """
+    if not text:
+        return text
+    words_per_line = 14
+    word_cap = max_lines * words_per_line
+    words = text.split()
+    if len(words) <= word_cap:
+        return text
+    truncated = " ".join(words[:word_cap])
+    # Trim back to the last sentence end so we don't end mid-thought.
+    for marker in (". ", "? ", "! "):
+        cut = truncated.rfind(marker)
+        if cut > word_cap // 2:
+            return truncated[:cut + 1]
+    return truncated
+
+
+def merge_similar_findings(
+    indexed_rows: list[tuple[int, EnrichedRow]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Consolidate materially similar non-Compliant findings.
+
+    Two rows are "similar" when they share:
+      - conformance_status (NCR/Conditional/Info)
+      - ccvs_code stream prefix (e.g. both MOB-*, both WAH-*)
+      - finding_title (case-insensitive equality)
+
+    The first row in CSV order becomes the merged "canonical" row.
+    Subsequent similar rows have their evidence references appended
+    to the canonical row's ``monitoring_note`` ("Evidence also: <fn>")
+    and their photo csv_idx folded into a new ``evidence_csv_indices``
+    list on the canonical row. The canonical row's csv_idx is
+    preserved so existing cross-refs still resolve.
+
+    Compliant rows are NOT merged — Positive Observations needs each
+    one to render in the table separately.
+
+    Returns the merged list (preserving order of the canonical rows).
+    """
+    if not indexed_rows:
+        return indexed_rows
+
+    canonical: list[tuple[int, EnrichedRow]] = []
+    seen: dict[tuple[str, str, str], int] = {}  # key → index in canonical
+    for csv_idx, row in indexed_rows:
+        if row.conformance_status == "Compliant":
+            canonical.append((csv_idx, row))
+            continue
+        if not row.finding_title:
+            canonical.append((csv_idx, row))
+            continue
+        stream = row.ccvs_code.split("-", 1)[0] if "-" in row.ccvs_code else row.ccvs_code
+        key = (
+            row.conformance_status,
+            stream,
+            row.finding_title.strip().lower(),
+        )
+        existing = seen.get(key)
+        if existing is None:
+            seen[key] = len(canonical)
+            # Initialise evidence list with the canonical row's own
+            # csv_idx so downstream callers can iterate uniformly.
+            row.evidence_csv_indices = [csv_idx]
+            canonical.append((csv_idx, row))
+        else:
+            target_idx, target_row = canonical[existing]
+            # Append the duplicate's csv_idx to the canonical row's
+            # evidence list and surface it in monitoring_note as a
+            # human-readable cross-reference.
+            target_row.evidence_csv_indices = list(
+                target_row.evidence_csv_indices or []
+            ) + [csv_idx]
+            extra = f"Evidence also: PIMS Obs {csv_idx}"
+            if target_row.monitoring_note:
+                if extra not in target_row.monitoring_note:
+                    target_row.monitoring_note = (
+                        f"{target_row.monitoring_note} | {extra}"
+                    )
+            else:
+                target_row.monitoring_note = extra
+    return canonical
+
+
+def apply_ra_labels_to_rows(
+    rows: list[EnrichedRow], ra=None,
+) -> None:
+    """Apply ``apply_ra_code_labels`` in-place to every text field of
+    every EnrichedRow. Idempotent — pre-labelled text is left alone.
+    Called once by the orchestrator after vision enrichment so all
+    three builders (enriched xlsx / docx / staging xlsx) see the
+    labelled output consistently."""
+    for row in rows:
+        row.finding = apply_ra_code_labels(row.finding, ra=ra)
+        row.observation_text_clean = apply_ra_code_labels(
+            row.observation_text_clean, ra=ra,
+        )
+        row.recommendation = apply_ra_code_labels(row.recommendation, ra=ra)
+        row.hierarchy_of_control = apply_ra_code_labels(
+            row.hierarchy_of_control, ra=ra,
+        )
+        row.monitoring_note = apply_ra_code_labels(
+            row.monitoring_note, ra=ra,
+        )
+
+
+def _significance_score(row: EnrichedRow) -> tuple[int, int, int]:
+    """Significance ranking key — smaller tuple sorts first.
+
+    Highest priority themes (from item 10 of the gap-closure brief):
+      - hold-point breaches            (HP-XX referenced in finding/
+                                        recommendation/hold_point field)
+      - HRCW activity not on a SWMS    (swms_required AND swms_present
+                                        in {"no", "unknown", ""})
+      - uncontrolled plant / public
+        interface                      (CCVS streams MOB / CRN / TRF
+                                        with H6/H9 tier)
+      - critical authorisation /
+        permit breaches                (HOT-H6/H9, ELE-H6/H9, ASB-*,
+                                        CFS-*, DEM-*)
+
+    Secondary axes (used to break ties):
+      - status severity rank: NCR > Conditional > Info > Compliant > Unmatched
+      - tier severity:        H9 > H6 > M3 > M4 > L1 > L2 > ""
+    """
+    finding_blob = " ".join((
+        row.finding or "",
+        row.recommendation or "",
+        row.hold_point or "",
+        row.activity_ref or "",
+    )).upper()
+    has_hp = "HP-" in finding_blob
+
+    swms_gap = bool(
+        row.swms_required and row.swms_present in ("", "no", "unknown")
+    )
+
+    # Plant / public interface ↔ MOB, CRN, TRF streams at H6/H9.
+    plant_public = False
+    if row.ccvs_code:
+        stream = row.ccvs_code.split("-", 1)[0]
+        tier = row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else ""
+        if stream in {"MOB", "CRN", "TRF"} and tier in {"H6", "H9"}:
+            plant_public = True
+
+    # Critical authorisation / permit streams.
+    permit_breach = False
+    if row.ccvs_code:
+        stream = row.ccvs_code.split("-", 1)[0]
+        tier = row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else ""
+        if stream in {"HOT", "ASB", "CFS", "DEM"} and tier in {"H6", "H9"}:
+            permit_breach = True
+        if stream == "ELE" and tier in {"H6", "H9"}:
+            permit_breach = True
+
+    # Primary key: high-priority theme rank (0 = highest).
+    if has_hp:
+        primary = 0
+    elif swms_gap and row.conformance_status in {"NCR", "Conditional"}:
+        primary = 1
+    elif plant_public:
+        primary = 2
+    elif permit_breach:
+        primary = 3
+    else:
+        primary = 4
+
+    status_rank = {
+        "NCR": 0, "Conditional": 1, "Info": 2, "Unmatched": 3, "Compliant": 4,
+    }.get(row.conformance_status, 5)
+
+    tier_rank = {
+        "H9": 0, "H6": 1, "M3": 2, "M4": 3, "L1": 4, "L2": 5, "": 6,
+    }
+    tier_key = tier_rank.get(row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else "", 6)
+
+    return (primary, status_rank, tier_key)
+
+
+def sort_register_by_significance(
+    rows: list[tuple[int, EnrichedRow]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Sort the register-bound rows by significance score, leaving
+    csv_idx attached so cross-references still resolve."""
+    return sorted(rows, key=lambda pair: _significance_score(pair[1]))
 
 
 def _register_status_text(conformance_status: str, finding_ref: str) -> str:
@@ -1685,6 +2180,7 @@ def build_ssa_report_docx(
     template_path: Path = SSA_REPORT_TEMPLATE,
     project_name: str = "",
     prior_audit_date_ddmmyy: str = "",
+    risk_assessment=None,
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -1744,9 +2240,13 @@ def build_ssa_report_docx(
         f"project Risk Assessment, and record positive observations for "
         f"continued monitoring."
     ) if audit_date_long else ""
+    # Item 16: hard-cap the LLM-generated narrative at 20 lines before
+    # composing with the scope intro. Defensive — the prompt already
+    # targets <=140 words but the cap prevents pathological overshoots.
+    capped_narrative = cap_executive_summary(narrative_summary or "")
     combined_narrative = (
-        f"{scope_intro}\n\n{narrative_summary}".strip()
-        if scope_intro else (narrative_summary or "")
+        f"{scope_intro}\n\n{capped_narrative}".strip()
+        if scope_intro else capped_narrative
     )
     all_replacements = {
         "{{SITE_ADDRESS}}": full_site,
@@ -1771,7 +2271,25 @@ def build_ssa_report_docx(
     # to the Enriched register row numbers (canonical sample shape).
     indexed = list(enumerate(rows, start=1))
     positive = [(i, r) for i, r in indexed if r.conformance_status == "Compliant"]
-    register = [(i, r) for i, r in indexed if r.conformance_status != "Compliant"]
+    raw_register = [(i, r) for i, r in indexed if r.conformance_status != "Compliant"]
+    # Item 12: merge materially similar findings before significance
+    # ordering — keeps the canonical row's csv_idx so cross-refs in
+    # the Observations Register still resolve.
+    merged_register = merge_similar_findings(raw_register)
+    # Item 10: order findings by significance so the most important
+    # appears as #1 and at the top of the Findings index table.
+    register = sort_register_by_significance(merged_register)
+
+    # Item 9 + 14: RA labelling has already been applied by the
+    # orchestrator on every row's text fields (see
+    # ``apply_ra_labels_to_rows``) so all three builders see the
+    # same labelled output.
+
+    # Item 15: insert the Findings index table directly below the
+    # "Findings" heading paragraph BEFORE the per-finding detail
+    # blocks are expanded so the index sits above every detail
+    # section in the rendered docx.
+    _build_findings_index_table(doc, [r for _i, r in register])
 
     # Materialise the Findings section: clone the (#N heading + 2-col
     # detail table) block per non-Compliant row. Per the canonical
@@ -2358,6 +2876,74 @@ def _light_cleanup(text: str) -> str:
     if not text:
         return ""
     return _WS_RUN.sub(" ", text).strip()
+
+
+# Composite-note splitter — auditors sometimes record several
+# distinct issues against a single photo with leading numerals like
+# "(1) Pre-start NOT completed (2) Worker observed without VOC".
+# Each numbered fragment is its own atomic finding for the report
+# (item 11 of the gap-closure brief). The pattern requires at least
+# two leading-numeral markers; a single "(1)" prefix is a one-issue
+# annotation and is left alone.
+_COMPOSITE_MARKER_RE = re.compile(r"\(\d+\)\s*")
+
+
+def _split_composite_notes(text: str) -> list[str]:
+    """Split a composite "(1)... (2)..." note into atomic fragments.
+
+    Returns a list with the original text when the input doesn't carry
+    at least two markers, or one cleaned fragment per marker when it
+    does. Marker prefixes are stripped from each fragment so the
+    downstream finding text reads as a complete sentence.
+    """
+    if not text:
+        return [text]
+    markers = list(_COMPOSITE_MARKER_RE.finditer(text))
+    if len(markers) < 2:
+        return [text]
+    out: list[str] = []
+    for i, m in enumerate(markers):
+        start = m.end()
+        end = markers[i + 1].start() if i + 1 < len(markers) else len(text)
+        fragment = text[start:end].strip().rstrip(".,;").strip()
+        if fragment:
+            out.append(fragment)
+    return out or [text]
+
+
+def split_multi_issue_observations(
+    rows: list[ObservationRow],
+) -> list[ObservationRow]:
+    """Expand any composite "(1)... (2)..." rows into atomic
+    ObservationRows.
+
+    Each split row keeps the original CSV row index, timestamp, photo
+    filename and resolved path, so the downstream pipeline still
+    matches one photo per fragment (every atomic finding cites the
+    same evidence). The synthesised rows carry a ``part`` suffix in
+    ``review_reasons`` for traceability.
+    """
+    out: list[ObservationRow] = []
+    for obs in rows:
+        fragments = _split_composite_notes(obs.observation_text or "")
+        if len(fragments) < 2:
+            out.append(obs)
+            continue
+        for idx, frag in enumerate(fragments, start=1):
+            clone = ObservationRow(
+                csv_row=obs.csv_row,
+                timestamp_raw=obs.timestamp_raw,
+                timestamp_iso=obs.timestamp_iso,
+                observation_text=frag,
+                csv_filename=obs.csv_filename,
+                resolved_filename=obs.resolved_filename,
+                resolved_path=obs.resolved_path,
+                needs_review=obs.needs_review,
+                review_reasons=list(obs.review_reasons) + [f"split_part_{idx}"],
+                duplicate_filename=obs.duplicate_filename,
+            )
+            out.append(clone)
+    return out
 
 
 def enrich_observations(

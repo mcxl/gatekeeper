@@ -1556,6 +1556,279 @@ def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
     assert payload["llm_diagnostics"]["enabled"] is False
 
 
+# ---------------------------------------------------------------------------
+# Items 9-16 — gap-closure refinements
+# ---------------------------------------------------------------------------
+
+def test_split_multi_issue_observations_atomises_numbered_notes():
+    """Item 11: composite "(1) X (2) Y (3) Z" notes split into three
+    atomic ObservationRows; single "(1)" prefix left alone; rows
+    without numbered markers pass through unchanged."""
+    from pims.services.ssa_pipeline import split_multi_issue_observations
+    a = ObservationRow(
+        csv_row=1, timestamp_raw="", timestamp_iso=None,
+        observation_text="(1) Pre-start NOT completed (2) VOC missing (3) SWMS undated",
+        csv_filename="a.jpg",
+    )
+    b = ObservationRow(
+        csv_row=2, timestamp_raw="", timestamp_iso=None,
+        observation_text="(1) only one issue",  # single-marker, untouched
+        csv_filename="b.jpg",
+    )
+    c = ObservationRow(
+        csv_row=3, timestamp_raw="", timestamp_iso=None,
+        observation_text="plain note no markers",
+        csv_filename="c.jpg",
+    )
+    out = split_multi_issue_observations([a, b, c])
+    # 3 atomic from a + 1 b + 1 c = 5
+    assert len(out) == 5
+    fragments = [r.observation_text for r in out[:3]]
+    assert "Pre-start NOT completed" in fragments[0]
+    assert "VOC missing" in fragments[1]
+    assert "SWMS undated" in fragments[2]
+    # Photo / timestamp / csv_row preserved.
+    assert all(r.csv_row == 1 for r in out[:3])
+    assert all(r.csv_filename == "a.jpg" for r in out[:3])
+    # Single-marker row unchanged.
+    assert out[3].observation_text == "(1) only one issue"
+    assert out[4].observation_text == "plain note no markers"
+
+
+def test_apply_ra_code_labels_first_use_expansion(tmp_path):
+    """Items 9 + 14: first occurrence of an RA code in a block of
+    text becomes "SDG Project Risk Assessment code: TP-07 (Tilt-up
+    panel activity 07)"; subsequent occurrences in the same block
+    drop the expansion. Multiple codes in a single phrase collapse
+    into "SDG Project Risk Assessment codes: A, B"."""
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    from pims.services.ssa_ra_parser import RiskAssessment, RAActivity, RAHoldPoint
+    ra = RiskAssessment(
+        project_name="Test",
+        hold_points=[
+            RAHoldPoint(
+                code="HP-04",
+                description="Heavy plant / ground setup release",
+                package="Tilt-Up", condition="x", sign_off="x", evidence="x",
+            ),
+        ],
+        activities=[
+            RAActivity(
+                ref="TP-05", phase="6 — Tilt-Up Panel Erection",
+                activity="Temporary brace install", hrcw="H13",
+                initial_risk="High (3)", controls="x",
+                residual_risk="Medium (2)", responsible="x",
+            ),
+        ],
+    )
+    text = (
+        "Brace removal proceeded outside HP-04. Activity TP-05 "
+        "covers the brace step; HRCW H14 traffic also applies. "
+        "Subsequent TP-05 reference."
+    )
+    out = apply_ra_code_labels(text, ra=ra)
+    # First HP-04 use carries the prefix + parenthesised expansion.
+    assert "SDG Project Risk Assessment code: HP-04" in out
+    assert "Heavy plant / ground setup release" in out
+    # First TP-05 use carries the activity-phase expansion (preserves
+    # the RA's casing of "Tilt-Up Panel Erection").
+    assert "Tilt-Up Panel Erection activity 05" in out
+    # H14 (HRCW) gets the static expansion.
+    assert "HRCW traffic corridor" in out
+    # Second TP-05 occurrence: bare code, no second expansion.
+    assert out.count("Tilt-Up Panel Erection activity 05") == 1
+    # Idempotent: re-applying produces the same output.
+    assert apply_ra_code_labels(out, ra=ra) == out
+
+
+def test_apply_ra_code_labels_clusters_codes_into_codes_prefix():
+    """When two codes appear adjacent (e.g. "TP-05 / HP-04"), the
+    label collapses to "SDG Project Risk Assessment codes: ...". """
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    out = apply_ra_code_labels("review HP-06 / TP-07 for compliance")
+    assert "SDG Project Risk Assessment codes:" in out
+
+
+def test_significance_score_orders_hp_then_swms_then_plant_then_permit():
+    """Item 10: significance ordering — HP breaches first, then
+    SWMS gaps, then plant/public, then permit-class breaches, then
+    everything else."""
+    from pims.services.ssa_pipeline import _significance_score
+    # HP breach (highest priority)
+    hp_row = EnrichedRow(
+        obs=ObservationRow(csv_row=1, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="see HP-06 violation",
+        conformance_status="NCR", ccvs_code="TLT-H9",
+    )
+    # SWMS-required-but-absent (priority 1)
+    swms_row = EnrichedRow(
+        obs=ObservationRow(csv_row=2, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="no swms",
+        conformance_status="NCR", ccvs_code="WAH-H6",
+        swms_required=True, swms_present="no",
+    )
+    # Plant/public (priority 2)
+    mob_row = EnrichedRow(
+        obs=ObservationRow(csv_row=3, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="kubota under boom",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    # Permit-class (priority 3)
+    hot_row = EnrichedRow(
+        obs=ObservationRow(csv_row=4, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="hot work no permit",
+        conformance_status="NCR", ccvs_code="HOT-H6",
+    )
+    # Generic NCR (priority 4)
+    generic_row = EnrichedRow(
+        obs=ObservationRow(csv_row=5, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="other",
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    rows = [(i, r) for i, r in enumerate(
+        [generic_row, hot_row, mob_row, swms_row, hp_row], start=1
+    )]
+    rows.sort(key=lambda pair: _significance_score(pair[1]))
+    order = [r.ccvs_code for _i, r in rows]
+    assert order == ["TLT-H9", "WAH-H6", "MOB-H9", "HOT-H6", "SYS-M3"]
+
+
+def test_merge_similar_findings_consolidates_evidence():
+    """Item 12: rows with the same status + stream + finding_title
+    collapse into one canonical row; subsequent rows fold their
+    csv_idx into the canonical row's evidence_csv_indices and
+    monitoring_note."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    base = lambda i, title: EnrichedRow(  # noqa: E731
+        obs=ObservationRow(csv_row=i, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding_title=title,
+        conformance_status="NCR",
+        ccvs_code="MOB-H9",
+    )
+    rows = [
+        (1, base(1, "Pre-start logbook gap")),
+        (2, base(2, "Pre-start logbook gap")),  # duplicate
+        (3, base(3, "Different issue")),
+    ]
+    merged = merge_similar_findings(rows)
+    # 2 canonical rows (Pre-start + Different issue).
+    assert len(merged) == 2
+    canonical = merged[0][1]
+    assert canonical.evidence_csv_indices == [1, 2]
+    assert "Evidence also: PIMS Obs 2" in canonical.monitoring_note
+
+
+def test_executive_summary_capped_at_20_lines_word_budget():
+    """Item 16: cap_executive_summary truncates anything longer than
+    ~280 words (20 lines × 14 words/line)."""
+    from pims.services.ssa_pipeline import cap_executive_summary
+    long_text = (
+        "Sentence one is quite ordinary. Sentence two adds context. "
+        * 50  # ~700 words total
+    )
+    out = cap_executive_summary(long_text, max_lines=20)
+    assert len(out.split()) <= 20 * 14
+    # Short text passes through unchanged.
+    short = "A brief summary of the audit."
+    assert cap_executive_summary(short) == short
+
+
+def test_findings_index_table_inserted_below_findings_heading(tmp_path):
+    """Item 15: the Findings index table (2 cols: Finding,
+    Recommendation) is inserted directly under the Findings heading
+    paragraph, with one row per detail block in significance order."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(3)]
+    rows = []
+    titles = [
+        "Brace removal proceeded without engineer sign-off",
+        "Pre-start logbook missing for telehandler",
+        "Site sign in good order",
+    ]
+    statuses = ["NCR", "NCR", "Compliant"]
+    codes = ["TLT-H9", "MOB-H9", "SYS-L1"]
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs {i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs, finding_title=titles[i],
+            conformance_status=statuses[i], ccvs_code=codes[i],
+            recommendation=f"recom {i}",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    # Index table shape — find the 2-col table whose header is
+    # exactly ("Finding", "Recommendation") and lives BEFORE every
+    # per-finding detail table.
+    idx_tbl = None
+    for t in doc.tables:
+        if (
+            len(t.columns) == 2
+            and [c.text.strip() for c in t.rows[0].cells] == ["Finding", "Recommendation"]
+        ):
+            idx_tbl = t
+            break
+    assert idx_tbl is not None
+    # 2 NCR rows → 2 data rows (header + 2)
+    assert len(idx_tbl.rows) == 3
+    # Order is set by _significance_score: MOB-H9 lands in the
+    # plant/public-interface priority tier (rank 2), TLT-H9 with no
+    # HP ref / no SWMS gap / no plant stream lands in generic-NCR
+    # rank 4. So MOB ranks above TLT and renders first.
+    assert idx_tbl.rows[1].cells[0].text.startswith("Pre-start")
+    assert idx_tbl.rows[1].cells[1].text == "recom 1"
+    assert idx_tbl.rows[2].cells[0].text.startswith("Brace removal")
+    assert idx_tbl.rows[2].cells[1].text == "recom 0"
+
+
+def test_ra_label_applied_to_findings_in_real_render(tmp_path):
+    """Item 9: a finding text containing TP-07 is rendered with the
+    explicit "SDG Project Risk Assessment code:" prefix in the
+    per-finding detail table's Observation cell."""
+    p = _save_jpeg(tmp_path / "p.jpg", (400, 300))
+    obs = ObservationRow(
+        csv_row=1, timestamp_raw="", timestamp_iso=None,
+        observation_text="x", csv_filename=p.name,
+        resolved_filename=p.name, resolved_path=p,
+    )
+    row = EnrichedRow(
+        obs=obs, finding_title="Brace removal without sign-off",
+        finding="Brace removal proceeded without engineer sign-off; HP-06 not closed.",
+        conformance_status="NCR", ccvs_code="TLT-H9",
+        recommendation="Immediate – stop brace removal until sign-off.",
+    )
+    # Apply the labelling pre-render (mirrors orchestrator behaviour).
+    from pims.services.ssa_pipeline import apply_ra_labels_to_rows
+    apply_ra_labels_to_rows([row])
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[row], site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    obs_row = next(
+        r for r in detail_tables[0].rows
+        if r.cells[0].text.strip() == "Observation"
+    )
+    assert "SDG Project Risk Assessment code: HP-06" in obs_row.cells[1].text
+
+
 def test_run_once_default_path_does_not_load_legacy_checklist(
     evidence_folder, monkeypatch,
 ):

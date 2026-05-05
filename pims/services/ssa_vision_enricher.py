@@ -113,9 +113,16 @@ _SYSTEM_PROMPT = (
     '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
     '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
     '  ccvs_category        plain-English category for the chosen stream, or ""\n'
-    '  finding_title        3-6 word descriptive title for the finding, e.g. '
-    '"EWP Exclusion Zone", "Fire Extinguisher Mounting", "Pre-Start Logbook Gap" — '
-    'used as the #N heading\n'
+    '  finding_title        SHORT plain-English sentence (max 12 words) '
+    'describing what the finding actually is. PREFER active-voice '
+    'sentences over noun phrases. Good examples: '
+    '"Temporary brace removal proceeded without engineer sign-off", '
+    '"Fire extinguishers stored on the ground rather than wall-mounted", '
+    '"Telehandler operated without a current pre-start". '
+    'Bad examples (do NOT use noun-phrase titles like): '
+    '"EWP Exclusion Zone", "Pre-Start Logbook Gap", '
+    '"SWMS Sign-On Date Missing". Used as the #N heading and as the '
+    'Findings index table label.\n'
     '  location             site/area anchor with concrete reference, e.g. '
     '"Unit 1 shell", "Tilt-up panel zone, north elevation", "Site office area"\n'
     '  finding              2–4 sentence narrative, year-12 plain English\n'
@@ -668,7 +675,11 @@ async def generate_narrative_summary(
     system = (
         "You write the Executive Summary paragraph at the top of an "
         "Australian construction site safety audit report. Output ONE "
-        "paragraph, 100–140 words, no bullets, no headings, no lists. "
+        "paragraph, MAXIMUM 140 words and 12 lines on an A4 page "
+        "(prefer 100 words). Provide site condition + the most "
+        "significant gaps only — do NOT enumerate every finding; the "
+        "Findings section below the summary already lists them all. "
+        "No bullets, no headings, no lists. "
         "Open with the site address and audit date in a single "
         "sentence. Then summarise the audit's overall picture grounded "
         "in the findings supplied — note major non-conformance themes "
