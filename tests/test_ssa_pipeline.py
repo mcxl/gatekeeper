@@ -741,7 +741,9 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
         prepared_by="Alan Richardson",
     )
     assert out.exists()
-    assert diag["missing_photo_obs"] == [2]  # obs3 → row 2 in register
+    # obs3 has no resolved_path → no photo embedded. Register now
+    # carries ALL 3 rows (gap-3) so obs3 lands at register row 3.
+    assert diag["missing_photo_obs"] == [3]
 
     # No leftover tokens in any document part.
     with zipfile.ZipFile(out) as z:
@@ -765,17 +767,99 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     assert "01/05/2026" in foot
     assert "Alan Richardson" in foot
 
-    # Positive Observations table → 1 Compliant row
+    # Positive Observations table → 1 Compliant row.
+    # Per gap-2: row IDs are P1/P2/P3, Reference is "PIMS Obs N | <ref>".
     pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
                and "Reference" in t.rows[0].cells[2].text)
+    assert pos.rows[1].cells[0].text == "P1"
     assert pos.rows[1].cells[1].text == "Site sign clear."
+    assert pos.rows[1].cells[2].text == "PIMS Obs 2 | WHS Reg cl.34"
 
-    # Observations Register → 2 non-Compliant rows; second row has `*`
+    # Observations Register now carries ALL observations (gap-3): 3
+    # data rows (1 NCR, 1 Compliant, 1 Unmatched). Status column uses
+    # the canonical cross-reference wording.
     reg = next(t for t in doc.tables
                if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
-    assert len(reg.rows) == 3  # header + 2 data
-    assert reg.rows[1].cells[0].text == "1"
-    assert reg.rows[2].cells[0].text == "2*"
+    assert len(reg.rows) == 4  # header + 3 data
+    # NCR row → "Non-compliant — See F1"
+    assert "Non-compliant" in reg.rows[1].cells[4].text
+    assert "F1" in reg.rows[1].cells[4].text
+    # Compliant row → "Compliant"
+    assert reg.rows[2].cells[4].text == "Compliant"
+    # Unmatched row (no resolved photo) gets `*` marker on Obs #
+    assert reg.rows[3].cells[0].text.endswith("*")
+    assert reg.rows[3].cells[4].text == "Review at QA"
+
+
+def test_positive_observations_use_p_numbering_and_pims_obs_xref(tmp_path):
+    """Gap-2: Positive Observations rows numbered P1/P2/P3...
+    Reference column carries 'PIMS Obs N | <reg ref>'."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(4)]
+    rows = []
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs-{i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=f"clean obs {i}",
+            conformance_status="Compliant" if i in (1, 3) else "NCR",
+            legal_ref=f"NSW WHS Reg cl.{40 + i}",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
+               and "Reference" in t.rows[0].cells[2].text)
+    pos_rows = pos.rows[1:]
+    assert [r.cells[0].text for r in pos_rows] == ["P1", "P2"]
+    # Compliant rows are obs idx 2 and 4 (1-based).
+    assert pos_rows[0].cells[2].text == "PIMS Obs 2 | NSW WHS Reg cl.41"
+    assert pos_rows[1].cells[2].text == "PIMS Obs 4 | NSW WHS Reg cl.43"
+
+
+def test_observations_register_includes_all_with_finding_xref(tmp_path):
+    """Gap-3: Observations Register carries every observation
+    (Compliant + non-Compliant); status column cross-references the
+    Findings entry for non-Compliant rows."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(4)]
+    rows = []
+    statuses = ["NCR", "Compliant", "Conditional", "Info"]
+    for i, (p, s) in enumerate(zip(photos, statuses)):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"raw obs {i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=f"clean obs {i}",
+            conformance_status=s,
+            ccvs_code="WAH-H6" if s == "NCR" else "SYS-L1",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    reg = next(t for t in doc.tables
+               if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
+    # Every observation row appears.
+    assert len(reg.rows) == 5  # 1 header + 4 data
+    statuses_rendered = [r.cells[4].text for r in reg.rows[1:]]
+    # Row order = CSV order (1-based: NCR / Compliant / Conditional / Info).
+    assert "Non-compliant" in statuses_rendered[0]
+    assert "F1" in statuses_rendered[0]   # links back to first finding
+    assert statuses_rendered[1] == "Compliant"
+    assert "Partially complete" in statuses_rendered[2]
+    assert "F2" in statuses_rendered[2]   # second non-Compliant finding
+    assert statuses_rendered[3] == "Noted"  # canonical wording for Info
 
 
 def test_findings_list_expands_per_non_compliant_row(tmp_path):
@@ -919,17 +1003,34 @@ def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
     reg = next(t for t in doc.tables
                if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
 
-    # 3 NCR (i=0,2,4) → register; 2 Compliant (i=1,3) → positive table.
+    # 2 Compliant (i=1,3) → Positive Observations table.
     pos_data = [r.cells[1].text for r in pos.rows[1:]]
-    reg_data = [r.cells[2].text for r in reg.rows[1:]]
     assert pos_data == ["clean 1", "clean 3"]
-    # All NCR rows must carry their finding text — placeholder-content
-    # repetition would surface as identical strings here.
-    assert "unique-marker-0" in reg_data[0]
-    assert "unique-marker-2" in reg_data[1]
-    assert "unique-marker-4" in reg_data[2]
-    # And every register row must be distinct.
-    assert len(set(reg_data)) == len(reg_data)
+    # Per gap-3, the Observations Register is the master list — all
+    # 5 rows (Compliant + non-Compliant) appear, each with the
+    # cleaned-summary in the Observation column. Distinctness is the
+    # original anti-clone-bug guard; finding text lives in the
+    # per-finding detail tables, not in the register.
+    reg_data = [r.cells[2].text for r in reg.rows[1:]]
+    assert reg_data == [f"clean {i}" for i in range(5)]
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    # 3 NCR rows → 3 cloned per-finding detail tables, each carrying
+    # the long finding narrative.
+    assert len(detail_tables) == 3
+    detail_obs = []
+    for t in detail_tables:
+        obs_row = next(
+            (r for r in t.rows if r.cells[0].text.strip() == "Observation"),
+            None,
+        )
+        if obs_row is not None:
+            detail_obs.append(obs_row.cells[1].text)
+    assert any("unique-marker-0" in t for t in detail_obs)
+    assert any("unique-marker-2" in t for t in detail_obs)
+    assert any("unique-marker-4" in t for t in detail_obs)
 
 
 def test_build_ssa_report_docx_findings_block_per_non_compliant(tmp_path):

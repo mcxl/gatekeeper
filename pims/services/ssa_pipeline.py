@@ -1290,6 +1290,31 @@ def _set_cell_text_oxml(tc_element, text: str) -> None:
             parent.remove(extra)
 
 
+def _register_status_text(conformance_status: str, finding_ref: str) -> str:
+    """Status cell text for the Observations Register row.
+
+    Aligned with the canonical sample wording:
+      - Compliant            → "Compliant"
+      - Info                 → "Noted"
+      - NCR + Findings ref   → "Non-compliant — See F<N>"
+      - NCR alone            → "NCR"
+      - Conditional + ref    → "Partially complete — See F<N>"
+      - Conditional alone    → "Conditional"
+      - Unmatched            → "Review at QA"
+    """
+    if conformance_status == "Compliant":
+        return "Compliant"
+    if conformance_status == "Info":
+        return "Noted"
+    if conformance_status == "NCR":
+        return f"Non-compliant — See {finding_ref}" if finding_ref else "NCR"
+    if conformance_status == "Conditional":
+        return f"Partially complete — See {finding_ref}" if finding_ref else "Conditional"
+    if conformance_status == "Unmatched":
+        return "Review at QA"
+    return conformance_status or ""
+
+
 def _to_long_date(ddmmyyyy: str) -> str:
     """``01/05/2026`` → ``1 May 2026``. Returns ``""`` on parse failure.
 
@@ -1657,8 +1682,12 @@ def build_ssa_report_docx(
             _replace_tokens_in_part(hf.part, all_replacements)
 
     # --- Partition rows ----------------------------------------------
-    positive = [r for r in rows if r.conformance_status == "Compliant"]
-    register = [r for r in rows if r.conformance_status != "Compliant"]
+    # Track each row's CSV-order index so the Positive Observations
+    # table can render "PIMS Obs N | <reg ref>" cross-references back
+    # to the Enriched register row numbers (canonical sample shape).
+    indexed = list(enumerate(rows, start=1))
+    positive = [(i, r) for i, r in indexed if r.conformance_status == "Compliant"]
+    register = [(i, r) for i, r in indexed if r.conformance_status != "Compliant"]
 
     # Materialise the Findings section: clone the (#N heading + 2-col
     # detail table) block per non-Compliant row. Per the canonical
@@ -1666,7 +1695,7 @@ def build_ssa_report_docx(
     # Observation / Regulatory Basis / Hierarchy of Control /
     # Required Action / Timeframe). R-1.3(e) explicitly permits this
     # block-level operation on the per-finding detail table.
-    _expand_findings_list(doc, register)
+    _expand_findings_list(doc, [r for _i, r in register])
 
     diagnostics: dict[str, list] = {
         "photo_load_failed": [],
@@ -1685,15 +1714,25 @@ def build_ssa_report_docx(
         )
         placeholder = pos_tbl.rows[1]
         if positive:
-            for idx, row in enumerate(positive, start=1):
-                target = placeholder if idx == 1 else _clone_row(pos_tbl, placeholder)
+            for pos_idx, (csv_idx, row) in enumerate(positive, start=1):
+                target = placeholder if pos_idx == 1 else _clone_row(pos_tbl, placeholder)
                 cells = target.cells
-                _set_cell_text(cells[0], str(idx))
+                # Per the canonical sample, Positive Observations use
+                # ``P1 / P2 / P3`` numbering (distinct from the
+                # Observations Register's ``1 / 2 / 3``) so reviewers
+                # can cite a positive without ambiguity.
+                _set_cell_text(cells[0], f"P{pos_idx}")
                 _set_cell_text(
                     cells[1],
                     row.observation_text_clean or row.obs.observation_text,
                 )
-                _set_cell_text(cells[2], row.legal_ref or "")
+                # Reference column carries the cross-ref to the Enriched
+                # register row plus the regulatory citation:
+                # ``PIMS Obs 4 | NSW WHS Regulation 2017 cl.43``.
+                ref_text = f"PIMS Obs {csv_idx}"
+                if row.legal_ref:
+                    ref_text = f"{ref_text} | {row.legal_ref}"
+                _set_cell_text(cells[2], ref_text)
         else:
             cells = placeholder.cells
             _set_cell_text(cells[0], "-")
@@ -1742,6 +1781,12 @@ def build_ssa_report_docx(
             _set_cell_text(cells[3], "")
 
     # --- Observations Register table (6 cols, photos in col 1) -------
+    # Per the canonical sample, the Observations Register is the
+    # MASTER list — every observation appears (Compliant + non-
+    # Compliant) so the audit trail is complete. Non-Compliant rows
+    # carry a status pointer back to their Findings entry
+    # ("See F1 re exclusion zone"); Compliant / Info rows carry the
+    # canonical status word.
     reg_tbl = _find_table(doc, _TABLE_SIGNATURES["obs_register"])
     if reg_tbl is not None and len(reg_tbl.rows) >= 2:
         _apply_table_format(
@@ -1750,10 +1795,18 @@ def build_ssa_report_docx(
             bold_header=False,   # template already styles the header
             repeat_header="obs_register" in _TABLE_HEADER_REPEAT,
         )
+        # Map each non-Compliant row's csv_idx → finding number (F1, F2 …)
+        # so we can cite the Findings entry from the register's status
+        # cell. Findings render in the same order as `register`.
+        finding_ref_for: dict[int, str] = {}
+        for f_idx, (csv_idx, _row) in enumerate(register, start=1):
+            finding_ref_for[csv_idx] = f"F{f_idx}"
+
         placeholder = reg_tbl.rows[1]
-        if register:
-            for idx, row in enumerate(register, start=1):
-                target = placeholder if idx == 1 else _clone_row(reg_tbl, placeholder)
+        all_rows = indexed
+        if all_rows:
+            for n, (csv_idx, row) in enumerate(all_rows, start=1):
+                target = placeholder if n == 1 else _clone_row(reg_tbl, placeholder)
                 cells = target.cells
 
                 # Resolve photo first so the Obs # marker reflects
@@ -1771,32 +1824,35 @@ def build_ssa_report_docx(
                             buf, _fmt, _w, _h = prepared
                             photo_embedded = _embed_image_in_cell(cells[1], buf)
                 if not photo_embedded:
-                    # Empty Photo cell (cells[1] kept untouched) and
-                    # mark Obs # with the trailing `*` per R-7.5.
-                    diagnostics["missing_photo_obs"].append(idx)
+                    diagnostics["missing_photo_obs"].append(n)
 
-                obs_marker = f"{idx}{'*' if not photo_embedded else ''}"
+                obs_marker = f"{n}{'*' if not photo_embedded else ''}"
                 _set_cell_text(cells[0], obs_marker)
-                # cells[1] is the Photo cell; only mutated by the embed
-                # path above. If embed failed, leave the placeholder
-                # paragraph empty per R-7.5.
                 if not photo_embedded:
                     _set_cell_text(cells[1], "")
 
-                finding_text = (
-                    row.finding
-                    or row.observation_text_clean
+                # Observation column: short cleaned summary, not the
+                # full multi-sentence finding. The detail block at
+                # the top of the report carries the long form.
+                summary = (
+                    row.observation_text_clean
                     or row.obs.observation_text
+                    or ""
                 )
-                _set_cell_text(cells[2], finding_text)
+                _set_cell_text(cells[2], summary)
                 _set_cell_text(cells[3], row.legal_ref or "")
-                _set_cell_text(cells[4], row.conformance_status)
+                # Status column carries cross-reference text per the
+                # canonical sample shape.
+                _set_cell_text(cells[4], _register_status_text(
+                    row.conformance_status,
+                    finding_ref_for.get(csv_idx, ""),
+                ))
                 _set_cell_text(cells[5], row.obs.resolved_filename or "")
         else:
             cells = placeholder.cells
             _set_cell_text(cells[0], "-")
             _set_cell_text(cells[1], "")
-            _set_cell_text(cells[2], "No findings recorded.")
+            _set_cell_text(cells[2], "No observations recorded.")
             _set_cell_text(cells[3], "")
             _set_cell_text(cells[4], "")
             _set_cell_text(cells[5], "")
