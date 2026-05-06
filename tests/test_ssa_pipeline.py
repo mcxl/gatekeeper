@@ -2177,6 +2177,82 @@ def test_run_once_two_phase_workflow_round_trip(evidence_folder, monkeypatch):
     assert payload2["merge_diag"]["field_overrides"] >= 3  # status + ccvs + finding
 
 
+def test_run_once_from_report_round_trip(evidence_folder, monkeypatch):
+    """Phase 3: operator edits the docx → flow back to enriched +
+    staging xlsx. Round trip:
+      1. Single-shot pipeline produces all 3 deliverables + state JSON.
+      2. Operator edits the Recommendation cell in the docx for finding #1.
+      3. --from-report rebuilds enriched + staging from state, applies
+         the docx edit, and the new staging xlsx carries the edit."""
+    def fake_apply(enriched, **kw):
+        # First row becomes a non-Compliant finding so it lands in
+        # the docx Findings section with a detail table.
+        if enriched:
+            enriched[0].finding = "Original finding text."
+            enriched[0].finding_title = "Test finding title"
+            enriched[0].conformance_status = "NCR"
+            enriched[0].ccvs_code = "WAH-H6"
+            enriched[0].ccvs_category = "Work at Height"
+            enriched[0].location = "Original location"
+            enriched[0].recommendation = "Immediate – original action"
+            enriched[0].legal_ref = "WHS Reg cl.79"
+            enriched[0].hierarchy_of_control = "Engineering: original control"
+        return ("Stub narrative.", {
+            "enabled": True, "rows_total": len(enriched),
+            "rows_called": len(enriched), "rows_ok": len(enriched),
+            "rows_failed": 0, "errors": [], "ra": {"path": None},
+        })
+    from pims.scripts import run_ssa_pipeline as mod
+    monkeypatch.setattr(mod, "_apply_vision_enrichment", fake_apply)
+
+    payload1 = mod.run_once(evidence_folder)
+    assert payload1["staging_status"] == "bulk_uploadable"
+    state = json.loads(
+        (evidence_folder / ".ssa_state.json").read_text(encoding="utf-8"),
+    )
+    assert state.get("finding_render_order"), \
+        "finding_render_order must be persisted for phase-3 pairing"
+
+    # Operator edits the docx — find the first per-finding detail
+    # table and overwrite the Recommendation cell.
+    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
+    from docx import Document as DocxDocument
+    doc = DocxDocument(docx_path)
+    detail = next(
+        t for t in doc.tables
+        if len(t.columns) == 2
+        and t.rows[0].cells[0].text.strip() == "Location"
+    )
+    rec_row = next(
+        r for r in detail.rows
+        if r.cells[0].text.strip() == "Recommendation"
+    )
+    rec_row.cells[1].text = "Immediate – OPERATOR-EDITED ACTION"
+    doc.save(docx_path)
+
+    # Phase 3
+    payload3 = mod.run_once(evidence_folder, force=True, from_report=True)
+    assert payload3["from_report"] is True
+    assert payload3["merge_diag"]["applied"] is True
+    assert payload3["merge_diag"]["field_overrides"] >= 1
+    # Edit propagated to the staging xlsx.
+    sx = evidence_folder / "Site-Visit-Report-Upload-PIMS-Staging-260501-RPD.xlsx"
+    wb = openpyxl.load_workbook(sx)
+    ws = wb["Observations"]
+    headers = [str(c.value).strip() if c.value else "" for c in ws[3]]
+    rec_col = headers.index("recommendation") + 1
+    # Find the row whose ccvs_code is WAH-H6 (the seeded NCR).
+    code_col = headers.index("ccvs_code") + 1
+    edited_row = None
+    for r in range(5, ws.max_row + 1):
+        if ws.cell(row=r, column=code_col).value == "WAH-H6":
+            edited_row = r
+            break
+    assert edited_row is not None
+    rec_cell = ws.cell(row=edited_row, column=rec_col).value or ""
+    assert "OPERATOR-EDITED ACTION" in rec_cell
+
+
 def test_run_once_two_phase_from_state_without_phase_one_raises(
     evidence_folder,
 ):

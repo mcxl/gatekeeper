@@ -454,6 +454,121 @@ def _snapshot_enriched_xlsx(xlsx_path: Path) -> dict[str, dict[str, str]]:
     return out
 
 
+# Per-finding detail-table label → EnrichedRow attribute. Used by
+# phase 3 (--from-report) to read operator edits out of the docx
+# detail tables and write them back onto EnrichedRows.
+_DETAIL_LABEL_TO_ATTR: dict[str, str] = {
+    "location": "location",
+    "observation": "finding",
+    "regulatory basis": "legal_ref",
+    "hierarchy of control": "hierarchy_of_control",
+    "recommendation": "recommendation",
+    "required action": "recommendation",   # legacy templates
+    "timeframe": "timeframe",
+}
+
+
+def _extract_detail_table_edits(
+    docx_path: Path,
+) -> list[dict[str, str]]:
+    """Walk the rendered audit report docx and return one dict per
+    per-finding detail table (in document order). Each dict maps
+    EnrichedRow attribute → cell text. Returns ``[]`` when no detail
+    tables are found.
+    """
+    if not docx_path.exists():
+        return []
+    from docx import Document
+    doc = Document(docx_path)
+    out: list[dict[str, str]] = []
+    for tbl in doc.tables:
+        if len(tbl.columns) != 2 or not tbl.rows:
+            continue
+        if tbl.rows[0].cells[0].text.strip() != "Location":
+            continue
+        edit: dict[str, str] = {}
+        for row in tbl.rows:
+            if len(row.cells) < 2:
+                continue
+            label = row.cells[0].text.strip().lower()
+            attr = _DETAIL_LABEL_TO_ATTR.get(label)
+            if attr is None:
+                continue
+            edit[attr] = row.cells[1].text.strip()
+        if edit:
+            out.append(edit)
+    return out
+
+
+def _merge_edits_from_audit_report(
+    rows: list[EnrichedRow], docx_path: Path,
+    finding_render_order: list[int] | None,
+) -> dict:
+    """Phase 3: read operator edits from the audit report docx's
+    per-finding detail tables and apply them back to the matching
+    EnrichedRows.
+
+    ``finding_render_order`` is the list of csv-row indices the
+    detail tables were rendered FOR (in display order). Phase 2
+    stamps it onto the state JSON so phase 3 can pair detail-table
+    edits back to the correct EnrichedRow even after merge / sort.
+
+    Returns a diagnostics dict shaped:
+        {
+          "applied":          bool,
+          "tables_seen":      int,
+          "tables_paired":    int,
+          "field_overrides":  int,
+          "unpaired":         int,    # detail tables we couldn't map
+        }
+    """
+    if not docx_path.exists():
+        return {"applied": False, "reason": "audit report missing"}
+    edits = _extract_detail_table_edits(docx_path)
+    if not edits:
+        return {"applied": False, "reason": "no detail tables found"}
+
+    # Build csv_idx → EnrichedRow lookup. evidence_csv_indices on a
+    # consolidated row include all csv indices folded into it; the
+    # canonical row's primary csv_idx is the first entry in that
+    # list, which matches what phase 2 emitted.
+    by_idx: dict[int, EnrichedRow] = {}
+    for r in rows:
+        if not r.evidence_csv_indices:
+            r.evidence_csv_indices = [r.obs.csv_row]
+        by_idx[r.evidence_csv_indices[0]] = r
+        # Allow lookup by any folded csv_idx so the operator can
+        # also use the un-merged number if they're cross-referencing
+        # the original CSV.
+        for fold_idx in r.evidence_csv_indices[1:]:
+            by_idx.setdefault(fold_idx, r)
+
+    overrides = 0
+    paired = 0
+    unpaired = 0
+    for table_pos, edit in enumerate(edits):
+        target = None
+        if finding_render_order and table_pos < len(finding_render_order):
+            target = by_idx.get(finding_render_order[table_pos])
+        if target is None:
+            unpaired += 1
+            continue
+        paired += 1
+        for attr, new_val in edit.items():
+            old_val = getattr(target, attr, "") or ""
+            if (new_val or "") == old_val:
+                continue
+            setattr(target, attr, new_val or "")
+            overrides += 1
+    return {
+        "applied": True,
+        "tables_seen": len(edits),
+        "tables_paired": paired,
+        "field_overrides": overrides,
+        "unpaired": unpaired,
+    }
+
+
 def _merge_edits_from_enriched_xlsx(
     rows: list[EnrichedRow], xlsx_path: Path,
     snapshot: dict[str, dict[str, str]] | None = None,
@@ -542,6 +657,7 @@ def run_once(
     merge_groups: list[list[int]] | None = None,
     stop_after: str | None = None,
     from_state: bool = False,
+    from_report: bool = False,
 ) -> dict:
     """Run the pipeline once. Returns the .ssa_run.json payload.
 
@@ -589,6 +705,97 @@ def run_once(
         prior_record["skipped"] = True
         log.info("manifest unchanged + outputs present — skipping")
         return prior_record
+
+    # Phase-3 short-circuit: when ``from_report`` is True, skip
+    # parse / match / enrichment / vision and rebuild EnrichedRows
+    # from the .ssa_state.json sidecar, then apply operator edits
+    # from the audit-report docx's per-finding detail tables BACK
+    # onto the rows. Re-renders the enriched + staging xlsx files
+    # only — leaves the operator-edited docx alone.
+    state_path = folder / ".ssa_state.json"
+    if from_report:
+        if not state_path.exists():
+            raise FileNotFoundError(
+                f"--from-report requested but .ssa_state.json missing in "
+                f"{folder}. Run the pipeline (or phase 1 then phase 2) "
+                f"to produce the state sidecar first."
+            )
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        enriched = _deserialise_rows(state["rows"])
+        site_address = state.get("site_address")
+        ra_project_name = state.get("ra_project_name", "")
+        principal_contractor = state.get("principal_contractor", "")
+        finding_render_order = list(state.get("finding_render_order") or [])
+        report_path = folder / names["report"]
+        enriched_path = folder / names["enriched"]
+        staging_path = folder / names["staging"]
+        merge_diag = _merge_edits_from_audit_report(
+            enriched, report_path, finding_render_order,
+        )
+        # Rebuild the enriched xlsx + staging from the now-updated rows.
+        enriched_diag = build_pims_enriched_xlsx(
+            enriched, enriched_path,
+            project_name=ra_project_name,
+            site_address=site_address or "",
+            principal_contractor=principal_contractor,
+            audit_date_ddmmyyyy=ddmmyyyy,
+        )
+        site_for_staging = site_address or ""
+        staging_result = build_pims_staging_xlsx_with_size_control(
+            enriched, staging_path,
+            site_address=site_for_staging,
+            audit_date_iso=iso,
+            prepared_by=prepared_by,
+        )
+        staging_diag = {
+            "parts":        [p.name for p in staging_result["parts"]],
+            "max_edge_px":  staging_result["max_edge_px"],
+            "split":        staging_result["split"],
+            "split_reason": staging_result["split_reason"],
+            "per_part":     staging_result["diagnostics"],
+        }
+        # Refresh state JSON with the operator-edited rows.
+        state["rows"] = _serialise_rows(enriched)
+        state_path.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        staging_status, blocker = _resolve_staging_status(
+            client, site_address,
+        )
+        outputs = [enriched_path.name, *[p.name for p in staging_result["parts"]]]
+        if staging_status == "not_uploadable":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NOT-UPLOADABLE.txt",
+                f"staging blocker: {blocker}\nfolder: {folder.name}\n",
+            ))
+        elif staging_status == "schema_valid_no_endpoint":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NO-BULK-ENDPOINT.txt",
+                f"client: {client}\n",
+            ))
+        payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "phase": "from-report",
+            "from_report": True,
+            "merge_diag": merge_diag,
+            "staging_status": staging_status,
+            "blocker": blocker,
+            "client_bulk_endpoint": _BULK_ENDPOINT[client],
+            "outputs": outputs,
+            "row_count": len(enriched),
+            "enriched_diagnostics": enriched_diag,
+            "staging_diagnostics": staging_diag,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return payload
 
     # Two-phase workflow short-circuit: when ``from_state`` is True,
     # skip parse → match → enrichment → vision and rebuild EnrichedRows
@@ -895,6 +1102,11 @@ def run_once(
         audit_date_ddmmyyyy=ddmmyyyy,
     )
 
+    # render_order is filled by build_ssa_report_docx to map detail
+    # table position → csv_idx. Phase-3 (--from-report) pairs docx
+    # edits back to EnrichedRows using this list.
+    finding_render_order: list[int] = []
+
     # Persist the full row state for the two-phase workflow. Phase 2
     # (--from-state) reads this back, optionally merges operator
     # edits from the enriched xlsx, then renders the report + staging.
@@ -918,6 +1130,7 @@ def run_once(
         "llm_diagnostics": llm_diag,
         "rows": _serialise_rows(enriched),
         "enriched_xlsx_snapshot": enriched_snapshot,
+        "finding_render_order": list(finding_render_order),
     }
     state_path.write_text(
         json.dumps(state_payload, indent=2, ensure_ascii=False),
@@ -966,8 +1179,29 @@ def run_once(
         prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
         risk_assessment=ra_obj,
         merge_groups=merge_groups,
+        render_order_out=finding_render_order,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
+
+    # Update the state JSON with the freshly-captured
+    # finding_render_order so phase-3 (--from-report) can pair docx
+    # detail-table edits back to the correct EnrichedRow.
+    if state_path.exists():
+        try:
+            existing_state = json.loads(
+                state_path.read_text(encoding="utf-8"),
+            )
+            existing_state["finding_render_order"] = list(
+                finding_render_order,
+            )
+            existing_state["rows"] = _serialise_rows(enriched)
+            state_path.write_text(
+                json.dumps(existing_state, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception:
+            log.warning("failed to refresh state JSON", exc_info=True)
+
     staging_result = build_pims_staging_xlsx_with_size_control(
         enriched,
         staging_path,
@@ -1088,6 +1322,18 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     ap.add_argument(
+        "--from-report", action="store_true",
+        help=(
+            "phase 3 of the workflow — read operator edits from the "
+            "audit report docx (per-finding detail tables) and flow "
+            "them BACK to the enriched + staging xlsx. Updates the "
+            "Location / Observation / Regulatory Basis / Hierarchy "
+            "of Control / Recommendation / Timeframe fields. Leaves "
+            "the operator-edited docx alone (it's the source of "
+            "truth)."
+        ),
+    )
+    ap.add_argument(
         "--merge", default="",
         help=(
             "merge directives by displayed finding number, e.g. "
@@ -1106,10 +1352,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        if args.enrich_only and args.from_state:
+        phase_flags = (args.enrich_only, args.from_state, args.from_report)
+        if sum(bool(f) for f in phase_flags) > 1:
             print(
-                "error: --enrich-only and --from-state are mutually "
-                "exclusive (they're the two halves of one workflow).",
+                "error: --enrich-only / --from-state / --from-report "
+                "are mutually exclusive (they select one phase of the "
+                "review workflow).",
                 file=sys.stderr,
             )
             return 1
@@ -1124,6 +1372,7 @@ def main(argv: list[str] | None = None) -> int:
             merge_groups=parse_merge_argument(args.merge),
             stop_after="enrich" if args.enrich_only else None,
             from_state=args.from_state,
+            from_report=args.from_report,
         )
     except PreflightError as e:
         # Preflight blocked the run before any rows processed; rc=3

@@ -2569,6 +2569,7 @@ def build_ssa_report_docx(
     prior_audit_date_ddmmyy: str = "",
     risk_assessment=None,
     merge_groups: list[list[int]] | None = None,
+    render_order_out: list[int] | None = None,
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -2691,6 +2692,15 @@ def build_ssa_report_docx(
     # orchestrator on every row's text fields (see
     # ``apply_ra_labels_to_rows``) so all three builders see the
     # same labelled output.
+
+    # Capture the rendered finding order so phase-3 (--from-report)
+    # can pair operator edits in detail tables back to the correct
+    # EnrichedRow. The order matches the per-finding detail blocks
+    # expanded immediately below.
+    if render_order_out is not None:
+        render_order_out.clear()
+        for csv_idx, _row in register:
+            render_order_out.append(csv_idx)
 
     # Item 15: insert the Findings index table directly below the
     # "Findings" heading paragraph BEFORE the per-finding detail
