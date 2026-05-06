@@ -1846,6 +1846,55 @@ def _recommendation_tokens(text: str) -> set[str]:
 _RECOMMENDATION_JACCARD_THRESHOLD = 0.5
 _RECOMMENDATION_OVERLAP_MIN = 3
 
+# Absolute content-token overlap that triggers a merge regardless of
+# Jaccard. Catches cases where the recommendations share a strong
+# common subject (e.g. ``daily``, ``register``, ``time-out``,
+# ``entries``) but the Jaccard score is diluted by length. Empirically
+# tuned against real-folder content — 4 tokens is meaningful.
+_RECOMMENDATION_STRONG_OVERLAP = 4
+
+# Anchor-phrase merge — when BOTH recommendations contain every token
+# in an anchor set, treat them as the same physical control intent
+# even when the surrounding wording diverges. Reviewer call:
+# "we are only merging because very similar and results in
+# establishing a work zone" — the canonical control is the
+# work/exclusion zone, regardless of whether the recommendation
+# emphasises the spotter, the suspended-load aspect, or the stop-
+# work directive.
+_MERGE_ANCHORS: tuple[frozenset[str], ...] = (
+    frozenset({"establish", "zone"}),       # establish (and maintain) [exclusion|work] zone
+    frozenset({"establish", "barricad"}),   # establish a barricaded boundary (stem match)
+    frozenset({"isolate", "energy"}),       # energy isolation
+)
+
+
+def _has_anchor_match(a: str, b: str) -> bool:
+    """Return True iff some anchor set is fully present in BOTH
+    recommendation strings (post-tokenise, with stem-style prefix
+    matching for tokens that end in a partial stem)."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return False
+    for anchor in _MERGE_ANCHORS:
+        ok_a = all(_anchor_present(stem, ta) for stem in anchor)
+        ok_b = all(_anchor_present(stem, tb) for stem in anchor)
+        if ok_a and ok_b:
+            return True
+    return False
+
+
+def _anchor_present(stem: str, tokens: set[str]) -> bool:
+    """Token-set membership with prefix-stem matching.
+
+    ``barricad`` matches ``barricaded`` / ``barricade`` / ``barricades``
+    by checking that any token in the set starts with the stem.
+    """
+    for tok in tokens:
+        if tok == stem or tok.startswith(stem):
+            return True
+    return False
+
 
 def _recommendation_jaccard(a: str, b: str) -> float:
     """Jaccard similarity between two recommendation strings on the
@@ -1859,6 +1908,19 @@ def _recommendation_jaccard(a: str, b: str) -> float:
         return 0.0
     union = ta | tb
     return len(inter) / len(union) if union else 0.0
+
+
+def _recommendation_strong_overlap(a: str, b: str) -> bool:
+    """Absolute-overlap merge trigger: when the two recommendations
+    share at least ``_RECOMMENDATION_STRONG_OVERLAP`` distinct content
+    tokens, treat as the same control intent regardless of Jaccard
+    score (which can be diluted when one side carries extra qualifying
+    text)."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return False
+    return len(ta & tb) >= _RECOMMENDATION_STRONG_OVERLAP
 
 
 def merge_similar_findings(
@@ -1902,19 +1964,33 @@ def merge_similar_findings(
                 c_row.ccvs_code.split("-", 1)[0]
                 if "-" in c_row.ccvs_code else c_row.ccvs_code
             )
-            if c_stream != stream:
-                continue
-            # Title equality OR recommendation similarity.
-            same_title = (
+            same_stream = c_stream == stream
+            # Title equality OR recommendation similarity — both
+            # require the same stream because the same descriptive
+            # phrase shouldn't auto-cross stream boundaries.
+            same_title = same_stream and (
                 row.finding_title and c_row.finding_title
                 and row.finding_title.strip().lower()
                 == c_row.finding_title.strip().lower()
             )
-            similar_rec = (
+            similar_rec = same_stream and (
                 _recommendation_jaccard(row.recommendation, c_row.recommendation)
                 >= _RECOMMENDATION_JACCARD_THRESHOLD
+                or _recommendation_strong_overlap(
+                    row.recommendation, c_row.recommendation,
+                )
             )
-            if same_title or similar_rec:
+            # Anchor-phrase merge: when both recommendations carry one
+            # of the canonical control-intent anchors (establish ...
+            # zone, isolate energy, etc.), treat them as the same
+            # finding REGARDLESS of CCVS stream. Reviewer's call:
+            # an exclusion-zone control above a steel lift (WAH-H6)
+            # and the telehandler beneath it (MOB-H9) are physically
+            # the same intervention even though the streams differ.
+            anchor_match = _has_anchor_match(
+                row.recommendation, c_row.recommendation,
+            )
+            if same_title or similar_rec or anchor_match:
                 match_pos = pos
                 break
         if match_pos < 0:

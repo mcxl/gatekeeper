@@ -1805,6 +1805,109 @@ def test_apply_manual_merges_consolidates_displayed_indices():
     assert out[1][1].finding_title == "Brace removal sign-off"
 
 
+def test_merge_similar_findings_anchor_phrase_establish_zone():
+    """Anchor-phrase merge: two recommendations that both prescribe
+    "establish ... zone" merge even when overall Jaccard is below
+    the 0.5 threshold AND even when the CCVS streams differ
+    (e.g. WAH-H6 + MOB-H9). Reviewer's call: an exclusion zone
+    above a steel lift and the telehandler beneath it are physically
+    the same intervention even though the streams differ."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation=(
+            "Immediate – stop lifts and establish and maintain "
+            "exclusion zone with spotter"
+        ),
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    # Different stream (WAH not MOB) but the SAME control intent —
+    # establish/maintain an exclusion zone. Anchor-phrase merge
+    # crosses the stream boundary because the physical control is
+    # the same intervention.
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Workers under suspended steel — no zone",
+        recommendation=(
+            "Immediate – establish and maintain an exclusion zone "
+            "beneath suspended steel works"
+        ),
+        conformance_status="NCR", ccvs_code="WAH-H6",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 1
+    canonical = out[0][1]
+    assert canonical.evidence_csv_indices == [10, 11]
+    assert "Evidence also: PIMS Obs 11" in canonical.monitoring_note
+
+
+def test_merge_similar_findings_strong_overlap_collapses_register_pair():
+    """Two SYS-class register findings with low Jaccard but ≥4
+    shared content tokens (daily, register, time-out, entries) merge
+    via the absolute-overlap rule. Without it the two daily-register
+    duplicates render as separate findings even though the reviewer
+    sees them as one."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Daily register missing time-out entries",
+        recommendation=(
+            "Within 7 days – complete time-out entries daily and "
+            "review register at shift end"
+        ),
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Daily register entries missing time-out signatures",
+        recommendation=(
+            "Within 7 days – maintain daily register with time-in and "
+            "time-out entries completed"
+        ),
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 1
+    assert out[0][1].evidence_csv_indices == [10, 11]
+
+
+def test_merge_similar_findings_anchor_only_fires_when_intent_overlaps():
+    """Anchor merge does NOT fire when one recommendation prescribes
+    "establish exclusion zone" and the other prescribes "complete
+    pre-start logbook" — different physical control intents."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation="Immediate – establish exclusion zone with spotter",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Pre-start logbook missing for telehandler",
+        recommendation=(
+            "Immediate – stop telehandler use until pre-start logbook "
+            "entry is completed and signed"
+        ),
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 2  # NOT merged
+
+
 def test_merge_similar_findings_collapses_on_recommendation_intent():
     """Two NCRs with different titles but the same physical control
     intent ("establish and maintain an exclusion zone") merge.
