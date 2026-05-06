@@ -1028,14 +1028,19 @@ _TABLE_COL_WIDTHS_CM: dict[str, tuple[float, ...]] = {
 # Tables whose first row should:
 #   - be bold (header styling)
 #   - repeat across page breaks (Word's tblHeader flag)
-_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive", "prior_recs"})
+# Every table in the SSA report carries a bold first row, repeats
+# its header on page break, and renders all-cell single-line borders
+# (Word's "All" preset). Consistency is the locked styling per the
+# 2026-05-06 reviewer direction.
+_TABLE_HEADER_BOLD: frozenset[str] = frozenset({
+    "positive", "prior_recs", "obs_register",
+})
 _TABLE_HEADER_REPEAT: frozenset[str] = frozenset({
     "positive", "obs_register", "prior_recs",
 })
-# Tables that should render every cell with all-around single-line
-# borders (the "All" preset in Word's Borders dialog). 2026-05-06
-# reviewer direction for the prior-recs table.
-_TABLE_ALL_BORDERS: frozenset[str] = frozenset({"prior_recs"})
+_TABLE_ALL_BORDERS: frozenset[str] = frozenset({
+    "positive", "prior_recs", "obs_register",
+})
 
 
 def _cm_to_twips(cm: float) -> int:
@@ -1416,6 +1421,23 @@ def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
                 _set_cell_text_oxml(cells[1], "")
         return 0
 
+    from docx.table import Table
+
+    def _format_detail_tbl(tbl_el):
+        """Apply consistent styling to a per-finding detail table —
+        all-cell borders, bold left-column labels."""
+        tbl = Table(tbl_el, doc)
+        _apply_all_cell_borders(tbl)
+        # Bold the left-column label cells (Location / Observation /
+        # Regulatory Basis / Hierarchy of Control / Recommendation /
+        # Timeframe). Right-column values stay normal weight.
+        for r in tbl.rows:
+            if not r.cells:
+                continue
+            for p in r.cells[0].paragraphs:
+                for run in p.runs:
+                    run.bold = True
+
     written = 0
     for idx, row in enumerate(register_rows, start=1):
         title = _finding_heading_text(idx, row)
@@ -1423,12 +1445,14 @@ def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
             _set_paragraph_runs_text(heading_p, title)
             _set_paragraph_space_before(heading_p, twentieths_of_a_point=240)
             _populate_finding_detail_table(detail_tbl, row)
+            _format_detail_tbl(detail_tbl)
         else:
             new_h = copy.deepcopy(heading_p)
             new_t = copy.deepcopy(detail_tbl)
             _set_paragraph_runs_text(new_h, title)
             _set_paragraph_space_before(new_h, twentieths_of_a_point=240)
             _populate_finding_detail_table(new_t, row)
+            _format_detail_tbl(new_t)
             status_p.addprevious(new_h)
             status_p.addprevious(new_t)
         written += 1
@@ -2696,6 +2720,7 @@ def build_ssa_report_docx(
             col_widths_cm=_TABLE_COL_WIDTHS_CM["positive"],
             bold_header="positive" in _TABLE_HEADER_BOLD,
             repeat_header="positive" in _TABLE_HEADER_REPEAT,
+            all_borders="positive" in _TABLE_ALL_BORDERS,
         )
         placeholder = pos_tbl.rows[1]
         if positive:
@@ -2791,8 +2816,9 @@ def build_ssa_report_docx(
         _apply_table_format(
             reg_tbl,
             col_widths_cm=None,  # use template's existing widths
-            bold_header=False,   # template already styles the header
+            bold_header="obs_register" in _TABLE_HEADER_BOLD,
             repeat_header="obs_register" in _TABLE_HEADER_REPEAT,
+            all_borders="obs_register" in _TABLE_ALL_BORDERS,
         )
         # Map each non-Compliant row's csv_idx → finding number (F1, F2 …)
         # so we can cite the Findings entry from the register's status
