@@ -52,8 +52,14 @@ from pims.services.ssa_pipeline import (
 log = logging.getLogger("ssa.cli")
 
 
-# Folder name contract: YYYY-MM-DD-<CLIENT>, CLIENT ∈ {RPD, SDG}
-_FOLDER_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)$")
+# Folder name contract: YYYY-MM-DD-<CLIENT>[-NN], CLIENT ∈ {RPD, SDG},
+# optional "-NN" sub-id distinguishes multiple visits to the same site
+# on the same day (e.g. morning + afternoon walk, or sub-area split).
+# When present, the sub-id is propagated to the output filenames so
+# multiple runs against the same day's folders don't collide.
+_FOLDER_RE = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)(?:-(\d{2}))?$"
+)
 
 # Image extensions the watcher cares about. PNG-with-transparency is
 # legal but rare; HEIC explicitly out of scope (filename canonicalisation
@@ -65,32 +71,39 @@ _IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 _BULK_ENDPOINT = {"RPD": "/pims/upload/observations", "SDG": None}
 
 
-def _parse_folder(folder: Path) -> tuple[str, str, str, str]:
-    """Return (audit_date_iso, audit_date_ddmmyyyy, yymmdd, client).
+def _parse_folder(folder: Path) -> tuple[str, str, str, str, str]:
+    """Return (audit_date_iso, audit_date_ddmmyyyy, yymmdd, client, sub_id).
 
-    Raises ValueError when the folder name doesn't match the contract —
-    rerun with a renamed folder is the documented remediation.
+    ``sub_id`` is the trailing ``-NN`` digit pair (e.g. ``"01"``) when
+    the folder name carries one, or ``""`` when it doesn't. The sub-id
+    is propagated to output filenames so multiple visits on the same
+    day (``2026-05-01-SDG-01``, ``...-SDG-02``) don't overwrite each
+    other.
+
+    Raises ValueError when the folder name doesn't match the contract.
     """
     m = _FOLDER_RE.match(folder.name)
     if not m:
         raise ValueError(
-            f"folder name {folder.name!r} does not match YYYY-MM-DD-<CLIENT> "
-            f"with CLIENT in (RPD, SDG)"
+            f"folder name {folder.name!r} does not match "
+            f"YYYY-MM-DD-<CLIENT>[-NN] with CLIENT in (RPD, SDG)"
         )
-    yyyy, mm, dd, client = m.groups()
+    yyyy, mm, dd, client, sub_id = m.groups()
+    sub_id = sub_id or ""
     iso = f"{yyyy}-{mm}-{dd}"
     ddmmyyyy = f"{dd}/{mm}/{yyyy}"
     yymmdd = f"{yyyy[2:]}{mm}{dd}"
     # Sanity-check the date itself; ValueError on Feb 30 etc.
     datetime.strptime(iso, "%Y-%m-%d")
-    return iso, ddmmyyyy, yymmdd, client
+    return iso, ddmmyyyy, yymmdd, client, sub_id
 
 
-def _output_names(yymmdd: str, client: str) -> dict[str, str]:
+def _output_names(yymmdd: str, client: str, sub_id: str = "") -> dict[str, str]:
+    suffix = f"-{client}-{sub_id}" if sub_id else f"-{client}"
     return {
-        "enriched": f"PIMS-Enriched-{yymmdd}-{client}.xlsx",
-        "report": f"Site-Safety-Audit-Report-{yymmdd}-{client}.docx",
-        "staging": f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}-{client}.xlsx",
+        "enriched": f"PIMS-Enriched-{yymmdd}{suffix}.xlsx",
+        "report": f"Site-Safety-Audit-Report-{yymmdd}{suffix}.docx",
+        "staging": f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}{suffix}.xlsx",
     }
 
 
@@ -101,9 +114,10 @@ def _images_in(folder: Path) -> list[Path]:
     )
 
 
-# Filename-date-suffix on a prior SSA report: ``...YYMMDD-<CLIENT>.docx``.
+# Filename-date-suffix on a prior SSA report:
+# ``Site-Safety-Audit-Report-YYMMDD-<CLIENT>[-NN].docx``.
 _PRIOR_REPORT_RE = re.compile(
-    r"^Site-Safety-Audit-Report-(\d{6})-(RPD|SDG)\.docx$"
+    r"^Site-Safety-Audit-Report-(\d{6})-(RPD|SDG)(?:-\d{2})?\.docx$"
 )
 
 
@@ -316,7 +330,7 @@ def run_once(
             f"frozen — use --ignore-freeze to overwrite ({freeze})"
         )
 
-    iso, ddmmyyyy, yymmdd, client = _parse_folder(folder)
+    iso, ddmmyyyy, yymmdd, client, sub_id = _parse_folder(folder)
     csv_path = folder / "Evidence_Master.csv"
     if not csv_path.exists():
         raise FileNotFoundError(f"Evidence_Master.csv missing in {folder}")
@@ -326,7 +340,7 @@ def run_once(
         raise FileNotFoundError(f"no images found in {folder}")
 
     # --- manifest + idempotency -------------------------------------
-    names = _output_names(yymmdd, client)
+    names = _output_names(yymmdd, client, sub_id)
     prior_reports = _qualifying_prior_reports(folder, iso, names["report"])
     manifest = _compute_manifest(csv_path, images, prior_reports)
 
@@ -470,7 +484,9 @@ def run_once(
         prior_recs = parse_prior_report_recommendations(newest_prior)
         # Extract YYMMDD date from filename, format as DD/MM/YY for the
         # canonical "Status (DD/MM/YY)" header in the prior-recs table.
-        m = re.search(r"-(\d{6})-(?:RPD|SDG)\.docx$", newest_prior.name)
+        m = re.search(
+            r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", newest_prior.name,
+        )
         if m:
             yymmdd = m.group(1)
             prior_audit_date_ddmmyy = (

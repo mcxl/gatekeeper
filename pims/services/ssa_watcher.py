@@ -45,7 +45,9 @@ log = logging.getLogger(__name__)
 
 # --- folder + filename rules --------------------------------------------
 
-_FOLDER_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)$")
+_FOLDER_RE = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)(?:-(\d{2}))?$"
+)
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 
 # Static exclusions — names always skipped from the input snapshot,
@@ -70,12 +72,13 @@ def _expected_outputs(folder_name: str) -> set[str]:
     m = _FOLDER_RE.match(folder_name)
     if not m:
         return set()
-    yyyy, mm, dd, client = m.groups()
+    yyyy, mm, dd, client, sub_id = m.groups()
     yymmdd = f"{yyyy[2:]}{mm}{dd}"
+    suffix = f"-{client}-{sub_id}" if sub_id else f"-{client}"
     return {
-        f"PIMS-Enriched-{yymmdd}-{client}.xlsx",
-        f"Site-Safety-Audit-Report-{yymmdd}-{client}.docx",
-        f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}-{client}.xlsx",
+        f"PIMS-Enriched-{yymmdd}{suffix}.xlsx",
+        f"Site-Safety-Audit-Report-{yymmdd}{suffix}.docx",
+        f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}{suffix}.xlsx",
     }
 
 
