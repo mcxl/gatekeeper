@@ -1814,13 +1814,27 @@ _RECOMMENDATION_STOPWORDS: frozenset[str] = frozenset({
 })
 
 
+def _stem_plural(token: str) -> str:
+    """Trim trailing ``s`` on tokens longer than 4 characters so
+    plural forms collapse to their singular for similarity scoring
+    (``zones`` → ``zone``, ``spotters`` → ``spotter``,
+    ``signatures`` → ``signature``). Conservative — leaves short
+    tokens (``gas``, ``has``) and ``-ss`` words (``access``) alone.
+    """
+    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
 def _recommendation_tokens(text: str) -> set[str]:
     """Return content-word tokens of a Recommendation cell.
 
     Strips the leading urgency phrase ("Immediate – ", "Within 7 days
     – ") because that timing prefix carries no information about the
     physical control the recommendation is asking for. Lowercases,
-    drops stopwords, drops single-character tokens.
+    drops stopwords, drops short tokens, and stems trailing plural
+    ``s`` so ``zone`` / ``zones`` and ``spotter`` / ``spotters``
+    collapse for matching.
     """
     if not text:
         return set()
@@ -1838,7 +1852,7 @@ def _recommendation_tokens(text: str) -> set[str]:
                 break
     tokens = re.findall(r"[a-z][a-z0-9-]+", s)
     return {
-        t for t in tokens
+        _stem_plural(t) for t in tokens
         if len(t) >= 3 and t not in _RECOMMENDATION_STOPWORDS
     }
 
@@ -1862,9 +1876,18 @@ _RECOMMENDATION_STRONG_OVERLAP = 4
 # emphasises the spotter, the suspended-load aspect, or the stop-
 # work directive.
 _MERGE_ANCHORS: tuple[frozenset[str], ...] = (
-    frozenset({"establish", "zone"}),       # establish (and maintain) [exclusion|work] zone
-    frozenset({"establish", "barricad"}),   # establish a barricaded boundary (stem match)
-    frozenset({"isolate", "energy"}),       # energy isolation
+    # exclusion-zone control intent — present whether the
+    # recommendation says "establish exclusion zone", "stop until
+    # exclusion zone in place", or "maintain exclusion zone".
+    frozenset({"exclusion", "zone"}),
+    # generic "establish [work] zone" — catches recommendations that
+    # mention a work zone without the canonical "exclusion" word.
+    frozenset({"establish", "zone"}),
+    # barricaded boundary (stem match for "barricade", "barricaded",
+    # "barricades")
+    frozenset({"establish", "barricad"}),
+    # energy isolation
+    frozenset({"isolate", "energy"}),
 )
 
 
