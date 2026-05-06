@@ -1739,6 +1739,86 @@ def test_significance_score_orders_hp_then_swms_then_plant_then_permit():
     assert order == ["TLT-H9", "WAH-H6", "MOB-H9", "HOT-H6", "SYS-M3"]
 
 
+def test_parse_merge_argument_handles_groups_and_whitespace():
+    from pims.services.ssa_pipeline import parse_merge_argument
+    assert parse_merge_argument("") == []
+    assert parse_merge_argument("1,3") == [[1, 3]]
+    assert parse_merge_argument("1, 3 ; 5, 7, 8") == [[1, 3], [5, 7, 8]]
+    # Invalid tokens dropped silently.
+    assert parse_merge_argument("1,abc,3;x,y") == [[1, 3]]
+
+
+def test_apply_manual_merges_consolidates_displayed_indices():
+    """Operator-supplied merge directive consolidates findings by
+    displayed index (1-based, post-significance order). The lowest
+    index in each group is the canonical row; others have their
+    titles / recommendations / findings folded in and their csv_idx
+    appended to evidence_csv_indices."""
+    from pims.services.ssa_pipeline import apply_manual_merges
+    rows = [
+        (10, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=10, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Telehandler near steel without exclusion",
+            finding="long finding A", recommendation="Action A",
+            conformance_status="NCR", ccvs_code="MOB-H9",
+        )),
+        (11, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=11, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Brace removal sign-off",
+            finding="long finding B", recommendation="Action B",
+            conformance_status="NCR", ccvs_code="TLT-H9",
+        )),
+        (12, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=12, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Pre-start logbook missing",
+            finding="long finding C", recommendation="Action C",
+            conformance_status="NCR", ccvs_code="MOB-H9",
+        )),
+    ]
+    out = apply_manual_merges(rows, [[1, 3]])
+    # 3 inputs, group [1,3] → 2 outputs (indices 1+3 collapse into
+    # canonical at displayed position 1, position 2 untouched).
+    assert len(out) == 2
+    canonical = out[0][1]
+    # Title concatenation preserves both originals.
+    assert "Telehandler near steel" in canonical.finding_title
+    assert "Pre-start logbook missing" in canonical.finding_title
+    # Recommendation and finding fields concatenated with separators.
+    assert "Action A" in canonical.recommendation
+    assert "Action C" in canonical.recommendation
+    assert "long finding A" in canonical.finding
+    assert "long finding C" in canonical.finding
+    # Evidence csv indices folded.
+    assert 10 in canonical.evidence_csv_indices
+    assert 12 in canonical.evidence_csv_indices
+    # monitoring_note documents the consolidation.
+    assert "Consolidated finding" in canonical.monitoring_note
+    assert "PIMS Obs 10" in canonical.monitoring_note
+    assert "PIMS Obs 12" in canonical.monitoring_note
+    # Position 2 (Brace removal) untouched.
+    assert out[1][1].finding_title == "Brace removal sign-off"
+
+
+def test_apply_manual_merges_silent_on_invalid_indices():
+    """Out-of-range / single-index groups are silently dropped — an
+    operator typo should never crash the pipeline."""
+    from pims.services.ssa_pipeline import apply_manual_merges
+    rows = [
+        (1, EnrichedRow(obs=ObservationRow(
+            csv_row=1, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"))),
+    ]
+    # group of 1: no-op. Out-of-range: ignored.
+    out = apply_manual_merges(rows, [[1], [1, 99], [50, 100]])
+    assert out == rows
+
+
 def test_merge_similar_findings_consolidates_evidence():
     """Item 12: rows with the same status + stream + finding_title
     collapse into one canonical row; subsequent rows fold their

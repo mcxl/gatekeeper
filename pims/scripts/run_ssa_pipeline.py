@@ -45,6 +45,7 @@ from pims.services.ssa_pipeline import (
     extract_site_address,
     match_photos,
     parse_evidence_csv,
+    parse_merge_argument,
     parse_prior_report_recommendations,
     split_multi_issue_observations,
 )
@@ -307,6 +308,7 @@ def run_once(
     force: bool = False,
     enrich: bool = True,
     risk_assessment_path: Path | None = None,
+    merge_groups: list[list[int]] | None = None,
 ) -> dict:
     """Run the pipeline once. Returns the .ssa_run.json payload.
 
@@ -524,6 +526,7 @@ def run_once(
         project_name=ra_project_name,
         prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
         risk_assessment=ra_obj,
+        merge_groups=merge_groups,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
     staging_result = build_pims_staging_xlsx_with_size_control(
@@ -623,6 +626,16 @@ def main(argv: list[str] | None = None) -> int:
         "--no-enrich", action="store_true",
         help="skip the LLM finding-rewrite + narrative-summary pass",
     )
+    ap.add_argument(
+        "--merge", default="",
+        help=(
+            "merge directives by displayed finding number, e.g. "
+            "\"1,3\" merges findings #1 and #3 into one consolidated "
+            "entry; \"1,3;5,7\" applies two merges. Indices are "
+            "1-based and refer to the post-significance order shown "
+            "in the docx Findings index table."
+        ),
+    )
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
 
@@ -640,6 +653,7 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             enrich=not args.no_enrich,
             risk_assessment_path=args.risk_assessment,
+            merge_groups=parse_merge_argument(args.merge),
         )
     except PreflightError as e:
         # Preflight blocked the run before any rows processed; rc=3

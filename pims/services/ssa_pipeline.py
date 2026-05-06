@@ -1706,6 +1706,102 @@ def cap_executive_summary(text: str, max_lines: int = 20) -> str:
     return truncated
 
 
+def apply_manual_merges(
+    indexed_rows: list[tuple[int, EnrichedRow]],
+    merge_groups: list[list[int]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Apply operator-supplied merge directives by displayed-finding
+    number (1-based, matching the index-table numbering reviewers see
+    in the rendered docx).
+
+    ``merge_groups`` is a list of groups; each group is a list of
+    1-based indices into ``indexed_rows`` after significance sort.
+    Within a group, the lowest index becomes the canonical row;
+    other rows are merged into it (their titles / recommendations /
+    findings are concatenated and their csv indices are folded into
+    ``evidence_csv_indices``). Other rows are then dropped from the
+    list.
+
+    Indices outside the range or duplicated across groups are
+    silently ignored — operator typos shouldn't crash the pipeline.
+    """
+    if not merge_groups or not indexed_rows:
+        return indexed_rows
+    drop: set[int] = set()
+    for group in merge_groups:
+        if len(group) < 2:
+            continue
+        valid = [
+            i for i in group
+            if 1 <= i <= len(indexed_rows) and (i - 1) not in drop
+        ]
+        if len(valid) < 2:
+            continue
+        valid.sort()
+        canonical_idx = valid[0] - 1  # 0-based
+        canonical = indexed_rows[canonical_idx][1]
+        merged_titles = [canonical.finding_title]
+        merged_recs = [canonical.recommendation] if canonical.recommendation else []
+        merged_findings = [canonical.finding] if canonical.finding else []
+        evidence_indices: list[int] = list(
+            canonical.evidence_csv_indices
+            or [indexed_rows[canonical_idx][0]]
+        )
+        for other_pos in valid[1:]:
+            other_pair = indexed_rows[other_pos - 1]
+            other_csv_idx, other_row = other_pair
+            if other_row.finding_title and other_row.finding_title not in merged_titles:
+                merged_titles.append(other_row.finding_title)
+            if other_row.recommendation and other_row.recommendation not in merged_recs:
+                merged_recs.append(other_row.recommendation)
+            if other_row.finding and other_row.finding not in merged_findings:
+                merged_findings.append(other_row.finding)
+            if other_csv_idx not in evidence_indices:
+                evidence_indices.append(other_csv_idx)
+            for fold_idx in (other_row.evidence_csv_indices or []):
+                if fold_idx not in evidence_indices:
+                    evidence_indices.append(fold_idx)
+            drop.add(other_pos - 1)
+        # Compose the merged values back onto the canonical row.
+        canonical.finding_title = "; ".join(t for t in merged_titles if t)
+        canonical.recommendation = " | ".join(r for r in merged_recs if r)
+        canonical.finding = "\n\n".join(f for f in merged_findings if f)
+        canonical.evidence_csv_indices = evidence_indices
+        # Surface the consolidation in monitoring_note so the reviewer
+        # sees which evidence rows were folded in.
+        extra = "Consolidated finding — Evidence: " + ", ".join(
+            f"PIMS Obs {i}" for i in evidence_indices
+        )
+        if canonical.monitoring_note:
+            if "Consolidated finding" not in canonical.monitoring_note:
+                canonical.monitoring_note = (
+                    f"{canonical.monitoring_note} | {extra}"
+                )
+        else:
+            canonical.monitoring_note = extra
+    return [pair for i, pair in enumerate(indexed_rows) if i not in drop]
+
+
+def parse_merge_argument(arg: str) -> list[list[int]]:
+    """Parse an operator merge directive into groups of 1-based indices.
+
+    Format: ``"1,3"`` for one group; ``"1,3;5,7,8"`` for multiple.
+    Whitespace tolerant. Invalid tokens are dropped silently.
+    """
+    if not arg:
+        return []
+    out: list[list[int]] = []
+    for chunk in arg.split(";"):
+        group: list[int] = []
+        for tok in chunk.split(","):
+            tok = tok.strip()
+            if tok.isdigit():
+                group.append(int(tok))
+        if group:
+            out.append(group)
+    return out
+
+
 def merge_similar_findings(
     indexed_rows: list[tuple[int, EnrichedRow]],
 ) -> list[tuple[int, EnrichedRow]]:
@@ -2227,6 +2323,7 @@ def build_ssa_report_docx(
     project_name: str = "",
     prior_audit_date_ddmmyy: str = "",
     risk_assessment=None,
+    merge_groups: list[list[int]] | None = None,
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -2339,6 +2436,11 @@ def build_ssa_report_docx(
     # Item 10: order findings by significance so the most important
     # appears as #1 and at the top of the Findings index table.
     register = sort_register_by_significance(merged_register)
+    # Operator override (--merge "1,3"): apply manual merge directives
+    # AFTER significance sort so the indices line up with what the
+    # reviewer sees in the rendered docx index table.
+    if merge_groups:
+        register = apply_manual_merges(register, merge_groups)
 
     # Item 9 + 14: RA labelling has already been applied by the
     # orchestrator on every row's text fields (see
