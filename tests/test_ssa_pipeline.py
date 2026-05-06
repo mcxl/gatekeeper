@@ -762,9 +762,10 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     assert "site safety audit conducted on 1 May 2026" in doc.paragraphs[6].text
     assert doc.paragraphs[7].text == "Audit summary text."
 
-    # Footer carries DD/MM/YYYY + prepared_by
+    # Footer carries the short-form audit date + prepared_by per
+    # reviewer direction (Date: 1-may-26, lowercase month, 2-digit year).
     foot = doc.sections[1].footer.paragraphs[0].text
-    assert "01/05/2026" in foot
+    assert "1-may-26" in foot
     assert "Alan Richardson" in foot
 
     # Positive Observations table → 1 Compliant row.
@@ -1560,6 +1561,46 @@ def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
 # Items 9-16 — gap-closure refinements
 # ---------------------------------------------------------------------------
 
+def test_audit_date_helpers_format_correctly():
+    """Reviewer-facing date formats: ordinal cover form and short
+    footer form. Helpers handle ordinal suffixes (st/nd/rd/th) for
+    teens and round numbers."""
+    from pims.services.ssa_pipeline import _to_ordinal_date, _to_short_date
+    assert _to_ordinal_date("01/05/2026") == "1st May 2026"
+    assert _to_ordinal_date("02/05/2026") == "2nd May 2026"
+    assert _to_ordinal_date("03/05/2026") == "3rd May 2026"
+    assert _to_ordinal_date("04/05/2026") == "4th May 2026"
+    assert _to_ordinal_date("11/05/2026") == "11th May 2026"  # teens always th
+    assert _to_ordinal_date("21/05/2026") == "21st May 2026"
+    assert _to_ordinal_date("") == ""
+    assert _to_ordinal_date("garbage") == ""
+
+    assert _to_short_date("01/05/2026") == "1-may-26"
+    assert _to_short_date("15/12/2026") == "15-dec-26"
+    assert _to_short_date("") == ""
+
+
+def test_audit_report_docx_uses_ordinal_cover_and_short_footer(tmp_path):
+    """Cover-page text box gets ``1st May 2026`` (reviewer-facing
+    ordinal form); running footer gets ``1-may-26`` (short form)."""
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[],
+        site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    import zipfile
+    with zipfile.ZipFile(out) as z:
+        body = z.read("word/document.xml").decode()
+        footer = z.read("word/footer1.xml").decode()
+    # Cover: ordinal form
+    assert "1st May 2026" in body
+    assert "01/05/2026" not in body
+    # Footer: short form (lowercase month, 2-digit year)
+    assert "1-may-26" in footer
+    assert "01/05/2026" not in footer
+
+
 def test_split_multi_issue_observations_atomises_numbered_notes():
     """Item 11: composite "(1) X (2) Y (3) Z" notes split into three
     atomic ObservationRows; single "(1)" prefix left alone; rows
@@ -1775,22 +1816,25 @@ def test_findings_index_table_inserted_below_findings_heading(tmp_path):
     idx_tbl = None
     for t in doc.tables:
         if (
-            len(t.columns) == 2
-            and [c.text.strip() for c in t.rows[0].cells] == ["Finding", "Recommendation"]
+            len(t.columns) == 3
+            and [c.text.strip() for c in t.rows[0].cells] == ["#", "Finding", "Recommendation"]
         ):
             idx_tbl = t
             break
     assert idx_tbl is not None
     # 2 NCR rows → 2 data rows (header + 2)
     assert len(idx_tbl.rows) == 3
-    # Order is set by _significance_score: MOB-H9 lands in the
-    # plant/public-interface priority tier (rank 2), TLT-H9 with no
-    # HP ref / no SWMS gap / no plant stream lands in generic-NCR
-    # rank 4. So MOB ranks above TLT and renders first.
-    assert idx_tbl.rows[1].cells[0].text.startswith("Pre-start")
-    assert idx_tbl.rows[1].cells[1].text == "recom 1"
-    assert idx_tbl.rows[2].cells[0].text.startswith("Brace removal")
-    assert idx_tbl.rows[2].cells[1].text == "recom 0"
+    # # column carries 1-based row numbers matching the per-finding
+    # detail blocks below the index. Order is set by
+    # _significance_score: MOB-H9 lands in the plant/public-interface
+    # priority tier (rank 2), TLT-H9 with no HP ref / no SWMS gap /
+    # no plant stream lands in generic-NCR rank 4.
+    assert idx_tbl.rows[1].cells[0].text == "1"
+    assert idx_tbl.rows[1].cells[1].text.startswith("Pre-start")
+    assert idx_tbl.rows[1].cells[2].text == "recom 1"
+    assert idx_tbl.rows[2].cells[0].text == "2"
+    assert idx_tbl.rows[2].cells[1].text.startswith("Brace removal")
+    assert idx_tbl.rows[2].cells[2].text == "recom 0"
 
 
 def test_ra_label_applied_to_findings_in_real_render(tmp_path):

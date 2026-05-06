@@ -1224,10 +1224,12 @@ def _build_findings_index_table(doc, register_rows: list[EnrichedRow]) -> int:
     tblPr.append(tbl_borders)
     tbl.append(tblPr)
 
-    # tblGrid — two columns, Finding wider than Recommendation per
-    # the canonical sample's read order.
+    # tblGrid — three columns: # | Finding | Recommendation. The
+    # left "#" column is narrow (~1 cm) and matches the numbering on
+    # the per-finding detail blocks below the index, so reviewers
+    # can navigate from the index row to the detail block by number.
     tbl_grid = OxmlElement("w:tblGrid")
-    for w_twips in (5500, 4500):  # ~9.7 cm + ~7.9 cm
+    for w_twips in (567, 5050, 4380):  # ~1.0 cm + ~8.9 cm + ~7.7 cm
         gc = OxmlElement("w:gridCol")
         gc.set(qn("w:w"), str(w_twips))
         tbl_grid.append(gc)
@@ -1265,21 +1267,25 @@ def _build_findings_index_table(doc, register_rows: list[EnrichedRow]) -> int:
     tbl_header = OxmlElement("w:tblHeader")
     trPr.append(tbl_header)
     header_tr.append(trPr)
-    header_tr.append(_make_cell("Finding", bold=True, width_twips=5500))
-    header_tr.append(_make_cell("Recommendation", bold=True, width_twips=4500))
+    header_tr.append(_make_cell("#", bold=True, width_twips=567))
+    header_tr.append(_make_cell("Finding", bold=True, width_twips=5050))
+    header_tr.append(_make_cell("Recommendation", bold=True, width_twips=4380))
     tbl.append(header_tr)
 
-    # Data rows — one per finding in register order. The Finding
-    # column carries the descriptive title; Recommendation carries
-    # the short directive sentence (already tier-prefixed by the
-    # vision enricher).
+    # Data rows — one per finding in register order. The "#" cell
+    # numbers each row to match the per-finding detail blocks below
+    # (so reviewers can navigate from index to detail by number).
+    # The Finding column carries the descriptive title; Recommendation
+    # carries the short directive sentence (already tier-prefixed by
+    # the vision enricher).
     written = 0
-    for row in register_rows:
+    for idx, row in enumerate(register_rows, start=1):
         title = row.finding_title or row.ccvs_category or "Finding"
         rec = (row.recommendation or row.action_description or "").strip()
         tr = OxmlElement("w:tr")
-        tr.append(_make_cell(title, width_twips=5500))
-        tr.append(_make_cell(rec, width_twips=4500))
+        tr.append(_make_cell(str(idx), width_twips=567))
+        tr.append(_make_cell(title, width_twips=5050))
+        tr.append(_make_cell(rec, width_twips=4380))
         tbl.append(tr)
         written += 1
 
@@ -1910,6 +1916,46 @@ def _to_long_date(ddmmyyyy: str) -> str:
         return ""
 
 
+def _ordinal_suffix(day: int) -> str:
+    """1 → ``st``, 2 → ``nd``, 3 → ``rd``, 4-20 → ``th``, etc."""
+    if 10 <= day % 100 <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+
+def _to_ordinal_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1st May 2026``. Reviewer-facing cover-page form.
+
+    Returns ``""`` on parse failure.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        return f"{dt.day}{_ordinal_suffix(dt.day)} {dt.strftime('%B %Y')}"
+    except Exception:
+        return ""
+
+
+def _to_short_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1-may-26``. Reviewer-facing footer form.
+
+    Returns ``""`` on parse failure. Day is unpadded; month is lowercase
+    abbreviated; year is 2-digit.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        mon = dt.strftime("%b").lower()
+        yy = dt.strftime("%y")
+        return f"{dt.day}-{mon}-{yy}"
+    except Exception:
+        return ""
+
+
 def _split_narrative_paragraph(doc, narrative_combined: str) -> None:
     """Two-paragraph Executive Summary per the canonical sample.
 
@@ -2248,13 +2294,27 @@ def build_ssa_report_docx(
         f"{scope_intro}\n\n{capped_narrative}".strip()
         if scope_intro else capped_narrative
     )
-    all_replacements = {
+    # Two date formats are wired into the deliverable per reviewer
+    # direction:
+    #   - cover-page text box (in document.xml body): ``1st May 2026``
+    #   - running footer (footer*.xml):              ``1-may-26``
+    # Both share the same {{AUDIT_DATE}} placeholder; the substitution
+    # branch picks the right form per part.
+    audit_date_ordinal = _to_ordinal_date(audit_date_ddmmyyyy)
+    audit_date_short = _to_short_date(audit_date_ddmmyyyy)
+    body_replacements = {
         "{{SITE_ADDRESS}}": full_site,
         "{{NARRATIVE_SUMMARY}}": combined_narrative,
-        "{{AUDIT_DATE}}": audit_date_ddmmyyyy or "",
+        "{{AUDIT_DATE}}": audit_date_ordinal or audit_date_ddmmyyyy or "",
         "{{PREPARED_BY}}": prepared_by or "",
     }
-    _replace_tokens_in_part(doc.part, all_replacements)
+    footer_replacements = {
+        "{{SITE_ADDRESS}}": full_site,
+        "{{NARRATIVE_SUMMARY}}": combined_narrative,
+        "{{AUDIT_DATE}}": audit_date_short or audit_date_ddmmyyyy or "",
+        "{{PREPARED_BY}}": prepared_by or "",
+    }
+    _replace_tokens_in_part(doc.part, body_replacements)
     # Split the combined narrative into the canonical two-paragraph
     # Executive Summary. No-op when scope_intro was empty.
     _split_narrative_paragraph(doc, combined_narrative)
@@ -2263,7 +2323,7 @@ def build_ssa_report_docx(
             sec.header, sec.first_page_header,
             sec.footer, sec.first_page_footer,
         ):
-            _replace_tokens_in_part(hf.part, all_replacements)
+            _replace_tokens_in_part(hf.part, footer_replacements)
 
     # --- Partition rows ----------------------------------------------
     # Track each row's CSV-order index so the Positive Observations
