@@ -1,48 +1,41 @@
-"""One-off post-processing: populate the Status of Previous
-Recommendations table with the PRIOR audit's findings.
+"""Status of Previous Recommendations table population (tracked changes).
 
-Operator-driven script per the 2026-05-06 review correction:
-  - Read every per-finding detail block in the PRIOR audit's docx
-    (e.g. Site-Safety-Audit-Report-260330-SDG-01.docx)
-  - Build one prior-recs row per PRIOR finding with these mappings:
-      Recommendation     -> "F<n> – <prior_finding_title>"
-      Required Actions   -> Recommendation cell from the prior
-                           finding's detail table (verbatim)
-      Status (<date>)    -> blank — auditor fills in based on what
-                           they observed in the CURRENT audit
-      Commentary         -> short summary of the prior observation
-                           + "See prior F<n>." cross-reference
-  - Update the table header from "Status (DD/MM/YY)" to
-    "Status (<audit-date-DD/MM/YY>)"
-  - Apply every change as a Word tracked change with author "Claude"
-    so the operator can review and accept in Word
+Per the 2026-05-06 reviewer rules:
+
+  1. Allowed statuses are exactly:
+       Completed / Partial / Not completed / Not assessed
+  2. "Retired" is banned.
+  3. Date format is DD-MMM-YYYY (e.g. ``01-May-2026``) — 4-digit year.
+  4. Every Comments cell carries a finding reference ``F<n>``.
+  5. Default status when no current-cycle evidence is linked:
+     ``Not assessed`` (NOT ``Partial``).
+  6. Keep all carry-forward recommendations from the prior report.
+  7. Append new current-cycle recommendations from current findings.
+  8. New appended rows use the current audit date + F<n> refs.
+  9. Sort: significance first (critical-safety first), then by date.
+ 10. Header date must be 4-digit year: "Status as of 01-May-2026".
+
+Columns:
+  Date | Recommendations | Status as of <current date> | Comments
 
 Run:
     python -m pims.scripts.populate_prior_recs_table \
         "G:/.../Site-Safety-Audit-Report-260501-SDG-01.docx" \
-        --prior  "G:/.../Site-Safety-Audit-Report-260330-SDG-01.docx" \
-        --audit-date 01/05/26 \
-        --output "G:/.../Site-Safety-Audit-Report-260501-SDG-01-tracked.docx"
+        --prior      "G:/.../Site-Safety-Audit-Report-260330-SDG-01.docx" \
+        --audit-date 01-May-2026
 
-When ``--prior`` is omitted the script auto-discovers the newest
-qualifying ``Site-Safety-Audit-Report-YYMMDD-<CLIENT>[-NN].docx``
-sibling whose date suffix is strictly earlier than the current
-report's date — the same rule the watcher / orchestrator uses.
+When ``--prior`` is omitted the newest qualifying sibling SSA
+report (date suffix strictly earlier than the current report's) is
+auto-discovered.
 
-Tracked-changes mechanics:
-  - Each newly inserted row carries <w:trPr><w:ins .../></w:trPr>
-    so Word renders the whole row as inserted in the change-bar
-    track.
-  - The original placeholder row's runs are wrapped in <w:del>
-    elements (with <w:delText> instead of <w:t>) so Word renders
-    the placeholder text as struck-through-and-deleted.
-  - Header cell rewrite uses paired <w:del>/<w:ins> elements so
-    "Status (DD/MM/YY)" renders as deleted alongside the new
-    "Status (01/05/26)" insertion.
+Every change is applied as a Word tracked change with author
+``Claude`` so the operator can review and accept in Word before
+issuing the report.
 """
 from __future__ import annotations
 
 import argparse
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,21 +48,67 @@ TRACKED_DATE = (
     datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 )
 
+# Locked status vocabulary (rule 1). Anything else collapses to
+# "Not assessed" (rule 5) so a stray label can't sneak through.
+ALLOWED_STATUSES = ("Completed", "Partial", "Not completed", "Not assessed")
+BANNED_STATUSES = ("Retired",)
+DEFAULT_STATUS = "Not assessed"
+
+_PRIOR_REPORT_RE = re.compile(
+    r"^Site-Safety-Audit-Report-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$"
+)
+
+
+# ---------------------------------------------------------------------------
+# Date helpers — DD-MMM-YYYY canonical form per rule 3
+# ---------------------------------------------------------------------------
+
+def to_long_dash_date(value: str) -> str:
+    """Normalise a date string to ``DD-MMM-YYYY`` (e.g. ``01-May-2026``).
+
+    Accepts:
+      * ``DD/MM/YYYY``  (e.g. ``"01/05/2026"``)
+      * ``DD-MMM-YY`` / ``DD-MMM-YYYY`` (case-insensitive month)
+      * ``YYMMDD`` 6-digit prior-report suffix (e.g. ``"260330"``)
+      * ``YYYY-MM-DD``
+
+    Returns ``""`` on parse failure.
+    """
+    if not value:
+        return ""
+    s = str(value).strip()
+    fmts = (
+        "%d/%m/%Y", "%d-%m-%Y", "%d-%b-%Y", "%d-%b-%y",
+        "%Y-%m-%d", "%y%m%d",
+    )
+    for fmt in fmts:
+        try:
+            d = datetime.strptime(s, fmt)
+            return f"{d.day:02d}-{d.strftime('%b')}-{d.strftime('%Y')}"
+        except ValueError:
+            continue
+    return ""
+
+
+def date_from_prior_filename(filename: str) -> str:
+    """Pull the prior audit date out of the filename and return
+    ``DD-MMM-YYYY``."""
+    m = _PRIOR_REPORT_RE.match(filename)
+    if not m:
+        return ""
+    return to_long_dash_date(m.group(1))
+
+
+# ---------------------------------------------------------------------------
+# OXML helpers — tracked-changes
+# ---------------------------------------------------------------------------
 
 def _next_revision_id(state: dict[str, int]) -> str:
-    """Monotonic revision-id counter shared across <w:ins>/<w:del>
-    insertions so Word treats them as parts of the same revision."""
     state["n"] = state.get("n", 100) + 1
     return str(state["n"])
 
 
 def _make_ins_run(text: str, rev: str, font_name: str = "Aptos") -> OxmlElement:
-    """Build a <w:ins> wrapping a <w:r><w:t> with the given text.
-
-    The run inherits the template's body font (Aptos) so the inserted
-    cell content matches the surrounding cell formatting in Word's
-    tracked-changes view.
-    """
     ins = OxmlElement("w:ins")
     ins.set(qn("w:id"), rev)
     ins.set(qn("w:author"), AUTHOR)
@@ -91,15 +130,14 @@ def _make_ins_run(text: str, rev: str, font_name: str = "Aptos") -> OxmlElement:
 
 
 def _make_inserted_paragraph(text: str, rev: str) -> OxmlElement:
-    """A <w:p> whose single run is wrapped in <w:ins>."""
     p = OxmlElement("w:p")
     p.append(_make_ins_run(text, rev))
     return p
 
 
-def _make_inserted_cell(
-    text: str, rev: str, width_twips: int,
-) -> OxmlElement:
+def _make_inserted_cell(text: str, rev: str, width_twips: int) -> OxmlElement:
+    """Cell with one or more paragraphs (multi-line via ``\\n`` split)
+    each wrapped in <w:ins> so Word renders the cell as inserted."""
     tc = OxmlElement("w:tc")
     tcPr = OxmlElement("w:tcPr")
     tcW = OxmlElement("w:tcW")
@@ -108,20 +146,14 @@ def _make_inserted_cell(
     tcPr.append(tcW)
     tc.append(tcPr)
     if text:
-        tc.append(_make_inserted_paragraph(text, rev))
+        for line in text.split("\n"):
+            tc.append(_make_inserted_paragraph(line, rev))
     else:
-        # Word still requires a paragraph in the cell. Use an empty
-        # paragraph WITHOUT a w:ins (blank cells aren't tracked-as-
-        # inserted runs; the row-level w:ins on trPr already marks
-        # the whole row as inserted).
-        empty_p = OxmlElement("w:p")
-        tc.append(empty_p)
+        tc.append(OxmlElement("w:p"))
     return tc
 
 
 def _mark_row_as_inserted(tr_element: OxmlElement, rev: str) -> None:
-    """Add <w:trPr><w:ins .../></w:trPr> so Word shows the row as
-    a tracked insertion."""
     trPr = tr_element.find(qn("w:trPr"))
     if trPr is None:
         trPr = OxmlElement("w:trPr")
@@ -134,22 +166,31 @@ def _mark_row_as_inserted(tr_element: OxmlElement, rev: str) -> None:
         trPr.append(ins)
 
 
+def _mark_row_as_deleted(tr_element: OxmlElement, rev: str) -> None:
+    trPr = tr_element.find(qn("w:trPr"))
+    if trPr is None:
+        trPr = OxmlElement("w:trPr")
+        tr_element.insert(0, trPr)
+    if trPr.find(qn("w:del")) is None:
+        d = OxmlElement("w:del")
+        d.set(qn("w:id"), rev)
+        d.set(qn("w:author"), AUTHOR)
+        d.set(qn("w:date"), TRACKED_DATE)
+        trPr.append(d)
+    for tc in tr_element.iter(qn("w:tc")):
+        _wrap_runs_in_del(tc, rev)
+
+
 def _wrap_runs_in_del(tc_element: OxmlElement, rev: str) -> None:
-    """Wrap every <w:r> inside the cell in a <w:del> element and
-    rename <w:t> → <w:delText> so Word renders the existing content
-    as struck-through-deleted."""
     for r in list(tc_element.iter(qn("w:r"))):
-        # Skip if already inside a <w:del> (idempotent on re-runs).
         parent = r.getparent()
-        if parent.tag == qn("w:del"):
+        if parent is not None and parent.tag == qn("w:del"):
             continue
         del_el = OxmlElement("w:del")
         del_el.set(qn("w:id"), rev)
         del_el.set(qn("w:author"), AUTHOR)
         del_el.set(qn("w:date"), TRACKED_DATE)
-        # Replace <w:t> with <w:delText> inside the run (Word's
-        # required form for deleted text content).
-        for t in r.iter(qn("w:t")):
+        for t in list(r.iter(qn("w:t"))):
             new_t = OxmlElement("w:delText")
             new_t.set(qn("xml:space"), "preserve")
             new_t.text = t.text
@@ -159,14 +200,8 @@ def _wrap_runs_in_del(tc_element: OxmlElement, rev: str) -> None:
 
 
 def _replace_header_cell_text(
-    tc_element: OxmlElement,
-    new_text: str,
-    rev_state: dict[str, int],
+    tc_element: OxmlElement, new_text: str, rev_state: dict[str, int],
 ) -> None:
-    """Replace the header cell's existing text with ``new_text`` as
-    a tracked change. Old runs get wrapped in <w:del>; a fresh
-    <w:ins>-wrapped run with ``new_text`` is appended to the
-    paragraph."""
     rev_del = _next_revision_id(rev_state)
     _wrap_runs_in_del(tc_element, rev_del)
     rev_ins = _next_revision_id(rev_state)
@@ -175,10 +210,11 @@ def _replace_header_cell_text(
         paragraphs[0].append(_make_ins_run(new_text, rev_ins))
 
 
+# ---------------------------------------------------------------------------
+# Detail-table reading
+# ---------------------------------------------------------------------------
+
 def _detail_table_field(detail_tbl, label: str) -> str:
-    """Return the right-cell text of the 2-col detail table whose
-    left-cell label matches ``label`` (case-insensitive). Empty
-    string when the label isn't found."""
     for row in detail_tbl.rows:
         if len(row.cells) < 2:
             continue
@@ -189,11 +225,9 @@ def _detail_table_field(detail_tbl, label: str) -> str:
 
 
 def _short_summary(observation_text: str, max_words: int = 14) -> str:
-    """Take the first sentence of the observation, cap at ``max_words``."""
     if not observation_text:
         return ""
     s = observation_text.strip()
-    # Truncate at first sentence end.
     for marker in (". ", "; "):
         cut = s.find(marker)
         if 0 < cut < 200:
@@ -206,13 +240,8 @@ def _short_summary(observation_text: str, max_words: int = 14) -> str:
 
 
 def _find_detail_tables_and_titles(doc):
-    """Return list of (title, detail_table) pairs in document order.
-
-    The ``#N <title>`` heading paragraph sits immediately before each
-    per-finding 2-col detail table; we walk the body XML so the
-    title-to-table pairing is unambiguous (relying on python-docx's
-    paragraph index can drift when a table is preceded by an empty
-    paragraph)."""
+    """Walk body XML; pair each ``#N <title>`` heading with the
+    immediately following 2-col ``Location...`` detail table."""
     pairs = []
     body = doc.element.body
     last_heading = ""
@@ -220,7 +249,6 @@ def _find_detail_tables_and_titles(doc):
         if child.tag == qn("w:p"):
             txt = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
             if txt.startswith("#"):
-                # "#3 Some Title" → "Some Title"
                 parts = txt.split(" ", 1)
                 last_heading = parts[1].strip() if len(parts) > 1 else ""
         elif child.tag == qn("w:tbl"):
@@ -234,46 +262,196 @@ def _find_detail_tables_and_titles(doc):
                 t.text or "" for t in cells[0].iter(qn("w:t"))
             ).strip()
             if label.startswith("Location"):
-                # Wrap the bare <w:tbl> as a python-docx Table so the
-                # caller can use the high-level row/cell API.
                 from docx.table import Table
                 pairs.append((last_heading, Table(child, doc)))
                 last_heading = ""
     return pairs
 
 
-def populate_prior_recs(
-    docx_in: Path,
-    docx_out: Path,
-    audit_date_ddmmyy: str,
-    prior_docx: Path,
-) -> dict:
-    """Populate the prior-recs table of ``docx_in`` with one row per
-    finding from ``prior_docx``. Result written to ``docx_out`` with
-    every change marked as tracked (author=Claude).
+# ---------------------------------------------------------------------------
+# Significance scoring (rule 9)
+# ---------------------------------------------------------------------------
 
-    Returns a diagnostics dict listing the number of rows written,
-    the prior-report path, and the column header rewrite.
+# Critical-safety keywords that bump a row to the top of the sort.
+# Mirrors the priority tiers in pims.services.ssa_pipeline._significance_score
+# but works from finding text alone (we don't have an EnrichedRow here).
+_CRITICAL_KEYWORDS = (
+    "hold point", "exclusion zone", "engineer authorisation",
+    "engineer sign-off", "permit", "fall", "harness", "asbestos",
+    "confined space", "energy isolation", "energised electrical",
+    "suspended steel", "crane", "tilt-up", "brace removal",
+)
+
+_HIGH_KEYWORDS = (
+    "swms", "voc", "pre-start", "spotter", "edge protection",
+    "traffic", "high-vis", "ppe", "first aid",
+)
+
+
+def _significance_for_text(blob: str) -> int:
+    """Return 0=critical, 1=high, 2=other. Smaller sorts first."""
+    s = (blob or "").lower()
+    for kw in _CRITICAL_KEYWORDS:
+        if kw in s:
+            return 0
+    for kw in _HIGH_KEYWORDS:
+        if kw in s:
+            return 1
+    return 2
+
+
+# ---------------------------------------------------------------------------
+# Status normalisation (rules 1, 2, 5)
+# ---------------------------------------------------------------------------
+
+def normalise_status(value: str) -> str:
+    """Coerce any input to one of the four allowed statuses.
+
+    "Retired" (banned per rule 2) and any other label collapse to
+    ``Not assessed`` (rule 5 default).
     """
-    if not prior_docx.exists():
-        raise FileNotFoundError(
-            f"prior report not found: {prior_docx}"
+    if not value:
+        return DEFAULT_STATUS
+    s = value.strip()
+    # Case-insensitive equality check.
+    for allowed in ALLOWED_STATUSES:
+        if s.lower() == allowed.lower():
+            return allowed
+    return DEFAULT_STATUS
+
+
+# ---------------------------------------------------------------------------
+# Row records — uniform representation for sorting + rendering
+# ---------------------------------------------------------------------------
+
+class Row:
+    """A single prior-recs table row prior to render."""
+
+    __slots__ = (
+        "date_str", "date_sort", "recommendation", "status",
+        "comment", "significance",
+    )
+
+    def __init__(
+        self, date_str: str, date_sort: str, recommendation: str,
+        status: str, comment: str, significance: int,
+    ):
+        self.date_str = date_str
+        self.date_sort = date_sort  # ISO YYYY-MM-DD for sort key
+        self.recommendation = recommendation
+        self.status = normalise_status(status)
+        self.comment = self._enforce_finding_ref(comment)
+        self.significance = significance
+
+    @staticmethod
+    def _enforce_finding_ref(comment: str) -> str:
+        """Rule 4 — every Comments cell must include at least one
+        ``F<n>`` reference. When missing, the caller has already
+        appended ``See prior F?.`` / ``See F?.`` so this is a defence
+        against accidental empty refs (returns the comment unchanged
+        when an F-ref is present)."""
+        if not comment:
+            return ""
+        if re.search(r"\bF\d+\b", comment):
+            return comment
+        return comment.rstrip(".") + " (finding reference missing)"
+
+
+def _iso_from_long(d: str) -> str:
+    """``01-May-2026`` → ``2026-05-01`` for stable sort. Empty when
+    parse fails."""
+    try:
+        return datetime.strptime(d, "%d-%b-%Y").strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return ""
+
+
+def build_rows(
+    prior_doc, prior_date: str,
+    current_doc, current_audit_date: str,
+) -> list[Row]:
+    """Combine prior carry-forwards with current-cycle findings into
+    one Row list (rules 6 + 7)."""
+    rows: list[Row] = []
+    iso_prior = _iso_from_long(prior_date)
+    iso_curr = _iso_from_long(current_audit_date)
+
+    # Group A — prior carry-forwards (rule 6).
+    for n, (title, dtbl) in enumerate(_find_detail_tables_and_titles(prior_doc),
+                                       start=1):
+        rec_text = _detail_table_field(dtbl, "Recommendation") \
+            or _detail_table_field(dtbl, "Required Action")
+        observation_text = _detail_table_field(dtbl, "Observation")
+        label = f"F{n} – {title}".rstrip(" –")
+        rec_cell = "\n".join([label] + ([rec_text] if rec_text else []))
+        comment = (
+            f"{_short_summary(observation_text)} See prior F{n}."
+            if observation_text else f"See prior F{n}."
         )
+        sig = _significance_for_text(f"{title} {rec_text}")
+        rows.append(Row(
+            date_str=prior_date,
+            date_sort=iso_prior,
+            recommendation=rec_cell,
+            status=DEFAULT_STATUS,    # rule 5 — auditor reviews
+            comment=comment,
+            significance=sig,
+        ))
+
+    # Group B — current-cycle findings (rules 7 + 8).
+    for n, (title, dtbl) in enumerate(
+        _find_detail_tables_and_titles(current_doc), start=1,
+    ):
+        rec_text = _detail_table_field(dtbl, "Recommendation") \
+            or _detail_table_field(dtbl, "Required Action")
+        observation_text = _detail_table_field(dtbl, "Observation")
+        label = f"F{n} – {title}".rstrip(" –")
+        rec_cell = "\n".join([label] + ([rec_text] if rec_text else []))
+        comment = (
+            f"{_short_summary(observation_text)} See F{n}."
+            if observation_text else f"See F{n}."
+        )
+        sig = _significance_for_text(f"{title} {rec_text}")
+        rows.append(Row(
+            date_str=current_audit_date,
+            date_sort=iso_curr,
+            recommendation=rec_cell,
+            status=DEFAULT_STATUS,
+            comment=comment,
+            significance=sig,
+        ))
+
+    # Sort (rule 9): significance first, then date oldest-to-newest.
+    rows.sort(key=lambda r: (r.significance, r.date_sort))
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Table rewrite
+# ---------------------------------------------------------------------------
+
+def populate_prior_recs(
+    docx_in: Path, docx_out: Path, audit_date: str, prior_docx: Path,
+) -> dict:
+    if not prior_docx.exists():
+        raise FileNotFoundError(f"prior report not found: {prior_docx}")
+    audit_long = to_long_dash_date(audit_date)
+    if not audit_long:
+        raise ValueError(
+            f"audit-date {audit_date!r} couldn't be parsed; "
+            f"use DD-MMM-YYYY or DD/MM/YYYY"
+        )
+    prior_long = date_from_prior_filename(prior_docx.name)
+    if not prior_long:
+        raise ValueError(
+            f"prior date couldn't be inferred from filename "
+            f"{prior_docx.name!r}"
+        )
+
     doc = Document(docx_in)
     prior_doc = Document(prior_docx)
 
-    # Read findings from the PRIOR audit (one (title, detail_table)
-    # pair per #N heading).
-    prior_findings = _find_detail_tables_and_titles(prior_doc)
-    if not prior_findings:
-        raise RuntimeError(
-            f"prior report carries no per-finding detail tables: {prior_docx}"
-        )
-
-    # Locate the prior-recs table in the CURRENT report (4-col, new
-    # layout per 2026-05-06: Date / Recommendations / Status (DD-Mon-YY)
-    # / Comments). Falls back to legacy header text for older
-    # rendered reports so the script can run against any vintage.
+    # Locate the prior-recs table in the CURRENT report.
     prior_tbl = None
     for t in doc.tables:
         if len(t.columns) != 4 or not t.rows:
@@ -291,123 +469,86 @@ def populate_prior_recs(
 
     rev_state: dict[str, int] = {}
 
-    # --- Header rewrite: Status (DD-Mon-YY) -> Status (<audit_date>)
-    # Accept legacy "Status (DD/MM/YY)" headers from older renders;
-    # always emit the new "Status as of <DD-Mon-YY>" form per
-    # 2026-05-06 reviewer direction.
-    header_cells = list(prior_tbl.rows[0].cells)
-    status_cell = None
-    for c in header_cells:
-        if "Status" in c.text and "(" in c.text:
-            status_cell = c
-            break
+    # --- Header rewrite: "Status as of <DD-MMM-YYYY>" (rule 10)
+    status_cell = next(
+        (c for c in prior_tbl.rows[0].cells
+         if "Status" in c.text and "(" in c.text or c.text.strip().startswith("Status")),
+        None,
+    )
+    # Some layouts have a clean "Status" header (no parens) — accept that.
+    if status_cell is None:
+        status_cell = (
+            prior_tbl.rows[0].cells[2]
+            if len(prior_tbl.rows[0].cells) >= 3 else None
+        )
     if status_cell is not None:
-        new_header_text = f"Status as of {audit_date_ddmmyy}"
-        _replace_header_cell_text(status_cell._tc, new_header_text, rev_state)
-
-    # --- Build new rows from the PRIOR audit's detail tables
-    new_rows_oxml: list[OxmlElement] = []
-    rec_widths = (
-        prior_tbl._tbl.find(qn("w:tblGrid"))
-        .findall(qn("w:gridCol"))
-    )
-    col_widths = [int(g.get(qn("w:w"))) for g in rec_widths]
-
-    # Prior audit date for the Date column. Pulled from the prior
-    # report's filename (YYMMDD suffix) and formatted "DD-Mon-YY"
-    # to match the 2026-05-06 layout.
-    prior_date_str = ""
-    import re as _re
-    m = _re.search(
-        r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", prior_docx.name,
-    )
-    if m:
-        try:
-            d = datetime.strptime(m.group(1), "%y%m%d")
-            prior_date_str = (
-                f"{d.day}-{d.strftime('%b')}-{d.strftime('%y')}"
-            )
-        except ValueError:
-            pass
-
-    for n, (title, dtbl) in enumerate(prior_findings, start=1):
-        rec_text = _detail_table_field(dtbl, "Recommendation") \
-            or _detail_table_field(dtbl, "Required Action")
-        observation_text = _detail_table_field(dtbl, "Observation")
-
-        # Recommendations column: combined "F<n> – <title>" and the
-        # verbatim recommendation text on a new line so the row
-        # carries both the short label and the actionable detail.
-        rec_lines: list[str] = []
-        label = f"F{n} – {title}".rstrip(" –")
-        rec_lines.append(label)
-        if rec_text:
-            rec_lines.append(rec_text)
-        recommendations_cell = "\n".join(rec_lines)
-        commentary_cell = (
-            f"{_short_summary(observation_text)} See prior F{n}."
-            if observation_text else f"See prior F{n}."
+        _replace_header_cell_text(
+            status_cell._tc,
+            f"Status as of {audit_long}",
+            rev_state,
         )
 
-        rev_row = _next_revision_id(rev_state)
+    # --- Build the combined row list (rules 6 + 7 + 9)
+    rows = build_rows(prior_doc, prior_long, doc, audit_long)
+
+    # --- Mark every existing data row as deleted (preserves header
+    # row untouched) and insert the new rows BEFORE the first data row.
+    grid = prior_tbl._tbl.find(qn("w:tblGrid"))
+    col_widths = [int(g.get(qn("w:w"))) for g in grid.findall(qn("w:gridCol"))]
+    if not col_widths:
+        col_widths = [1417, 3543, 1417, 3543]  # 2.5/6.25/2.5/6.25 cm
+
+    existing_data_rows = list(prior_tbl.rows)[1:]
+    insert_anchor = (
+        existing_data_rows[0]._tr if existing_data_rows
+        else None
+    )
+
+    for n, row in enumerate(rows, start=1):
+        rev = _next_revision_id(rev_state)
         tr = OxmlElement("w:tr")
-        _mark_row_as_inserted(tr, rev_row)
-        for i, cell_text in enumerate([
-            prior_date_str,           # Date
-            recommendations_cell,     # Recommendations (label + text)
-            "",                       # Status as of <current> — blank
-            commentary_cell,          # Comments
-        ]):
+        _mark_row_as_inserted(tr, rev)
+        cells_text = [
+            row.date_str,
+            row.recommendation,
+            row.status,
+            row.comment,
+        ]
+        for i, text in enumerate(cells_text):
             w = col_widths[i] if i < len(col_widths) else 2000
-            tr.append(_make_inserted_cell(cell_text, rev_row, w))
-        new_rows_oxml.append(tr)
+            tr.append(_make_inserted_cell(text, rev, w))
+        if insert_anchor is not None:
+            insert_anchor.addprevious(tr)
+        else:
+            prior_tbl._tbl.append(tr)
 
-    # --- Mark the existing placeholder row as deleted (its runs
-    # become <w:del>) and insert the new rows BEFORE it so Word's
-    # accept-all flow leaves only the new rows.
-    placeholder_tr = prior_tbl.rows[1]._tr
-    rev_del_row = _next_revision_id(rev_state)
-    # Mark trPr as deleted-row.
-    trPr = placeholder_tr.find(qn("w:trPr"))
-    if trPr is None:
-        trPr = OxmlElement("w:trPr")
-        placeholder_tr.insert(0, trPr)
-    if trPr.find(qn("w:del")) is None:
-        del_tr = OxmlElement("w:del")
-        del_tr.set(qn("w:id"), rev_del_row)
-        del_tr.set(qn("w:author"), AUTHOR)
-        del_tr.set(qn("w:date"), TRACKED_DATE)
-        trPr.append(del_tr)
-    # Wrap each cell's runs in <w:del> so cell content renders as
-    # struck-through-deleted.
-    for tc in placeholder_tr.iter(qn("w:tc")):
-        rev_del_cell = _next_revision_id(rev_state)
-        _wrap_runs_in_del(tc, rev_del_cell)
-
-    # Insert new rows before the placeholder.
-    for new_tr in new_rows_oxml:
-        placeholder_tr.addprevious(new_tr)
+    # Mark the original placeholder rows as deleted.
+    for tr in existing_data_rows:
+        rev = _next_revision_id(rev_state)
+        _mark_row_as_deleted(tr._tr, rev)
 
     docx_out.parent.mkdir(parents=True, exist_ok=True)
     doc.save(docx_out)
     return {
-        "rows_inserted": len(new_rows_oxml),
-        "header_updated": status_cell is not None,
-        "output": str(docx_out),
+        "rows_inserted": len(rows),
+        "carry_forward_count": sum(
+            1 for r in rows if r.date_str == prior_long
+        ),
+        "current_cycle_count": sum(
+            1 for r in rows if r.date_str == audit_long
+        ),
+        "audit_date": audit_long,
+        "prior_date": prior_long,
         "prior_source": str(prior_docx),
+        "output": str(docx_out),
     }
 
 
-_PRIOR_REPORT_RE = __import__("re").compile(
-    r"^Site-Safety-Audit-Report-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$"
-)
-
+# ---------------------------------------------------------------------------
+# Auto-discover + CLI
+# ---------------------------------------------------------------------------
 
 def _autodiscover_prior(docx_in: Path) -> Path | None:
-    """Find the newest qualifying prior SSA report sibling whose
-    filename date suffix is strictly earlier than the current
-    report's date suffix. Mirrors the orchestrator's prior-report
-    selection rule."""
     m = _PRIOR_REPORT_RE.match(docx_in.name)
     if not m:
         return None
@@ -435,18 +576,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("docx_in", type=Path)
     ap.add_argument(
         "--prior", type=Path, default=None,
-        help=(
-            "path to the PRIOR audit report (the source of "
-            "carry-forward findings). Auto-discovered when omitted."
-        ),
+        help="path to the PRIOR audit report (auto-discovered when omitted)",
     )
     ap.add_argument(
         "--output", type=Path, default=None,
         help="output path; defaults to <input>-tracked.docx",
     )
     ap.add_argument(
-        "--audit-date", default="01/05/26",
-        help="Current audit date for the column header, DD/MM/YY",
+        "--audit-date", required=True,
+        help="Current audit date — DD-MMM-YYYY (e.g. 01-May-2026) "
+             "or DD/MM/YYYY",
     )
     args = ap.parse_args(argv)
 
@@ -454,9 +593,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {args.docx_in} not found")
         return 1
 
-    prior = args.prior
-    if prior is None:
-        prior = _autodiscover_prior(args.docx_in)
+    prior = args.prior or _autodiscover_prior(args.docx_in)
     if prior is None:
         print(
             "error: no prior report supplied and none auto-discovered. "
@@ -470,11 +607,19 @@ def main(argv: list[str] | None = None) -> int:
     out = args.output or args.docx_in.with_name(
         args.docx_in.stem + "-tracked" + args.docx_in.suffix,
     )
-    diag = populate_prior_recs(args.docx_in, out, args.audit_date, prior)
-    print("rows inserted:", diag["rows_inserted"])
-    print("header updated:", diag["header_updated"])
-    print("prior source:  ", diag["prior_source"])
-    print("output:        ", diag["output"])
+    try:
+        diag = populate_prior_recs(args.docx_in, out, args.audit_date, prior)
+    except (FileNotFoundError, RuntimeError, ValueError) as e:
+        print(f"error: {e}")
+        return 1
+
+    print("rows inserted:        ", diag["rows_inserted"])
+    print("  carry-forward:      ", diag["carry_forward_count"])
+    print("  current cycle:      ", diag["current_cycle_count"])
+    print("audit date (header):  ", diag["audit_date"])
+    print("prior audit date:     ", diag["prior_date"])
+    print("prior source:         ", diag["prior_source"])
+    print("output:               ", diag["output"])
     return 0
 
 
