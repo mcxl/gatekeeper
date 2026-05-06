@@ -1,14 +1,17 @@
 """One-off post-processing: populate the Status of Previous
-Recommendations table with the current audit's findings.
+Recommendations table with the PRIOR audit's findings.
 
-Operator-driven script per the 2026-05-06 review request:
-  - Read every per-finding detail block in the SSA report docx
-  - Build one prior-recs row per finding with these mappings:
-      Recommendation     -> "F<n> – <finding_title>"
-      Required Actions   -> Recommendation cell from the finding's
-                           detail table (verbatim)
-      Status (<date>)    -> blank
-      Commentary         -> short observation summary + "See F<n>."
+Operator-driven script per the 2026-05-06 review correction:
+  - Read every per-finding detail block in the PRIOR audit's docx
+    (e.g. Site-Safety-Audit-Report-260330-SDG-01.docx)
+  - Build one prior-recs row per PRIOR finding with these mappings:
+      Recommendation     -> "F<n> – <prior_finding_title>"
+      Required Actions   -> Recommendation cell from the prior
+                           finding's detail table (verbatim)
+      Status (<date>)    -> blank — auditor fills in based on what
+                           they observed in the CURRENT audit
+      Commentary         -> short summary of the prior observation
+                           + "See prior F<n>." cross-reference
   - Update the table header from "Status (DD/MM/YY)" to
     "Status (<audit-date-DD/MM/YY>)"
   - Apply every change as a Word tracked change with author "Claude"
@@ -17,8 +20,14 @@ Operator-driven script per the 2026-05-06 review request:
 Run:
     python -m pims.scripts.populate_prior_recs_table \
         "G:/.../Site-Safety-Audit-Report-260501-SDG-01.docx" \
+        --prior  "G:/.../Site-Safety-Audit-Report-260330-SDG-01.docx" \
         --audit-date 01/05/26 \
-        --output    "G:/.../Site-Safety-Audit-Report-260501-SDG-01-tracked.docx"
+        --output "G:/.../Site-Safety-Audit-Report-260501-SDG-01-tracked.docx"
+
+When ``--prior`` is omitted the script auto-discovers the newest
+qualifying ``Site-Safety-Audit-Report-YYMMDD-<CLIENT>[-NN].docx``
+sibling whose date suffix is strictly earlier than the current
+report's date — the same rule the watcher / orchestrator uses.
 
 Tracked-changes mechanics:
   - Each newly inserted row carries <w:trPr><w:ins .../></w:trPr>
@@ -196,31 +205,75 @@ def _short_summary(observation_text: str, max_words: int = 14) -> str:
     return s.rstrip(".")
 
 
+def _find_detail_tables_and_titles(doc):
+    """Return list of (title, detail_table) pairs in document order.
+
+    The ``#N <title>`` heading paragraph sits immediately before each
+    per-finding 2-col detail table; we walk the body XML so the
+    title-to-table pairing is unambiguous (relying on python-docx's
+    paragraph index can drift when a table is preceded by an empty
+    paragraph)."""
+    pairs = []
+    body = doc.element.body
+    last_heading = ""
+    for child in body.iterchildren():
+        if child.tag == qn("w:p"):
+            txt = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+            if txt.startswith("#"):
+                # "#3 Some Title" → "Some Title"
+                parts = txt.split(" ", 1)
+                last_heading = parts[1].strip() if len(parts) > 1 else ""
+        elif child.tag == qn("w:tbl"):
+            first_row = next(child.iter(qn("w:tr")), None)
+            if first_row is None:
+                continue
+            cells = list(first_row.iter(qn("w:tc")))
+            if len(cells) != 2:
+                continue
+            label = "".join(
+                t.text or "" for t in cells[0].iter(qn("w:t"))
+            ).strip()
+            if label.startswith("Location"):
+                # Wrap the bare <w:tbl> as a python-docx Table so the
+                # caller can use the high-level row/cell API.
+                from docx.table import Table
+                pairs.append((last_heading, Table(child, doc)))
+                last_heading = ""
+    return pairs
+
+
 def populate_prior_recs(
     docx_in: Path,
     docx_out: Path,
     audit_date_ddmmyy: str,
+    prior_docx: Path,
 ) -> dict:
-    """Populate the prior-recs table in-place and write the result to
-    ``docx_out`` with every change marked as tracked (author=Claude).
+    """Populate the prior-recs table of ``docx_in`` with one row per
+    finding from ``prior_docx``. Result written to ``docx_out`` with
+    every change marked as tracked (author=Claude).
 
-    Returns a diagnostics dict listing the number of rows written and
-    the column header rewrite.
+    Returns a diagnostics dict listing the number of rows written,
+    the prior-report path, and the column header rewrite.
     """
+    if not prior_docx.exists():
+        raise FileNotFoundError(
+            f"prior report not found: {prior_docx}"
+        )
     doc = Document(docx_in)
+    prior_doc = Document(prior_docx)
 
-    # Locate the per-finding detail tables (2-col, first cell label
-    # "Location") and the prior-recs table (4-col, first cell label
-    # "Recommendation").
-    detail_tables = []
+    # Read findings from the PRIOR audit (one (title, detail_table)
+    # pair per #N heading).
+    prior_findings = _find_detail_tables_and_titles(prior_doc)
+    if not prior_findings:
+        raise RuntimeError(
+            f"prior report carries no per-finding detail tables: {prior_docx}"
+        )
+
+    # Locate the prior-recs table in the CURRENT report (4-col, first
+    # cell label "Recommendation").
     prior_tbl = None
     for t in doc.tables:
-        if (
-            len(t.columns) == 2
-            and t.rows
-            and t.rows[0].cells[0].text.strip() == "Location"
-        ):
-            detail_tables.append(t)
         if (
             len(t.columns) == 4
             and t.rows
@@ -228,10 +281,9 @@ def populate_prior_recs(
             and "Required Actions" in t.rows[0].cells[1].text
         ):
             prior_tbl = t
+            break
     if prior_tbl is None:
         raise RuntimeError("Status of Previous Recommendations table not found")
-    if not detail_tables:
-        raise RuntimeError("No per-finding detail tables found")
 
     rev_state: dict[str, int] = {}
 
@@ -246,7 +298,7 @@ def populate_prior_recs(
         new_header_text = f"Status ({audit_date_ddmmyy})"
         _replace_header_cell_text(status_cell._tc, new_header_text, rev_state)
 
-    # --- Build new rows from the detail tables
+    # --- Build new rows from the PRIOR audit's detail tables
     new_rows_oxml: list[OxmlElement] = []
     rec_widths = (
         prior_tbl._tbl.find(qn("w:tblGrid"))
@@ -254,23 +306,7 @@ def populate_prior_recs(
     )
     col_widths = [int(g.get(qn("w:w"))) for g in rec_widths]
 
-    for n, dtbl in enumerate(detail_tables, start=1):
-        title = ""
-        # The #N heading paragraph sits immediately before each detail
-        # table. Walk back from the table element to find the most
-        # recent paragraph starting with "#".
-        tbl_el = dtbl._tbl
-        prev = tbl_el.getprevious()
-        while prev is not None:
-            if prev.tag == qn("w:p"):
-                text = "".join(t.text or "" for t in prev.iter(qn("w:t"))).strip()
-                if text.startswith("#"):
-                    # "#3 Some Title" -> "Some Title"
-                    parts = text.split(" ", 1)
-                    title = parts[1].strip() if len(parts) > 1 else ""
-                    break
-            prev = prev.getprevious()
-
+    for n, (title, dtbl) in enumerate(prior_findings, start=1):
         rec_text = _detail_table_field(dtbl, "Recommendation") \
             or _detail_table_field(dtbl, "Required Action")
         observation_text = _detail_table_field(dtbl, "Observation")
@@ -278,8 +314,8 @@ def populate_prior_recs(
         recommendation_cell = f"F{n} – {title}".rstrip(" –")
         required_actions_cell = rec_text
         commentary_cell = (
-            f"{_short_summary(observation_text)} See F{n}."
-            if observation_text else f"See F{n}."
+            f"{_short_summary(observation_text)} See prior F{n}."
+            if observation_text else f"See prior F{n}."
         )
 
         rev_row = _next_revision_id(rev_state)
@@ -288,7 +324,7 @@ def populate_prior_recs(
         for i, cell_text in enumerate([
             recommendation_cell,
             required_actions_cell,
-            "",                  # status — blank (new recommendation)
+            "",                  # status — auditor fills in at QA
             commentary_cell,
         ]):
             w = col_widths[i] if i < len(col_widths) else 2000
@@ -327,32 +363,87 @@ def populate_prior_recs(
         "rows_inserted": len(new_rows_oxml),
         "header_updated": status_cell is not None,
         "output": str(docx_out),
+        "prior_source": str(prior_docx),
     }
+
+
+_PRIOR_REPORT_RE = __import__("re").compile(
+    r"^Site-Safety-Audit-Report-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$"
+)
+
+
+def _autodiscover_prior(docx_in: Path) -> Path | None:
+    """Find the newest qualifying prior SSA report sibling whose
+    filename date suffix is strictly earlier than the current
+    report's date suffix. Mirrors the orchestrator's prior-report
+    selection rule."""
+    m = _PRIOR_REPORT_RE.match(docx_in.name)
+    if not m:
+        return None
+    current_yymmdd = m.group(1)
+    folder = docx_in.parent
+    candidates = []
+    for p in folder.iterdir():
+        if not p.is_file() or p.suffix.lower() != ".docx":
+            continue
+        if p.name == docx_in.name:
+            continue
+        cm = _PRIOR_REPORT_RE.match(p.name)
+        if not cm:
+            continue
+        if cm.group(1) < current_yymmdd:
+            candidates.append((cm.group(1), p))
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[-1][1]
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="populate_prior_recs_table")
     ap.add_argument("docx_in", type=Path)
     ap.add_argument(
+        "--prior", type=Path, default=None,
+        help=(
+            "path to the PRIOR audit report (the source of "
+            "carry-forward findings). Auto-discovered when omitted."
+        ),
+    )
+    ap.add_argument(
         "--output", type=Path, default=None,
         help="output path; defaults to <input>-tracked.docx",
     )
     ap.add_argument(
         "--audit-date", default="01/05/26",
-        help="Audit date for the column header, format DD/MM/YY",
+        help="Current audit date for the column header, DD/MM/YY",
     )
     args = ap.parse_args(argv)
 
     if not args.docx_in.exists():
         print(f"error: {args.docx_in} not found")
         return 1
+
+    prior = args.prior
+    if prior is None:
+        prior = _autodiscover_prior(args.docx_in)
+    if prior is None:
+        print(
+            "error: no prior report supplied and none auto-discovered. "
+            "Pass --prior <path> with the PRIOR audit report."
+        )
+        return 1
+    if not prior.exists():
+        print(f"error: prior report not found: {prior}")
+        return 1
+
     out = args.output or args.docx_in.with_name(
         args.docx_in.stem + "-tracked" + args.docx_in.suffix,
     )
-    diag = populate_prior_recs(args.docx_in, out, args.audit_date)
+    diag = populate_prior_recs(args.docx_in, out, args.audit_date, prior)
     print("rows inserted:", diag["rows_inserted"])
     print("header updated:", diag["header_updated"])
-    print("output:", diag["output"])
+    print("prior source:  ", diag["prior_source"])
+    print("output:        ", diag["output"])
     return 0
 
 
