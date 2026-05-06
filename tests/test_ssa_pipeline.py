@@ -2103,6 +2103,92 @@ def test_ra_label_applied_to_findings_in_real_render(tmp_path):
     assert "SDG Project Risk Assessment code: HP-06" in obs_row.cells[1].text
 
 
+def test_run_once_two_phase_workflow_round_trip(evidence_folder, monkeypatch):
+    """Two-phase workflow: --enrich-only writes xlsx + state JSON
+    and exits; --from-state reads state, applies operator edits to
+    the Conformance Status / CCVS columns, and produces the report
+    + staging without re-running the LLM."""
+    # Stub the vision pass so the test doesn't need an API key but
+    # exercises the persistence-and-reload path. The stub leaves
+    # rows at their default Unmatched state but writes a token
+    # narrative so the docx render has something to show.
+    def fake_apply(enriched, **kw):
+        # Mark first row as NCR so the operator-edit override has a
+        # detectable change.
+        if enriched:
+            enriched[0].finding = "ORIGINAL FINDING TEXT"
+            enriched[0].conformance_status = "Unmatched"
+            enriched[0].ccvs_code = ""
+        return ("Stub narrative for two-phase test.", {
+            "enabled": True, "rows_total": len(enriched),
+            "rows_called": len(enriched), "rows_ok": len(enriched),
+            "rows_failed": 0, "errors": [],
+            "ra": {"path": None},
+        })
+
+    from pims.scripts import run_ssa_pipeline as mod
+    monkeypatch.setattr(mod, "_apply_vision_enrichment", fake_apply)
+
+    # Phase 1: --enrich-only
+    payload1 = mod.run_once(evidence_folder, stop_after="enrich")
+    assert payload1["phase"] == "enrich-only"
+    assert (evidence_folder / ".ssa_state.json").exists()
+    enriched_xlsx = evidence_folder / "PIMS-Enriched-260501-RPD.xlsx"
+    assert enriched_xlsx.exists()
+    # Report + staging not yet written.
+    assert not (evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx").exists()
+
+    # Operator edits the Conformance Status of row 1 from "Unmatched"
+    # to "NCR" and the CCVS code to "WAH-H6".
+    import openpyxl
+    wb = openpyxl.load_workbook(enriched_xlsx)
+    ws = wb["Enriched Register"]
+    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+    status_col = headers.index("conformance status") + 1
+    code_col = headers.index("ccvs code") + 1
+    obs_col = headers.index("observation") + 1
+    ws.cell(row=2, column=status_col, value="NCR")
+    ws.cell(row=2, column=code_col, value="WAH-H6")
+    ws.cell(row=2, column=obs_col, value="OPERATOR-EDITED FINDING")
+    wb.save(enriched_xlsx)
+
+    # Phase 2: --from-state
+    payload2 = mod.run_once(evidence_folder, force=True, from_state=True)
+    assert payload2["from_state"] is True
+    assert payload2["staging_status"] == "bulk_uploadable"
+    # Operator edits propagated to docx + staging.
+    sx = evidence_folder / "Site-Visit-Report-Upload-PIMS-Staging-260501-RPD.xlsx"
+    assert sx.exists()
+    wb2 = openpyxl.load_workbook(sx)
+    ws2 = wb2["Observations"]
+    headers2 = [str(c.value).strip() if c.value else "" for c in ws2[3]]
+    finding_col = headers2.index("finding") + 1
+    status_col2 = headers2.index("conformance_status") + 1
+    code_col2 = headers2.index("ccvs_code") + 1
+    # The staging xlsx writes from EnrichedRow.finding, which gets
+    # overwritten when the operator edits the Observation column in
+    # the enriched xlsx during phase 1.
+    finding_text = ws2.cell(row=5, column=finding_col).value
+    assert finding_text == "OPERATOR-EDITED FINDING"
+    assert ws2.cell(row=5, column=status_col2).value == "NCR"
+    assert ws2.cell(row=5, column=code_col2).value == "WAH-H6"
+    # Phase-2 diagnostics show the merge fired.
+    assert payload2["merge_diag"]["applied"] is True
+    assert payload2["merge_diag"]["field_overrides"] >= 3  # status + ccvs + finding
+
+
+def test_run_once_two_phase_from_state_without_phase_one_raises(
+    evidence_folder,
+):
+    """Phase 2 requires phase 1 to have run — bare --from-state on a
+    folder without .ssa_state.json fails loud."""
+    state = evidence_folder / ".ssa_state.json"
+    if state.exists():
+        state.unlink()
+    with pytest.raises(FileNotFoundError, match="ssa_state.json"):
+        run_once(evidence_folder, from_state=True)
+
+
 def test_run_once_default_path_does_not_load_legacy_checklist(
     evidence_folder, monkeypatch,
 ):

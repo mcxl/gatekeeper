@@ -300,6 +300,237 @@ def _preflight(enrich: bool) -> None:
         )
 
 
+def _serialise_rows(rows: list[EnrichedRow]) -> list[dict]:
+    """Convert EnrichedRow + nested ObservationRow into JSON-safe dicts.
+
+    Used by the two-phase workflow so phase 1 (enrich-only) can
+    persist the full row state and phase 2 (from-state) can rebuild
+    EnrichedRow objects after the operator has edited the enriched
+    xlsx.
+    """
+    out: list[dict] = []
+    for r in rows:
+        obs = r.obs
+        out.append({
+            "obs": {
+                "csv_row": obs.csv_row,
+                "timestamp_raw": obs.timestamp_raw,
+                "timestamp_iso": obs.timestamp_iso,
+                "observation_text": obs.observation_text,
+                "csv_filename": obs.csv_filename,
+                "resolved_filename": obs.resolved_filename,
+                "resolved_path": (
+                    str(obs.resolved_path) if obs.resolved_path else None
+                ),
+                "needs_review": obs.needs_review,
+                "review_reasons": list(obs.review_reasons),
+                "duplicate_filename": obs.duplicate_filename,
+            },
+            "observation_text_clean": r.observation_text_clean,
+            "finding": r.finding,
+            "conformance_status": r.conformance_status,
+            "ccvs_code": r.ccvs_code,
+            "ccvs_category": r.ccvs_category,
+            "action_description": r.action_description,
+            "recommendation": r.recommendation,
+            "legal_ref": r.legal_ref,
+            "monitoring_note": r.monitoring_note,
+            "location": r.location,
+            "hierarchy_of_control": r.hierarchy_of_control,
+            "finding_title": r.finding_title,
+            "timeframe": r.timeframe,
+            "phase": r.phase,
+            "activity_ref": r.activity_ref,
+            "hold_point": r.hold_point,
+            "hrcw": r.hrcw,
+            "swms_required": r.swms_required,
+            "swms_present": r.swms_present,
+            "initial_risk": r.initial_risk,
+            "residual_risk": r.residual_risk,
+            "evidence_csv_indices": list(r.evidence_csv_indices or []),
+        })
+    return out
+
+
+def _deserialise_rows(payload: list[dict]) -> list[EnrichedRow]:
+    """Inverse of ``_serialise_rows``. Returns EnrichedRow objects with
+    nested ObservationRow rebuilt; ``resolved_path`` is restored as a
+    Path when present."""
+    from pims.services.ssa_pipeline import EnrichedRow, ObservationRow
+    out: list[EnrichedRow] = []
+    for d in payload:
+        o = d["obs"]
+        obs = ObservationRow(
+            csv_row=o["csv_row"],
+            timestamp_raw=o["timestamp_raw"],
+            timestamp_iso=o["timestamp_iso"],
+            observation_text=o["observation_text"],
+            csv_filename=o["csv_filename"],
+            resolved_filename=o.get("resolved_filename"),
+            resolved_path=Path(o["resolved_path"]) if o.get("resolved_path") else None,
+            needs_review=o.get("needs_review", False),
+            review_reasons=list(o.get("review_reasons") or []),
+            duplicate_filename=o.get("duplicate_filename", False),
+        )
+        out.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=d.get("observation_text_clean", ""),
+            finding=d.get("finding", ""),
+            conformance_status=d.get("conformance_status", "Unmatched"),
+            ccvs_code=d.get("ccvs_code", ""),
+            ccvs_category=d.get("ccvs_category", ""),
+            action_description=d.get("action_description", ""),
+            recommendation=d.get("recommendation", ""),
+            legal_ref=d.get("legal_ref", ""),
+            monitoring_note=d.get("monitoring_note", ""),
+            location=d.get("location", ""),
+            hierarchy_of_control=d.get("hierarchy_of_control", ""),
+            finding_title=d.get("finding_title", ""),
+            timeframe=d.get("timeframe", ""),
+            phase=d.get("phase", ""),
+            activity_ref=d.get("activity_ref", ""),
+            hold_point=d.get("hold_point", ""),
+            hrcw=d.get("hrcw", ""),
+            swms_required=bool(d.get("swms_required", False)),
+            swms_present=d.get("swms_present", ""),
+            initial_risk=d.get("initial_risk", ""),
+            residual_risk=d.get("residual_risk", ""),
+            evidence_csv_indices=list(d.get("evidence_csv_indices") or []),
+        ))
+    return out
+
+
+# Columns in the Enriched Register sheet that the operator is
+# expected to edit during a phase-1 review pass. When phase 2 reads
+# the (potentially edited) xlsx it overrides the corresponding fields
+# on the EnrichedRow loaded from the JSON state.
+_ENRICHED_EDITABLE_COLUMNS: dict[str, str] = {
+    "observation": "finding",                 # the enriched narrative
+    "conformance status": "conformance_status",
+    "ccvs code": "ccvs_code",
+    "ccvs category": "ccvs_category",
+    "action description": "action_description",
+    "monitoring note": "monitoring_note",
+    "responsible": None,                       # blank-by-default cell
+    "due": None,                               # blank-by-default cell
+}
+
+
+def _snapshot_enriched_xlsx(xlsx_path: Path) -> dict[str, dict[str, str]]:
+    """Hash every editable cell of every data row keyed by Filename.
+
+    Used by phase 1 to record what was written so phase 2 can tell
+    operator edits apart from rendered-fallback values that didn't
+    actually change. Returns ``{filename: {header_lc: cell_value}}``.
+    """
+    if not xlsx_path.exists():
+        return {}
+    import openpyxl
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if "Enriched Register" not in wb.sheetnames:
+        return {}
+    ws = wb["Enriched Register"]
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[1]
+    ]
+    try:
+        filename_col = headers.index("filename") + 1
+    except ValueError:
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for excel_row in range(2, ws.max_row + 1):
+        fn_cell = ws.cell(row=excel_row, column=filename_col).value
+        fn = str(fn_cell).strip() if fn_cell else ""
+        if not fn:
+            continue
+        snap: dict[str, str] = {}
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr not in _ENRICHED_EDITABLE_COLUMNS:
+                continue
+            v = ws.cell(row=excel_row, column=col_idx).value
+            snap[hdr] = "" if v is None else str(v).strip()
+        out[fn] = snap
+    return out
+
+
+def _merge_edits_from_enriched_xlsx(
+    rows: list[EnrichedRow], xlsx_path: Path,
+    snapshot: dict[str, dict[str, str]] | None = None,
+) -> dict:
+    """Read the enriched xlsx and overwrite editable fields on each
+    EnrichedRow with the operator's edits.
+
+    Pairing key: the ``Filename`` column (resolved on-disk filename)
+    matches each xlsx data row to exactly one EnrichedRow. When the
+    filename is ambiguous (post-split composite notes share a
+    photo) only the FIRST matching row's editable fields are
+    overwritten — the operator should re-split manually if they
+    need to differentiate.
+
+    Returns a diagnostics dict counting overrides applied.
+    """
+    if not xlsx_path.exists():
+        return {"applied": False, "reason": "enriched xlsx missing"}
+    import openpyxl
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if "Enriched Register" not in wb.sheetnames:
+        return {"applied": False, "reason": "Enriched Register sheet missing"}
+    ws = wb["Enriched Register"]
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[1]
+    ]
+    try:
+        filename_col = headers.index("filename") + 1
+    except ValueError:
+        return {"applied": False, "reason": "filename column missing"}
+
+    # Index EnrichedRows by resolved_filename for one-shot lookup.
+    by_fn: dict[str, EnrichedRow] = {}
+    for r in rows:
+        fn = (r.obs.resolved_filename or "").strip()
+        if fn and fn not in by_fn:
+            by_fn[fn] = r
+
+    overrides = 0
+    rows_seen = 0
+    for excel_row in range(2, ws.max_row + 1):
+        fn_cell = ws.cell(row=excel_row, column=filename_col).value
+        fn = str(fn_cell).strip() if fn_cell else ""
+        if not fn or fn not in by_fn:
+            continue
+        rows_seen += 1
+        target = by_fn[fn]
+        baseline = (snapshot or {}).get(fn, {})
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr not in _ENRICHED_EDITABLE_COLUMNS:
+                continue
+            attr = _ENRICHED_EDITABLE_COLUMNS[hdr]
+            if attr is None:
+                continue
+            new_val = ws.cell(row=excel_row, column=col_idx).value
+            new_val = "" if new_val is None else str(new_val).strip()
+            # When phase 1 recorded a baseline, only treat the cell as
+            # edited if the current value differs from what was
+            # written. Without a baseline (legacy state files) fall
+            # back to the bare attribute comparison.
+            if baseline:
+                if new_val == baseline.get(hdr, ""):
+                    continue
+            else:
+                old_val = getattr(target, attr, "")
+                if new_val == (old_val or ""):
+                    continue
+            setattr(target, attr, new_val)
+            overrides += 1
+    return {
+        "applied": True,
+        "rows_matched": rows_seen,
+        "field_overrides": overrides,
+    }
+
+
 def run_once(
     folder: Path,
     prepared_by: str = "Alan Richardson",
@@ -309,6 +540,8 @@ def run_once(
     enrich: bool = True,
     risk_assessment_path: Path | None = None,
     merge_groups: list[list[int]] | None = None,
+    stop_after: str | None = None,
+    from_state: bool = False,
 ) -> dict:
     """Run the pipeline once. Returns the .ssa_run.json payload.
 
@@ -356,6 +589,152 @@ def run_once(
         prior_record["skipped"] = True
         log.info("manifest unchanged + outputs present — skipping")
         return prior_record
+
+    # Two-phase workflow short-circuit: when ``from_state`` is True,
+    # skip parse → match → enrichment → vision and rebuild EnrichedRows
+    # from the .ssa_state.json sidecar dropped by phase 1. The
+    # operator's edits to the enriched xlsx are picked up via
+    # _merge_edits_from_enriched_xlsx so phase 2 sees the human's
+    # final values without re-running the LLM.
+    state_path = folder / ".ssa_state.json"
+    if from_state:
+        if not state_path.exists():
+            raise FileNotFoundError(
+                f"--from-state requested but .ssa_state.json missing in "
+                f"{folder}. Run phase 1 first with --enrich-only."
+            )
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        enriched = _deserialise_rows(state["rows"])
+        site_address = state.get("site_address")
+        narrative_summary = state.get("narrative_summary", "")
+        ra_project_name = state.get("ra_project_name", "")
+        principal_contractor = state.get("principal_contractor", "")
+        ra_summary = state.get("ra_summary", {})
+        llm_diag = state.get("llm_diagnostics", {"enabled": False})
+        csv_warnings = []
+        match_warnings = []
+        prior_reports = []
+        # Honour the freshly-set sub_id / output names already computed.
+        names_for_phase2 = names
+        # Pull operator edits from the enriched xlsx (if present).
+        enriched_xlsx_path = folder / names_for_phase2["enriched"]
+        merge_diag = _merge_edits_from_enriched_xlsx(
+            enriched, enriched_xlsx_path,
+            snapshot=state.get("enriched_xlsx_snapshot"),
+        )
+        # Re-resolve prior-recs from the prior report (cheap).
+        prior_recs = []
+        prior_audit_date_ddmmyy = ""
+        # Find newest qualifying prior report for this folder.
+        for p in folder.iterdir():
+            if not p.is_file() or p.suffix.lower() != ".docx":
+                continue
+            mm = re.search(
+                r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", p.name,
+            )
+            if not mm:
+                continue
+            try:
+                cand_iso = datetime.strptime(mm.group(1), "%y%m%d").date().isoformat()
+            except ValueError:
+                continue
+            if cand_iso < iso and p.name != names_for_phase2["report"]:
+                prior_reports.append(p)
+        if prior_reports:
+            newest_prior = sorted(prior_reports)[-1]
+            prior_recs = parse_prior_report_recommendations(newest_prior)
+            mm = re.search(
+                r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", newest_prior.name,
+            )
+            if mm:
+                yymmdd = mm.group(1)
+                prior_audit_date_ddmmyy = (
+                    f"{yymmdd[4:6]}/{yymmdd[2:4]}/{yymmdd[0:2]}"
+                )
+        # Recompute paths for the from_state branch and skip the
+        # rest of the parse/enrich block by jumping straight to the
+        # build step. We do this by setting a flag and falling through.
+        enriched_path = folder / names_for_phase2["enriched"]
+        report_path = folder / names_for_phase2["report"]
+        staging_path = folder / names_for_phase2["staging"]
+        site_for_docx = site_address or "[Site address - to be confirmed]"
+        site_for_staging = site_address or ""
+        # Build only the report + staging (skip enriched xlsx so the
+        # operator's edits stay intact).
+        report_diag = build_ssa_report_docx(
+            enriched,
+            site_address=site_for_docx,
+            audit_date_ddmmyyyy=ddmmyyyy,
+            narrative_summary=narrative_summary,
+            output_path=report_path,
+            prepared_by=prepared_by,
+            prior_recs=prior_recs,
+            project_name=ra_project_name,
+            prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
+            risk_assessment=None,
+            merge_groups=merge_groups,
+        )
+        report_diag["prior_recs_count"] = len(prior_recs)
+        staging_result = build_pims_staging_xlsx_with_size_control(
+            enriched,
+            staging_path,
+            site_address=site_for_staging,
+            audit_date_iso=iso,
+            prepared_by=prepared_by,
+        )
+        staging_diag = {
+            "parts":         [p.name for p in staging_result["parts"]],
+            "max_edge_px":   staging_result["max_edge_px"],
+            "split":         staging_result["split"],
+            "split_reason":  staging_result["split_reason"],
+            "per_part":      staging_result["diagnostics"],
+        }
+        staging_status, blocker = _resolve_staging_status(client, site_address)
+        outputs: list[str] = [
+            enriched_path.name, report_path.name,
+            *[p.name for p in staging_result["parts"]],
+        ]
+        if staging_status == "not_uploadable":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NOT-UPLOADABLE.txt",
+                f"staging blocker: {blocker}\nfolder: {folder.name}\n",
+            ))
+        elif staging_status == "schema_valid_no_endpoint":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NO-BULK-ENDPOINT.txt",
+                f"client: {client}\n",
+            ))
+        payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "inputs_sha256": manifest,
+            "prior_reports_used": [p.name for p in prior_reports],
+            "skipped": False,
+            "from_state": True,
+            "merge_diag": merge_diag,
+            "staging_status": staging_status,
+            "blocker": blocker,
+            "client_bulk_endpoint": _BULK_ENDPOINT[client],
+            "outputs": outputs,
+            "row_count": len(enriched),
+            "csv_warnings": [],
+            "match_warnings": [],
+            "review_reasons_per_row": [],
+            "enriched_diagnostics": {
+                "phase2_skipped": "operator-edited xlsx kept intact",
+            },
+            "report_diagnostics": report_diag,
+            "staging_diagnostics": staging_diag,
+            "llm_diagnostics": llm_diag,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return payload
 
     # --- parse + match + address ------------------------------------
     rows, csv_warnings = parse_evidence_csv(csv_path)
@@ -515,6 +894,66 @@ def run_once(
         principal_contractor=principal_contractor,
         audit_date_ddmmyyyy=ddmmyyyy,
     )
+
+    # Persist the full row state for the two-phase workflow. Phase 2
+    # (--from-state) reads this back, optionally merges operator
+    # edits from the enriched xlsx, then renders the report + staging.
+    # Snapshot the enriched xlsx's editable cells AS WRITTEN so
+    # phase 2 can distinguish operator edits from rendered-fallback
+    # values that look different from the source attribute (e.g. the
+    # Action Description cell shows ``recommendation`` when
+    # ``action_description`` is empty).
+    enriched_snapshot = _snapshot_enriched_xlsx(enriched_path)
+
+    state_payload = {
+        "folder": folder.name,
+        "client": client,
+        "audit_date": iso,
+        "audit_date_ddmmyyyy": ddmmyyyy,
+        "site_address": site_address,
+        "ra_project_name": ra_project_name,
+        "principal_contractor": principal_contractor,
+        "ra_summary": ra_summary,
+        "narrative_summary": narrative_summary,
+        "llm_diagnostics": llm_diag,
+        "rows": _serialise_rows(enriched),
+        "enriched_xlsx_snapshot": enriched_snapshot,
+    }
+    state_path.write_text(
+        json.dumps(state_payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    # Phase-1 short-circuit: when ``stop_after="enrich"`` the pipeline
+    # writes the enriched xlsx + state JSON and exits BEFORE the report
+    # / staging are produced. The operator reviews + edits the xlsx,
+    # then runs phase 2 with --from-state.
+    if stop_after == "enrich":
+        sentinel_outputs = [enriched_path.name, ".ssa_state.json"]
+        ph1_payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "phase": "enrich-only",
+            "outputs": sentinel_outputs,
+            "row_count": len(enriched),
+            "llm_diagnostics": llm_diag,
+            "site_address": site_address,
+            "site_address_unresolved": site_address is None,
+            "ra": ra_summary,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "next_step": (
+                "review and edit the Enriched Register sheet in "
+                f"{enriched_path.name}, then re-run with "
+                "--from-state to produce the report + staging files"
+            ),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(ph1_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return ph1_payload
     report_diag = build_ssa_report_docx(
         enriched,
         site_address=site_for_docx,
@@ -627,6 +1066,28 @@ def main(argv: list[str] | None = None) -> int:
         help="skip the LLM finding-rewrite + narrative-summary pass",
     )
     ap.add_argument(
+        "--enrich-only", action="store_true",
+        help=(
+            "phase 1 of the two-phase workflow — write the enriched "
+            "xlsx + .ssa_state.json sidecar and EXIT before the "
+            "report and staging files are produced. Use this when "
+            "you want to review / edit the LLM's findings in Excel "
+            "before they get baked into the docx + staging xlsx. "
+            "Re-run with --from-state to complete the run."
+        ),
+    )
+    ap.add_argument(
+        "--from-state", action="store_true",
+        help=(
+            "phase 2 of the two-phase workflow — skip parse / match "
+            "/ vision and rebuild EnrichedRows from the .ssa_state."
+            "json sidecar, merging the operator's edits from the "
+            "Enriched Register sheet. Produces the report + staging "
+            "files; leaves the (already operator-edited) enriched "
+            "xlsx untouched."
+        ),
+    )
+    ap.add_argument(
         "--merge", default="",
         help=(
             "merge directives by displayed finding number, e.g. "
@@ -645,6 +1106,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
+        if args.enrich_only and args.from_state:
+            print(
+                "error: --enrich-only and --from-state are mutually "
+                "exclusive (they're the two halves of one workflow).",
+                file=sys.stderr,
+            )
+            return 1
         payload = run_once(
             args.folder,
             prepared_by=args.prepared_by,
@@ -654,6 +1122,8 @@ def main(argv: list[str] | None = None) -> int:
             enrich=not args.no_enrich,
             risk_assessment_path=args.risk_assessment,
             merge_groups=parse_merge_argument(args.merge),
+            stop_after="enrich" if args.enrich_only else None,
+            from_state=args.from_state,
         )
     except PreflightError as e:
         # Preflight blocked the run before any rows processed; rc=3
@@ -672,6 +1142,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if payload.get("skipped"):
         print("skipped: manifest unchanged + all outputs present")
+    if payload.get("phase") == "enrich-only":
+        print("phase 1 (enrich-only) complete")
+        print(f"row_count: {payload.get('row_count')}")
+        print(f"next step: {payload.get('next_step', '')}")
+        print(f"outputs ({len(payload['outputs'])} files):")
+        for name in payload["outputs"]:
+            print(f"  - {name}")
+        return 0
     print(f"staging_status: {payload['staging_status']}")
     if payload.get("blocker"):
         print(f"blocker:        {payload['blocker']}")
