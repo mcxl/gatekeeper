@@ -1046,7 +1046,11 @@ def test_parse_prior_report_recommendations_extracts_non_compliant(tmp_path):
     recs = parse_prior_report_recommendations(p)
     assert len(recs) == 2
     assert recs[0]["recommendation"] == "missing edge protection"
-    assert recs[0]["required_actions"] == "WHS Reg cl.79"
+    # 2026-05-06 schema: Date column is parsed from the prior
+    # report's filename ("260301" → "1-Mar-26"). The Reference
+    # column from the prior register is no longer carried — the
+    # rendered table doesn't have a "Required Actions" column.
+    assert recs[0]["date"] == "1-Mar-26"
     assert recs[0]["status"] == ""
     assert recs[1]["recommendation"] == "SWMS undated"
 
@@ -1211,11 +1215,14 @@ def test_build_ssa_report_docx_no_findings_writes_placeholder(tmp_path):
     )
     doc = Document(out)
     # Status of Previous Recs default placeholder.
+    # 2026-05-06 layout: Date | Recommendations | Status (...) | Comments
     prev = next(
         t for t in doc.tables
-        if "Recommendation" in t.rows[0].cells[0].text and len(t.columns) == 4
+        if t.rows[0].cells[0].text.strip() == "Date" and len(t.columns) == 4
     )
-    assert "No prior recommendations" in prev.rows[1].cells[0].text
+    # Empty-recs placeholder text lives in the Recommendations cell
+    # (column index 1) per the new layout.
+    assert "No prior recommendations" in prev.rows[1].cells[1].text
 
 
 # ---------------------------------------------------------------------------

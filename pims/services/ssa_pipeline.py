@@ -1009,7 +1009,9 @@ def build_pims_enriched_xlsx(
 # wrong table.
 _TABLE_SIGNATURES = {
     "positive": ("#", "Observation", "Reference"),
-    "prior_recs": ("Recommendation", "Required Actions", "Status", "Commentary"),
+    # Layout per 2026-05-06 reviewer direction: 4 cols
+    # Date | Recommendations | Status (DD-Mon-YY) | Comments
+    "prior_recs": ("Date", "Recommendations", "Status", "Comments"),
     "obs_register": ("Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"),
 }
 
@@ -1019,16 +1021,21 @@ _TABLE_SIGNATURES = {
 # the table so the column widths are deterministic across all clones.
 _TABLE_COL_WIDTHS_CM: dict[str, tuple[float, ...]] = {
     "positive":     (1.5, 7.0, 9.5),
-    "prior_recs":   (6.5, 4.0, 2.5, 4.75),
+    # 2026-05-06: Date / Rec / Status / Comments at 2.5 / 6.25 / 2.5 / 6.25 cm
+    "prior_recs":   (2.5, 6.25, 2.5, 6.25),
 }
 
 # Tables whose first row should:
 #   - be bold (header styling)
 #   - repeat across page breaks (Word's tblHeader flag)
-_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive"})
+_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive", "prior_recs"})
 _TABLE_HEADER_REPEAT: frozenset[str] = frozenset({
-    "positive", "obs_register",
+    "positive", "obs_register", "prior_recs",
 })
+# Tables that should render every cell with all-around single-line
+# borders (the "All" preset in Word's Borders dialog). 2026-05-06
+# reviewer direction for the prior-recs table.
+_TABLE_ALL_BORDERS: frozenset[str] = frozenset({"prior_recs"})
 
 
 def _cm_to_twips(cm: float) -> int:
@@ -1036,11 +1043,40 @@ def _cm_to_twips(cm: float) -> int:
     return int(round(cm * 567))
 
 
+def _apply_all_cell_borders(tbl) -> None:
+    """Apply Word's "All" border preset — single-line ½-pt borders on
+    every cell edge inside and outside the table. Sets ``<w:tblBorders>``
+    on the table-level properties so every row inherits the boundary
+    style; per-cell ``<w:tcBorders>`` overrides are left alone.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tbl_el = tbl._tbl
+    tblPr = tbl_el.find(qn("w:tblPr"))
+    if tblPr is None:
+        tblPr = OxmlElement("w:tblPr")
+        tbl_el.insert(0, tblPr)
+    # Drop any pre-existing border block — easier than reconciling.
+    existing = tblPr.find(qn("w:tblBorders"))
+    if existing is not None:
+        tblPr.remove(existing)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), "single")
+        b.set(qn("w:sz"), "4")        # ½ pt
+        b.set(qn("w:space"), "0")
+        b.set(qn("w:color"), "auto")
+        borders.append(b)
+    tblPr.append(borders)
+
+
 def _apply_table_format(
     tbl,
     col_widths_cm: tuple[float, ...] | None,
     bold_header: bool,
     repeat_header: bool,
+    all_borders: bool = False,
 ) -> None:
     """Set deterministic column widths, optional bold first row, and
     optional header-repeat-across-pages on a python-docx Table.
@@ -1101,6 +1137,9 @@ def _apply_table_format(
         if trPr.find(qn("w:tblHeader")) is None:
             trPr.append(OxmlElement("w:tblHeader"))
 
+    if all_borders:
+        _apply_all_cell_borders(tbl)
+
 # Per-location 2-col detail block: first row first cell == "Location",
 # 2 columns. Distinct enough from every other table in the template to
 # match unambiguously.
@@ -1115,10 +1154,12 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
     a ``Status of Previous Recommendations`` entry shaped:
 
         {
-          "recommendation":   short summary from prior Observation cell,
-          "required_actions": prior Reference / regulatory cite,
-          "status":           "" — auditor fills with DD/MM/YY at QA,
-          "commentary":       "" — auditor fills at QA,
+          "date":           prior audit date as "DD-Mon-YY"
+                            (parsed from the prior report's filename)
+          "recommendation": short summary from prior Observation cell,
+          "status":         "" — auditor fills based on what they
+                            observe in the current audit,
+          "commentary":     "" — auditor fills at QA,
         }
 
     Returns ``[]`` when the file is unreadable, lacks an Observations
@@ -1147,6 +1188,20 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
     if register is None:
         return []
 
+    # Pull the prior audit date from the filename so the table's
+    # Date column carries "DD-Mon-YY" per the 2026-05-06 layout.
+    prior_date = ""
+    m = re.search(r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", path.name)
+    if m:
+        try:
+            from datetime import datetime
+            d = datetime.strptime(m.group(1), "%y%m%d")
+            prior_date = (
+                f"{d.day}-{d.strftime('%b')}-{d.strftime('%y')}"
+            )
+        except Exception:
+            prior_date = ""
+
     out: list[dict] = []
     for row in register.rows[1:]:
         if len(row.cells) < 6:
@@ -1159,12 +1214,11 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
             # "See F1 re exclusion zone"); treat as carry-forward.
             pass
         observation = " ".join(row.cells[2].text.split())
-        reference = " ".join(row.cells[3].text.split())
         if not observation:
             continue
         out.append({
+            "date": prior_date,
             "recommendation": observation,
-            "required_actions": reference,
             "status": "",
             "commentary": "",
         })
@@ -2671,26 +2725,38 @@ def build_ssa_report_docx(
             _set_cell_text(cells[2], "")
 
     # --- Status of Previous Recommendations table (4 cols) ----------
+    # 2026-05-06 layout: Date | Recommendations | Status (DD-Mon-YY) |
+    # Comments. Column widths 2.5 / 6.25 / 2.5 / 6.25 cm. All-cell
+    # single-line borders. Header row repeats across page breaks.
     prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
     if prev_tbl is not None and len(prev_tbl.rows) >= 2:
         _apply_table_format(
             prev_tbl,
             col_widths_cm=_TABLE_COL_WIDTHS_CM["prior_recs"],
-            bold_header=False,
-            repeat_header=False,
+            bold_header="prior_recs" in _TABLE_HEADER_BOLD,
+            repeat_header="prior_recs" in _TABLE_HEADER_REPEAT,
+            all_borders="prior_recs" in _TABLE_ALL_BORDERS,
         )
-        # Substitute the prior audit date into the header cell —
-        # canonical sample reads "Status (30/03/26)", template carries
-        # the literal "Status (DD/MM/YY)" placeholder.
-        if prior_audit_date_ddmmyy:
+        # Substitute the CURRENT audit date into the header cell —
+        # template carries "Status (DD-Mon-YY)" placeholder; rendered
+        # form uses the short footer-style date ("Status (1-may-26)").
+        # Reviewer direction: the column header tracks "as-of" the
+        # current audit date so the table chains forward.
+        audit_short = _to_short_date(audit_date_ddmmyyyy)
+        if audit_short:
             hdr_cell = prev_tbl.rows[0].cells[2]
             for p_el in hdr_cell._tc.iter(qn("w:p")):
                 t_text = "".join(
                     t.text or "" for t in p_el.iter(qn("w:t"))
                 )
-                if "DD/MM/YY" in t_text:
+                if "DD-Mon-YY" in t_text:
+                    new_text = t_text.replace("DD-Mon-YY", audit_short)
+                    _set_paragraph_runs_text(p_el, new_text)
+                    break
+                if "DD/MM/YY" in t_text:  # legacy template fallback
                     new_text = t_text.replace(
-                        "DD/MM/YY", prior_audit_date_ddmmyy,
+                        "DD/MM/YY",
+                        prior_audit_date_ddmmyy or audit_short,
                     )
                     _set_paragraph_runs_text(p_el, new_text)
                     break
@@ -2700,14 +2766,16 @@ def build_ssa_report_docx(
             for idx, rec in enumerate(recs, start=1):
                 target = placeholder if idx == 1 else _clone_row(prev_tbl, placeholder)
                 cells = target.cells
-                _set_cell_text(cells[0], str(rec.get("recommendation", "")))
-                _set_cell_text(cells[1], str(rec.get("required_actions", "")))
+                # 2026-05-06 column layout:
+                # Date | Recommendations | Status (as of <audit>) | Comments
+                _set_cell_text(cells[0], str(rec.get("date", "")))
+                _set_cell_text(cells[1], str(rec.get("recommendation", "")))
                 _set_cell_text(cells[2], str(rec.get("status", "")))
                 _set_cell_text(cells[3], str(rec.get("commentary", "")))
         else:
             cells = placeholder.cells
-            _set_cell_text(cells[0], "No prior recommendations carried forward.")
-            _set_cell_text(cells[1], "")
+            _set_cell_text(cells[0], "")
+            _set_cell_text(cells[1], "No prior recommendations carried forward.")
             _set_cell_text(cells[2], "")
             _set_cell_text(cells[3], "")
 

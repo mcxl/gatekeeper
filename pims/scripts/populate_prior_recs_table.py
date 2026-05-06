@@ -270,15 +270,19 @@ def populate_prior_recs(
             f"prior report carries no per-finding detail tables: {prior_docx}"
         )
 
-    # Locate the prior-recs table in the CURRENT report (4-col, first
-    # cell label "Recommendation").
+    # Locate the prior-recs table in the CURRENT report (4-col, new
+    # layout per 2026-05-06: Date / Recommendations / Status (DD-Mon-YY)
+    # / Comments). Falls back to legacy header text for older
+    # rendered reports so the script can run against any vintage.
     prior_tbl = None
     for t in doc.tables:
+        if len(t.columns) != 4 or not t.rows:
+            continue
+        h0 = t.rows[0].cells[0].text.strip()
+        h1 = t.rows[0].cells[1].text.strip()
         if (
-            len(t.columns) == 4
-            and t.rows
-            and "Recommendation" in t.rows[0].cells[0].text
-            and "Required Actions" in t.rows[0].cells[1].text
+            (h0 == "Date" and h1 == "Recommendations")
+            or ("Recommendation" in h0 and "Required Actions" in h1)
         ):
             prior_tbl = t
             break
@@ -287,7 +291,10 @@ def populate_prior_recs(
 
     rev_state: dict[str, int] = {}
 
-    # --- Header rewrite: Status (DD/MM/YY) -> Status (<audit_date>)
+    # --- Header rewrite: Status (DD-Mon-YY) -> Status (<audit_date>)
+    # Accept legacy "Status (DD/MM/YY)" headers from older renders;
+    # always emit the new "Status as of <DD-Mon-YY>" form per
+    # 2026-05-06 reviewer direction.
     header_cells = list(prior_tbl.rows[0].cells)
     status_cell = None
     for c in header_cells:
@@ -295,7 +302,7 @@ def populate_prior_recs(
             status_cell = c
             break
     if status_cell is not None:
-        new_header_text = f"Status ({audit_date_ddmmyy})"
+        new_header_text = f"Status as of {audit_date_ddmmyy}"
         _replace_header_cell_text(status_cell._tc, new_header_text, rev_state)
 
     # --- Build new rows from the PRIOR audit's detail tables
@@ -306,13 +313,37 @@ def populate_prior_recs(
     )
     col_widths = [int(g.get(qn("w:w"))) for g in rec_widths]
 
+    # Prior audit date for the Date column. Pulled from the prior
+    # report's filename (YYMMDD suffix) and formatted "DD-Mon-YY"
+    # to match the 2026-05-06 layout.
+    prior_date_str = ""
+    import re as _re
+    m = _re.search(
+        r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", prior_docx.name,
+    )
+    if m:
+        try:
+            d = datetime.strptime(m.group(1), "%y%m%d")
+            prior_date_str = (
+                f"{d.day}-{d.strftime('%b')}-{d.strftime('%y')}"
+            )
+        except ValueError:
+            pass
+
     for n, (title, dtbl) in enumerate(prior_findings, start=1):
         rec_text = _detail_table_field(dtbl, "Recommendation") \
             or _detail_table_field(dtbl, "Required Action")
         observation_text = _detail_table_field(dtbl, "Observation")
 
-        recommendation_cell = f"F{n} – {title}".rstrip(" –")
-        required_actions_cell = rec_text
+        # Recommendations column: combined "F<n> – <title>" and the
+        # verbatim recommendation text on a new line so the row
+        # carries both the short label and the actionable detail.
+        rec_lines: list[str] = []
+        label = f"F{n} – {title}".rstrip(" –")
+        rec_lines.append(label)
+        if rec_text:
+            rec_lines.append(rec_text)
+        recommendations_cell = "\n".join(rec_lines)
         commentary_cell = (
             f"{_short_summary(observation_text)} See prior F{n}."
             if observation_text else f"See prior F{n}."
@@ -322,10 +353,10 @@ def populate_prior_recs(
         tr = OxmlElement("w:tr")
         _mark_row_as_inserted(tr, rev_row)
         for i, cell_text in enumerate([
-            recommendation_cell,
-            required_actions_cell,
-            "",                  # status — auditor fills in at QA
-            commentary_cell,
+            prior_date_str,           # Date
+            recommendations_cell,     # Recommendations (label + text)
+            "",                       # Status as of <current> — blank
+            commentary_cell,          # Comments
         ]):
             w = col_widths[i] if i < len(col_widths) else 2000
             tr.append(_make_inserted_cell(cell_text, rev_row, w))
