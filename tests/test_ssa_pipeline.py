@@ -1805,6 +1805,46 @@ def test_apply_manual_merges_consolidates_displayed_indices():
     assert out[1][1].finding_title == "Brace removal sign-off"
 
 
+def test_merge_similar_findings_collapses_on_recommendation_intent():
+    """Two NCRs with different titles but the same physical control
+    intent ("establish and maintain an exclusion zone") merge.
+    Mirrors the reviewer call: 'we are only merging because very
+    similar and results in establishing a work zone'."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation="Immediate – establish and maintain an exclusion zone with spotter beneath the steel erection",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Worker beneath suspended steel — no exclusion zone",
+        recommendation="Immediate – establish and maintain an exclusion zone beneath suspended steel works",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    c = EnrichedRow(  # different intent — should NOT merge
+        obs=ObservationRow(
+            csv_row=12, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Pre-start logbook missing for telehandler",
+        recommendation="Immediate – stop telehandler use until pre-start is completed and signed",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    out = merge_similar_findings([(10, a), (11, b), (12, c)])
+    # 3 input → 2 canonical (a and b merged into a; c standalone).
+    assert len(out) == 2
+    canonical = out[0][1]
+    assert canonical.evidence_csv_indices == [10, 11]
+    assert "Evidence also: PIMS Obs 11" in canonical.monitoring_note
+    # c's title preserved as a separate canonical row.
+    assert "Pre-start logbook missing" in out[1][1].finding_title
+
+
 def test_apply_manual_merges_silent_on_invalid_indices():
     """Out-of-range / single-index groups are silently dropped — an
     operator typo should never crash the pipeline."""

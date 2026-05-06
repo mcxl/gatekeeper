@@ -1802,58 +1802,126 @@ def parse_merge_argument(arg: str) -> list[list[int]]:
     return out
 
 
+# Tokens dropped before measuring recommendation similarity. The
+# urgency prefix carries no signal about the actual control intent;
+# function words and generic glue words also dilute the Jaccard score.
+_RECOMMENDATION_STOPWORDS: frozenset[str] = frozenset({
+    "immediate", "ongoing", "the", "a", "an", "of", "for", "and", "or",
+    "to", "with", "in", "on", "at", "is", "be", "are", "was", "by",
+    "from", "as", "this", "that", "any", "all", "until", "before",
+    "after", "while", "when", "while", "site", "manager", "site-manager",
+    "within", "days", "day", "next", "audit",
+})
+
+
+def _recommendation_tokens(text: str) -> set[str]:
+    """Return content-word tokens of a Recommendation cell.
+
+    Strips the leading urgency phrase ("Immediate – ", "Within 7 days
+    – ") because that timing prefix carries no information about the
+    physical control the recommendation is asking for. Lowercases,
+    drops stopwords, drops single-character tokens.
+    """
+    if not text:
+        return set()
+    s = text.lower()
+    # Strip an "Immediate – ", "within 7 days – ", "next audit – " etc.
+    # urgency prefix.
+    for sep in (" – ", " - ", " — "):
+        if sep in s:
+            head, _, rest = s.partition(sep)
+            head_words = head.split()
+            if head_words and head_words[0] in {
+                "immediate", "within", "next", "ongoing", "audit",
+            }:
+                s = rest
+                break
+    tokens = re.findall(r"[a-z][a-z0-9-]+", s)
+    return {
+        t for t in tokens
+        if len(t) >= 3 and t not in _RECOMMENDATION_STOPWORDS
+    }
+
+
+_RECOMMENDATION_JACCARD_THRESHOLD = 0.5
+_RECOMMENDATION_OVERLAP_MIN = 3
+
+
+def _recommendation_jaccard(a: str, b: str) -> float:
+    """Jaccard similarity between two recommendation strings on the
+    content-token set. Returns 0.0 when either side is empty."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return 0.0
+    inter = ta & tb
+    if len(inter) < _RECOMMENDATION_OVERLAP_MIN:
+        return 0.0
+    union = ta | tb
+    return len(inter) / len(union) if union else 0.0
+
+
 def merge_similar_findings(
     indexed_rows: list[tuple[int, EnrichedRow]],
 ) -> list[tuple[int, EnrichedRow]]:
     """Consolidate materially similar non-Compliant findings.
 
-    Two rows are "similar" when they share:
-      - conformance_status (NCR/Conditional/Info)
+    Two rows are "similar" when they share BOTH:
+      - conformance_status (NCR / Conditional / Info)
       - ccvs_code stream prefix (e.g. both MOB-*, both WAH-*)
-      - finding_title (case-insensitive equality)
+    AND at least one of:
+      - identical finding_title (case-insensitive)
+      - recommendation Jaccard ≥ 0.5 with ≥3 content tokens overlap.
+        Reviewer-driven: when two findings prescribe the same physical
+        control ("establish and maintain an exclusion zone with a
+        spotter" vs "establish and maintain an exclusion zone beneath
+        suspended steel"), they are operationally one finding even if
+        the descriptive titles differ.
 
-    The first row in CSV order becomes the merged "canonical" row.
-    Subsequent similar rows have their evidence references appended
+    The first row in significance order becomes the canonical row;
+    subsequent similar rows have their evidence references appended
     to the canonical row's ``monitoring_note`` ("Evidence also: <fn>")
-    and their photo csv_idx folded into a new ``evidence_csv_indices``
-    list on the canonical row. The canonical row's csv_idx is
-    preserved so existing cross-refs still resolve.
-
+    and their photo csv_idx folded into ``evidence_csv_indices``.
     Compliant rows are NOT merged — Positive Observations needs each
     one to render in the table separately.
-
-    Returns the merged list (preserving order of the canonical rows).
     """
     if not indexed_rows:
         return indexed_rows
 
     canonical: list[tuple[int, EnrichedRow]] = []
-    seen: dict[tuple[str, str, str], int] = {}  # key → index in canonical
     for csv_idx, row in indexed_rows:
         if row.conformance_status == "Compliant":
             canonical.append((csv_idx, row))
             continue
-        if not row.finding_title:
-            canonical.append((csv_idx, row))
-            continue
         stream = row.ccvs_code.split("-", 1)[0] if "-" in row.ccvs_code else row.ccvs_code
-        key = (
-            row.conformance_status,
-            stream,
-            row.finding_title.strip().lower(),
-        )
-        existing = seen.get(key)
-        if existing is None:
-            seen[key] = len(canonical)
-            # Initialise evidence list with the canonical row's own
-            # csv_idx so downstream callers can iterate uniformly.
+        match_pos = -1
+        for pos, (_idx, c_row) in enumerate(canonical):
+            if c_row.conformance_status != row.conformance_status:
+                continue
+            c_stream = (
+                c_row.ccvs_code.split("-", 1)[0]
+                if "-" in c_row.ccvs_code else c_row.ccvs_code
+            )
+            if c_stream != stream:
+                continue
+            # Title equality OR recommendation similarity.
+            same_title = (
+                row.finding_title and c_row.finding_title
+                and row.finding_title.strip().lower()
+                == c_row.finding_title.strip().lower()
+            )
+            similar_rec = (
+                _recommendation_jaccard(row.recommendation, c_row.recommendation)
+                >= _RECOMMENDATION_JACCARD_THRESHOLD
+            )
+            if same_title or similar_rec:
+                match_pos = pos
+                break
+        if match_pos < 0:
             row.evidence_csv_indices = [csv_idx]
             canonical.append((csv_idx, row))
         else:
-            target_idx, target_row = canonical[existing]
-            # Append the duplicate's csv_idx to the canonical row's
-            # evidence list and surface it in monitoring_note as a
-            # human-readable cross-reference.
+            _t_idx, target_row = canonical[match_pos]
             target_row.evidence_csv_indices = list(
                 target_row.evidence_csv_indices or []
             ) + [csv_idx]
