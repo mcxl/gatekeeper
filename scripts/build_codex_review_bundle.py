@@ -18,12 +18,13 @@ PLAN_PATH = (
 FILES = [
     ("pims/services/ssa_pipeline.py",
      "Pipeline core: parser, matcher, three builders, enrichment, "
-     "size-control wrapper, prior-rec parser, Findings #N expansion, "
-     "xlsx polish helper."),
+     "size-control wrapper, prior-rec parser, Findings #N expansion + "
+     "index table, xlsx polish, RA-code labelling, significance "
+     "ordering, anchor/Jaccard merge, manual --merge directives."),
     ("pims/services/ssa_checklist_lookup.py",
      "Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a "
      "deterministic fallback for --no-enrich mode; bypassed when "
-     "vision is on."),
+     "vision is on (default)."),
     ("pims/services/ssa_ccvs_taxonomy.py",
      "Canonical 25-stream x 6-tier CCVS taxonomy. Replaces the "
      "audit_checklist.xlsx-derived 01.01 numeric scheme with the "
@@ -31,8 +32,11 @@ FILES = [
     ("pims/services/ssa_vision_enricher.py",
      "Per-row Anthropic vision call (Opus 4.7). Sends downscaled "
      "EXIF-normalised photo + observation text + project RA context. "
-     "Receives status / ccvs_code / finding / legal_ref / "
-     "recommendation / monitoring_note. Transient-error retry."),
+     "Receives status / ccvs_code / finding_title / location / "
+     "finding / hierarchy_of_control / recommendation / timeframe / "
+     "phase / activity_ref / hold_point / hrcw / swms_required / "
+     "swms_present / initial_risk / residual_risk / legal_ref / "
+     "monitoring_note. Transient-error retry; forgiving JSON parser."),
     ("pims/services/ssa_ra_parser.py",
      "Project Risk Assessment docx parser. Extracts metadata + 9 "
      "hold points + N phase activities; compact-context-block packs "
@@ -43,16 +47,27 @@ FILES = [
      "polls; exclusions cover every watcher-owned artifact. "
      "Manifest-sha256 idempotency lives in the orchestrator."),
     ("pims/scripts/run_ssa_pipeline.py",
-     "CLI orchestrator. Folder-name parse, manifest sha256, freeze "
-     "escape hatch, sentinels (NOT_UPLOADABLE / NO_BULK_ENDPOINT), "
-     "RA auto-discover, vision wiring, .ssa_run.json payload."),
+     "CLI orchestrator. Folder-name parse (with -NN sub-id), "
+     "manifest sha256, preflight, freeze escape hatch, sentinels, "
+     "RA auto-discover, vision wiring, three-phase review workflow "
+     "(--enrich-only / --from-state / --from-report), --merge "
+     "directives, .ssa_run.json + .ssa_state.json payloads."),
     ("pims/scripts/start_ssa_watcher.py",
      "Long-run entry for the watcher. Rotating-file logging."),
+    ("pims/scripts/populate_prior_recs_table.py",
+     "Operator-driven post-render edit: populates the Status of "
+     "Previous Recommendations table with prior carry-forward + "
+     "current-cycle rows under the 10 locked rules (allowed status "
+     "set, DD-MMM-YYYY date format, F<n> refs, significance + date "
+     "sort). Tracked-changes output (author=Claude)."),
     ("tests/test_ssa_pipeline.py",
-     "69-case regression net. Covers parser, matcher, three "
-     "builders, size-control, manifest, watcher, vision coercion, "
-     "RA parser, prior-rec parser, Findings #N expansion, status "
-     "colour fills, freeze, idempotency, partial-output recovery."),
+     "99-case regression net. Covers parser, matcher, three "
+     "builders, size-control + cache, manifest, watcher, vision "
+     "coercion, RA parser, prior-rec parser, Findings #N expansion + "
+     "index table, status colour fills, freeze, idempotency, "
+     "partial-output recovery, anchor/Jaccard/strong-overlap merge, "
+     "manual --merge directives, three-phase round-trip "
+     "(--enrich-only / --from-state / --from-report)."),
 ]
 
 INTRO = '''# SSA Pipeline — Codex Review Bundle
@@ -78,7 +93,7 @@ Use this document to:
 1. Identify any remaining drift (places where the plan still differs
    from what the code actually does, or where the code still
    differs from the canonical samples).
-2. Catch quality / correctness issues the test suite (70 pytest
+2. Catch quality / correctness issues the test suite (99 pytest
    cases, all green; flake8 clean) does not assert against.
 3. Suggest improvements to the plan itself so future work has a
    spec that matches the canonical samples.
@@ -111,50 +126,81 @@ Use this document to:
 | Humaniser ruleset | Plan listed banned vocab + em-dash / signposting / sycophantic / emoji / curly-quote / passive-without-named-actor bans | All plan-listed bans are in both system prompts. Plus three additions caught in user review: rule-of-three constructions (with the actual phrases user highlighted as bad — `"available, accessible, and clearly identified"`, `"obscured, kicked, or removed"`); negative parallelism (`"not just X, but Y"`); legalistic connectors (`"contrary to"`, `"in breach of"`, `"in violation of"`, `"non-compliant with"`, `"pursuant to"`) — replaced by plain-English regulation framing (`"WHS Reg X requires Y; the site does not meet that standard"`) | Self-inflicted humaniser violations the original prompt taught the LLM to produce; user caught each on review. |
 | Recommendation verb selection | not specified | Paired-verb pattern `"establish and maintain"` for persistent controls (exclusion zones, barriers, edge protection, traffic controls); single-shot `install / mount / fit` for fixtures; `complete / sign` for records; `verify / audit / check` for monitoring; `stop / stand down` for halt-work | User caught `"demarcate"` as too narrow — captures setup but not maintenance obligation. |
 | Model | initial: `claude-sonnet-4-5-20250929` | `claude-opus-4-7` per user direction | Most capable model; supports vision. |
+| Folder name | strict `YYYY-MM-DD-<RPD or SDG>` | also accepts optional `-NN` sub-id (`2026-05-01-SDG-01`) for split-day visits; sub-id propagates into all output filenames | Multiple visits to the same site on the same day need distinct deliverable names. |
+| Runtime preflight | nothing | `PreflightError` raised before row processing when `enrich=True` and `ANTHROPIC_API_KEY` is missing; CLI rc=3 | Operators hit "silent semantic degradation" twice; loud failure prevents both. |
+| Findings index table | not in plan | 3-column `# | Finding | Recommendation` table inserted directly under the Findings heading; numbered 1..N matching the per-finding detail blocks; bold header, all-cell borders, header repeats | Reviewer ask 2026-05-06: visible navigation aid. |
+| Significance ordering | not in plan | `_significance_score` ranks: HP breach > SWMS gap > plant/public (MOB/CRN/TRF H6/H9) > permit-class (HOT/ASB/CFS/DEM/ELE H6/H9) > generic; secondary axes break ties on status then CCVS tier | Reviewer ask: critical-safety findings appear at the top of the Findings index + detail blocks. |
+| Multi-issue row splitting | not in plan | `(1) ... (2) ... (3) ...` composite notes split into separate atomic ObservationRows BEFORE photo-match metadata is consumed; each shares the source photo + timestamp | Auditors record several distinct issues against one photo with leading numerals. |
+| Similar-finding merge | not in plan | `merge_similar_findings` consolidates non-Compliant rows that share status + stream + (title equality OR recommendation Jaccard ≥0.5 OR ≥4 content-token overlap OR anchor-phrase like {establish, zone}). Anchor merge crosses streams — an exclusion zone above a steel lift (WAH-H6) and the telehandler beneath it (MOB-H9) are physically the same intervention. Plural-stem trim (`zone` / `zones` collapse) | Reviewer call 2026-05-06: the merge criterion is the recommended action / control intent, not the descriptive title. |
+| Manual `--merge` directive | not in plan | Operator can pass `--merge "1,3"` (or `"1,3;5,7,8"`) to consolidate findings by displayed index when the auto-merge can't infer the intent from text alone | Escape hatch for cases the heuristic doesn't catch. |
+| Per-finding detail table layout | not in plan | Each finding renders as `#N <title>` heading + 6-row 2-col detail table: `Location | Observation | Regulatory Basis | Hierarchy of Control | Recommendation | Timeframe`. Template label `Required Action` rewritten to `Recommendation` at render time. Tier-prefixed Hierarchy (`Engineering: ...`), urgency-prefixed Recommendation (`Within 7 days – ...`, ≤15 words). | Canonical sample shape; "Recommendation" is the reviewer-facing label. |
+| Status of Previous Recs schema | plan: `Recommendation | Required Actions | Status (DD/MM/YY) | Commentary` | New schema: `Date | Recommendations | Status as of <DD-MMM-YYYY> | Comments`. Column widths 2.5 / 6.25 / 2.5 / 6.25 cm. Bold header, header-repeats, all-cell borders. Date format DD-MMM-YYYY (4-digit year). | Reviewer direction 2026-05-06 — table now chains forward audit-by-audit. |
+| Prior-recs population | plan: parse prior report into `prior_recs` (deferred) | `populate_prior_recs_table.py` enforces the 10 locked rules: allowed statuses Completed/Partial/Not completed/Not assessed only, "Retired" banned, dates DD-MMM-YYYY, F-refs in every Comments cell, default `Not assessed` when no current-cycle evidence, keep all carry-forwards + append all current-cycle, sort by significance + date. Output as Word tracked changes (author=Claude). | Reviewer direction 2026-05-06. |
+| Cover/footer date formats | not in plan | Cover page: `1st May 2026` (ordinal long form). Running footer: `1-may-26` (short, lowercase month, 2-digit year). Same `{{AUDIT_DATE}}` placeholder; substitution branches per part. | Reviewer direction. |
+| Table styling consistency | not in plan | Every multi-column table in the report (Findings index, Positive Observations, Status of Previous Recs, Observations Register) uses bold header + header-repeat + all-cell single-line borders. Per-finding detail tables get all-cell borders + bold left-column labels. | Reviewer direction 2026-05-06. |
+| RA-code labelling | not in plan | Every TP-NN / HP-NN / HRCW H-NN reference in finding text / recommendation / hierarchy / monitoring / narrative is wrapped: `SDG Project Risk Assessment code: <CODE>`. First occurrence in each block expands the shorthand: `TP-07 (Tilt-Up Panel Erection activity 07)`. Adjacent codes collapse to `... codes: TP-05, HP-06`. Idempotent. | Reviewer ask 2026-05-06 — make every project-RA reference traceable. |
+| Plain-English finding titles | not in plan | Vision prompt requires an active-voice sentence ≤12 words, no noun-phrase titles like "EWP Exclusion Zone". Good: "Temporary brace removal proceeded without engineer sign-off". | Reviewer direction. |
+| Executive Summary cap | not in plan | Hard-truncated at 20 visual lines (~280 words); LLM prompt also targets ≤140 words. | Reviewer direction. |
+| Humaniser hardening | plan banned vocab + em-dash | Banned vocabulary list, banned constructions: em-dash clusters, rule-of-three (with concrete sample phrases the user flagged: `"available, accessible, and clearly identified"`, `"obscured, kicked, or removed"`), negative parallelism, signposting, sycophantic openers/closers, emoji, curly quotes, passive voice without a named actor, legalistic connectors (`"contrary to"`, `"in breach of"`, `"in violation of"`, etc.). Recommendation verb selection: `establish and maintain` for persistent controls, `install/mount/fit` for fixtures, `complete/sign` for records, `verify/audit/check` for monitoring, `stop/stand down` for halt-work. | Reviewer caught self-inflicted humaniser violations on review iterations. |
+| Three-phase review workflow | not in plan | Operator-driven review gate: `--enrich-only` writes enriched.xlsx + state JSON and exits → operator reviews/edits → `--from-state` rebuilds docx + staging from edits → operator reviews docx → `--from-report` flows docx edits BACK to enriched + staging xlsx. State JSON persists EnrichedRow rows + xlsx-snapshot fingerprint + `finding_render_order` for phase-3 pairing. | Reviewer ask: human review gate at every export boundary. |
+| Image preprocessing cache | not in plan | `_PHOTO_CACHE` keyed by `(source_path, max_edge_px)` so size-control rerenders (1600 → 1200 → 1000 → 800 px) reuse preprocessed bytes. Cache delta reported in size-control diagnostics. | Real-folder runs hit the rerender ladder; cache avoids redundant CPU. |
+| Network retry | not in plan | retries=2 on transient HTTP/network errors (ConnectError, ReadError, WriteError, TimeoutException, RemoteProtocolError, HTTP 408/429/500/502/503/504). 4xx other than these (auth, billing, bad request) raise immediately. | Real-folder run dropped 2 of 21 rows to transient errors mid-batch. |
+| Forgiving JSON parser | not in plan | `_parse_json_object` strips code fences, then if `json.loads` fails, walks brace depth (respecting strings + escapes) to extract the first balanced `{...}` substring — handles LLM outputs that wrap JSON in prose despite "JSON ONLY" instruction. | Real-folder run had 5/21 rows landing as JSONDecodeError after schema expansion. |
+| Legacy fallback retirement | plan default-on legacy matcher | Default vision path skips the audit_checklist.xlsx load entirely. Legacy keyword fallback only fires when operator explicitly passes `--no-enrich AND --checklist <path>`. | Real data: legacy matcher hit 5/21 with one outright misroute; vision is the canonical classifier. |
 
 ## Known remaining gaps (not yet shipped)
 
-These are still drift items between the shipped output and the
-canonical samples.
+These are open items between the shipped output and the canonical
+samples / the reviewer's stated requirements.
 
-- **Positive Observations row IDs and cross-references**: sample uses
-  `P1 / P2 / P3` numbering with `"PIMS Obs N | <reg ref>"` cross-
-  references in the Reference column. Mine uses plain `1 / 2 / 3`
-  with the `legal_ref` alone. Needs a row-id assigner + cross-ref
-  builder that links Positive rows back to Enriched register row
-  numbers.
-- **Observations Register scope**: sample carries ALL observations
-  (Compliant + non-Compliant) with free-form status text such as
-  `"See F1 re exclusion zone"` / `"Non-compliant – See F2"` /
-  `"Noted"` / `"Partially complete – monitor"` referencing the
-  finding numbers from the Findings section. Mine carries only
-  non-Compliant rows with the canonical status set. Needs the
-  register to be the master observation list + a finding-cross-
-  reference text generator.
-- **HRCW / Hold Point cross-reference columns in staging xlsx**:
-  vision findings reference HP / activity refs inside the finding
-  text, but no dedicated `phase` / `activity_ref` / `hold_point`
-  columns are added to the staging xlsx. Reviewer reads them as
-  part of the narrative.
-- **Compliant / Info SWMS verification**: RA mandates SWMS
-  verification across nearly every activity row; the audit doesn't
-  generally check for SWMS presence beyond the rows where the
-  auditor noted it.
-- **Initial / Residual risk axis**: RA uses H / M / L 3 / 2 / 1
-  rubric for both initial and residual risk. SSA tier suffix
-  (H6 / H9 / M3 / M4 / L1 / L2) carries severity but uses a
-  different rubric.
-- **Image preprocessing cache (Appendix C §C.6)**: the staging
-  size-control wrapper re-renders at progressively smaller caps but
-  doesn't share preprocessed `BytesIO` across rerenders; cache key
-  is implicit per-call. Functional but wastes CPU on large audits
-  that need progressive downscale.
-- **`audit_checklist.xlsx` legacy fallback**: still single-source-
-  of-truth for the legacy keyword matcher (`enrich_observations(...,
-  auto_match=True)`). Default is now `auto_match=False` so vision
-  is the only path the orchestrator uses. The xlsx-based path could
-  be retired entirely once vision is confirmed as the canonical
-  classifier.
+- **Positive Observations row IDs**: shipped — uses `P1 / P2 / P3`
+  numbering with `"PIMS Obs N | <reg ref>"` cross-references. Open:
+  no further drift here.
+- **Observations Register scope**: shipped — register now carries
+  every observation (Compliant + non-Compliant) with status
+  cross-refs (`"Non-compliant — See F1"`, `"Partially complete —
+  See F2"`, `"Compliant"`, `"Noted"`, `"Review at QA"`). Open: no
+  further drift.
+- **HRCW / Hold Point staging columns**: shipped — `phase`,
+  `activity_ref`, `hold_point`, `hrcw` columns added to the staging
+  template; vision enricher populates from RA context. Open: no
+  further drift.
+- **SWMS verification**: shipped — `swms_required` (TRUE/FALSE) and
+  `swms_present` (yes/no/unknown) columns + LLM coercion. Open: no
+  further drift.
+- **Initial / Residual risk axis**: shipped — `initial_risk` /
+  `residual_risk` columns with H/M/L canonicalisation; LLM
+  forbidden from inventing rating from photo alone. Open: no
+  further drift.
+- **Image preprocessing cache**: shipped — `_PHOTO_CACHE` keyed
+  by `(source_path, max_edge_px)` reuses bytes across size-control
+  rerenders; diagnostics report hit/miss delta.
+- **Legacy `audit_checklist.xlsx` fallback retirement**: shipped —
+  default vision path skips the legacy load entirely; only fires
+  on explicit `--no-enrich --checklist <path>`. Could be retired
+  fully once vision is locked as the only supported path.
+
+Genuinely open items:
+
+- **Three-phase round-trip merge fidelity**: phase 3 (`--from-report`)
+  pairs detail tables to EnrichedRows by `finding_render_order`
+  position. If the operator deletes / reorders detail tables in
+  Word, the pairing breaks silently. Could be hardened by tagging
+  each rendered detail table with an invisible `csv_idx` bookmark
+  and reading it back during phase 3.
+- **Phase-2 false-positive overrides**: the enriched xlsx
+  fingerprint snapshot reduces false positives but a couple of
+  rendered-fallback values (Action Description, Due) still register
+  as edits because the rendered cell value differs from the
+  underlying attribute. Harmless; cosmetic only.
+- **Auto-merge calibration**: the {establish, zone} anchor + 4-token
+  strong-overlap rule was tuned against one real-folder corpus
+  (Unitas, 23 rows). Could over-merge or under-merge on materially
+  different audit content; needs a fixture corpus to validate.
+- **Vision JSON output schema**: 18 fields requested per row pushes
+  the LLM toward occasional prose-wrapped JSON. The forgiving parser
+  catches most cases; very rarely a row still fails. A "rewrite to
+  strict JSON" retry call would close this.
 
 ## File inventory
 

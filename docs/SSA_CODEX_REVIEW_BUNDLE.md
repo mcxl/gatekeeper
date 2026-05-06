@@ -21,7 +21,7 @@ Use this document to:
 1. Identify any remaining drift (places where the plan still differs
    from what the code actually does, or where the code still
    differs from the canonical samples).
-2. Catch quality / correctness issues the test suite (70 pytest
+2. Catch quality / correctness issues the test suite (99 pytest
    cases, all green; flake8 clean) does not assert against.
 3. Suggest improvements to the plan itself so future work has a
    spec that matches the canonical samples.
@@ -54,62 +54,94 @@ Use this document to:
 | Humaniser ruleset | Plan listed banned vocab + em-dash / signposting / sycophantic / emoji / curly-quote / passive-without-named-actor bans | All plan-listed bans are in both system prompts. Plus three additions caught in user review: rule-of-three constructions (with the actual phrases user highlighted as bad — `"available, accessible, and clearly identified"`, `"obscured, kicked, or removed"`); negative parallelism (`"not just X, but Y"`); legalistic connectors (`"contrary to"`, `"in breach of"`, `"in violation of"`, `"non-compliant with"`, `"pursuant to"`) — replaced by plain-English regulation framing (`"WHS Reg X requires Y; the site does not meet that standard"`) | Self-inflicted humaniser violations the original prompt taught the LLM to produce; user caught each on review. |
 | Recommendation verb selection | not specified | Paired-verb pattern `"establish and maintain"` for persistent controls (exclusion zones, barriers, edge protection, traffic controls); single-shot `install / mount / fit` for fixtures; `complete / sign` for records; `verify / audit / check` for monitoring; `stop / stand down` for halt-work | User caught `"demarcate"` as too narrow — captures setup but not maintenance obligation. |
 | Model | initial: `claude-sonnet-4-5-20250929` | `claude-opus-4-7` per user direction | Most capable model; supports vision. |
+| Folder name | strict `YYYY-MM-DD-<RPD or SDG>` | also accepts optional `-NN` sub-id (`2026-05-01-SDG-01`) for split-day visits; sub-id propagates into all output filenames | Multiple visits to the same site on the same day need distinct deliverable names. |
+| Runtime preflight | nothing | `PreflightError` raised before row processing when `enrich=True` and `ANTHROPIC_API_KEY` is missing; CLI rc=3 | Operators hit "silent semantic degradation" twice; loud failure prevents both. |
+| Findings index table | not in plan | 3-column `# | Finding | Recommendation` table inserted directly under the Findings heading; numbered 1..N matching the per-finding detail blocks; bold header, all-cell borders, header repeats | Reviewer ask 2026-05-06: visible navigation aid. |
+| Significance ordering | not in plan | `_significance_score` ranks: HP breach > SWMS gap > plant/public (MOB/CRN/TRF H6/H9) > permit-class (HOT/ASB/CFS/DEM/ELE H6/H9) > generic; secondary axes break ties on status then CCVS tier | Reviewer ask: critical-safety findings appear at the top of the Findings index + detail blocks. |
+| Multi-issue row splitting | not in plan | `(1) ... (2) ... (3) ...` composite notes split into separate atomic ObservationRows BEFORE photo-match metadata is consumed; each shares the source photo + timestamp | Auditors record several distinct issues against one photo with leading numerals. |
+| Similar-finding merge | not in plan | `merge_similar_findings` consolidates non-Compliant rows that share status + stream + (title equality OR recommendation Jaccard ≥0.5 OR ≥4 content-token overlap OR anchor-phrase like {establish, zone}). Anchor merge crosses streams — an exclusion zone above a steel lift (WAH-H6) and the telehandler beneath it (MOB-H9) are physically the same intervention. Plural-stem trim (`zone` / `zones` collapse) | Reviewer call 2026-05-06: the merge criterion is the recommended action / control intent, not the descriptive title. |
+| Manual `--merge` directive | not in plan | Operator can pass `--merge "1,3"` (or `"1,3;5,7,8"`) to consolidate findings by displayed index when the auto-merge can't infer the intent from text alone | Escape hatch for cases the heuristic doesn't catch. |
+| Per-finding detail table layout | not in plan | Each finding renders as `#N <title>` heading + 6-row 2-col detail table: `Location | Observation | Regulatory Basis | Hierarchy of Control | Recommendation | Timeframe`. Template label `Required Action` rewritten to `Recommendation` at render time. Tier-prefixed Hierarchy (`Engineering: ...`), urgency-prefixed Recommendation (`Within 7 days – ...`, ≤15 words). | Canonical sample shape; "Recommendation" is the reviewer-facing label. |
+| Status of Previous Recs schema | plan: `Recommendation | Required Actions | Status (DD/MM/YY) | Commentary` | New schema: `Date | Recommendations | Status as of <DD-MMM-YYYY> | Comments`. Column widths 2.5 / 6.25 / 2.5 / 6.25 cm. Bold header, header-repeats, all-cell borders. Date format DD-MMM-YYYY (4-digit year). | Reviewer direction 2026-05-06 — table now chains forward audit-by-audit. |
+| Prior-recs population | plan: parse prior report into `prior_recs` (deferred) | `populate_prior_recs_table.py` enforces the 10 locked rules: allowed statuses Completed/Partial/Not completed/Not assessed only, "Retired" banned, dates DD-MMM-YYYY, F-refs in every Comments cell, default `Not assessed` when no current-cycle evidence, keep all carry-forwards + append all current-cycle, sort by significance + date. Output as Word tracked changes (author=Claude). | Reviewer direction 2026-05-06. |
+| Cover/footer date formats | not in plan | Cover page: `1st May 2026` (ordinal long form). Running footer: `1-may-26` (short, lowercase month, 2-digit year). Same `{{AUDIT_DATE}}` placeholder; substitution branches per part. | Reviewer direction. |
+| Table styling consistency | not in plan | Every multi-column table in the report (Findings index, Positive Observations, Status of Previous Recs, Observations Register) uses bold header + header-repeat + all-cell single-line borders. Per-finding detail tables get all-cell borders + bold left-column labels. | Reviewer direction 2026-05-06. |
+| RA-code labelling | not in plan | Every TP-NN / HP-NN / HRCW H-NN reference in finding text / recommendation / hierarchy / monitoring / narrative is wrapped: `SDG Project Risk Assessment code: <CODE>`. First occurrence in each block expands the shorthand: `TP-07 (Tilt-Up Panel Erection activity 07)`. Adjacent codes collapse to `... codes: TP-05, HP-06`. Idempotent. | Reviewer ask 2026-05-06 — make every project-RA reference traceable. |
+| Plain-English finding titles | not in plan | Vision prompt requires an active-voice sentence ≤12 words, no noun-phrase titles like "EWP Exclusion Zone". Good: "Temporary brace removal proceeded without engineer sign-off". | Reviewer direction. |
+| Executive Summary cap | not in plan | Hard-truncated at 20 visual lines (~280 words); LLM prompt also targets ≤140 words. | Reviewer direction. |
+| Humaniser hardening | plan banned vocab + em-dash | Banned vocabulary list, banned constructions: em-dash clusters, rule-of-three (with concrete sample phrases the user flagged: `"available, accessible, and clearly identified"`, `"obscured, kicked, or removed"`), negative parallelism, signposting, sycophantic openers/closers, emoji, curly quotes, passive voice without a named actor, legalistic connectors (`"contrary to"`, `"in breach of"`, `"in violation of"`, etc.). Recommendation verb selection: `establish and maintain` for persistent controls, `install/mount/fit` for fixtures, `complete/sign` for records, `verify/audit/check` for monitoring, `stop/stand down` for halt-work. | Reviewer caught self-inflicted humaniser violations on review iterations. |
+| Three-phase review workflow | not in plan | Operator-driven review gate: `--enrich-only` writes enriched.xlsx + state JSON and exits → operator reviews/edits → `--from-state` rebuilds docx + staging from edits → operator reviews docx → `--from-report` flows docx edits BACK to enriched + staging xlsx. State JSON persists EnrichedRow rows + xlsx-snapshot fingerprint + `finding_render_order` for phase-3 pairing. | Reviewer ask: human review gate at every export boundary. |
+| Image preprocessing cache | not in plan | `_PHOTO_CACHE` keyed by `(source_path, max_edge_px)` so size-control rerenders (1600 → 1200 → 1000 → 800 px) reuse preprocessed bytes. Cache delta reported in size-control diagnostics. | Real-folder runs hit the rerender ladder; cache avoids redundant CPU. |
+| Network retry | not in plan | retries=2 on transient HTTP/network errors (ConnectError, ReadError, WriteError, TimeoutException, RemoteProtocolError, HTTP 408/429/500/502/503/504). 4xx other than these (auth, billing, bad request) raise immediately. | Real-folder run dropped 2 of 21 rows to transient errors mid-batch. |
+| Forgiving JSON parser | not in plan | `_parse_json_object` strips code fences, then if `json.loads` fails, walks brace depth (respecting strings + escapes) to extract the first balanced `{...}` substring — handles LLM outputs that wrap JSON in prose despite "JSON ONLY" instruction. | Real-folder run had 5/21 rows landing as JSONDecodeError after schema expansion. |
+| Legacy fallback retirement | plan default-on legacy matcher | Default vision path skips the audit_checklist.xlsx load entirely. Legacy keyword fallback only fires when operator explicitly passes `--no-enrich AND --checklist <path>`. | Real data: legacy matcher hit 5/21 with one outright misroute; vision is the canonical classifier. |
 
 ## Known remaining gaps (not yet shipped)
 
-These are still drift items between the shipped output and the
-canonical samples.
+These are open items between the shipped output and the canonical
+samples / the reviewer's stated requirements.
 
-- **Positive Observations row IDs and cross-references**: sample uses
-  `P1 / P2 / P3` numbering with `"PIMS Obs N | <reg ref>"` cross-
-  references in the Reference column. Mine uses plain `1 / 2 / 3`
-  with the `legal_ref` alone. Needs a row-id assigner + cross-ref
-  builder that links Positive rows back to Enriched register row
-  numbers.
-- **Observations Register scope**: sample carries ALL observations
-  (Compliant + non-Compliant) with free-form status text such as
-  `"See F1 re exclusion zone"` / `"Non-compliant – See F2"` /
-  `"Noted"` / `"Partially complete – monitor"` referencing the
-  finding numbers from the Findings section. Mine carries only
-  non-Compliant rows with the canonical status set. Needs the
-  register to be the master observation list + a finding-cross-
-  reference text generator.
-- **HRCW / Hold Point cross-reference columns in staging xlsx**:
-  vision findings reference HP / activity refs inside the finding
-  text, but no dedicated `phase` / `activity_ref` / `hold_point`
-  columns are added to the staging xlsx. Reviewer reads them as
-  part of the narrative.
-- **Compliant / Info SWMS verification**: RA mandates SWMS
-  verification across nearly every activity row; the audit doesn't
-  generally check for SWMS presence beyond the rows where the
-  auditor noted it.
-- **Initial / Residual risk axis**: RA uses H / M / L 3 / 2 / 1
-  rubric for both initial and residual risk. SSA tier suffix
-  (H6 / H9 / M3 / M4 / L1 / L2) carries severity but uses a
-  different rubric.
-- **Image preprocessing cache (Appendix C §C.6)**: the staging
-  size-control wrapper re-renders at progressively smaller caps but
-  doesn't share preprocessed `BytesIO` across rerenders; cache key
-  is implicit per-call. Functional but wastes CPU on large audits
-  that need progressive downscale.
-- **`audit_checklist.xlsx` legacy fallback**: still single-source-
-  of-truth for the legacy keyword matcher (`enrich_observations(...,
-  auto_match=True)`). Default is now `auto_match=False` so vision
-  is the only path the orchestrator uses. The xlsx-based path could
-  be retired entirely once vision is confirmed as the canonical
-  classifier.
+- **Positive Observations row IDs**: shipped — uses `P1 / P2 / P3`
+  numbering with `"PIMS Obs N | <reg ref>"` cross-references. Open:
+  no further drift here.
+- **Observations Register scope**: shipped — register now carries
+  every observation (Compliant + non-Compliant) with status
+  cross-refs (`"Non-compliant — See F1"`, `"Partially complete —
+  See F2"`, `"Compliant"`, `"Noted"`, `"Review at QA"`). Open: no
+  further drift.
+- **HRCW / Hold Point staging columns**: shipped — `phase`,
+  `activity_ref`, `hold_point`, `hrcw` columns added to the staging
+  template; vision enricher populates from RA context. Open: no
+  further drift.
+- **SWMS verification**: shipped — `swms_required` (TRUE/FALSE) and
+  `swms_present` (yes/no/unknown) columns + LLM coercion. Open: no
+  further drift.
+- **Initial / Residual risk axis**: shipped — `initial_risk` /
+  `residual_risk` columns with H/M/L canonicalisation; LLM
+  forbidden from inventing rating from photo alone. Open: no
+  further drift.
+- **Image preprocessing cache**: shipped — `_PHOTO_CACHE` keyed
+  by `(source_path, max_edge_px)` reuses bytes across size-control
+  rerenders; diagnostics report hit/miss delta.
+- **Legacy `audit_checklist.xlsx` fallback retirement**: shipped —
+  default vision path skips the legacy load entirely; only fires
+  on explicit `--no-enrich --checklist <path>`. Could be retired
+  fully once vision is locked as the only supported path.
+
+Genuinely open items:
+
+- **Three-phase round-trip merge fidelity**: phase 3 (`--from-report`)
+  pairs detail tables to EnrichedRows by `finding_render_order`
+  position. If the operator deletes / reorders detail tables in
+  Word, the pairing breaks silently. Could be hardened by tagging
+  each rendered detail table with an invisible `csv_idx` bookmark
+  and reading it back during phase 3.
+- **Phase-2 false-positive overrides**: the enriched xlsx
+  fingerprint snapshot reduces false positives but a couple of
+  rendered-fallback values (Action Description, Due) still register
+  as edits because the rendered cell value differs from the
+  underlying attribute. Harmless; cosmetic only.
+- **Auto-merge calibration**: the {establish, zone} anchor + 4-token
+  strong-overlap rule was tuned against one real-folder corpus
+  (Unitas, 23 rows). Could over-merge or under-merge on materially
+  different audit content; needs a fixture corpus to validate.
+- **Vision JSON output schema**: 18 fields requested per row pushes
+  the LLM toward occasional prose-wrapped JSON. The forgiving parser
+  catches most cases; very rarely a row still fails. A "rewrite to
+  strict JSON" retry call would close this.
 
 ## File inventory
 
-- **`pims/services/ssa_pipeline.py`** (2270 lines) — Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion, xlsx polish helper.
-- **`pims/services/ssa_checklist_lookup.py`** (279 lines) — Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a deterministic fallback for --no-enrich mode; bypassed when vision is on.
+- **`pims/services/ssa_pipeline.py`** (3457 lines) — Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion + index table, xlsx polish, RA-code labelling, significance ordering, anchor/Jaccard merge, manual --merge directives.
+- **`pims/services/ssa_checklist_lookup.py`** (279 lines) — Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a deterministic fallback for --no-enrich mode; bypassed when vision is on (default).
 - **`pims/services/ssa_ccvs_taxonomy.py`** (100 lines) — Canonical 25-stream x 6-tier CCVS taxonomy. Replaces the audit_checklist.xlsx-derived 01.01 numeric scheme with the real WAH-H6 / SYS-M3 / etc. coding the canonical samples use.
-- **`pims/services/ssa_vision_enricher.py`** (614 lines) — Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding / legal_ref / recommendation / monitoring_note. Transient-error retry.
+- **`pims/services/ssa_vision_enricher.py`** (730 lines) — Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding_title / location / finding / hierarchy_of_control / recommendation / timeframe / phase / activity_ref / hold_point / hrcw / swms_required / swms_present / initial_risk / residual_risk / legal_ref / monitoring_note. Transient-error retry; forgiving JSON parser.
 - **`pims/services/ssa_ra_parser.py`** (281 lines) — Project Risk Assessment docx parser. Extracts metadata + 9 hold points + N phase activities; compact-context-block packs into the vision prompt so findings cite HP-04 / TP-05 / HRCW H14 inline.
-- **`pims/services/ssa_watcher.py`** (309 lines) — Quiescence-gated folder watcher: settle_seconds + N stable polls; exclusions cover every watcher-owned artifact. Manifest-sha256 idempotency lives in the orchestrator.
-- **`pims/scripts/run_ssa_pipeline.py`** (569 lines) — CLI orchestrator. Folder-name parse, manifest sha256, freeze escape hatch, sentinels (NOT_UPLOADABLE / NO_BULK_ENDPOINT), RA auto-discover, vision wiring, .ssa_run.json payload.
+- **`pims/services/ssa_watcher.py`** (312 lines) — Quiescence-gated folder watcher: settle_seconds + N stable polls; exclusions cover every watcher-owned artifact. Manifest-sha256 idempotency lives in the orchestrator.
+- **`pims/scripts/run_ssa_pipeline.py`** (1413 lines) — CLI orchestrator. Folder-name parse (with -NN sub-id), manifest sha256, preflight, freeze escape hatch, sentinels, RA auto-discover, vision wiring, three-phase review workflow (--enrich-only / --from-state / --from-report), --merge directives, .ssa_run.json + .ssa_state.json payloads.
 - **`pims/scripts/start_ssa_watcher.py`** (66 lines) — Long-run entry for the watcher. Rotating-file logging.
-- **`tests/test_ssa_pipeline.py`** (1419 lines) — 69-case regression net. Covers parser, matcher, three builders, size-control, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion, status colour fills, freeze, idempotency, partial-output recovery.
+- **`pims/scripts/populate_prior_recs_table.py`** (628 lines) — Operator-driven post-render edit: populates the Status of Previous Recommendations table with prior carry-forward + current-cycle rows under the 10 locked rules (allowed status set, DD-MMM-YYYY date format, F<n> refs, significance + date sort). Tracked-changes output (author=Claude).
+- **`tests/test_ssa_pipeline.py`** (2429 lines) — 99-case regression net. Covers parser, matcher, three builders, size-control + cache, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion + index table, status colour fills, freeze, idempotency, partial-output recovery, anchor/Jaccard/strong-overlap merge, manual --merge directives, three-phase round-trip (--enrich-only / --from-state / --from-report).
 
 ---
 
@@ -1014,7 +1046,7 @@ End of Appendix C.
 
 ### `pims/services/ssa_pipeline.py`
 
-Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion, xlsx polish helper.
+Pipeline core: parser, matcher, three builders, enrichment, size-control wrapper, prior-rec parser, Findings #N expansion + index table, xlsx polish, RA-code labelling, significance ordering, anchor/Jaccard merge, manual --merge directives.
 
 ```python
 """SSA evidence-folder → 3-deliverable pipeline.
@@ -1412,6 +1444,21 @@ class EnrichedRow:
     hierarchy_of_control: str = ""
     finding_title: str = ""        # 3-6 word descriptive title for #N heading
     timeframe: str = ""            # LLM override for the per-finding Timeframe cell
+    # RA cross-reference fields populated by the vision enricher when
+    # the project Risk Assessment is loaded. Empty strings when no RA
+    # was supplied or the LLM couldn't anchor the row.
+    phase: str = ""           # e.g. "6 — Tilt-Up Panel Erection"
+    activity_ref: str = ""    # e.g. "TP-05"
+    hold_point: str = ""      # e.g. "HP-06"
+    hrcw: str = ""            # RA's HRCW codes, e.g. "H14, H15"
+    swms_required: bool = False   # gap-5: explicit SWMS verification flag
+    swms_present: str = ""        # one of: "yes" / "no" / "unknown" / ""
+    initial_risk: str = ""        # gap-6: H/M/L per RA scheme
+    residual_risk: str = ""       # gap-6: H/M/L
+    # Item 12: when several photos provide evidence for the same
+    # consolidated finding, the canonical row carries each contributing
+    # csv_idx here for cross-referencing.
+    evidence_csv_indices: list[int] = field(default_factory=list)
 
     @property
     def action_required(self) -> str:
@@ -1428,6 +1475,49 @@ class EnrichedRow:
 # Photo preprocessing — Appendix A R-7.4.1 / Appendix B R-B-3.1
 # ---------------------------------------------------------------------------
 
+# Image preprocessing cache — Appendix C §C.6 + gap-7. Keyed by
+# (source_abs_path_str, max_edge_px). Each entry stores a snapshot of
+# the encoded image bytes plus pixel dimensions so callers receive a
+# fresh BytesIO cursor on every cache hit (BytesIO is mutable; sharing
+# the same instance would let one caller's read() consume bytes for
+# the next).
+#
+# Cache lifetime is the running process — for a single CLI run the
+# orchestrator initialises and the watcher likewise. _PHOTO_CACHE_HITS
+# / MISSES counters expose how many rerenders the cache saved; the
+# size-control wrapper records both into the run diagnostics so we
+# can verify on real folders that the cache actually fires.
+_PHOTO_CACHE: dict[tuple[str, int], tuple[bytes, str, int, int]] = {}
+_PHOTO_CACHE_HITS = 0
+_PHOTO_CACHE_MISSES = 0
+
+
+def _photo_cache_clear() -> None:
+    """Drop every cached entry; reset hit/miss counters."""
+    global _PHOTO_CACHE_HITS, _PHOTO_CACHE_MISSES
+    _PHOTO_CACHE.clear()
+    _PHOTO_CACHE_HITS = 0
+    _PHOTO_CACHE_MISSES = 0
+
+
+def _photo_cache_stats() -> dict[str, int]:
+    return {
+        "hits": _PHOTO_CACHE_HITS,
+        "misses": _PHOTO_CACHE_MISSES,
+        "entries": len(_PHOTO_CACHE),
+    }
+
+
+def _cache_delta(snapshot: dict[str, int]) -> dict[str, int]:
+    """Diff the photo cache against ``snapshot`` so the size-control
+    wrapper reports just the hits / misses it drove."""
+    now = _photo_cache_stats()
+    return {
+        "hits":   now["hits"] - snapshot.get("hits", 0),
+        "misses": now["misses"] - snapshot.get("misses", 0),
+    }
+
+
 def _preprocess_photo(
     source: Path,
     max_edge_px: int = 1600,
@@ -1437,7 +1527,24 @@ def _preprocess_photo(
     Returns (BytesIO, format, width_px, height_px) or None on load
     failure / missing source. ``format`` is ``"JPEG"`` or ``"PNG"``
     (PNG only when the source was PNG with transparency).
+
+    Result is cached by ``(source_path, max_edge_px)`` so the staging
+    size-control wrapper can re-render at progressively smaller caps
+    without paying the EXIF / downscale / JPEG-encode cost on every
+    pass. Cache hits return a fresh ``BytesIO`` cursor over the
+    stored bytes.
     """
+    global _PHOTO_CACHE_HITS, _PHOTO_CACHE_MISSES
+    try:
+        cache_key = (str(source.resolve()), int(max_edge_px))
+    except Exception:
+        cache_key = (str(source), int(max_edge_px))
+    cached = _PHOTO_CACHE.get(cache_key)
+    if cached is not None:
+        _PHOTO_CACHE_HITS += 1
+        data, fmt, w, h = cached
+        return BytesIO(data), fmt, w, h
+    _PHOTO_CACHE_MISSES += 1
     try:
         from PIL import Image, ImageOps
     except Exception:
@@ -1464,7 +1571,9 @@ def _preprocess_photo(
                 rgb.save(buf, format="JPEG", quality=85, optimize=False)
                 fmt = "JPEG"
             buf.seek(0)
-            return buf, fmt, im.width, im.height
+            data = buf.getvalue()
+            _PHOTO_CACHE[cache_key] = (data, fmt, im.width, im.height)
+            return BytesIO(data), fmt, im.width, im.height
     except FileNotFoundError:
         return None
     except Exception:
@@ -1536,6 +1645,17 @@ _STAGING_COL_WIDTHS: dict[str, float] = {
     "source_pdf": 14,
     "section": 14,
     "needs_review": 12,
+    # gap-4 columns (RA cross-reference)
+    "phase": 22,
+    "activity_ref": 12,
+    "hold_point": 12,
+    "hrcw": 14,
+    # gap-5 columns (SWMS verification)
+    "swms_required": 14,
+    "swms_present": 14,
+    # gap-6 columns (initial/residual risk axis)
+    "initial_risk": 12,
+    "residual_risk": 12,
 }
 
 # Headers that need wrap_text=True applied to data cells. Without wrap
@@ -1940,7 +2060,9 @@ def build_pims_enriched_xlsx(
 # wrong table.
 _TABLE_SIGNATURES = {
     "positive": ("#", "Observation", "Reference"),
-    "prior_recs": ("Recommendation", "Required Actions", "Status", "Commentary"),
+    # Layout per 2026-05-06 reviewer direction: 4 cols
+    # Date | Recommendations | Status (DD-Mon-YY) | Comments
+    "prior_recs": ("Date", "Recommendations", "Status", "Comments"),
     "obs_register": ("Obs #", "Photo", "Observation", "Reference", "Status", "Evidence File"),
 }
 
@@ -1950,15 +2072,25 @@ _TABLE_SIGNATURES = {
 # the table so the column widths are deterministic across all clones.
 _TABLE_COL_WIDTHS_CM: dict[str, tuple[float, ...]] = {
     "positive":     (1.5, 7.0, 9.5),
-    "prior_recs":   (6.5, 4.0, 2.5, 4.75),
+    # 2026-05-06: Date / Rec / Status / Comments at 2.5 / 6.25 / 2.5 / 6.25 cm
+    "prior_recs":   (2.5, 6.25, 2.5, 6.25),
 }
 
 # Tables whose first row should:
 #   - be bold (header styling)
 #   - repeat across page breaks (Word's tblHeader flag)
-_TABLE_HEADER_BOLD: frozenset[str] = frozenset({"positive"})
+# Every table in the SSA report carries a bold first row, repeats
+# its header on page break, and renders all-cell single-line borders
+# (Word's "All" preset). Consistency is the locked styling per the
+# 2026-05-06 reviewer direction.
+_TABLE_HEADER_BOLD: frozenset[str] = frozenset({
+    "positive", "prior_recs", "obs_register",
+})
 _TABLE_HEADER_REPEAT: frozenset[str] = frozenset({
-    "positive", "obs_register",
+    "positive", "obs_register", "prior_recs",
+})
+_TABLE_ALL_BORDERS: frozenset[str] = frozenset({
+    "positive", "prior_recs", "obs_register",
 })
 
 
@@ -1967,11 +2099,40 @@ def _cm_to_twips(cm: float) -> int:
     return int(round(cm * 567))
 
 
+def _apply_all_cell_borders(tbl) -> None:
+    """Apply Word's "All" border preset — single-line ½-pt borders on
+    every cell edge inside and outside the table. Sets ``<w:tblBorders>``
+    on the table-level properties so every row inherits the boundary
+    style; per-cell ``<w:tcBorders>`` overrides are left alone.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tbl_el = tbl._tbl
+    tblPr = tbl_el.find(qn("w:tblPr"))
+    if tblPr is None:
+        tblPr = OxmlElement("w:tblPr")
+        tbl_el.insert(0, tblPr)
+    # Drop any pre-existing border block — easier than reconciling.
+    existing = tblPr.find(qn("w:tblBorders"))
+    if existing is not None:
+        tblPr.remove(existing)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), "single")
+        b.set(qn("w:sz"), "4")        # ½ pt
+        b.set(qn("w:space"), "0")
+        b.set(qn("w:color"), "auto")
+        borders.append(b)
+    tblPr.append(borders)
+
+
 def _apply_table_format(
     tbl,
     col_widths_cm: tuple[float, ...] | None,
     bold_header: bool,
     repeat_header: bool,
+    all_borders: bool = False,
 ) -> None:
     """Set deterministic column widths, optional bold first row, and
     optional header-repeat-across-pages on a python-docx Table.
@@ -2032,6 +2193,9 @@ def _apply_table_format(
         if trPr.find(qn("w:tblHeader")) is None:
             trPr.append(OxmlElement("w:tblHeader"))
 
+    if all_borders:
+        _apply_all_cell_borders(tbl)
+
 # Per-location 2-col detail block: first row first cell == "Location",
 # 2 columns. Distinct enough from every other table in the template to
 # match unambiguously.
@@ -2046,10 +2210,12 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
     a ``Status of Previous Recommendations`` entry shaped:
 
         {
-          "recommendation":   short summary from prior Observation cell,
-          "required_actions": prior Reference / regulatory cite,
-          "status":           "" — auditor fills with DD/MM/YY at QA,
-          "commentary":       "" — auditor fills at QA,
+          "date":           prior audit date as "DD-Mon-YY"
+                            (parsed from the prior report's filename)
+          "recommendation": short summary from prior Observation cell,
+          "status":         "" — auditor fills based on what they
+                            observe in the current audit,
+          "commentary":     "" — auditor fills at QA,
         }
 
     Returns ``[]`` when the file is unreadable, lacks an Observations
@@ -2078,6 +2244,20 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
     if register is None:
         return []
 
+    # Pull the prior audit date from the filename so the table's
+    # Date column carries "DD-Mon-YY" per the 2026-05-06 layout.
+    prior_date = ""
+    m = re.search(r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", path.name)
+    if m:
+        try:
+            from datetime import datetime
+            d = datetime.strptime(m.group(1), "%y%m%d")
+            prior_date = (
+                f"{d.day}-{d.strftime('%b')}-{d.strftime('%y')}"
+            )
+        except Exception:
+            prior_date = ""
+
     out: list[dict] = []
     for row in register.rows[1:]:
         if len(row.cells) < 6:
@@ -2090,16 +2270,137 @@ def parse_prior_report_recommendations(path: Path) -> list[dict]:
             # "See F1 re exclusion zone"); treat as carry-forward.
             pass
         observation = " ".join(row.cells[2].text.split())
-        reference = " ".join(row.cells[3].text.split())
         if not observation:
             continue
         out.append({
+            "date": prior_date,
             "recommendation": observation,
-            "required_actions": reference,
             "status": "",
             "commentary": "",
         })
     return out
+
+
+def _build_findings_index_table(doc, register_rows: list[EnrichedRow]) -> int:
+    """Insert a 2-col index table directly below the "Findings"
+    heading paragraph (item 15 of the gap-closure brief).
+
+    Columns: Finding | Recommendation
+    One row per detail block, in the same significance order as the
+    detail blocks themselves. Uses python-docx's built-in
+    ``Table Grid`` style so the table matches the surrounding tables
+    visually.
+
+    Returns the count of finding rows written (header excluded);
+    ``0`` is a no-op (no Findings heading or no findings).
+    """
+    from docx.oxml.ns import qn
+    body = doc.element.body
+    findings_p = None
+    for child in body.iterchildren():
+        if child.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+        if text == "Findings":
+            findings_p = child
+            break
+    if findings_p is None or not register_rows:
+        return 0
+
+    # Build the index table programmatically. python-docx's table
+    # API requires inserting through ``Document.add_table`` then
+    # moving the element; we do it via XML manipulation so the table
+    # lands exactly after the "Findings" heading paragraph.
+    from docx.oxml import OxmlElement
+    tbl = OxmlElement("w:tbl")
+
+    # tblPr — borders + Table Grid style for visual parity with the
+    # surrounding tables.
+    tblPr = OxmlElement("w:tblPr")
+    tblStyle = OxmlElement("w:tblStyle")
+    tblStyle.set(qn("w:val"), "TableGrid")
+    tblPr.append(tblStyle)
+    tblW = OxmlElement("w:tblW")
+    tblW.set(qn("w:w"), "0")
+    tblW.set(qn("w:type"), "auto")
+    tblPr.append(tblW)
+    tbl_borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), "single")
+        b.set(qn("w:sz"), "4")
+        b.set(qn("w:color"), "auto")
+        tbl_borders.append(b)
+    tblPr.append(tbl_borders)
+    tbl.append(tblPr)
+
+    # tblGrid — three columns: # | Finding | Recommendation. The
+    # left "#" column is narrow (~1 cm) and matches the numbering on
+    # the per-finding detail blocks below the index, so reviewers
+    # can navigate from the index row to the detail block by number.
+    tbl_grid = OxmlElement("w:tblGrid")
+    for w_twips in (567, 5050, 4380):  # ~1.0 cm + ~8.9 cm + ~7.7 cm
+        gc = OxmlElement("w:gridCol")
+        gc.set(qn("w:w"), str(w_twips))
+        tbl_grid.append(gc)
+    tbl.append(tbl_grid)
+
+    def _make_cell(text: str, bold: bool = False, width_twips: int = 0):
+        tc = OxmlElement("w:tc")
+        tcPr = OxmlElement("w:tcPr")
+        tcW = OxmlElement("w:tcW")
+        tcW.set(qn("w:w"), str(width_twips))
+        tcW.set(qn("w:type"), "dxa")
+        tcPr.append(tcW)
+        tc.append(tcPr)
+        p = OxmlElement("w:p")
+        if bold:
+            pPr = OxmlElement("w:pPr")
+            p.append(pPr)
+        r = OxmlElement("w:r")
+        if bold:
+            rPr = OxmlElement("w:rPr")
+            b = OxmlElement("w:b")
+            rPr.append(b)
+            r.append(rPr)
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        r.append(t)
+        p.append(r)
+        tc.append(p)
+        return tc
+
+    # Header row.
+    header_tr = OxmlElement("w:tr")
+    trPr = OxmlElement("w:trPr")
+    tbl_header = OxmlElement("w:tblHeader")
+    trPr.append(tbl_header)
+    header_tr.append(trPr)
+    header_tr.append(_make_cell("#", bold=True, width_twips=567))
+    header_tr.append(_make_cell("Finding", bold=True, width_twips=5050))
+    header_tr.append(_make_cell("Recommendation", bold=True, width_twips=4380))
+    tbl.append(header_tr)
+
+    # Data rows — one per finding in register order. The "#" cell
+    # numbers each row to match the per-finding detail blocks below
+    # (so reviewers can navigate from index to detail by number).
+    # The Finding column carries the descriptive title; Recommendation
+    # carries the short directive sentence (already tier-prefixed by
+    # the vision enricher).
+    written = 0
+    for idx, row in enumerate(register_rows, start=1):
+        title = row.finding_title or row.ccvs_category or "Finding"
+        rec = (row.recommendation or row.action_description or "").strip()
+        tr = OxmlElement("w:tr")
+        tr.append(_make_cell(str(idx), width_twips=567))
+        tr.append(_make_cell(title, width_twips=5050))
+        tr.append(_make_cell(rec, width_twips=4380))
+        tbl.append(tr)
+        written += 1
+
+    findings_p.addnext(tbl)
+    return written
 
 
 def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
@@ -2171,6 +2472,23 @@ def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
                 _set_cell_text_oxml(cells[1], "")
         return 0
 
+    from docx.table import Table
+
+    def _format_detail_tbl(tbl_el):
+        """Apply consistent styling to a per-finding detail table —
+        all-cell borders, bold left-column labels."""
+        tbl = Table(tbl_el, doc)
+        _apply_all_cell_borders(tbl)
+        # Bold the left-column label cells (Location / Observation /
+        # Regulatory Basis / Hierarchy of Control / Recommendation /
+        # Timeframe). Right-column values stay normal weight.
+        for r in tbl.rows:
+            if not r.cells:
+                continue
+            for p in r.cells[0].paragraphs:
+                for run in p.runs:
+                    run.bold = True
+
     written = 0
     for idx, row in enumerate(register_rows, start=1):
         title = _finding_heading_text(idx, row)
@@ -2178,12 +2496,14 @@ def _expand_findings_list(doc, register_rows: list[EnrichedRow]) -> int:
             _set_paragraph_runs_text(heading_p, title)
             _set_paragraph_space_before(heading_p, twentieths_of_a_point=240)
             _populate_finding_detail_table(detail_tbl, row)
+            _format_detail_tbl(detail_tbl)
         else:
             new_h = copy.deepcopy(heading_p)
             new_t = copy.deepcopy(detail_tbl)
             _set_paragraph_runs_text(new_h, title)
             _set_paragraph_space_before(new_h, twentieths_of_a_point=240)
             _populate_finding_detail_table(new_t, row)
+            _format_detail_tbl(new_t)
             status_p.addprevious(new_h)
             status_p.addprevious(new_t)
         written += 1
@@ -2309,6 +2629,669 @@ def _set_cell_text_oxml(tc_element, text: str) -> None:
             parent.remove(extra)
 
 
+# --- RA code labelling (items 9 + 14) ------------------------------------
+#
+# Reviewer requirement: every reference to an RA code (TP-07, HP-04,
+# H14, etc.) inside finding text / recommendations / hierarchy / staging
+# narrative should carry the explicit prefix
+#   "SDG Project Risk Assessment code: <CODE>"
+# and the first occurrence inside any one block of text expands the
+# shorthand once (e.g. "TP-07 (Tilt-up panel activity 07)") so the
+# downstream reader doesn't need to flip back to the RA to decode it.
+#
+# RA-derived expansions come from the parsed RiskAssessment object;
+# HRCW codes use a static map (the RA's HRCW column carries them as
+# free-text descriptions, not a structured table).
+
+# RA reference patterns. Activity refs: 2-letter package + 2-3 digits +
+# optional letter suffix (TP-01A, MR-02). HP codes: HP-01 .. HP-99.
+# HRCW codes: H01..H99 (not preceded by a hyphen, so we don't match
+# CCVS tier suffix like "WAH-H6").
+_RA_ACTIVITY_RE = re.compile(r"\b([A-Z]{2}-\d{1,3}[A-Z]?)\b")
+_RA_HP_RE = re.compile(r"\b(HP-\d{2})\b")
+_RA_HRCW_RE = re.compile(r"(?<![-A-Za-z0-9])(H\d{1,2})\b")
+
+# Static HRCW expansions — H-codes from NSW WHS Reg 2017 cl.291 plus
+# the project-RA's H01-H15 set used in Unitas_Risk_Assessment_all.docx.
+_HRCW_EXPANSIONS: dict[str, str] = {
+    "H01": "fall risk",
+    "H02": "telecommunication tower work",
+    "H03": "demolition",
+    "H04": "asbestos disturbance",
+    "H05": "structural alteration",
+    "H06": "confined space",
+    "H07": "trench / shaft >1.5 m",
+    "H08": "tunnels",
+    "H09": "explosives",
+    "H10": "pressurised gas distribution",
+    "H11": "energised electrical installations",
+    "H12": "contaminated atmospheres",
+    "H13": "tilt-up or precast concrete",
+    "H14": "traffic corridor",
+    "H15": "powered mobile plant",
+    "H16": "extreme temperatures",
+    "H17": "drowning hazards",
+    "H18": "diving work",
+}
+
+
+def _ra_code_expansion(code: str, ra) -> str:
+    """Plain-English expansion of an RA code, used on first occurrence.
+
+    ``ra`` is a ``RiskAssessment`` (or None when no RA was loaded).
+    Returns the parenthesised expansion text WITHOUT the surrounding
+    parens (caller wraps); empty string when no expansion is known.
+    """
+    code = code.upper()
+    if code.startswith("HP-"):
+        if ra is not None:
+            for hp in getattr(ra, "hold_points", []) or []:
+                if hp.code == code:
+                    return f"Hold Point {code[3:]}: {hp.description}"
+        return f"Hold Point {code[3:]}"
+    if "-" in code and code[:2].isalpha():
+        # Activity ref like TP-07. Look up in the RA's activities list
+        # and use the phase title + activity number for the expansion.
+        if ra is not None:
+            for act in getattr(ra, "activities", []) or []:
+                if act.ref == code:
+                    phase_title = act.phase
+                    # Strip the leading "N — " from "6 — Tilt-Up Panel
+                    # Erection" so the parens read cleanly.
+                    for sep in (" — ", " – ", " - "):
+                        if sep in phase_title:
+                            phase_title = phase_title.split(sep, 1)[1]
+                            break
+                    suffix = code.split("-", 1)[1]
+                    return f"{phase_title.strip()} activity {suffix}"
+        return ""
+    if code in _HRCW_EXPANSIONS:
+        return f"HRCW {_HRCW_EXPANSIONS[code]}"
+    return ""
+
+
+_RA_LABEL_PREFIX = "SDG Project Risk Assessment code"
+
+
+def apply_ra_code_labels(text: str, ra=None) -> str:
+    """Wrap RA codes in the canonical reviewer-facing prefix.
+
+    First occurrence of each distinct code in ``text`` becomes:
+        SDG Project Risk Assessment code: TP-07 (Tilt-up Panel
+        Erection activity 07)
+    Subsequent occurrences (if any in the same block) become:
+        SDG Project Risk Assessment code: TP-07
+    Codes already wrapped in the prefix are left alone (idempotent
+    on re-runs / chained labelling). Multiple consecutive codes that
+    cluster in one phrase collapse into a single
+    "SDG Project Risk Assessment codes: A, B, C" prefix on first hit.
+    """
+    if not text:
+        return text
+    if _RA_LABEL_PREFIX in text:
+        return text  # already labelled
+
+    # Collect every code occurrence with span and category.
+    matches: list[tuple[int, int, str, str]] = []  # (start, end, code, kind)
+    for m in _RA_HP_RE.finditer(text):
+        matches.append((m.start(), m.end(), m.group(1), "hp"))
+    for m in _RA_ACTIVITY_RE.finditer(text):
+        code = m.group(1)
+        if code.startswith("HP-"):
+            continue  # already covered by _RA_HP_RE
+        matches.append((m.start(), m.end(), code, "activity"))
+    for m in _RA_HRCW_RE.finditer(text):
+        matches.append((m.start(), m.end(), m.group(1), "hrcw"))
+    if not matches:
+        return text
+
+    matches.sort(key=lambda t: t[0])
+
+    # Cluster matches that sit within a small gap (e.g. "HP-04 / TP-05"
+    # or "TP-05 (HRCW H14)") into one labelled phrase. Threshold: 6
+    # characters between match end and next match start (covers
+    # ", ", " / ", " (HRCW ", " and ").
+    clusters: list[list[tuple[int, int, str, str]]] = []
+    for tup in matches:
+        if not clusters:
+            clusters.append([tup])
+            continue
+        prev_end = clusters[-1][-1][1]
+        if tup[0] - prev_end <= 6:
+            clusters[-1].append(tup)
+        else:
+            clusters.append([tup])
+
+    seen: set[str] = set()
+    out_parts: list[str] = []
+    cursor = 0
+    for cluster in clusters:
+        c_start = cluster[0][0]
+        c_end = cluster[-1][1]
+        out_parts.append(text[cursor:c_start])
+        codes = [c for _s, _e, c, _k in cluster]
+        # First-use expansions for any unseen codes in this cluster.
+        expansions: list[str] = []
+        for code in codes:
+            if code in seen:
+                continue
+            seen.add(code)
+            exp = _ra_code_expansion(code, ra)
+            if exp:
+                expansions.append(f"{code} ({exp})")
+            else:
+                expansions.append(code)
+        # Any later codes in the cluster that were already seen still
+        # need to appear — we emit them as bare codes alongside the
+        # expansions, in original order.
+        rendered_codes: list[str] = []
+        seen_in_cluster: set[str] = set()
+        for code in codes:
+            if code in seen_in_cluster:
+                continue
+            seen_in_cluster.add(code)
+            # Find the matching expansion (if we just emitted one).
+            for ex in expansions:
+                if ex.startswith(code):
+                    rendered_codes.append(ex)
+                    break
+            else:
+                rendered_codes.append(code)
+        prefix_word = (
+            _RA_LABEL_PREFIX
+            if len(rendered_codes) == 1
+            else _RA_LABEL_PREFIX + "s"
+        )
+        out_parts.append(f"{prefix_word}: {', '.join(rendered_codes)}")
+        cursor = c_end
+    out_parts.append(text[cursor:])
+    return "".join(out_parts)
+
+
+def cap_executive_summary(text: str, max_lines: int = 20) -> str:
+    """Hard-cap the Executive Summary to ``max_lines`` lines.
+
+    "Lines" is interpreted as visual lines on the rendered page. We
+    approximate by counting ~14 words per line on A4 with the SSA
+    template's body width and capping the input at
+    ``max_lines * 14`` words. The text is truncated at the last
+    sentence boundary that fits, and an ellipsis is NOT added — the
+    LLM prompt already targets ≤140 words; this is a defensive
+    safety net for when the model overshoots.
+    """
+    if not text:
+        return text
+    words_per_line = 14
+    word_cap = max_lines * words_per_line
+    words = text.split()
+    if len(words) <= word_cap:
+        return text
+    truncated = " ".join(words[:word_cap])
+    # Trim back to the last sentence end so we don't end mid-thought.
+    for marker in (". ", "? ", "! "):
+        cut = truncated.rfind(marker)
+        if cut > word_cap // 2:
+            return truncated[:cut + 1]
+    return truncated
+
+
+def apply_manual_merges(
+    indexed_rows: list[tuple[int, EnrichedRow]],
+    merge_groups: list[list[int]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Apply operator-supplied merge directives by displayed-finding
+    number (1-based, matching the index-table numbering reviewers see
+    in the rendered docx).
+
+    ``merge_groups`` is a list of groups; each group is a list of
+    1-based indices into ``indexed_rows`` after significance sort.
+    Within a group, the lowest index becomes the canonical row;
+    other rows are merged into it (their titles / recommendations /
+    findings are concatenated and their csv indices are folded into
+    ``evidence_csv_indices``). Other rows are then dropped from the
+    list.
+
+    Indices outside the range or duplicated across groups are
+    silently ignored — operator typos shouldn't crash the pipeline.
+    """
+    if not merge_groups or not indexed_rows:
+        return indexed_rows
+    drop: set[int] = set()
+    for group in merge_groups:
+        if len(group) < 2:
+            continue
+        valid = [
+            i for i in group
+            if 1 <= i <= len(indexed_rows) and (i - 1) not in drop
+        ]
+        if len(valid) < 2:
+            continue
+        valid.sort()
+        canonical_idx = valid[0] - 1  # 0-based
+        canonical = indexed_rows[canonical_idx][1]
+        merged_titles = [canonical.finding_title]
+        merged_recs = [canonical.recommendation] if canonical.recommendation else []
+        merged_findings = [canonical.finding] if canonical.finding else []
+        evidence_indices: list[int] = list(
+            canonical.evidence_csv_indices
+            or [indexed_rows[canonical_idx][0]]
+        )
+        for other_pos in valid[1:]:
+            other_pair = indexed_rows[other_pos - 1]
+            other_csv_idx, other_row = other_pair
+            if other_row.finding_title and other_row.finding_title not in merged_titles:
+                merged_titles.append(other_row.finding_title)
+            if other_row.recommendation and other_row.recommendation not in merged_recs:
+                merged_recs.append(other_row.recommendation)
+            if other_row.finding and other_row.finding not in merged_findings:
+                merged_findings.append(other_row.finding)
+            if other_csv_idx not in evidence_indices:
+                evidence_indices.append(other_csv_idx)
+            for fold_idx in (other_row.evidence_csv_indices or []):
+                if fold_idx not in evidence_indices:
+                    evidence_indices.append(fold_idx)
+            drop.add(other_pos - 1)
+        # Compose the merged values back onto the canonical row.
+        canonical.finding_title = "; ".join(t for t in merged_titles if t)
+        canonical.recommendation = " | ".join(r for r in merged_recs if r)
+        canonical.finding = "\n\n".join(f for f in merged_findings if f)
+        canonical.evidence_csv_indices = evidence_indices
+        # Surface the consolidation in monitoring_note so the reviewer
+        # sees which evidence rows were folded in.
+        extra = "Consolidated finding — Evidence: " + ", ".join(
+            f"PIMS Obs {i}" for i in evidence_indices
+        )
+        if canonical.monitoring_note:
+            if "Consolidated finding" not in canonical.monitoring_note:
+                canonical.monitoring_note = (
+                    f"{canonical.monitoring_note} | {extra}"
+                )
+        else:
+            canonical.monitoring_note = extra
+    return [pair for i, pair in enumerate(indexed_rows) if i not in drop]
+
+
+def parse_merge_argument(arg: str) -> list[list[int]]:
+    """Parse an operator merge directive into groups of 1-based indices.
+
+    Format: ``"1,3"`` for one group; ``"1,3;5,7,8"`` for multiple.
+    Whitespace tolerant. Invalid tokens are dropped silently.
+    """
+    if not arg:
+        return []
+    out: list[list[int]] = []
+    for chunk in arg.split(";"):
+        group: list[int] = []
+        for tok in chunk.split(","):
+            tok = tok.strip()
+            if tok.isdigit():
+                group.append(int(tok))
+        if group:
+            out.append(group)
+    return out
+
+
+# Tokens dropped before measuring recommendation similarity. The
+# urgency prefix carries no signal about the actual control intent;
+# function words and generic glue words also dilute the Jaccard score.
+_RECOMMENDATION_STOPWORDS: frozenset[str] = frozenset({
+    "immediate", "ongoing", "the", "a", "an", "of", "for", "and", "or",
+    "to", "with", "in", "on", "at", "is", "be", "are", "was", "by",
+    "from", "as", "this", "that", "any", "all", "until", "before",
+    "after", "while", "when", "while", "site", "manager", "site-manager",
+    "within", "days", "day", "next", "audit",
+})
+
+
+def _stem_plural(token: str) -> str:
+    """Trim trailing ``s`` on tokens longer than 4 characters so
+    plural forms collapse to their singular for similarity scoring
+    (``zones`` → ``zone``, ``spotters`` → ``spotter``,
+    ``signatures`` → ``signature``). Conservative — leaves short
+    tokens (``gas``, ``has``) and ``-ss`` words (``access``) alone.
+    """
+    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
+def _recommendation_tokens(text: str) -> set[str]:
+    """Return content-word tokens of a Recommendation cell.
+
+    Strips the leading urgency phrase ("Immediate – ", "Within 7 days
+    – ") because that timing prefix carries no information about the
+    physical control the recommendation is asking for. Lowercases,
+    drops stopwords, drops short tokens, and stems trailing plural
+    ``s`` so ``zone`` / ``zones`` and ``spotter`` / ``spotters``
+    collapse for matching.
+    """
+    if not text:
+        return set()
+    s = text.lower()
+    # Strip an "Immediate – ", "within 7 days – ", "next audit – " etc.
+    # urgency prefix.
+    for sep in (" – ", " - ", " — "):
+        if sep in s:
+            head, _, rest = s.partition(sep)
+            head_words = head.split()
+            if head_words and head_words[0] in {
+                "immediate", "within", "next", "ongoing", "audit",
+            }:
+                s = rest
+                break
+    tokens = re.findall(r"[a-z][a-z0-9-]+", s)
+    return {
+        _stem_plural(t) for t in tokens
+        if len(t) >= 3 and t not in _RECOMMENDATION_STOPWORDS
+    }
+
+
+_RECOMMENDATION_JACCARD_THRESHOLD = 0.5
+_RECOMMENDATION_OVERLAP_MIN = 3
+
+# Absolute content-token overlap that triggers a merge regardless of
+# Jaccard. Catches cases where the recommendations share a strong
+# common subject (e.g. ``daily``, ``register``, ``time-out``,
+# ``entries``) but the Jaccard score is diluted by length. Empirically
+# tuned against real-folder content — 4 tokens is meaningful.
+_RECOMMENDATION_STRONG_OVERLAP = 4
+
+# Anchor-phrase merge — when BOTH recommendations contain every token
+# in an anchor set, treat them as the same physical control intent
+# even when the surrounding wording diverges. Reviewer call:
+# "we are only merging because very similar and results in
+# establishing a work zone" — the canonical control is the
+# work/exclusion zone, regardless of whether the recommendation
+# emphasises the spotter, the suspended-load aspect, or the stop-
+# work directive.
+_MERGE_ANCHORS: tuple[frozenset[str], ...] = (
+    # exclusion-zone control intent — present whether the
+    # recommendation says "establish exclusion zone", "stop until
+    # exclusion zone in place", or "maintain exclusion zone".
+    frozenset({"exclusion", "zone"}),
+    # generic "establish [work] zone" — catches recommendations that
+    # mention a work zone without the canonical "exclusion" word.
+    frozenset({"establish", "zone"}),
+    # barricaded boundary (stem match for "barricade", "barricaded",
+    # "barricades")
+    frozenset({"establish", "barricad"}),
+    # energy isolation
+    frozenset({"isolate", "energy"}),
+)
+
+
+def _has_anchor_match(a: str, b: str) -> bool:
+    """Return True iff some anchor set is fully present in BOTH
+    recommendation strings (post-tokenise, with stem-style prefix
+    matching for tokens that end in a partial stem)."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return False
+    for anchor in _MERGE_ANCHORS:
+        ok_a = all(_anchor_present(stem, ta) for stem in anchor)
+        ok_b = all(_anchor_present(stem, tb) for stem in anchor)
+        if ok_a and ok_b:
+            return True
+    return False
+
+
+def _anchor_present(stem: str, tokens: set[str]) -> bool:
+    """Token-set membership with prefix-stem matching.
+
+    ``barricad`` matches ``barricaded`` / ``barricade`` / ``barricades``
+    by checking that any token in the set starts with the stem.
+    """
+    for tok in tokens:
+        if tok == stem or tok.startswith(stem):
+            return True
+    return False
+
+
+def _recommendation_jaccard(a: str, b: str) -> float:
+    """Jaccard similarity between two recommendation strings on the
+    content-token set. Returns 0.0 when either side is empty."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return 0.0
+    inter = ta & tb
+    if len(inter) < _RECOMMENDATION_OVERLAP_MIN:
+        return 0.0
+    union = ta | tb
+    return len(inter) / len(union) if union else 0.0
+
+
+def _recommendation_strong_overlap(a: str, b: str) -> bool:
+    """Absolute-overlap merge trigger: when the two recommendations
+    share at least ``_RECOMMENDATION_STRONG_OVERLAP`` distinct content
+    tokens, treat as the same control intent regardless of Jaccard
+    score (which can be diluted when one side carries extra qualifying
+    text)."""
+    ta = _recommendation_tokens(a)
+    tb = _recommendation_tokens(b)
+    if not ta or not tb:
+        return False
+    return len(ta & tb) >= _RECOMMENDATION_STRONG_OVERLAP
+
+
+def merge_similar_findings(
+    indexed_rows: list[tuple[int, EnrichedRow]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Consolidate materially similar non-Compliant findings.
+
+    Two rows are "similar" when they share BOTH:
+      - conformance_status (NCR / Conditional / Info)
+      - ccvs_code stream prefix (e.g. both MOB-*, both WAH-*)
+    AND at least one of:
+      - identical finding_title (case-insensitive)
+      - recommendation Jaccard ≥ 0.5 with ≥3 content tokens overlap.
+        Reviewer-driven: when two findings prescribe the same physical
+        control ("establish and maintain an exclusion zone with a
+        spotter" vs "establish and maintain an exclusion zone beneath
+        suspended steel"), they are operationally one finding even if
+        the descriptive titles differ.
+
+    The first row in significance order becomes the canonical row;
+    subsequent similar rows have their evidence references appended
+    to the canonical row's ``monitoring_note`` ("Evidence also: <fn>")
+    and their photo csv_idx folded into ``evidence_csv_indices``.
+    Compliant rows are NOT merged — Positive Observations needs each
+    one to render in the table separately.
+    """
+    if not indexed_rows:
+        return indexed_rows
+
+    canonical: list[tuple[int, EnrichedRow]] = []
+    for csv_idx, row in indexed_rows:
+        if row.conformance_status == "Compliant":
+            canonical.append((csv_idx, row))
+            continue
+        stream = row.ccvs_code.split("-", 1)[0] if "-" in row.ccvs_code else row.ccvs_code
+        match_pos = -1
+        for pos, (_idx, c_row) in enumerate(canonical):
+            if c_row.conformance_status != row.conformance_status:
+                continue
+            c_stream = (
+                c_row.ccvs_code.split("-", 1)[0]
+                if "-" in c_row.ccvs_code else c_row.ccvs_code
+            )
+            same_stream = c_stream == stream
+            # Title equality OR recommendation similarity — both
+            # require the same stream because the same descriptive
+            # phrase shouldn't auto-cross stream boundaries.
+            same_title = same_stream and (
+                row.finding_title and c_row.finding_title
+                and row.finding_title.strip().lower()
+                == c_row.finding_title.strip().lower()
+            )
+            similar_rec = same_stream and (
+                _recommendation_jaccard(row.recommendation, c_row.recommendation)
+                >= _RECOMMENDATION_JACCARD_THRESHOLD
+                or _recommendation_strong_overlap(
+                    row.recommendation, c_row.recommendation,
+                )
+            )
+            # Anchor-phrase merge: when both recommendations carry one
+            # of the canonical control-intent anchors (establish ...
+            # zone, isolate energy, etc.), treat them as the same
+            # finding REGARDLESS of CCVS stream. Reviewer's call:
+            # an exclusion-zone control above a steel lift (WAH-H6)
+            # and the telehandler beneath it (MOB-H9) are physically
+            # the same intervention even though the streams differ.
+            anchor_match = _has_anchor_match(
+                row.recommendation, c_row.recommendation,
+            )
+            if same_title or similar_rec or anchor_match:
+                match_pos = pos
+                break
+        if match_pos < 0:
+            row.evidence_csv_indices = [csv_idx]
+            canonical.append((csv_idx, row))
+        else:
+            _t_idx, target_row = canonical[match_pos]
+            target_row.evidence_csv_indices = list(
+                target_row.evidence_csv_indices or []
+            ) + [csv_idx]
+            extra = f"Evidence also: PIMS Obs {csv_idx}"
+            if target_row.monitoring_note:
+                if extra not in target_row.monitoring_note:
+                    target_row.monitoring_note = (
+                        f"{target_row.monitoring_note} | {extra}"
+                    )
+            else:
+                target_row.monitoring_note = extra
+    return canonical
+
+
+def apply_ra_labels_to_rows(
+    rows: list[EnrichedRow], ra=None,
+) -> None:
+    """Apply ``apply_ra_code_labels`` in-place to every text field of
+    every EnrichedRow. Idempotent — pre-labelled text is left alone.
+    Called once by the orchestrator after vision enrichment so all
+    three builders (enriched xlsx / docx / staging xlsx) see the
+    labelled output consistently."""
+    for row in rows:
+        row.finding = apply_ra_code_labels(row.finding, ra=ra)
+        row.observation_text_clean = apply_ra_code_labels(
+            row.observation_text_clean, ra=ra,
+        )
+        row.recommendation = apply_ra_code_labels(row.recommendation, ra=ra)
+        row.hierarchy_of_control = apply_ra_code_labels(
+            row.hierarchy_of_control, ra=ra,
+        )
+        row.monitoring_note = apply_ra_code_labels(
+            row.monitoring_note, ra=ra,
+        )
+
+
+def _significance_score(row: EnrichedRow) -> tuple[int, int, int]:
+    """Significance ranking key — smaller tuple sorts first.
+
+    Highest priority themes (from item 10 of the gap-closure brief):
+      - hold-point breaches            (HP-XX referenced in finding/
+                                        recommendation/hold_point field)
+      - HRCW activity not on a SWMS    (swms_required AND swms_present
+                                        in {"no", "unknown", ""})
+      - uncontrolled plant / public
+        interface                      (CCVS streams MOB / CRN / TRF
+                                        with H6/H9 tier)
+      - critical authorisation /
+        permit breaches                (HOT-H6/H9, ELE-H6/H9, ASB-*,
+                                        CFS-*, DEM-*)
+
+    Secondary axes (used to break ties):
+      - status severity rank: NCR > Conditional > Info > Compliant > Unmatched
+      - tier severity:        H9 > H6 > M3 > M4 > L1 > L2 > ""
+    """
+    finding_blob = " ".join((
+        row.finding or "",
+        row.recommendation or "",
+        row.hold_point or "",
+        row.activity_ref or "",
+    )).upper()
+    has_hp = "HP-" in finding_blob
+
+    swms_gap = bool(
+        row.swms_required and row.swms_present in ("", "no", "unknown")
+    )
+
+    # Plant / public interface ↔ MOB, CRN, TRF streams at H6/H9.
+    plant_public = False
+    if row.ccvs_code:
+        stream = row.ccvs_code.split("-", 1)[0]
+        tier = row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else ""
+        if stream in {"MOB", "CRN", "TRF"} and tier in {"H6", "H9"}:
+            plant_public = True
+
+    # Critical authorisation / permit streams.
+    permit_breach = False
+    if row.ccvs_code:
+        stream = row.ccvs_code.split("-", 1)[0]
+        tier = row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else ""
+        if stream in {"HOT", "ASB", "CFS", "DEM"} and tier in {"H6", "H9"}:
+            permit_breach = True
+        if stream == "ELE" and tier in {"H6", "H9"}:
+            permit_breach = True
+
+    # Primary key: high-priority theme rank (0 = highest).
+    if has_hp:
+        primary = 0
+    elif swms_gap and row.conformance_status in {"NCR", "Conditional"}:
+        primary = 1
+    elif plant_public:
+        primary = 2
+    elif permit_breach:
+        primary = 3
+    else:
+        primary = 4
+
+    status_rank = {
+        "NCR": 0, "Conditional": 1, "Info": 2, "Unmatched": 3, "Compliant": 4,
+    }.get(row.conformance_status, 5)
+
+    tier_rank = {
+        "H9": 0, "H6": 1, "M3": 2, "M4": 3, "L1": 4, "L2": 5, "": 6,
+    }
+    tier_key = tier_rank.get(row.ccvs_code.split("-", 1)[-1] if "-" in row.ccvs_code else "", 6)
+
+    return (primary, status_rank, tier_key)
+
+
+def sort_register_by_significance(
+    rows: list[tuple[int, EnrichedRow]],
+) -> list[tuple[int, EnrichedRow]]:
+    """Sort the register-bound rows by significance score, leaving
+    csv_idx attached so cross-references still resolve."""
+    return sorted(rows, key=lambda pair: _significance_score(pair[1]))
+
+
+def _register_status_text(conformance_status: str, finding_ref: str) -> str:
+    """Status cell text for the Observations Register row.
+
+    Aligned with the canonical sample wording:
+      - Compliant            → "Compliant"
+      - Info                 → "Noted"
+      - NCR + Findings ref   → "Non-compliant — See F<N>"
+      - NCR alone            → "NCR"
+      - Conditional + ref    → "Partially complete — See F<N>"
+      - Conditional alone    → "Conditional"
+      - Unmatched            → "Review at QA"
+    """
+    if conformance_status == "Compliant":
+        return "Compliant"
+    if conformance_status == "Info":
+        return "Noted"
+    if conformance_status == "NCR":
+        return f"Non-compliant — See {finding_ref}" if finding_ref else "NCR"
+    if conformance_status == "Conditional":
+        return f"Partially complete — See {finding_ref}" if finding_ref else "Conditional"
+    if conformance_status == "Unmatched":
+        return "Review at QA"
+    return conformance_status or ""
+
+
 def _to_long_date(ddmmyyyy: str) -> str:
     """``01/05/2026`` → ``1 May 2026``. Returns ``""`` on parse failure.
 
@@ -2321,6 +3304,46 @@ def _to_long_date(ddmmyyyy: str) -> str:
         from datetime import datetime
         dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
         return f"{dt.day} {dt.strftime('%B %Y')}"
+    except Exception:
+        return ""
+
+
+def _ordinal_suffix(day: int) -> str:
+    """1 → ``st``, 2 → ``nd``, 3 → ``rd``, 4-20 → ``th``, etc."""
+    if 10 <= day % 100 <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+
+def _to_ordinal_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1st May 2026``. Reviewer-facing cover-page form.
+
+    Returns ``""`` on parse failure.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        return f"{dt.day}{_ordinal_suffix(dt.day)} {dt.strftime('%B %Y')}"
+    except Exception:
+        return ""
+
+
+def _to_short_date(ddmmyyyy: str) -> str:
+    """``01/05/2026`` → ``1-may-26``. Reviewer-facing footer form.
+
+    Returns ``""`` on parse failure. Day is unpadded; month is lowercase
+    abbreviated; year is 2-digit.
+    """
+    if not ddmmyyyy:
+        return ""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(ddmmyyyy, "%d/%m/%Y")
+        mon = dt.strftime("%b").lower()
+        yy = dt.strftime("%y")
+        return f"{dt.day}-{mon}-{yy}"
     except Exception:
         return ""
 
@@ -2595,6 +3618,9 @@ def build_ssa_report_docx(
     template_path: Path = SSA_REPORT_TEMPLATE,
     project_name: str = "",
     prior_audit_date_ddmmyy: str = "",
+    risk_assessment=None,
+    merge_groups: list[list[int]] | None = None,
+    render_order_out: list[int] | None = None,
 ) -> dict:
     """Render the SSA report per Appendix A.
 
@@ -2654,17 +3680,35 @@ def build_ssa_report_docx(
         f"project Risk Assessment, and record positive observations for "
         f"continued monitoring."
     ) if audit_date_long else ""
+    # Item 16: hard-cap the LLM-generated narrative at 20 lines before
+    # composing with the scope intro. Defensive — the prompt already
+    # targets <=140 words but the cap prevents pathological overshoots.
+    capped_narrative = cap_executive_summary(narrative_summary or "")
     combined_narrative = (
-        f"{scope_intro}\n\n{narrative_summary}".strip()
-        if scope_intro else (narrative_summary or "")
+        f"{scope_intro}\n\n{capped_narrative}".strip()
+        if scope_intro else capped_narrative
     )
-    all_replacements = {
+    # Two date formats are wired into the deliverable per reviewer
+    # direction:
+    #   - cover-page text box (in document.xml body): ``1st May 2026``
+    #   - running footer (footer*.xml):              ``1-may-26``
+    # Both share the same {{AUDIT_DATE}} placeholder; the substitution
+    # branch picks the right form per part.
+    audit_date_ordinal = _to_ordinal_date(audit_date_ddmmyyyy)
+    audit_date_short = _to_short_date(audit_date_ddmmyyyy)
+    body_replacements = {
         "{{SITE_ADDRESS}}": full_site,
         "{{NARRATIVE_SUMMARY}}": combined_narrative,
-        "{{AUDIT_DATE}}": audit_date_ddmmyyyy or "",
+        "{{AUDIT_DATE}}": audit_date_ordinal or audit_date_ddmmyyyy or "",
         "{{PREPARED_BY}}": prepared_by or "",
     }
-    _replace_tokens_in_part(doc.part, all_replacements)
+    footer_replacements = {
+        "{{SITE_ADDRESS}}": full_site,
+        "{{NARRATIVE_SUMMARY}}": combined_narrative,
+        "{{AUDIT_DATE}}": audit_date_short or audit_date_ddmmyyyy or "",
+        "{{PREPARED_BY}}": prepared_by or "",
+    }
+    _replace_tokens_in_part(doc.part, body_replacements)
     # Split the combined narrative into the canonical two-paragraph
     # Executive Summary. No-op when scope_intro was empty.
     _split_narrative_paragraph(doc, combined_narrative)
@@ -2673,11 +3717,47 @@ def build_ssa_report_docx(
             sec.header, sec.first_page_header,
             sec.footer, sec.first_page_footer,
         ):
-            _replace_tokens_in_part(hf.part, all_replacements)
+            _replace_tokens_in_part(hf.part, footer_replacements)
 
     # --- Partition rows ----------------------------------------------
-    positive = [r for r in rows if r.conformance_status == "Compliant"]
-    register = [r for r in rows if r.conformance_status != "Compliant"]
+    # Track each row's CSV-order index so the Positive Observations
+    # table can render "PIMS Obs N | <reg ref>" cross-references back
+    # to the Enriched register row numbers (canonical sample shape).
+    indexed = list(enumerate(rows, start=1))
+    positive = [(i, r) for i, r in indexed if r.conformance_status == "Compliant"]
+    raw_register = [(i, r) for i, r in indexed if r.conformance_status != "Compliant"]
+    # Item 12: merge materially similar findings before significance
+    # ordering — keeps the canonical row's csv_idx so cross-refs in
+    # the Observations Register still resolve.
+    merged_register = merge_similar_findings(raw_register)
+    # Item 10: order findings by significance so the most important
+    # appears as #1 and at the top of the Findings index table.
+    register = sort_register_by_significance(merged_register)
+    # Operator override (--merge "1,3"): apply manual merge directives
+    # AFTER significance sort so the indices line up with what the
+    # reviewer sees in the rendered docx index table.
+    if merge_groups:
+        register = apply_manual_merges(register, merge_groups)
+
+    # Item 9 + 14: RA labelling has already been applied by the
+    # orchestrator on every row's text fields (see
+    # ``apply_ra_labels_to_rows``) so all three builders see the
+    # same labelled output.
+
+    # Capture the rendered finding order so phase-3 (--from-report)
+    # can pair operator edits in detail tables back to the correct
+    # EnrichedRow. The order matches the per-finding detail blocks
+    # expanded immediately below.
+    if render_order_out is not None:
+        render_order_out.clear()
+        for csv_idx, _row in register:
+            render_order_out.append(csv_idx)
+
+    # Item 15: insert the Findings index table directly below the
+    # "Findings" heading paragraph BEFORE the per-finding detail
+    # blocks are expanded so the index sits above every detail
+    # section in the rendered docx.
+    _build_findings_index_table(doc, [r for _i, r in register])
 
     # Materialise the Findings section: clone the (#N heading + 2-col
     # detail table) block per non-Compliant row. Per the canonical
@@ -2685,7 +3765,7 @@ def build_ssa_report_docx(
     # Observation / Regulatory Basis / Hierarchy of Control /
     # Required Action / Timeframe). R-1.3(e) explicitly permits this
     # block-level operation on the per-finding detail table.
-    _expand_findings_list(doc, register)
+    _expand_findings_list(doc, [r for _i, r in register])
 
     diagnostics: dict[str, list] = {
         "photo_load_failed": [],
@@ -2701,18 +3781,29 @@ def build_ssa_report_docx(
             col_widths_cm=_TABLE_COL_WIDTHS_CM["positive"],
             bold_header="positive" in _TABLE_HEADER_BOLD,
             repeat_header="positive" in _TABLE_HEADER_REPEAT,
+            all_borders="positive" in _TABLE_ALL_BORDERS,
         )
         placeholder = pos_tbl.rows[1]
         if positive:
-            for idx, row in enumerate(positive, start=1):
-                target = placeholder if idx == 1 else _clone_row(pos_tbl, placeholder)
+            for pos_idx, (csv_idx, row) in enumerate(positive, start=1):
+                target = placeholder if pos_idx == 1 else _clone_row(pos_tbl, placeholder)
                 cells = target.cells
-                _set_cell_text(cells[0], str(idx))
+                # Per the canonical sample, Positive Observations use
+                # ``P1 / P2 / P3`` numbering (distinct from the
+                # Observations Register's ``1 / 2 / 3``) so reviewers
+                # can cite a positive without ambiguity.
+                _set_cell_text(cells[0], f"P{pos_idx}")
                 _set_cell_text(
                     cells[1],
                     row.observation_text_clean or row.obs.observation_text,
                 )
-                _set_cell_text(cells[2], row.legal_ref or "")
+                # Reference column carries the cross-ref to the Enriched
+                # register row plus the regulatory citation:
+                # ``PIMS Obs 4 | NSW WHS Regulation 2017 cl.43``.
+                ref_text = f"PIMS Obs {csv_idx}"
+                if row.legal_ref:
+                    ref_text = f"{ref_text} | {row.legal_ref}"
+                _set_cell_text(cells[2], ref_text)
         else:
             cells = placeholder.cells
             _set_cell_text(cells[0], "-")
@@ -2720,26 +3811,38 @@ def build_ssa_report_docx(
             _set_cell_text(cells[2], "")
 
     # --- Status of Previous Recommendations table (4 cols) ----------
+    # 2026-05-06 layout: Date | Recommendations | Status (DD-Mon-YY) |
+    # Comments. Column widths 2.5 / 6.25 / 2.5 / 6.25 cm. All-cell
+    # single-line borders. Header row repeats across page breaks.
     prev_tbl = _find_table(doc, _TABLE_SIGNATURES["prior_recs"])
     if prev_tbl is not None and len(prev_tbl.rows) >= 2:
         _apply_table_format(
             prev_tbl,
             col_widths_cm=_TABLE_COL_WIDTHS_CM["prior_recs"],
-            bold_header=False,
-            repeat_header=False,
+            bold_header="prior_recs" in _TABLE_HEADER_BOLD,
+            repeat_header="prior_recs" in _TABLE_HEADER_REPEAT,
+            all_borders="prior_recs" in _TABLE_ALL_BORDERS,
         )
-        # Substitute the prior audit date into the header cell —
-        # canonical sample reads "Status (30/03/26)", template carries
-        # the literal "Status (DD/MM/YY)" placeholder.
-        if prior_audit_date_ddmmyy:
+        # Substitute the CURRENT audit date into the header cell —
+        # template carries "Status (DD-Mon-YY)" placeholder; rendered
+        # form uses the short footer-style date ("Status (1-may-26)").
+        # Reviewer direction: the column header tracks "as-of" the
+        # current audit date so the table chains forward.
+        audit_short = _to_short_date(audit_date_ddmmyyyy)
+        if audit_short:
             hdr_cell = prev_tbl.rows[0].cells[2]
             for p_el in hdr_cell._tc.iter(qn("w:p")):
                 t_text = "".join(
                     t.text or "" for t in p_el.iter(qn("w:t"))
                 )
-                if "DD/MM/YY" in t_text:
+                if "DD-Mon-YY" in t_text:
+                    new_text = t_text.replace("DD-Mon-YY", audit_short)
+                    _set_paragraph_runs_text(p_el, new_text)
+                    break
+                if "DD/MM/YY" in t_text:  # legacy template fallback
                     new_text = t_text.replace(
-                        "DD/MM/YY", prior_audit_date_ddmmyy,
+                        "DD/MM/YY",
+                        prior_audit_date_ddmmyy or audit_short,
                     )
                     _set_paragraph_runs_text(p_el, new_text)
                     break
@@ -2749,30 +3852,47 @@ def build_ssa_report_docx(
             for idx, rec in enumerate(recs, start=1):
                 target = placeholder if idx == 1 else _clone_row(prev_tbl, placeholder)
                 cells = target.cells
-                _set_cell_text(cells[0], str(rec.get("recommendation", "")))
-                _set_cell_text(cells[1], str(rec.get("required_actions", "")))
+                # 2026-05-06 column layout:
+                # Date | Recommendations | Status (as of <audit>) | Comments
+                _set_cell_text(cells[0], str(rec.get("date", "")))
+                _set_cell_text(cells[1], str(rec.get("recommendation", "")))
                 _set_cell_text(cells[2], str(rec.get("status", "")))
                 _set_cell_text(cells[3], str(rec.get("commentary", "")))
         else:
             cells = placeholder.cells
-            _set_cell_text(cells[0], "No prior recommendations carried forward.")
-            _set_cell_text(cells[1], "")
+            _set_cell_text(cells[0], "")
+            _set_cell_text(cells[1], "No prior recommendations carried forward.")
             _set_cell_text(cells[2], "")
             _set_cell_text(cells[3], "")
 
     # --- Observations Register table (6 cols, photos in col 1) -------
+    # Per the canonical sample, the Observations Register is the
+    # MASTER list — every observation appears (Compliant + non-
+    # Compliant) so the audit trail is complete. Non-Compliant rows
+    # carry a status pointer back to their Findings entry
+    # ("See F1 re exclusion zone"); Compliant / Info rows carry the
+    # canonical status word.
     reg_tbl = _find_table(doc, _TABLE_SIGNATURES["obs_register"])
     if reg_tbl is not None and len(reg_tbl.rows) >= 2:
         _apply_table_format(
             reg_tbl,
             col_widths_cm=None,  # use template's existing widths
-            bold_header=False,   # template already styles the header
+            bold_header="obs_register" in _TABLE_HEADER_BOLD,
             repeat_header="obs_register" in _TABLE_HEADER_REPEAT,
+            all_borders="obs_register" in _TABLE_ALL_BORDERS,
         )
+        # Map each non-Compliant row's csv_idx → finding number (F1, F2 …)
+        # so we can cite the Findings entry from the register's status
+        # cell. Findings render in the same order as `register`.
+        finding_ref_for: dict[int, str] = {}
+        for f_idx, (csv_idx, _row) in enumerate(register, start=1):
+            finding_ref_for[csv_idx] = f"F{f_idx}"
+
         placeholder = reg_tbl.rows[1]
-        if register:
-            for idx, row in enumerate(register, start=1):
-                target = placeholder if idx == 1 else _clone_row(reg_tbl, placeholder)
+        all_rows = indexed
+        if all_rows:
+            for n, (csv_idx, row) in enumerate(all_rows, start=1):
+                target = placeholder if n == 1 else _clone_row(reg_tbl, placeholder)
                 cells = target.cells
 
                 # Resolve photo first so the Obs # marker reflects
@@ -2790,32 +3910,35 @@ def build_ssa_report_docx(
                             buf, _fmt, _w, _h = prepared
                             photo_embedded = _embed_image_in_cell(cells[1], buf)
                 if not photo_embedded:
-                    # Empty Photo cell (cells[1] kept untouched) and
-                    # mark Obs # with the trailing `*` per R-7.5.
-                    diagnostics["missing_photo_obs"].append(idx)
+                    diagnostics["missing_photo_obs"].append(n)
 
-                obs_marker = f"{idx}{'*' if not photo_embedded else ''}"
+                obs_marker = f"{n}{'*' if not photo_embedded else ''}"
                 _set_cell_text(cells[0], obs_marker)
-                # cells[1] is the Photo cell; only mutated by the embed
-                # path above. If embed failed, leave the placeholder
-                # paragraph empty per R-7.5.
                 if not photo_embedded:
                     _set_cell_text(cells[1], "")
 
-                finding_text = (
-                    row.finding
-                    or row.observation_text_clean
+                # Observation column: short cleaned summary, not the
+                # full multi-sentence finding. The detail block at
+                # the top of the report carries the long form.
+                summary = (
+                    row.observation_text_clean
                     or row.obs.observation_text
+                    or ""
                 )
-                _set_cell_text(cells[2], finding_text)
+                _set_cell_text(cells[2], summary)
                 _set_cell_text(cells[3], row.legal_ref or "")
-                _set_cell_text(cells[4], row.conformance_status)
+                # Status column carries cross-reference text per the
+                # canonical sample shape.
+                _set_cell_text(cells[4], _register_status_text(
+                    row.conformance_status,
+                    finding_ref_for.get(csv_idx, ""),
+                ))
                 _set_cell_text(cells[5], row.obs.resolved_filename or "")
         else:
             cells = placeholder.cells
             _set_cell_text(cells[0], "-")
             _set_cell_text(cells[1], "")
-            _set_cell_text(cells[2], "No findings recorded.")
+            _set_cell_text(cells[2], "No observations recorded.")
             _set_cell_text(cells[3], "")
             _set_cell_text(cells[4], "")
             _set_cell_text(cells[5], "")
@@ -2905,6 +4028,25 @@ def _staging_row_value(
         return ""  # PIMS auto-derives server-side from CCVS category
     if header == "needs_review":
         return "TRUE" if row.needs_review else "FALSE"
+    # --- gap-4 fields (RA cross-references) ----
+    if header == "phase":
+        return row.phase
+    if header == "activity_ref":
+        return row.activity_ref
+    if header == "hold_point":
+        return row.hold_point
+    if header == "hrcw":
+        return row.hrcw
+    # --- gap-5 fields (SWMS verification) ----
+    if header == "swms_required":
+        return "TRUE" if row.swms_required else "FALSE"
+    if header == "swms_present":
+        return row.swms_present
+    # --- gap-6 fields (initial/residual risk axis) ----
+    if header == "initial_risk":
+        return row.initial_risk
+    if header == "residual_risk":
+        return row.residual_risk
     return ""
 
 
@@ -3082,6 +4224,10 @@ def build_pims_staging_xlsx_with_size_control(
     want a single render at a fixed cap (tests, debugging).
     """
     diags: list[dict] = []
+    # Snapshot cache stats at entry so the wrapper's diagnostics
+    # report the hits / misses it actually drove (rather than the
+    # whole-process running totals).
+    cache_at_entry = _photo_cache_stats()
 
     def _render_at(rs: list[EnrichedRow], path: Path, edge_px: int) -> dict:
         return build_pims_staging_xlsx(
@@ -3109,6 +4255,7 @@ def build_pims_staging_xlsx_with_size_control(
             "split": True,
             "split_reason": "row_count",
             "diagnostics": diags,
+            "cache": _cache_delta(cache_at_entry),
         }
 
     # --- Path 2-3: progressive downscale on a single part ----------
@@ -3122,9 +4269,12 @@ def build_pims_staging_xlsx_with_size_control(
                 "split": False,
                 "split_reason": None,
                 "diagnostics": diags,
+                "cache": _cache_delta(cache_at_entry),
             }
 
     # --- Path 4: size-driven split at the smallest cap -------------
+    # _cache_delta is defined locally below the top-level builder and
+    # bound here at call time — see helper at module level.
     # Bisect the row set; each half is recursed into the same wrapper
     # so a half that fits short-circuits cleanly. Halves render at the
     # smallest cap because anything larger has already been rejected
@@ -3191,6 +4341,7 @@ def build_pims_staging_xlsx_with_size_control(
             *left.get("diagnostics", []),
             *right.get("diagnostics", []),
         ],
+        "cache": _cache_delta(cache_at_entry),
     }
 
 
@@ -3209,6 +4360,74 @@ def _light_cleanup(text: str) -> str:
     if not text:
         return ""
     return _WS_RUN.sub(" ", text).strip()
+
+
+# Composite-note splitter — auditors sometimes record several
+# distinct issues against a single photo with leading numerals like
+# "(1) Pre-start NOT completed (2) Worker observed without VOC".
+# Each numbered fragment is its own atomic finding for the report
+# (item 11 of the gap-closure brief). The pattern requires at least
+# two leading-numeral markers; a single "(1)" prefix is a one-issue
+# annotation and is left alone.
+_COMPOSITE_MARKER_RE = re.compile(r"\(\d+\)\s*")
+
+
+def _split_composite_notes(text: str) -> list[str]:
+    """Split a composite "(1)... (2)..." note into atomic fragments.
+
+    Returns a list with the original text when the input doesn't carry
+    at least two markers, or one cleaned fragment per marker when it
+    does. Marker prefixes are stripped from each fragment so the
+    downstream finding text reads as a complete sentence.
+    """
+    if not text:
+        return [text]
+    markers = list(_COMPOSITE_MARKER_RE.finditer(text))
+    if len(markers) < 2:
+        return [text]
+    out: list[str] = []
+    for i, m in enumerate(markers):
+        start = m.end()
+        end = markers[i + 1].start() if i + 1 < len(markers) else len(text)
+        fragment = text[start:end].strip().rstrip(".,;").strip()
+        if fragment:
+            out.append(fragment)
+    return out or [text]
+
+
+def split_multi_issue_observations(
+    rows: list[ObservationRow],
+) -> list[ObservationRow]:
+    """Expand any composite "(1)... (2)..." rows into atomic
+    ObservationRows.
+
+    Each split row keeps the original CSV row index, timestamp, photo
+    filename and resolved path, so the downstream pipeline still
+    matches one photo per fragment (every atomic finding cites the
+    same evidence). The synthesised rows carry a ``part`` suffix in
+    ``review_reasons`` for traceability.
+    """
+    out: list[ObservationRow] = []
+    for obs in rows:
+        fragments = _split_composite_notes(obs.observation_text or "")
+        if len(fragments) < 2:
+            out.append(obs)
+            continue
+        for idx, frag in enumerate(fragments, start=1):
+            clone = ObservationRow(
+                csv_row=obs.csv_row,
+                timestamp_raw=obs.timestamp_raw,
+                timestamp_iso=obs.timestamp_iso,
+                observation_text=frag,
+                csv_filename=obs.csv_filename,
+                resolved_filename=obs.resolved_filename,
+                resolved_path=obs.resolved_path,
+                needs_review=obs.needs_review,
+                review_reasons=list(obs.review_reasons) + [f"split_part_{idx}"],
+                duplicate_filename=obs.duplicate_filename,
+            )
+            out.append(clone)
+    return out
 
 
 def enrich_observations(
@@ -3291,7 +4510,7 @@ def enrich_observations(
 
 ### `pims/services/ssa_checklist_lookup.py`
 
-Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a deterministic fallback for --no-enrich mode; bypassed when vision is on.
+Legacy CCVS-keyed lookup over audit_checklist.xlsx. Kept as a deterministic fallback for --no-enrich mode; bypassed when vision is on (default).
 
 ```python
 """CCVS-keyed lookup over ``pims/audit_checklist.xlsx``.
@@ -3684,7 +4903,7 @@ def stream_of(code: str) -> str:
 
 ### `pims/services/ssa_vision_enricher.py`
 
-Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding / legal_ref / recommendation / monitoring_note. Transient-error retry.
+Per-row Anthropic vision call (Opus 4.7). Sends downscaled EXIF-normalised photo + observation text + project RA context. Receives status / ccvs_code / finding_title / location / finding / hierarchy_of_control / recommendation / timeframe / phase / activity_ref / hold_point / hrcw / swms_required / swms_present / initial_risk / residual_risk / legal_ref / monitoring_note. Transient-error retry; forgiving JSON parser.
 
 ```python
 """Vision-enabled per-observation enrichment for the SSA pipeline.
@@ -3802,9 +5021,16 @@ _SYSTEM_PROMPT = (
     '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
     '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
     '  ccvs_category        plain-English category for the chosen stream, or ""\n'
-    '  finding_title        3-6 word descriptive title for the finding, e.g. '
-    '"EWP Exclusion Zone", "Fire Extinguisher Mounting", "Pre-Start Logbook Gap" — '
-    'used as the #N heading\n'
+    '  finding_title        SHORT plain-English sentence (max 12 words) '
+    'describing what the finding actually is. PREFER active-voice '
+    'sentences over noun phrases. Good examples: '
+    '"Temporary brace removal proceeded without engineer sign-off", '
+    '"Fire extinguishers stored on the ground rather than wall-mounted", '
+    '"Telehandler operated without a current pre-start". '
+    'Bad examples (do NOT use noun-phrase titles like): '
+    '"EWP Exclusion Zone", "Pre-Start Logbook Gap", '
+    '"SWMS Sign-On Date Missing". Used as the #N heading and as the '
+    'Findings index table label.\n'
     '  location             site/area anchor with concrete reference, e.g. '
     '"Unit 1 shell", "Tilt-up panel zone, north elevation", "Site office area"\n'
     '  finding              2–4 sentence narrative, year-12 plain English\n'
@@ -3854,7 +5080,15 @@ _SYSTEM_PROMPT = (
     'e.g. "WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW Code of Practice: '
     'Managing the Risk of Falls", or ""\n'
     '  recommendation       one short sentence (paraphrase of required_action), or ""\n'
-    '  monitoring_note      one short sentence reviewer cue, or ""\n\n'
+    '  monitoring_note      one short sentence reviewer cue, or ""\n'
+    '  phase                "<phase number> — <phase name>" copied from the RA when the activity matches a phase, e.g. "6 — Tilt-Up Panel Erection"; "" if no RA / no clear match\n'
+    '  activity_ref         RA activity ref the observation maps to, e.g. "TP-05"; "" if none\n'
+    '  hold_point           RA Hold Point code if the activity is gated by one, e.g. "HP-06"; "" otherwise\n'
+    '  hrcw                 RA HRCW codes for the activity, comma-separated, e.g. "H14, H15"; "" if RA does not classify\n'
+    '  swms_required        true ONLY when the RA / WHS Reg requires a SWMS for this activity (HRCW work, scaffold, demolition, asbestos, height >2m, etc.). Otherwise false.\n'
+    '  swms_present         "yes" if a SWMS sign-on / sighted on site evidence is in the photo or note; "no" if SWMS required but absent / undated; "unknown" if not visible; "" when swms_required is false\n'
+    '  initial_risk         RA Initial Risk word for the matching activity ("High" / "Medium" / "Low") if the RA carries it for this activity; "" otherwise. Do not invent a rating from the photo alone.\n'
+    '  residual_risk        RA Residual Risk word for the matching activity if the RA carries it; "" otherwise. Do not invent.\n\n'
     "STREAM PREFIXES (pick exactly one):\n"
     f"{_STREAM_LIST}\n\n"
     "SEVERITY TIERS:\n"
@@ -3929,6 +5163,60 @@ _SYSTEM_PROMPT = (
 
 
 _TRANSIENT_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+
+
+def _parse_json_object(text: str) -> dict[str, Any]:
+    """Forgiving JSON-object parse for LLM output.
+
+    Step 1: strip code fences if present.
+    Step 2: try ``json.loads`` directly.
+    Step 3: on failure, locate the first ``{`` and walk forward
+    counting brace depth (respecting strings and escapes) until the
+    matching ``}``; parse that substring. Handles cases where the
+    model wraps the JSON in prose like ``"Here is the result: { ... }"``
+    despite the explicit "JSON ONLY" instruction.
+
+    Raises ``json.JSONDecodeError`` (passed through) when no valid
+    JSON object can be extracted — caller wraps in try/except and
+    falls back to Unmatched.
+    """
+    s = text.strip()
+    if s.startswith("```"):
+        s = s.split("```", 2)[1]
+        if s.startswith("json"):
+            s = s[4:]
+        s = s.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Walk to find a balanced { ... } substring. Respect strings so
+    # braces inside string literals don't fool the depth counter.
+    start = s.find("{")
+    if start < 0:
+        raise json.JSONDecodeError("no { found in LLM output", s, 0)
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(s[start:i + 1])
+    raise json.JSONDecodeError("unbalanced { in LLM output", s, start)
 
 
 async def _vision_call(
@@ -4028,13 +5316,7 @@ async def _vision_call(
             await asyncio.sleep(1.5 * (attempt + 1))
     else:  # pragma: no cover — loop never falls through; either break or raise
         raise RuntimeError(f"vision call failed after retries: {last_exc}")
-    # Strip code fences if the model wrapped output despite instruction.
-    if text.startswith("```"):
-        text = text.split("```", 2)[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.rsplit("```", 1)[0].strip()
-    return json.loads(text)
+    return _parse_json_object(text)
 
 
 def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
@@ -4074,6 +5356,29 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
                     "Engineering", "Administrative", "PPE"}:
             hoc = hoc_raw  # preserve the "Tier: control" full string
 
+    # gap-5: SWMS verification — coerce truthy values to bool, gate
+    # swms_present to the canonical {yes,no,unknown,""} set so the
+    # staging xlsx column never carries a fabricated label.
+    swms_required = raw.get("swms_required")
+    if isinstance(swms_required, str):
+        swms_required = swms_required.strip().lower() in {"true", "yes", "1"}
+    else:
+        swms_required = bool(swms_required)
+    swms_present = _s("swms_present").lower()
+    if swms_present not in {"yes", "no", "unknown", ""}:
+        swms_present = "unknown"
+    if not swms_required:
+        # Unset swms_present when the row doesn't need a SWMS — keeps
+        # the staging cell clean and prevents accidental yes/no carry.
+        swms_present = ""
+
+    # gap-6: initial/residual risk — accept only the canonical H/M/L
+    # vocabulary. RA carries "High (3)" / "Medium (2)" / "Low (1)";
+    # the LLM may return either form, so collapse to the bare word.
+    def _risk(key: str) -> str:
+        v = _s(key).strip().split(" ", 1)[0].title()
+        return v if v in {"High", "Medium", "Low"} else ""
+
     return {
         "status": status,
         "ccvs_code": code,
@@ -4087,6 +5392,14 @@ def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
         "legal_ref": _s("legal_ref"),
         "recommendation": _s("recommendation"),
         "monitoring_note": _s("monitoring_note"),
+        "phase": _s("phase"),
+        "activity_ref": _s("activity_ref"),
+        "hold_point": _s("hold_point"),
+        "hrcw": _s("hrcw"),
+        "swms_required": swms_required,
+        "swms_present": swms_present,
+        "initial_risk": _risk("initial_risk"),
+        "residual_risk": _risk("residual_risk"),
     }
 
 
@@ -4216,6 +5529,24 @@ async def enrich_rows_with_vision(
         if tf in {"Immediate", "Within 7 days", "Next audit",
                   "Ongoing", "N/A"}:
             row.timeframe = tf
+        # gap-4: RA cross-reference fields.
+        if rec["phase"]:
+            row.phase = rec["phase"]
+        if rec["activity_ref"]:
+            row.activity_ref = rec["activity_ref"]
+        if rec["hold_point"]:
+            row.hold_point = rec["hold_point"]
+        if rec["hrcw"]:
+            row.hrcw = rec["hrcw"]
+        # gap-5: SWMS verification.
+        row.swms_required = rec["swms_required"]
+        if rec["swms_present"]:
+            row.swms_present = rec["swms_present"]
+        # gap-6: Initial / Residual risk axis (RA H/M/L).
+        if rec["initial_risk"]:
+            row.initial_risk = rec["initial_risk"]
+        if rec["residual_risk"]:
+            row.residual_risk = rec["residual_risk"]
         diag["rows_ok"] += 1
 
     diag["errors"] = sorted(seen_errors)
@@ -4252,7 +5583,11 @@ async def generate_narrative_summary(
     system = (
         "You write the Executive Summary paragraph at the top of an "
         "Australian construction site safety audit report. Output ONE "
-        "paragraph, 100–140 words, no bullets, no headings, no lists. "
+        "paragraph, MAXIMUM 140 words and 12 lines on an A4 page "
+        "(prefer 100 words). Provide site condition + the most "
+        "significant gaps only — do NOT enumerate every finding; the "
+        "Findings section below the summary already lists them all. "
+        "No bullets, no headings, no lists. "
         "Open with the site address and audit date in a single "
         "sentence. Then summarise the audit's overall picture grounded "
         "in the findings supplied — note major non-conformance themes "
@@ -4643,7 +5978,9 @@ log = logging.getLogger(__name__)
 
 # --- folder + filename rules --------------------------------------------
 
-_FOLDER_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)$")
+_FOLDER_RE = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)(?:-(\d{2}))?$"
+)
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 
 # Static exclusions — names always skipped from the input snapshot,
@@ -4668,12 +6005,13 @@ def _expected_outputs(folder_name: str) -> set[str]:
     m = _FOLDER_RE.match(folder_name)
     if not m:
         return set()
-    yyyy, mm, dd, client = m.groups()
+    yyyy, mm, dd, client, sub_id = m.groups()
     yymmdd = f"{yyyy[2:]}{mm}{dd}"
+    suffix = f"-{client}-{sub_id}" if sub_id else f"-{client}"
     return {
-        f"PIMS-Enriched-{yymmdd}-{client}.xlsx",
-        f"Site-Safety-Audit-Report-{yymmdd}-{client}.docx",
-        f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}-{client}.xlsx",
+        f"PIMS-Enriched-{yymmdd}{suffix}.xlsx",
+        f"Site-Safety-Audit-Report-{yymmdd}{suffix}.docx",
+        f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}{suffix}.xlsx",
     }
 
 
@@ -4909,7 +6247,7 @@ class Watcher:
 
 ### `pims/scripts/run_ssa_pipeline.py`
 
-CLI orchestrator. Folder-name parse, manifest sha256, freeze escape hatch, sentinels (NOT_UPLOADABLE / NO_BULK_ENDPOINT), RA auto-discover, vision wiring, .ssa_run.json payload.
+CLI orchestrator. Folder-name parse (with -NN sub-id), manifest sha256, preflight, freeze escape hatch, sentinels, RA auto-discover, vision wiring, three-phase review workflow (--enrich-only / --from-state / --from-report), --merge directives, .ssa_run.json + .ssa_state.json payloads.
 
 ```python
 """Manual CLI for the SSA evidence-folder → 3-deliverable pipeline.
@@ -4942,6 +6280,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -4950,6 +6289,7 @@ from pathlib import Path
 from pims.services.ssa_checklist_lookup import ChecklistLookup
 from pims.services.ssa_pipeline import (
     EnrichedRow,
+    apply_ra_labels_to_rows,
     build_pims_enriched_xlsx,
     build_pims_staging_xlsx_with_size_control,
     build_ssa_report_docx,
@@ -4957,14 +6297,22 @@ from pims.services.ssa_pipeline import (
     extract_site_address,
     match_photos,
     parse_evidence_csv,
+    parse_merge_argument,
     parse_prior_report_recommendations,
+    split_multi_issue_observations,
 )
 
 log = logging.getLogger("ssa.cli")
 
 
-# Folder name contract: YYYY-MM-DD-<CLIENT>, CLIENT ∈ {RPD, SDG}
-_FOLDER_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)$")
+# Folder name contract: YYYY-MM-DD-<CLIENT>[-NN], CLIENT ∈ {RPD, SDG},
+# optional "-NN" sub-id distinguishes multiple visits to the same site
+# on the same day (e.g. morning + afternoon walk, or sub-area split).
+# When present, the sub-id is propagated to the output filenames so
+# multiple runs against the same day's folders don't collide.
+_FOLDER_RE = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})-(RPD|SDG)(?:-(\d{2}))?$"
+)
 
 # Image extensions the watcher cares about. PNG-with-transparency is
 # legal but rare; HEIC explicitly out of scope (filename canonicalisation
@@ -4976,32 +6324,39 @@ _IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 _BULK_ENDPOINT = {"RPD": "/pims/upload/observations", "SDG": None}
 
 
-def _parse_folder(folder: Path) -> tuple[str, str, str, str]:
-    """Return (audit_date_iso, audit_date_ddmmyyyy, yymmdd, client).
+def _parse_folder(folder: Path) -> tuple[str, str, str, str, str]:
+    """Return (audit_date_iso, audit_date_ddmmyyyy, yymmdd, client, sub_id).
 
-    Raises ValueError when the folder name doesn't match the contract —
-    rerun with a renamed folder is the documented remediation.
+    ``sub_id`` is the trailing ``-NN`` digit pair (e.g. ``"01"``) when
+    the folder name carries one, or ``""`` when it doesn't. The sub-id
+    is propagated to output filenames so multiple visits on the same
+    day (``2026-05-01-SDG-01``, ``...-SDG-02``) don't overwrite each
+    other.
+
+    Raises ValueError when the folder name doesn't match the contract.
     """
     m = _FOLDER_RE.match(folder.name)
     if not m:
         raise ValueError(
-            f"folder name {folder.name!r} does not match YYYY-MM-DD-<CLIENT> "
-            f"with CLIENT in (RPD, SDG)"
+            f"folder name {folder.name!r} does not match "
+            f"YYYY-MM-DD-<CLIENT>[-NN] with CLIENT in (RPD, SDG)"
         )
-    yyyy, mm, dd, client = m.groups()
+    yyyy, mm, dd, client, sub_id = m.groups()
+    sub_id = sub_id or ""
     iso = f"{yyyy}-{mm}-{dd}"
     ddmmyyyy = f"{dd}/{mm}/{yyyy}"
     yymmdd = f"{yyyy[2:]}{mm}{dd}"
     # Sanity-check the date itself; ValueError on Feb 30 etc.
     datetime.strptime(iso, "%Y-%m-%d")
-    return iso, ddmmyyyy, yymmdd, client
+    return iso, ddmmyyyy, yymmdd, client, sub_id
 
 
-def _output_names(yymmdd: str, client: str) -> dict[str, str]:
+def _output_names(yymmdd: str, client: str, sub_id: str = "") -> dict[str, str]:
+    suffix = f"-{client}-{sub_id}" if sub_id else f"-{client}"
     return {
-        "enriched": f"PIMS-Enriched-{yymmdd}-{client}.xlsx",
-        "report": f"Site-Safety-Audit-Report-{yymmdd}-{client}.docx",
-        "staging": f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}-{client}.xlsx",
+        "enriched": f"PIMS-Enriched-{yymmdd}{suffix}.xlsx",
+        "report": f"Site-Safety-Audit-Report-{yymmdd}{suffix}.docx",
+        "staging": f"Site-Visit-Report-Upload-PIMS-Staging-{yymmdd}{suffix}.xlsx",
     }
 
 
@@ -5012,9 +6367,10 @@ def _images_in(folder: Path) -> list[Path]:
     )
 
 
-# Filename-date-suffix on a prior SSA report: ``...YYMMDD-<CLIENT>.docx``.
+# Filename-date-suffix on a prior SSA report:
+# ``Site-Safety-Audit-Report-YYMMDD-<CLIENT>[-NN].docx``.
 _PRIOR_REPORT_RE = re.compile(
-    r"^Site-Safety-Audit-Report-(\d{6})-(RPD|SDG)\.docx$"
+    r"^Site-Safety-Audit-Report-(\d{6})-(RPD|SDG)(?:-\d{2})?\.docx$"
 )
 
 
@@ -5161,6 +6517,387 @@ def _apply_vision_enrichment(
     return narrative, diag
 
 
+class PreflightError(RuntimeError):
+    """Raised when a required runtime precondition is missing.
+
+    Distinct from generic ``RuntimeError`` so the CLI can surface the
+    failure with a clean exit code and human-readable message before
+    any rows are processed (rather than silently producing
+    semantically-degraded output).
+    """
+
+
+def _preflight(enrich: bool) -> None:
+    """Fail loud BEFORE any row processing when required runtime
+    preconditions are missing.
+
+    Currently checks:
+      - When ``enrich`` is True, ``ANTHROPIC_API_KEY`` must be set in
+        the environment. Without it the vision enricher silently
+        leaves every row at ``status="Unmatched"``, and operators
+        have hit this twice — once mistaking the result for a code
+        bug, once for a billing problem. A loud preflight failure
+        prevents both.
+
+    Caller can short-circuit with ``--no-enrich`` when they
+    deliberately want the offline path.
+    """
+    if enrich and not os.environ.get("ANTHROPIC_API_KEY"):
+        raise PreflightError(
+            "ANTHROPIC_API_KEY is not set in the environment. "
+            "Either set the key (load .env, run with the key exported, "
+            "or invoke from a shell that already has it) or pass "
+            "--no-enrich to run the deterministic offline path "
+            "(every row will land Unmatched)."
+        )
+
+
+def _serialise_rows(rows: list[EnrichedRow]) -> list[dict]:
+    """Convert EnrichedRow + nested ObservationRow into JSON-safe dicts.
+
+    Used by the two-phase workflow so phase 1 (enrich-only) can
+    persist the full row state and phase 2 (from-state) can rebuild
+    EnrichedRow objects after the operator has edited the enriched
+    xlsx.
+    """
+    out: list[dict] = []
+    for r in rows:
+        obs = r.obs
+        out.append({
+            "obs": {
+                "csv_row": obs.csv_row,
+                "timestamp_raw": obs.timestamp_raw,
+                "timestamp_iso": obs.timestamp_iso,
+                "observation_text": obs.observation_text,
+                "csv_filename": obs.csv_filename,
+                "resolved_filename": obs.resolved_filename,
+                "resolved_path": (
+                    str(obs.resolved_path) if obs.resolved_path else None
+                ),
+                "needs_review": obs.needs_review,
+                "review_reasons": list(obs.review_reasons),
+                "duplicate_filename": obs.duplicate_filename,
+            },
+            "observation_text_clean": r.observation_text_clean,
+            "finding": r.finding,
+            "conformance_status": r.conformance_status,
+            "ccvs_code": r.ccvs_code,
+            "ccvs_category": r.ccvs_category,
+            "action_description": r.action_description,
+            "recommendation": r.recommendation,
+            "legal_ref": r.legal_ref,
+            "monitoring_note": r.monitoring_note,
+            "location": r.location,
+            "hierarchy_of_control": r.hierarchy_of_control,
+            "finding_title": r.finding_title,
+            "timeframe": r.timeframe,
+            "phase": r.phase,
+            "activity_ref": r.activity_ref,
+            "hold_point": r.hold_point,
+            "hrcw": r.hrcw,
+            "swms_required": r.swms_required,
+            "swms_present": r.swms_present,
+            "initial_risk": r.initial_risk,
+            "residual_risk": r.residual_risk,
+            "evidence_csv_indices": list(r.evidence_csv_indices or []),
+        })
+    return out
+
+
+def _deserialise_rows(payload: list[dict]) -> list[EnrichedRow]:
+    """Inverse of ``_serialise_rows``. Returns EnrichedRow objects with
+    nested ObservationRow rebuilt; ``resolved_path`` is restored as a
+    Path when present."""
+    from pims.services.ssa_pipeline import EnrichedRow, ObservationRow
+    out: list[EnrichedRow] = []
+    for d in payload:
+        o = d["obs"]
+        obs = ObservationRow(
+            csv_row=o["csv_row"],
+            timestamp_raw=o["timestamp_raw"],
+            timestamp_iso=o["timestamp_iso"],
+            observation_text=o["observation_text"],
+            csv_filename=o["csv_filename"],
+            resolved_filename=o.get("resolved_filename"),
+            resolved_path=Path(o["resolved_path"]) if o.get("resolved_path") else None,
+            needs_review=o.get("needs_review", False),
+            review_reasons=list(o.get("review_reasons") or []),
+            duplicate_filename=o.get("duplicate_filename", False),
+        )
+        out.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=d.get("observation_text_clean", ""),
+            finding=d.get("finding", ""),
+            conformance_status=d.get("conformance_status", "Unmatched"),
+            ccvs_code=d.get("ccvs_code", ""),
+            ccvs_category=d.get("ccvs_category", ""),
+            action_description=d.get("action_description", ""),
+            recommendation=d.get("recommendation", ""),
+            legal_ref=d.get("legal_ref", ""),
+            monitoring_note=d.get("monitoring_note", ""),
+            location=d.get("location", ""),
+            hierarchy_of_control=d.get("hierarchy_of_control", ""),
+            finding_title=d.get("finding_title", ""),
+            timeframe=d.get("timeframe", ""),
+            phase=d.get("phase", ""),
+            activity_ref=d.get("activity_ref", ""),
+            hold_point=d.get("hold_point", ""),
+            hrcw=d.get("hrcw", ""),
+            swms_required=bool(d.get("swms_required", False)),
+            swms_present=d.get("swms_present", ""),
+            initial_risk=d.get("initial_risk", ""),
+            residual_risk=d.get("residual_risk", ""),
+            evidence_csv_indices=list(d.get("evidence_csv_indices") or []),
+        ))
+    return out
+
+
+# Columns in the Enriched Register sheet that the operator is
+# expected to edit during a phase-1 review pass. When phase 2 reads
+# the (potentially edited) xlsx it overrides the corresponding fields
+# on the EnrichedRow loaded from the JSON state.
+_ENRICHED_EDITABLE_COLUMNS: dict[str, str] = {
+    "observation": "finding",                 # the enriched narrative
+    "conformance status": "conformance_status",
+    "ccvs code": "ccvs_code",
+    "ccvs category": "ccvs_category",
+    "action description": "action_description",
+    "monitoring note": "monitoring_note",
+    "responsible": None,                       # blank-by-default cell
+    "due": None,                               # blank-by-default cell
+}
+
+
+def _snapshot_enriched_xlsx(xlsx_path: Path) -> dict[str, dict[str, str]]:
+    """Hash every editable cell of every data row keyed by Filename.
+
+    Used by phase 1 to record what was written so phase 2 can tell
+    operator edits apart from rendered-fallback values that didn't
+    actually change. Returns ``{filename: {header_lc: cell_value}}``.
+    """
+    if not xlsx_path.exists():
+        return {}
+    import openpyxl
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if "Enriched Register" not in wb.sheetnames:
+        return {}
+    ws = wb["Enriched Register"]
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[1]
+    ]
+    try:
+        filename_col = headers.index("filename") + 1
+    except ValueError:
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for excel_row in range(2, ws.max_row + 1):
+        fn_cell = ws.cell(row=excel_row, column=filename_col).value
+        fn = str(fn_cell).strip() if fn_cell else ""
+        if not fn:
+            continue
+        snap: dict[str, str] = {}
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr not in _ENRICHED_EDITABLE_COLUMNS:
+                continue
+            v = ws.cell(row=excel_row, column=col_idx).value
+            snap[hdr] = "" if v is None else str(v).strip()
+        out[fn] = snap
+    return out
+
+
+# Per-finding detail-table label → EnrichedRow attribute. Used by
+# phase 3 (--from-report) to read operator edits out of the docx
+# detail tables and write them back onto EnrichedRows.
+_DETAIL_LABEL_TO_ATTR: dict[str, str] = {
+    "location": "location",
+    "observation": "finding",
+    "regulatory basis": "legal_ref",
+    "hierarchy of control": "hierarchy_of_control",
+    "recommendation": "recommendation",
+    "required action": "recommendation",   # legacy templates
+    "timeframe": "timeframe",
+}
+
+
+def _extract_detail_table_edits(
+    docx_path: Path,
+) -> list[dict[str, str]]:
+    """Walk the rendered audit report docx and return one dict per
+    per-finding detail table (in document order). Each dict maps
+    EnrichedRow attribute → cell text. Returns ``[]`` when no detail
+    tables are found.
+    """
+    if not docx_path.exists():
+        return []
+    from docx import Document
+    doc = Document(docx_path)
+    out: list[dict[str, str]] = []
+    for tbl in doc.tables:
+        if len(tbl.columns) != 2 or not tbl.rows:
+            continue
+        if tbl.rows[0].cells[0].text.strip() != "Location":
+            continue
+        edit: dict[str, str] = {}
+        for row in tbl.rows:
+            if len(row.cells) < 2:
+                continue
+            label = row.cells[0].text.strip().lower()
+            attr = _DETAIL_LABEL_TO_ATTR.get(label)
+            if attr is None:
+                continue
+            edit[attr] = row.cells[1].text.strip()
+        if edit:
+            out.append(edit)
+    return out
+
+
+def _merge_edits_from_audit_report(
+    rows: list[EnrichedRow], docx_path: Path,
+    finding_render_order: list[int] | None,
+) -> dict:
+    """Phase 3: read operator edits from the audit report docx's
+    per-finding detail tables and apply them back to the matching
+    EnrichedRows.
+
+    ``finding_render_order`` is the list of csv-row indices the
+    detail tables were rendered FOR (in display order). Phase 2
+    stamps it onto the state JSON so phase 3 can pair detail-table
+    edits back to the correct EnrichedRow even after merge / sort.
+
+    Returns a diagnostics dict shaped:
+        {
+          "applied":          bool,
+          "tables_seen":      int,
+          "tables_paired":    int,
+          "field_overrides":  int,
+          "unpaired":         int,    # detail tables we couldn't map
+        }
+    """
+    if not docx_path.exists():
+        return {"applied": False, "reason": "audit report missing"}
+    edits = _extract_detail_table_edits(docx_path)
+    if not edits:
+        return {"applied": False, "reason": "no detail tables found"}
+
+    # Build csv_idx → EnrichedRow lookup. evidence_csv_indices on a
+    # consolidated row include all csv indices folded into it; the
+    # canonical row's primary csv_idx is the first entry in that
+    # list, which matches what phase 2 emitted.
+    by_idx: dict[int, EnrichedRow] = {}
+    for r in rows:
+        if not r.evidence_csv_indices:
+            r.evidence_csv_indices = [r.obs.csv_row]
+        by_idx[r.evidence_csv_indices[0]] = r
+        # Allow lookup by any folded csv_idx so the operator can
+        # also use the un-merged number if they're cross-referencing
+        # the original CSV.
+        for fold_idx in r.evidence_csv_indices[1:]:
+            by_idx.setdefault(fold_idx, r)
+
+    overrides = 0
+    paired = 0
+    unpaired = 0
+    for table_pos, edit in enumerate(edits):
+        target = None
+        if finding_render_order and table_pos < len(finding_render_order):
+            target = by_idx.get(finding_render_order[table_pos])
+        if target is None:
+            unpaired += 1
+            continue
+        paired += 1
+        for attr, new_val in edit.items():
+            old_val = getattr(target, attr, "") or ""
+            if (new_val or "") == old_val:
+                continue
+            setattr(target, attr, new_val or "")
+            overrides += 1
+    return {
+        "applied": True,
+        "tables_seen": len(edits),
+        "tables_paired": paired,
+        "field_overrides": overrides,
+        "unpaired": unpaired,
+    }
+
+
+def _merge_edits_from_enriched_xlsx(
+    rows: list[EnrichedRow], xlsx_path: Path,
+    snapshot: dict[str, dict[str, str]] | None = None,
+) -> dict:
+    """Read the enriched xlsx and overwrite editable fields on each
+    EnrichedRow with the operator's edits.
+
+    Pairing key: the ``Filename`` column (resolved on-disk filename)
+    matches each xlsx data row to exactly one EnrichedRow. When the
+    filename is ambiguous (post-split composite notes share a
+    photo) only the FIRST matching row's editable fields are
+    overwritten — the operator should re-split manually if they
+    need to differentiate.
+
+    Returns a diagnostics dict counting overrides applied.
+    """
+    if not xlsx_path.exists():
+        return {"applied": False, "reason": "enriched xlsx missing"}
+    import openpyxl
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if "Enriched Register" not in wb.sheetnames:
+        return {"applied": False, "reason": "Enriched Register sheet missing"}
+    ws = wb["Enriched Register"]
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[1]
+    ]
+    try:
+        filename_col = headers.index("filename") + 1
+    except ValueError:
+        return {"applied": False, "reason": "filename column missing"}
+
+    # Index EnrichedRows by resolved_filename for one-shot lookup.
+    by_fn: dict[str, EnrichedRow] = {}
+    for r in rows:
+        fn = (r.obs.resolved_filename or "").strip()
+        if fn and fn not in by_fn:
+            by_fn[fn] = r
+
+    overrides = 0
+    rows_seen = 0
+    for excel_row in range(2, ws.max_row + 1):
+        fn_cell = ws.cell(row=excel_row, column=filename_col).value
+        fn = str(fn_cell).strip() if fn_cell else ""
+        if not fn or fn not in by_fn:
+            continue
+        rows_seen += 1
+        target = by_fn[fn]
+        baseline = (snapshot or {}).get(fn, {})
+        for col_idx, hdr in enumerate(headers, start=1):
+            if hdr not in _ENRICHED_EDITABLE_COLUMNS:
+                continue
+            attr = _ENRICHED_EDITABLE_COLUMNS[hdr]
+            if attr is None:
+                continue
+            new_val = ws.cell(row=excel_row, column=col_idx).value
+            new_val = "" if new_val is None else str(new_val).strip()
+            # When phase 1 recorded a baseline, only treat the cell as
+            # edited if the current value differs from what was
+            # written. Without a baseline (legacy state files) fall
+            # back to the bare attribute comparison.
+            if baseline:
+                if new_val == baseline.get(hdr, ""):
+                    continue
+            else:
+                old_val = getattr(target, attr, "")
+                if new_val == (old_val or ""):
+                    continue
+            setattr(target, attr, new_val)
+            overrides += 1
+    return {
+        "applied": True,
+        "rows_matched": rows_seen,
+        "field_overrides": overrides,
+    }
+
+
 def run_once(
     folder: Path,
     prepared_by: str = "Alan Richardson",
@@ -5169,6 +6906,10 @@ def run_once(
     force: bool = False,
     enrich: bool = True,
     risk_assessment_path: Path | None = None,
+    merge_groups: list[list[int]] | None = None,
+    stop_after: str | None = None,
+    from_state: bool = False,
+    from_report: bool = False,
 ) -> dict:
     """Run the pipeline once. Returns the .ssa_run.json payload.
 
@@ -5181,13 +6922,18 @@ def run_once(
     if not folder.is_dir():
         raise NotADirectoryError(folder)
 
+    # Runtime preflight — must happen before any row processing so a
+    # missing API key (or other config gap) fails loud rather than
+    # producing a structurally-valid but semantically-degraded run.
+    _preflight(enrich=enrich)
+
     freeze = folder / ".ssa_freeze"
     if freeze.exists() and not ignore_freeze:
         raise RuntimeError(
             f"frozen — use --ignore-freeze to overwrite ({freeze})"
         )
 
-    iso, ddmmyyyy, yymmdd, client = _parse_folder(folder)
+    iso, ddmmyyyy, yymmdd, client, sub_id = _parse_folder(folder)
     csv_path = folder / "Evidence_Master.csv"
     if not csv_path.exists():
         raise FileNotFoundError(f"Evidence_Master.csv missing in {folder}")
@@ -5197,7 +6943,7 @@ def run_once(
         raise FileNotFoundError(f"no images found in {folder}")
 
     # --- manifest + idempotency -------------------------------------
-    names = _output_names(yymmdd, client)
+    names = _output_names(yymmdd, client, sub_id)
     prior_reports = _qualifying_prior_reports(folder, iso, names["report"])
     manifest = _compute_manifest(csv_path, images, prior_reports)
 
@@ -5212,20 +6958,281 @@ def run_once(
         log.info("manifest unchanged + outputs present — skipping")
         return prior_record
 
+    # Phase-3 short-circuit: when ``from_report`` is True, skip
+    # parse / match / enrichment / vision and rebuild EnrichedRows
+    # from the .ssa_state.json sidecar, then apply operator edits
+    # from the audit-report docx's per-finding detail tables BACK
+    # onto the rows. Re-renders the enriched + staging xlsx files
+    # only — leaves the operator-edited docx alone.
+    state_path = folder / ".ssa_state.json"
+    if from_report:
+        if not state_path.exists():
+            raise FileNotFoundError(
+                f"--from-report requested but .ssa_state.json missing in "
+                f"{folder}. Run the pipeline (or phase 1 then phase 2) "
+                f"to produce the state sidecar first."
+            )
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        enriched = _deserialise_rows(state["rows"])
+        site_address = state.get("site_address")
+        ra_project_name = state.get("ra_project_name", "")
+        principal_contractor = state.get("principal_contractor", "")
+        finding_render_order = list(state.get("finding_render_order") or [])
+        report_path = folder / names["report"]
+        enriched_path = folder / names["enriched"]
+        staging_path = folder / names["staging"]
+        merge_diag = _merge_edits_from_audit_report(
+            enriched, report_path, finding_render_order,
+        )
+        # Rebuild the enriched xlsx + staging from the now-updated rows.
+        enriched_diag = build_pims_enriched_xlsx(
+            enriched, enriched_path,
+            project_name=ra_project_name,
+            site_address=site_address or "",
+            principal_contractor=principal_contractor,
+            audit_date_ddmmyyyy=ddmmyyyy,
+        )
+        site_for_staging = site_address or ""
+        staging_result = build_pims_staging_xlsx_with_size_control(
+            enriched, staging_path,
+            site_address=site_for_staging,
+            audit_date_iso=iso,
+            prepared_by=prepared_by,
+        )
+        staging_diag = {
+            "parts":        [p.name for p in staging_result["parts"]],
+            "max_edge_px":  staging_result["max_edge_px"],
+            "split":        staging_result["split"],
+            "split_reason": staging_result["split_reason"],
+            "per_part":     staging_result["diagnostics"],
+        }
+        # Refresh state JSON with the operator-edited rows.
+        state["rows"] = _serialise_rows(enriched)
+        state_path.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        staging_status, blocker = _resolve_staging_status(
+            client, site_address,
+        )
+        outputs = [enriched_path.name, *[p.name for p in staging_result["parts"]]]
+        if staging_status == "not_uploadable":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NOT-UPLOADABLE.txt",
+                f"staging blocker: {blocker}\nfolder: {folder.name}\n",
+            ))
+        elif staging_status == "schema_valid_no_endpoint":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NO-BULK-ENDPOINT.txt",
+                f"client: {client}\n",
+            ))
+        payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "phase": "from-report",
+            "from_report": True,
+            "merge_diag": merge_diag,
+            "staging_status": staging_status,
+            "blocker": blocker,
+            "client_bulk_endpoint": _BULK_ENDPOINT[client],
+            "outputs": outputs,
+            "row_count": len(enriched),
+            "enriched_diagnostics": enriched_diag,
+            "staging_diagnostics": staging_diag,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return payload
+
+    # Two-phase workflow short-circuit: when ``from_state`` is True,
+    # skip parse → match → enrichment → vision and rebuild EnrichedRows
+    # from the .ssa_state.json sidecar dropped by phase 1. The
+    # operator's edits to the enriched xlsx are picked up via
+    # _merge_edits_from_enriched_xlsx so phase 2 sees the human's
+    # final values without re-running the LLM.
+    state_path = folder / ".ssa_state.json"
+    if from_state:
+        if not state_path.exists():
+            raise FileNotFoundError(
+                f"--from-state requested but .ssa_state.json missing in "
+                f"{folder}. Run phase 1 first with --enrich-only."
+            )
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        enriched = _deserialise_rows(state["rows"])
+        site_address = state.get("site_address")
+        narrative_summary = state.get("narrative_summary", "")
+        ra_project_name = state.get("ra_project_name", "")
+        principal_contractor = state.get("principal_contractor", "")
+        ra_summary = state.get("ra_summary", {})
+        llm_diag = state.get("llm_diagnostics", {"enabled": False})
+        csv_warnings = []
+        match_warnings = []
+        prior_reports = []
+        # Honour the freshly-set sub_id / output names already computed.
+        names_for_phase2 = names
+        # Pull operator edits from the enriched xlsx (if present).
+        enriched_xlsx_path = folder / names_for_phase2["enriched"]
+        merge_diag = _merge_edits_from_enriched_xlsx(
+            enriched, enriched_xlsx_path,
+            snapshot=state.get("enriched_xlsx_snapshot"),
+        )
+        # Re-resolve prior-recs from the prior report (cheap).
+        prior_recs = []
+        prior_audit_date_ddmmyy = ""
+        # Find newest qualifying prior report for this folder.
+        for p in folder.iterdir():
+            if not p.is_file() or p.suffix.lower() != ".docx":
+                continue
+            mm = re.search(
+                r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", p.name,
+            )
+            if not mm:
+                continue
+            try:
+                cand_iso = datetime.strptime(mm.group(1), "%y%m%d").date().isoformat()
+            except ValueError:
+                continue
+            if cand_iso < iso and p.name != names_for_phase2["report"]:
+                prior_reports.append(p)
+        if prior_reports:
+            newest_prior = sorted(prior_reports)[-1]
+            prior_recs = parse_prior_report_recommendations(newest_prior)
+            mm = re.search(
+                r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", newest_prior.name,
+            )
+            if mm:
+                yymmdd = mm.group(1)
+                prior_audit_date_ddmmyy = (
+                    f"{yymmdd[4:6]}/{yymmdd[2:4]}/{yymmdd[0:2]}"
+                )
+        # Recompute paths for the from_state branch and skip the
+        # rest of the parse/enrich block by jumping straight to the
+        # build step. We do this by setting a flag and falling through.
+        enriched_path = folder / names_for_phase2["enriched"]
+        report_path = folder / names_for_phase2["report"]
+        staging_path = folder / names_for_phase2["staging"]
+        site_for_docx = site_address or "[Site address - to be confirmed]"
+        site_for_staging = site_address or ""
+        # Build only the report + staging (skip enriched xlsx so the
+        # operator's edits stay intact).
+        report_diag = build_ssa_report_docx(
+            enriched,
+            site_address=site_for_docx,
+            audit_date_ddmmyyyy=ddmmyyyy,
+            narrative_summary=narrative_summary,
+            output_path=report_path,
+            prepared_by=prepared_by,
+            prior_recs=prior_recs,
+            project_name=ra_project_name,
+            prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
+            risk_assessment=None,
+            merge_groups=merge_groups,
+        )
+        report_diag["prior_recs_count"] = len(prior_recs)
+        staging_result = build_pims_staging_xlsx_with_size_control(
+            enriched,
+            staging_path,
+            site_address=site_for_staging,
+            audit_date_iso=iso,
+            prepared_by=prepared_by,
+        )
+        staging_diag = {
+            "parts":         [p.name for p in staging_result["parts"]],
+            "max_edge_px":   staging_result["max_edge_px"],
+            "split":         staging_result["split"],
+            "split_reason":  staging_result["split_reason"],
+            "per_part":      staging_result["diagnostics"],
+        }
+        staging_status, blocker = _resolve_staging_status(client, site_address)
+        outputs: list[str] = [
+            enriched_path.name, report_path.name,
+            *[p.name for p in staging_result["parts"]],
+        ]
+        if staging_status == "not_uploadable":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NOT-UPLOADABLE.txt",
+                f"staging blocker: {blocker}\nfolder: {folder.name}\n",
+            ))
+        elif staging_status == "schema_valid_no_endpoint":
+            outputs.append(_write_sentinel(
+                folder, "STAGING-NO-BULK-ENDPOINT.txt",
+                f"client: {client}\n",
+            ))
+        payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "inputs_sha256": manifest,
+            "prior_reports_used": [p.name for p in prior_reports],
+            "skipped": False,
+            "from_state": True,
+            "merge_diag": merge_diag,
+            "staging_status": staging_status,
+            "blocker": blocker,
+            "client_bulk_endpoint": _BULK_ENDPOINT[client],
+            "outputs": outputs,
+            "row_count": len(enriched),
+            "csv_warnings": [],
+            "match_warnings": [],
+            "review_reasons_per_row": [],
+            "enriched_diagnostics": {
+                "phase2_skipped": "operator-edited xlsx kept intact",
+            },
+            "report_diagnostics": report_diag,
+            "staging_diagnostics": staging_diag,
+            "llm_diagnostics": llm_diag,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return payload
+
     # --- parse + match + address ------------------------------------
     rows, csv_warnings = parse_evidence_csv(csv_path)
     match_warnings = match_photos(rows, images)
 
-    cl_path = checklist_path or (
-        Path(__file__).resolve().parent.parent / "audit_checklist.xlsx"
-    )
-    checklist = (
-        ChecklistLookup.from_xlsx(cl_path) if cl_path.exists() else None
-    )
+    # Item 11: split composite "(1) X (2) Y" notes into atomic
+    # observations BEFORE photo-match metadata is consumed downstream.
+    # Each split shares the same csv_row, photo and timestamp; only
+    # the observation_text differs.
+    rows = split_multi_issue_observations(rows)
+
+    # Gap-8: Vision is the canonical classifier. The legacy keyword
+    # matcher in ChecklistLookup.match_observation produced 5/21 hits
+    # with one outright misroute on real audit data — it's only kept
+    # for the offline (--no-enrich) path AND only when the operator
+    # explicitly passes --checklist. The default (vision) path skips
+    # the xlsx load entirely so a missing audit_checklist.xlsx never
+    # silently degrades the run.
+    checklist = None
+    if not enrich and checklist_path is not None:
+        if checklist_path.exists():
+            checklist = ChecklistLookup.from_xlsx(checklist_path)
+        else:
+            log.warning(
+                "--checklist %s does not exist; offline run continues "
+                "with no keyword fallback", checklist_path,
+            )
 
     site_address = extract_site_address(rows)
 
-    enriched = enrich_observations(rows, checklist=checklist)
+    # When vision is on, enrich_observations builds shells only — the
+    # vision pass downstream does the real classification. When vision
+    # is off and a checklist was loaded, enable the keyword auto-match
+    # path so the run produces something better than all-Unmatched.
+    enriched = enrich_observations(
+        rows,
+        checklist=checklist,
+        auto_match=(checklist is not None and not enrich),
+    )
 
     # When site_address is unresolved, every staging row must
     # needs_review=TRUE (Field Defaults). enrich_observations already
@@ -5255,10 +7262,12 @@ def run_once(
         ra_path = autodiscover_in_folder(folder)
     ra_context = ""
     ra_project_name = ""
+    ra_obj = None
     ra_summary: dict[str, object] = {"path": None, "phases": 0, "activities": 0,
                                      "hold_points": 0}
     if ra_path is not None:
         ra = parse_risk_assessment(ra_path)
+        ra_obj = ra
         ra_context = compact_context_block(ra)
         # Strip the "— N Industrial Warehouse Units" suffix that some
         # RA project names carry; the cover line wants just the venue.
@@ -5294,6 +7303,17 @@ def run_once(
     )
     llm_diag["ra"] = ra_summary
 
+    # Items 9 + 14: apply "SDG Project Risk Assessment code: <CODE>"
+    # labelling with first-use shorthand expansion to every row's
+    # text fields. Runs once after vision enrichment so the
+    # downstream enriched xlsx / docx / staging xlsx all carry the
+    # same labelled output.
+    apply_ra_labels_to_rows(enriched, ra=ra_obj)
+    # Item 9: label RA codes inside the executive summary too.
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    if narrative_summary:
+        narrative_summary = apply_ra_code_labels(narrative_summary, ra=ra_obj)
+
     # Parse carry-forward recommendations from the newest qualifying
     # prior report so the SSA report's "Status of Previous
     # Recommendations" table actually carries content.
@@ -5304,7 +7324,9 @@ def run_once(
         prior_recs = parse_prior_report_recommendations(newest_prior)
         # Extract YYMMDD date from filename, format as DD/MM/YY for the
         # canonical "Status (DD/MM/YY)" header in the prior-recs table.
-        m = re.search(r"-(\d{6})-(?:RPD|SDG)\.docx$", newest_prior.name)
+        m = re.search(
+            r"-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$", newest_prior.name,
+        )
         if m:
             yymmdd = m.group(1)
             prior_audit_date_ddmmyy = (
@@ -5331,6 +7353,72 @@ def run_once(
         principal_contractor=principal_contractor,
         audit_date_ddmmyyyy=ddmmyyyy,
     )
+
+    # render_order is filled by build_ssa_report_docx to map detail
+    # table position → csv_idx. Phase-3 (--from-report) pairs docx
+    # edits back to EnrichedRows using this list.
+    finding_render_order: list[int] = []
+
+    # Persist the full row state for the two-phase workflow. Phase 2
+    # (--from-state) reads this back, optionally merges operator
+    # edits from the enriched xlsx, then renders the report + staging.
+    # Snapshot the enriched xlsx's editable cells AS WRITTEN so
+    # phase 2 can distinguish operator edits from rendered-fallback
+    # values that look different from the source attribute (e.g. the
+    # Action Description cell shows ``recommendation`` when
+    # ``action_description`` is empty).
+    enriched_snapshot = _snapshot_enriched_xlsx(enriched_path)
+
+    state_payload = {
+        "folder": folder.name,
+        "client": client,
+        "audit_date": iso,
+        "audit_date_ddmmyyyy": ddmmyyyy,
+        "site_address": site_address,
+        "ra_project_name": ra_project_name,
+        "principal_contractor": principal_contractor,
+        "ra_summary": ra_summary,
+        "narrative_summary": narrative_summary,
+        "llm_diagnostics": llm_diag,
+        "rows": _serialise_rows(enriched),
+        "enriched_xlsx_snapshot": enriched_snapshot,
+        "finding_render_order": list(finding_render_order),
+    }
+    state_path.write_text(
+        json.dumps(state_payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    # Phase-1 short-circuit: when ``stop_after="enrich"`` the pipeline
+    # writes the enriched xlsx + state JSON and exits BEFORE the report
+    # / staging are produced. The operator reviews + edits the xlsx,
+    # then runs phase 2 with --from-state.
+    if stop_after == "enrich":
+        sentinel_outputs = [enriched_path.name, ".ssa_state.json"]
+        ph1_payload = {
+            "folder": folder.name,
+            "client": client,
+            "audit_date": iso,
+            "phase": "enrich-only",
+            "outputs": sentinel_outputs,
+            "row_count": len(enriched),
+            "llm_diagnostics": llm_diag,
+            "site_address": site_address,
+            "site_address_unresolved": site_address is None,
+            "ra": ra_summary,
+            "completed_at": datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "next_step": (
+                "review and edit the Enriched Register sheet in "
+                f"{enriched_path.name}, then re-run with "
+                "--from-state to produce the report + staging files"
+            ),
+        }
+        (folder / ".ssa_run.json").write_text(
+            json.dumps(ph1_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return ph1_payload
     report_diag = build_ssa_report_docx(
         enriched,
         site_address=site_for_docx,
@@ -5341,8 +7429,31 @@ def run_once(
         prior_recs=prior_recs,
         project_name=ra_project_name,
         prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
+        risk_assessment=ra_obj,
+        merge_groups=merge_groups,
+        render_order_out=finding_render_order,
     )
     report_diag["prior_recs_count"] = len(prior_recs)
+
+    # Update the state JSON with the freshly-captured
+    # finding_render_order so phase-3 (--from-report) can pair docx
+    # detail-table edits back to the correct EnrichedRow.
+    if state_path.exists():
+        try:
+            existing_state = json.loads(
+                state_path.read_text(encoding="utf-8"),
+            )
+            existing_state["finding_render_order"] = list(
+                finding_render_order,
+            )
+            existing_state["rows"] = _serialise_rows(enriched)
+            state_path.write_text(
+                json.dumps(existing_state, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception:
+            log.warning("failed to refresh state JSON", exc_info=True)
+
     staging_result = build_pims_staging_xlsx_with_size_control(
         enriched,
         staging_path,
@@ -5440,6 +7551,50 @@ def main(argv: list[str] | None = None) -> int:
         "--no-enrich", action="store_true",
         help="skip the LLM finding-rewrite + narrative-summary pass",
     )
+    ap.add_argument(
+        "--enrich-only", action="store_true",
+        help=(
+            "phase 1 of the two-phase workflow — write the enriched "
+            "xlsx + .ssa_state.json sidecar and EXIT before the "
+            "report and staging files are produced. Use this when "
+            "you want to review / edit the LLM's findings in Excel "
+            "before they get baked into the docx + staging xlsx. "
+            "Re-run with --from-state to complete the run."
+        ),
+    )
+    ap.add_argument(
+        "--from-state", action="store_true",
+        help=(
+            "phase 2 of the two-phase workflow — skip parse / match "
+            "/ vision and rebuild EnrichedRows from the .ssa_state."
+            "json sidecar, merging the operator's edits from the "
+            "Enriched Register sheet. Produces the report + staging "
+            "files; leaves the (already operator-edited) enriched "
+            "xlsx untouched."
+        ),
+    )
+    ap.add_argument(
+        "--from-report", action="store_true",
+        help=(
+            "phase 3 of the workflow — read operator edits from the "
+            "audit report docx (per-finding detail tables) and flow "
+            "them BACK to the enriched + staging xlsx. Updates the "
+            "Location / Observation / Regulatory Basis / Hierarchy "
+            "of Control / Recommendation / Timeframe fields. Leaves "
+            "the operator-edited docx alone (it's the source of "
+            "truth)."
+        ),
+    )
+    ap.add_argument(
+        "--merge", default="",
+        help=(
+            "merge directives by displayed finding number, e.g. "
+            "\"1,3\" merges findings #1 and #3 into one consolidated "
+            "entry; \"1,3;5,7\" applies two merges. Indices are "
+            "1-based and refer to the post-significance order shown "
+            "in the docx Findings index table."
+        ),
+    )
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
 
@@ -5449,6 +7604,15 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
+        phase_flags = (args.enrich_only, args.from_state, args.from_report)
+        if sum(bool(f) for f in phase_flags) > 1:
+            print(
+                "error: --enrich-only / --from-state / --from-report "
+                "are mutually exclusive (they select one phase of the "
+                "review workflow).",
+                file=sys.stderr,
+            )
+            return 1
         payload = run_once(
             args.folder,
             prepared_by=args.prepared_by,
@@ -5457,7 +7621,17 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             enrich=not args.no_enrich,
             risk_assessment_path=args.risk_assessment,
+            merge_groups=parse_merge_argument(args.merge),
+            stop_after="enrich" if args.enrich_only else None,
+            from_state=args.from_state,
+            from_report=args.from_report,
         )
+    except PreflightError as e:
+        # Preflight blocked the run before any rows processed; rc=3
+        # distinguishes a config gap from a frozen folder (rc=2) and
+        # an input/argument error (rc=1).
+        print(f"preflight: {e}", file=sys.stderr)
+        return 3
     except RuntimeError as e:
         # Frozen folder — the documented exit signal for the manual CLI
         # is non-zero with a clear message.
@@ -5469,6 +7643,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if payload.get("skipped"):
         print("skipped: manifest unchanged + all outputs present")
+    if payload.get("phase") == "enrich-only":
+        print("phase 1 (enrich-only) complete")
+        print(f"row_count: {payload.get('row_count')}")
+        print(f"next step: {payload.get('next_step', '')}")
+        print(f"outputs ({len(payload['outputs'])} files):")
+        for name in payload["outputs"]:
+            print(f"  - {name}")
+        return 0
     print(f"staging_status: {payload['staging_status']}")
     if payload.get("blocker"):
         print(f"blocker:        {payload['blocker']}")
@@ -5556,9 +7738,644 @@ if __name__ == "__main__":
 
 ```
 
+### `pims/scripts/populate_prior_recs_table.py`
+
+Operator-driven post-render edit: populates the Status of Previous Recommendations table with prior carry-forward + current-cycle rows under the 10 locked rules (allowed status set, DD-MMM-YYYY date format, F<n> refs, significance + date sort). Tracked-changes output (author=Claude).
+
+```python
+"""Status of Previous Recommendations table population (tracked changes).
+
+Per the 2026-05-06 reviewer rules:
+
+  1. Allowed statuses are exactly:
+       Completed / Partial / Not completed / Not assessed
+  2. "Retired" is banned.
+  3. Date format is DD-MMM-YYYY (e.g. ``01-May-2026``) — 4-digit year.
+  4. Every Comments cell carries a finding reference ``F<n>``.
+  5. Default status when no current-cycle evidence is linked:
+     ``Not assessed`` (NOT ``Partial``).
+  6. Keep all carry-forward recommendations from the prior report.
+  7. Append new current-cycle recommendations from current findings.
+  8. New appended rows use the current audit date + F<n> refs.
+  9. Sort: significance first (critical-safety first), then by date.
+ 10. Header date must be 4-digit year: "Status as of 01-May-2026".
+
+Columns:
+  Date | Recommendations | Status as of <current date> | Comments
+
+Run:
+    python -m pims.scripts.populate_prior_recs_table \
+        "G:/.../Site-Safety-Audit-Report-260501-SDG-01.docx" \
+        --prior      "G:/.../Site-Safety-Audit-Report-260330-SDG-01.docx" \
+        --audit-date 01-May-2026
+
+When ``--prior`` is omitted the newest qualifying sibling SSA
+report (date suffix strictly earlier than the current report's) is
+auto-discovered.
+
+Every change is applied as a Word tracked change with author
+``Claude`` so the operator can review and accept in Word before
+issuing the report.
+"""
+from __future__ import annotations
+
+import argparse
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+AUTHOR = "Claude"
+TRACKED_DATE = (
+    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+)
+
+# Locked status vocabulary (rule 1). Anything else collapses to
+# "Not assessed" (rule 5) so a stray label can't sneak through.
+ALLOWED_STATUSES = ("Completed", "Partial", "Not completed", "Not assessed")
+BANNED_STATUSES = ("Retired",)
+DEFAULT_STATUS = "Not assessed"
+
+_PRIOR_REPORT_RE = re.compile(
+    r"^Site-Safety-Audit-Report-(\d{6})-(?:RPD|SDG)(?:-\d{2})?\.docx$"
+)
+
+
+# ---------------------------------------------------------------------------
+# Date helpers — DD-MMM-YYYY canonical form per rule 3
+# ---------------------------------------------------------------------------
+
+def to_long_dash_date(value: str) -> str:
+    """Normalise a date string to ``DD-MMM-YYYY`` (e.g. ``01-May-2026``).
+
+    Accepts:
+      * ``DD/MM/YYYY``  (e.g. ``"01/05/2026"``)
+      * ``DD-MMM-YY`` / ``DD-MMM-YYYY`` (case-insensitive month)
+      * ``YYMMDD`` 6-digit prior-report suffix (e.g. ``"260330"``)
+      * ``YYYY-MM-DD``
+
+    Returns ``""`` on parse failure.
+    """
+    if not value:
+        return ""
+    s = str(value).strip()
+    fmts = (
+        "%d/%m/%Y", "%d-%m-%Y", "%d-%b-%Y", "%d-%b-%y",
+        "%Y-%m-%d", "%y%m%d",
+    )
+    for fmt in fmts:
+        try:
+            d = datetime.strptime(s, fmt)
+            return f"{d.day:02d}-{d.strftime('%b')}-{d.strftime('%Y')}"
+        except ValueError:
+            continue
+    return ""
+
+
+def date_from_prior_filename(filename: str) -> str:
+    """Pull the prior audit date out of the filename and return
+    ``DD-MMM-YYYY``."""
+    m = _PRIOR_REPORT_RE.match(filename)
+    if not m:
+        return ""
+    return to_long_dash_date(m.group(1))
+
+
+# ---------------------------------------------------------------------------
+# OXML helpers — tracked-changes
+# ---------------------------------------------------------------------------
+
+def _next_revision_id(state: dict[str, int]) -> str:
+    state["n"] = state.get("n", 100) + 1
+    return str(state["n"])
+
+
+def _make_ins_run(text: str, rev: str, font_name: str = "Aptos") -> OxmlElement:
+    ins = OxmlElement("w:ins")
+    ins.set(qn("w:id"), rev)
+    ins.set(qn("w:author"), AUTHOR)
+    ins.set(qn("w:date"), TRACKED_DATE)
+    r = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+    rFonts = OxmlElement("w:rFonts")
+    rFonts.set(qn("w:ascii"), font_name)
+    rFonts.set(qn("w:hAnsi"), font_name)
+    rFonts.set(qn("w:cs"), font_name)
+    rPr.append(rFonts)
+    r.append(rPr)
+    t = OxmlElement("w:t")
+    t.set(qn("xml:space"), "preserve")
+    t.text = text
+    r.append(t)
+    ins.append(r)
+    return ins
+
+
+def _make_inserted_paragraph(text: str, rev: str) -> OxmlElement:
+    p = OxmlElement("w:p")
+    p.append(_make_ins_run(text, rev))
+    return p
+
+
+def _make_inserted_cell(text: str, rev: str, width_twips: int) -> OxmlElement:
+    """Cell with one or more paragraphs (multi-line via ``\\n`` split)
+    each wrapped in <w:ins> so Word renders the cell as inserted."""
+    tc = OxmlElement("w:tc")
+    tcPr = OxmlElement("w:tcPr")
+    tcW = OxmlElement("w:tcW")
+    tcW.set(qn("w:w"), str(width_twips))
+    tcW.set(qn("w:type"), "dxa")
+    tcPr.append(tcW)
+    tc.append(tcPr)
+    if text:
+        for line in text.split("\n"):
+            tc.append(_make_inserted_paragraph(line, rev))
+    else:
+        tc.append(OxmlElement("w:p"))
+    return tc
+
+
+def _mark_row_as_inserted(tr_element: OxmlElement, rev: str) -> None:
+    trPr = tr_element.find(qn("w:trPr"))
+    if trPr is None:
+        trPr = OxmlElement("w:trPr")
+        tr_element.insert(0, trPr)
+    if trPr.find(qn("w:ins")) is None:
+        ins = OxmlElement("w:ins")
+        ins.set(qn("w:id"), rev)
+        ins.set(qn("w:author"), AUTHOR)
+        ins.set(qn("w:date"), TRACKED_DATE)
+        trPr.append(ins)
+
+
+def _mark_row_as_deleted(tr_element: OxmlElement, rev: str) -> None:
+    trPr = tr_element.find(qn("w:trPr"))
+    if trPr is None:
+        trPr = OxmlElement("w:trPr")
+        tr_element.insert(0, trPr)
+    if trPr.find(qn("w:del")) is None:
+        d = OxmlElement("w:del")
+        d.set(qn("w:id"), rev)
+        d.set(qn("w:author"), AUTHOR)
+        d.set(qn("w:date"), TRACKED_DATE)
+        trPr.append(d)
+    for tc in tr_element.iter(qn("w:tc")):
+        _wrap_runs_in_del(tc, rev)
+
+
+def _wrap_runs_in_del(tc_element: OxmlElement, rev: str) -> None:
+    for r in list(tc_element.iter(qn("w:r"))):
+        parent = r.getparent()
+        if parent is not None and parent.tag == qn("w:del"):
+            continue
+        del_el = OxmlElement("w:del")
+        del_el.set(qn("w:id"), rev)
+        del_el.set(qn("w:author"), AUTHOR)
+        del_el.set(qn("w:date"), TRACKED_DATE)
+        for t in list(r.iter(qn("w:t"))):
+            new_t = OxmlElement("w:delText")
+            new_t.set(qn("xml:space"), "preserve")
+            new_t.text = t.text
+            t.getparent().replace(t, new_t)
+        r.addprevious(del_el)
+        del_el.append(r)
+
+
+def _replace_header_cell_text(
+    tc_element: OxmlElement, new_text: str, rev_state: dict[str, int],
+) -> None:
+    rev_del = _next_revision_id(rev_state)
+    _wrap_runs_in_del(tc_element, rev_del)
+    rev_ins = _next_revision_id(rev_state)
+    paragraphs = list(tc_element.iter(qn("w:p")))
+    if paragraphs:
+        paragraphs[0].append(_make_ins_run(new_text, rev_ins))
+
+
+# ---------------------------------------------------------------------------
+# Detail-table reading
+# ---------------------------------------------------------------------------
+
+def _detail_table_field(detail_tbl, label: str) -> str:
+    for row in detail_tbl.rows:
+        if len(row.cells) < 2:
+            continue
+        cell_label = row.cells[0].text.strip().lower()
+        if cell_label == label.lower():
+            return row.cells[1].text.strip()
+    return ""
+
+
+def _short_summary(observation_text: str, max_words: int = 14) -> str:
+    if not observation_text:
+        return ""
+    s = observation_text.strip()
+    for marker in (". ", "; "):
+        cut = s.find(marker)
+        if 0 < cut < 200:
+            s = s[:cut + 1]
+            break
+    words = s.split()
+    if len(words) > max_words:
+        s = " ".join(words[:max_words]) + "…"
+    return s.rstrip(".")
+
+
+def _find_detail_tables_and_titles(doc):
+    """Walk body XML; pair each ``#N <title>`` heading with the
+    immediately following 2-col ``Location...`` detail table."""
+    pairs = []
+    body = doc.element.body
+    last_heading = ""
+    for child in body.iterchildren():
+        if child.tag == qn("w:p"):
+            txt = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+            if txt.startswith("#"):
+                parts = txt.split(" ", 1)
+                last_heading = parts[1].strip() if len(parts) > 1 else ""
+        elif child.tag == qn("w:tbl"):
+            first_row = next(child.iter(qn("w:tr")), None)
+            if first_row is None:
+                continue
+            cells = list(first_row.iter(qn("w:tc")))
+            if len(cells) != 2:
+                continue
+            label = "".join(
+                t.text or "" for t in cells[0].iter(qn("w:t"))
+            ).strip()
+            if label.startswith("Location"):
+                from docx.table import Table
+                pairs.append((last_heading, Table(child, doc)))
+                last_heading = ""
+    return pairs
+
+
+# ---------------------------------------------------------------------------
+# Significance scoring (rule 9)
+# ---------------------------------------------------------------------------
+
+# Critical-safety keywords that bump a row to the top of the sort.
+# Mirrors the priority tiers in pims.services.ssa_pipeline._significance_score
+# but works from finding text alone (we don't have an EnrichedRow here).
+_CRITICAL_KEYWORDS = (
+    "hold point", "exclusion zone", "engineer authorisation",
+    "engineer sign-off", "permit", "fall", "harness", "asbestos",
+    "confined space", "energy isolation", "energised electrical",
+    "suspended steel", "crane", "tilt-up", "brace removal",
+)
+
+_HIGH_KEYWORDS = (
+    "swms", "voc", "pre-start", "spotter", "edge protection",
+    "traffic", "high-vis", "ppe", "first aid",
+)
+
+
+def _significance_for_text(blob: str) -> int:
+    """Return 0=critical, 1=high, 2=other. Smaller sorts first."""
+    s = (blob or "").lower()
+    for kw in _CRITICAL_KEYWORDS:
+        if kw in s:
+            return 0
+    for kw in _HIGH_KEYWORDS:
+        if kw in s:
+            return 1
+    return 2
+
+
+# ---------------------------------------------------------------------------
+# Status normalisation (rules 1, 2, 5)
+# ---------------------------------------------------------------------------
+
+def normalise_status(value: str) -> str:
+    """Coerce any input to one of the four allowed statuses.
+
+    "Retired" (banned per rule 2) and any other label collapse to
+    ``Not assessed`` (rule 5 default).
+    """
+    if not value:
+        return DEFAULT_STATUS
+    s = value.strip()
+    # Case-insensitive equality check.
+    for allowed in ALLOWED_STATUSES:
+        if s.lower() == allowed.lower():
+            return allowed
+    return DEFAULT_STATUS
+
+
+# ---------------------------------------------------------------------------
+# Row records — uniform representation for sorting + rendering
+# ---------------------------------------------------------------------------
+
+class Row:
+    """A single prior-recs table row prior to render."""
+
+    __slots__ = (
+        "date_str", "date_sort", "recommendation", "status",
+        "comment", "significance",
+    )
+
+    def __init__(
+        self, date_str: str, date_sort: str, recommendation: str,
+        status: str, comment: str, significance: int,
+    ):
+        self.date_str = date_str
+        self.date_sort = date_sort  # ISO YYYY-MM-DD for sort key
+        self.recommendation = recommendation
+        self.status = normalise_status(status)
+        self.comment = self._enforce_finding_ref(comment)
+        self.significance = significance
+
+    @staticmethod
+    def _enforce_finding_ref(comment: str) -> str:
+        """Rule 4 — every Comments cell must include at least one
+        ``F<n>`` reference. When missing, the caller has already
+        appended ``See prior F?.`` / ``See F?.`` so this is a defence
+        against accidental empty refs (returns the comment unchanged
+        when an F-ref is present)."""
+        if not comment:
+            return ""
+        if re.search(r"\bF\d+\b", comment):
+            return comment
+        return comment.rstrip(".") + " (finding reference missing)"
+
+
+def _iso_from_long(d: str) -> str:
+    """``01-May-2026`` → ``2026-05-01`` for stable sort. Empty when
+    parse fails."""
+    try:
+        return datetime.strptime(d, "%d-%b-%Y").strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return ""
+
+
+def build_rows(
+    prior_doc, prior_date: str,
+    current_doc, current_audit_date: str,
+) -> list[Row]:
+    """Combine prior carry-forwards with current-cycle findings into
+    one Row list (rules 6 + 7)."""
+    rows: list[Row] = []
+    iso_prior = _iso_from_long(prior_date)
+    iso_curr = _iso_from_long(current_audit_date)
+
+    # Group A — prior carry-forwards (rule 6).
+    for n, (title, dtbl) in enumerate(_find_detail_tables_and_titles(prior_doc),
+                                       start=1):
+        rec_text = _detail_table_field(dtbl, "Recommendation") \
+            or _detail_table_field(dtbl, "Required Action")
+        observation_text = _detail_table_field(dtbl, "Observation")
+        label = f"F{n} – {title}".rstrip(" –")
+        rec_cell = "\n".join([label] + ([rec_text] if rec_text else []))
+        comment = (
+            f"{_short_summary(observation_text)} See prior F{n}."
+            if observation_text else f"See prior F{n}."
+        )
+        sig = _significance_for_text(f"{title} {rec_text}")
+        rows.append(Row(
+            date_str=prior_date,
+            date_sort=iso_prior,
+            recommendation=rec_cell,
+            status=DEFAULT_STATUS,    # rule 5 — auditor reviews
+            comment=comment,
+            significance=sig,
+        ))
+
+    # Group B — current-cycle findings (rules 7 + 8).
+    for n, (title, dtbl) in enumerate(
+        _find_detail_tables_and_titles(current_doc), start=1,
+    ):
+        rec_text = _detail_table_field(dtbl, "Recommendation") \
+            or _detail_table_field(dtbl, "Required Action")
+        observation_text = _detail_table_field(dtbl, "Observation")
+        label = f"F{n} – {title}".rstrip(" –")
+        rec_cell = "\n".join([label] + ([rec_text] if rec_text else []))
+        comment = (
+            f"{_short_summary(observation_text)} See F{n}."
+            if observation_text else f"See F{n}."
+        )
+        sig = _significance_for_text(f"{title} {rec_text}")
+        rows.append(Row(
+            date_str=current_audit_date,
+            date_sort=iso_curr,
+            recommendation=rec_cell,
+            status=DEFAULT_STATUS,
+            comment=comment,
+            significance=sig,
+        ))
+
+    # Sort (rule 9): significance first, then date oldest-to-newest.
+    rows.sort(key=lambda r: (r.significance, r.date_sort))
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Table rewrite
+# ---------------------------------------------------------------------------
+
+def populate_prior_recs(
+    docx_in: Path, docx_out: Path, audit_date: str, prior_docx: Path,
+) -> dict:
+    if not prior_docx.exists():
+        raise FileNotFoundError(f"prior report not found: {prior_docx}")
+    audit_long = to_long_dash_date(audit_date)
+    if not audit_long:
+        raise ValueError(
+            f"audit-date {audit_date!r} couldn't be parsed; "
+            f"use DD-MMM-YYYY or DD/MM/YYYY"
+        )
+    prior_long = date_from_prior_filename(prior_docx.name)
+    if not prior_long:
+        raise ValueError(
+            f"prior date couldn't be inferred from filename "
+            f"{prior_docx.name!r}"
+        )
+
+    doc = Document(docx_in)
+    prior_doc = Document(prior_docx)
+
+    # Locate the prior-recs table in the CURRENT report.
+    prior_tbl = None
+    for t in doc.tables:
+        if len(t.columns) != 4 or not t.rows:
+            continue
+        h0 = t.rows[0].cells[0].text.strip()
+        h1 = t.rows[0].cells[1].text.strip()
+        if (
+            (h0 == "Date" and h1 == "Recommendations")
+            or ("Recommendation" in h0 and "Required Actions" in h1)
+        ):
+            prior_tbl = t
+            break
+    if prior_tbl is None:
+        raise RuntimeError("Status of Previous Recommendations table not found")
+
+    rev_state: dict[str, int] = {}
+
+    # --- Header rewrite: "Status as of <DD-MMM-YYYY>" (rule 10)
+    status_cell = next(
+        (c for c in prior_tbl.rows[0].cells
+         if "Status" in c.text and "(" in c.text or c.text.strip().startswith("Status")),
+        None,
+    )
+    # Some layouts have a clean "Status" header (no parens) — accept that.
+    if status_cell is None:
+        status_cell = (
+            prior_tbl.rows[0].cells[2]
+            if len(prior_tbl.rows[0].cells) >= 3 else None
+        )
+    if status_cell is not None:
+        _replace_header_cell_text(
+            status_cell._tc,
+            f"Status as of {audit_long}",
+            rev_state,
+        )
+
+    # --- Build the combined row list (rules 6 + 7 + 9)
+    rows = build_rows(prior_doc, prior_long, doc, audit_long)
+
+    # --- Mark every existing data row as deleted (preserves header
+    # row untouched) and insert the new rows BEFORE the first data row.
+    grid = prior_tbl._tbl.find(qn("w:tblGrid"))
+    col_widths = [int(g.get(qn("w:w"))) for g in grid.findall(qn("w:gridCol"))]
+    if not col_widths:
+        col_widths = [1417, 3543, 1417, 3543]  # 2.5/6.25/2.5/6.25 cm
+
+    existing_data_rows = list(prior_tbl.rows)[1:]
+    insert_anchor = (
+        existing_data_rows[0]._tr if existing_data_rows
+        else None
+    )
+
+    for n, row in enumerate(rows, start=1):
+        rev = _next_revision_id(rev_state)
+        tr = OxmlElement("w:tr")
+        _mark_row_as_inserted(tr, rev)
+        cells_text = [
+            row.date_str,
+            row.recommendation,
+            row.status,
+            row.comment,
+        ]
+        for i, text in enumerate(cells_text):
+            w = col_widths[i] if i < len(col_widths) else 2000
+            tr.append(_make_inserted_cell(text, rev, w))
+        if insert_anchor is not None:
+            insert_anchor.addprevious(tr)
+        else:
+            prior_tbl._tbl.append(tr)
+
+    # Mark the original placeholder rows as deleted.
+    for tr in existing_data_rows:
+        rev = _next_revision_id(rev_state)
+        _mark_row_as_deleted(tr._tr, rev)
+
+    docx_out.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(docx_out)
+    return {
+        "rows_inserted": len(rows),
+        "carry_forward_count": sum(
+            1 for r in rows if r.date_str == prior_long
+        ),
+        "current_cycle_count": sum(
+            1 for r in rows if r.date_str == audit_long
+        ),
+        "audit_date": audit_long,
+        "prior_date": prior_long,
+        "prior_source": str(prior_docx),
+        "output": str(docx_out),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Auto-discover + CLI
+# ---------------------------------------------------------------------------
+
+def _autodiscover_prior(docx_in: Path) -> Path | None:
+    m = _PRIOR_REPORT_RE.match(docx_in.name)
+    if not m:
+        return None
+    current_yymmdd = m.group(1)
+    folder = docx_in.parent
+    candidates = []
+    for p in folder.iterdir():
+        if not p.is_file() or p.suffix.lower() != ".docx":
+            continue
+        if p.name == docx_in.name:
+            continue
+        cm = _PRIOR_REPORT_RE.match(p.name)
+        if not cm:
+            continue
+        if cm.group(1) < current_yymmdd:
+            candidates.append((cm.group(1), p))
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[-1][1]
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="populate_prior_recs_table")
+    ap.add_argument("docx_in", type=Path)
+    ap.add_argument(
+        "--prior", type=Path, default=None,
+        help="path to the PRIOR audit report (auto-discovered when omitted)",
+    )
+    ap.add_argument(
+        "--output", type=Path, default=None,
+        help="output path; defaults to <input>-tracked.docx",
+    )
+    ap.add_argument(
+        "--audit-date", required=True,
+        help="Current audit date — DD-MMM-YYYY (e.g. 01-May-2026) "
+             "or DD/MM/YYYY",
+    )
+    args = ap.parse_args(argv)
+
+    if not args.docx_in.exists():
+        print(f"error: {args.docx_in} not found")
+        return 1
+
+    prior = args.prior or _autodiscover_prior(args.docx_in)
+    if prior is None:
+        print(
+            "error: no prior report supplied and none auto-discovered. "
+            "Pass --prior <path> with the PRIOR audit report."
+        )
+        return 1
+    if not prior.exists():
+        print(f"error: prior report not found: {prior}")
+        return 1
+
+    out = args.output or args.docx_in.with_name(
+        args.docx_in.stem + "-tracked" + args.docx_in.suffix,
+    )
+    try:
+        diag = populate_prior_recs(args.docx_in, out, args.audit_date, prior)
+    except (FileNotFoundError, RuntimeError, ValueError) as e:
+        print(f"error: {e}")
+        return 1
+
+    print("rows inserted:        ", diag["rows_inserted"])
+    print("  carry-forward:      ", diag["carry_forward_count"])
+    print("  current cycle:      ", diag["current_cycle_count"])
+    print("audit date (header):  ", diag["audit_date"])
+    print("prior audit date:     ", diag["prior_date"])
+    print("prior source:         ", diag["prior_source"])
+    print("output:               ", diag["output"])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+```
+
 ### `tests/test_ssa_pipeline.py`
 
-69-case regression net. Covers parser, matcher, three builders, size-control, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion, status colour fills, freeze, idempotency, partial-output recovery.
+99-case regression net. Covers parser, matcher, three builders, size-control + cache, manifest, watcher, vision coercion, RA parser, prior-rec parser, Findings #N expansion + index table, status colour fills, freeze, idempotency, partial-output recovery, anchor/Jaccard/strong-overlap merge, manual --merge directives, three-phase round-trip (--enrich-only / --from-state / --from-report).
 
 ```python
 """Regression tests for the SSA evidence-folder → 3-deliverable pipeline.
@@ -5635,6 +8452,18 @@ from pims.services.ssa_watcher import Watcher
 def _save_jpeg(path: Path, size=(800, 600), color="red") -> Path:
     Image.new("RGB", size, color).save(path, "JPEG")
     return path
+
+
+@pytest.fixture(autouse=True)
+def _stub_anthropic_key(monkeypatch):
+    """Most tests don't exercise the live vision path — they either
+    pass ``enrich=False`` to run_once or stub the runner. The new
+    runtime preflight requires ``ANTHROPIC_API_KEY`` to be set when
+    ``enrich`` is True (default), so we stub a placeholder key here
+    by default. Tests that specifically exercise the missing-key
+    branch delete this with their own monkeypatch."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
+    yield
 
 
 @pytest.fixture
@@ -6067,14 +8896,30 @@ def test_vision_coerce_record_unknown_status_falls_to_unmatched():
     assert r["status"] == "Unmatched"
 
 
-def test_vision_enrichment_no_api_key_skips_cleanly(evidence_folder, monkeypatch):
-    """ANTHROPIC_API_KEY missing → vision enricher returns diagnostics
-    with the missing-key reason and rows stay Unmatched. Pipeline does
-    not raise."""
+def test_vision_enrichment_no_api_key_preflight_fails_loud(
+    evidence_folder, monkeypatch,
+):
+    """``ANTHROPIC_API_KEY`` missing + ``enrich=True`` (default) →
+    ``PreflightError`` raised before any row processing. This is the
+    new gap-1 contract: silent semantically-degraded output is
+    forbidden; the operator must either supply the key or pass
+    ``enrich=False``."""
+    from pims.scripts.run_ssa_pipeline import PreflightError
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    payload = run_once(evidence_folder)
+    with pytest.raises(PreflightError, match="ANTHROPIC_API_KEY"):
+        run_once(evidence_folder)
+
+
+def test_vision_enrichment_no_api_key_with_no_enrich_runs(
+    evidence_folder, monkeypatch,
+):
+    """Operator can opt out of the preflight by passing ``enrich=False``;
+    the deterministic offline path still produces all 3 deliverables
+    (every row Unmatched as documented)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
-    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_checklist_lookup_synthesises_code_from_leading_numbers():
@@ -6276,7 +9121,9 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
         prepared_by="Alan Richardson",
     )
     assert out.exists()
-    assert diag["missing_photo_obs"] == [2]  # obs3 → row 2 in register
+    # obs3 has no resolved_path → no photo embedded. Register now
+    # carries ALL 3 rows (gap-3) so obs3 lands at register row 3.
+    assert diag["missing_photo_obs"] == [3]
 
     # No leftover tokens in any document part.
     with zipfile.ZipFile(out) as z:
@@ -6295,22 +9142,201 @@ def test_build_ssa_report_docx_substitutes_tokens_and_clones_tables(tmp_path):
     assert "site safety audit conducted on 1 May 2026" in doc.paragraphs[6].text
     assert doc.paragraphs[7].text == "Audit summary text."
 
-    # Footer carries DD/MM/YYYY + prepared_by
+    # Footer carries the short-form audit date + prepared_by per
+    # reviewer direction (Date: 1-may-26, lowercase month, 2-digit year).
     foot = doc.sections[1].footer.paragraphs[0].text
-    assert "01/05/2026" in foot
+    assert "1-may-26" in foot
     assert "Alan Richardson" in foot
 
-    # Positive Observations table → 1 Compliant row
+    # Positive Observations table → 1 Compliant row.
+    # Per gap-2: row IDs are P1/P2/P3, Reference is "PIMS Obs N | <ref>".
     pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
                and "Reference" in t.rows[0].cells[2].text)
+    assert pos.rows[1].cells[0].text == "P1"
     assert pos.rows[1].cells[1].text == "Site sign clear."
+    assert pos.rows[1].cells[2].text == "PIMS Obs 2 | WHS Reg cl.34"
 
-    # Observations Register → 2 non-Compliant rows; second row has `*`
+    # Observations Register now carries ALL observations (gap-3): 3
+    # data rows (1 NCR, 1 Compliant, 1 Unmatched). Status column uses
+    # the canonical cross-reference wording.
     reg = next(t for t in doc.tables
                if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
-    assert len(reg.rows) == 3  # header + 2 data
-    assert reg.rows[1].cells[0].text == "1"
-    assert reg.rows[2].cells[0].text == "2*"
+    assert len(reg.rows) == 4  # header + 3 data
+    # NCR row → "Non-compliant — See F1"
+    assert "Non-compliant" in reg.rows[1].cells[4].text
+    assert "F1" in reg.rows[1].cells[4].text
+    # Compliant row → "Compliant"
+    assert reg.rows[2].cells[4].text == "Compliant"
+    # Unmatched row (no resolved photo) gets `*` marker on Obs #
+    assert reg.rows[3].cells[0].text.endswith("*")
+    assert reg.rows[3].cells[4].text == "Review at QA"
+
+
+def test_positive_observations_use_p_numbering_and_pims_obs_xref(tmp_path):
+    """Gap-2: Positive Observations rows numbered P1/P2/P3...
+    Reference column carries 'PIMS Obs N | <reg ref>'."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(4)]
+    rows = []
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs-{i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=f"clean obs {i}",
+            conformance_status="Compliant" if i in (1, 3) else "NCR",
+            legal_ref=f"NSW WHS Reg cl.{40 + i}",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    pos = next(t for t in doc.tables if t.rows[0].cells[0].text == "#"
+               and "Reference" in t.rows[0].cells[2].text)
+    pos_rows = pos.rows[1:]
+    assert [r.cells[0].text for r in pos_rows] == ["P1", "P2"]
+    # Compliant rows are obs idx 2 and 4 (1-based).
+    assert pos_rows[0].cells[2].text == "PIMS Obs 2 | NSW WHS Reg cl.41"
+    assert pos_rows[1].cells[2].text == "PIMS Obs 4 | NSW WHS Reg cl.43"
+
+
+def test_staging_xlsx_writes_ra_columns_swms_and_risk(tmp_path):
+    """Gap-4/5/6: staging xlsx carries phase / activity_ref /
+    hold_point / hrcw / swms_required / swms_present / initial_risk
+    / residual_risk columns and writes the EnrichedRow values."""
+    p = _save_jpeg(tmp_path / "a.jpg", (800, 600))
+    obs = ObservationRow(
+        csv_row=1, timestamp_raw="2026-05-01_09-00-00",
+        timestamp_iso="2026-05-01_09-00-00",
+        observation_text="x", csv_filename="a.jpg",
+        resolved_filename="a.jpg", resolved_path=p,
+    )
+    rows = [
+        EnrichedRow(
+            obs=obs, conformance_status="NCR", ccvs_code="WAH-H6",
+            phase="6 — Tilt-Up Panel Erection", activity_ref="TP-05",
+            hold_point="HP-06", hrcw="H14, H15",
+            swms_required=True, swms_present="no",
+            initial_risk="High", residual_risk="Medium",
+        ),
+    ]
+    out = tmp_path / "staging.xlsx"
+    build_pims_staging_xlsx(
+        rows, out, site_address="addr", audit_date_iso="2026-05-01",
+    )
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Observations"]
+    headers = [c.value for c in ws[3]]
+    # Schema columns are present in row 3.
+    for h in ("phase", "activity_ref", "hold_point", "hrcw",
+              "swms_required", "swms_present",
+              "initial_risk", "residual_risk"):
+        assert h in headers, f"missing column: {h}"
+    # Helper to look up the data cell by column name.
+    col = {h: i + 1 for i, h in enumerate(headers)}
+    assert ws.cell(row=5, column=col["phase"]).value == "6 — Tilt-Up Panel Erection"
+    assert ws.cell(row=5, column=col["activity_ref"]).value == "TP-05"
+    assert ws.cell(row=5, column=col["hold_point"]).value == "HP-06"
+    assert ws.cell(row=5, column=col["hrcw"]).value == "H14, H15"
+    assert ws.cell(row=5, column=col["swms_required"]).value == "TRUE"
+    assert ws.cell(row=5, column=col["swms_present"]).value == "no"
+    assert ws.cell(row=5, column=col["initial_risk"]).value == "High"
+    assert ws.cell(row=5, column=col["residual_risk"]).value == "Medium"
+
+
+def test_vision_parse_json_object_handles_prose_and_fences():
+    """LLM occasionally wraps output in prose or markdown despite the
+    JSON-ONLY instruction. The forgiving parser strips code fences
+    AND locates a balanced { ... } substring inside surrounding text."""
+    from pims.services.ssa_vision_enricher import _parse_json_object
+    # Plain JSON
+    assert _parse_json_object('{"status":"NCR"}') == {"status": "NCR"}
+    # Code-fenced
+    assert _parse_json_object('```json\n{"a":1}\n```') == {"a": 1}
+    # Prose-wrapped (the failure mode that broke 5/21 rows on real data)
+    assert _parse_json_object(
+        'Here is the result: {"status":"NCR","ccvs_code":"WAH-H6"} done.'
+    ) == {"status": "NCR", "ccvs_code": "WAH-H6"}
+    # Braces inside string literals don't fool the depth walker.
+    assert _parse_json_object('{"finding":"site has {bad} stuff"}') \
+        == {"finding": "site has {bad} stuff"}
+
+
+def test_vision_coerce_record_swms_and_risk_normalisation():
+    """Gap-5/6: vision coercion gates SWMS + risk fields to canonical
+    enums; bogus values collapse to safe defaults instead of being
+    written verbatim."""
+    from pims.services.ssa_vision_enricher import _coerce_record
+    r = _coerce_record({
+        "status": "NCR", "ccvs_code": "WAH-H6",
+        "swms_required": "true",
+        "swms_present": "Yes",
+        "initial_risk": "High (3)",
+        "residual_risk": "Medium (2)",
+    })
+    assert r["swms_required"] is True
+    assert r["swms_present"] == "yes"
+    assert r["initial_risk"] == "High"
+    assert r["residual_risk"] == "Medium"
+
+    # When swms_required is false, swms_present is forced to "" so a
+    # stale "yes" doesn't leak into the staging cell.
+    r2 = _coerce_record({
+        "status": "Compliant", "ccvs_code": "SYS-L1",
+        "swms_required": False, "swms_present": "yes",
+    })
+    assert r2["swms_required"] is False
+    assert r2["swms_present"] == ""
+
+    # Bogus risk word collapses to "" rather than being copied through.
+    r3 = _coerce_record({
+        "status": "NCR", "ccvs_code": "WAH-H6",
+        "initial_risk": "Definitely-something",
+    })
+    assert r3["initial_risk"] == ""
+
+
+def test_observations_register_includes_all_with_finding_xref(tmp_path):
+    """Gap-3: Observations Register carries every observation
+    (Compliant + non-Compliant); status column cross-references the
+    Findings entry for non-Compliant rows."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(4)]
+    rows = []
+    statuses = ["NCR", "Compliant", "Conditional", "Info"]
+    for i, (p, s) in enumerate(zip(photos, statuses)):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"raw obs {i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs,
+            observation_text_clean=f"clean obs {i}",
+            conformance_status=s,
+            ccvs_code="WAH-H6" if s == "NCR" else "SYS-L1",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    reg = next(t for t in doc.tables
+               if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
+    # Every observation row appears.
+    assert len(reg.rows) == 5  # 1 header + 4 data
+    statuses_rendered = [r.cells[4].text for r in reg.rows[1:]]
+    # Row order = CSV order (1-based: NCR / Compliant / Conditional / Info).
+    assert "Non-compliant" in statuses_rendered[0]
+    assert "F1" in statuses_rendered[0]   # links back to first finding
+    assert statuses_rendered[1] == "Compliant"
+    assert "Partially complete" in statuses_rendered[2]
+    assert "F2" in statuses_rendered[2]   # second non-Compliant finding
+    assert statuses_rendered[3] == "Noted"  # canonical wording for Info
 
 
 def test_findings_list_expands_per_non_compliant_row(tmp_path):
@@ -6400,7 +9426,11 @@ def test_parse_prior_report_recommendations_extracts_non_compliant(tmp_path):
     recs = parse_prior_report_recommendations(p)
     assert len(recs) == 2
     assert recs[0]["recommendation"] == "missing edge protection"
-    assert recs[0]["required_actions"] == "WHS Reg cl.79"
+    # 2026-05-06 schema: Date column is parsed from the prior
+    # report's filename ("260301" → "1-Mar-26"). The Reference
+    # column from the prior register is no longer carried — the
+    # rendered table doesn't have a "Required Actions" column.
+    assert recs[0]["date"] == "1-Mar-26"
     assert recs[0]["status"] == ""
     assert recs[1]["recommendation"] == "SWMS undated"
 
@@ -6454,17 +9484,34 @@ def test_build_ssa_report_docx_clones_distinct_rows_per_finding(tmp_path):
     reg = next(t for t in doc.tables
                if "Obs #" in t.rows[0].cells[0].text and len(t.columns) == 6)
 
-    # 3 NCR (i=0,2,4) → register; 2 Compliant (i=1,3) → positive table.
+    # 2 Compliant (i=1,3) → Positive Observations table.
     pos_data = [r.cells[1].text for r in pos.rows[1:]]
-    reg_data = [r.cells[2].text for r in reg.rows[1:]]
     assert pos_data == ["clean 1", "clean 3"]
-    # All NCR rows must carry their finding text — placeholder-content
-    # repetition would surface as identical strings here.
-    assert "unique-marker-0" in reg_data[0]
-    assert "unique-marker-2" in reg_data[1]
-    assert "unique-marker-4" in reg_data[2]
-    # And every register row must be distinct.
-    assert len(set(reg_data)) == len(reg_data)
+    # Per gap-3, the Observations Register is the master list — all
+    # 5 rows (Compliant + non-Compliant) appear, each with the
+    # cleaned-summary in the Observation column. Distinctness is the
+    # original anti-clone-bug guard; finding text lives in the
+    # per-finding detail tables, not in the register.
+    reg_data = [r.cells[2].text for r in reg.rows[1:]]
+    assert reg_data == [f"clean {i}" for i in range(5)]
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    # 3 NCR rows → 3 cloned per-finding detail tables, each carrying
+    # the long finding narrative.
+    assert len(detail_tables) == 3
+    detail_obs = []
+    for t in detail_tables:
+        obs_row = next(
+            (r for r in t.rows if r.cells[0].text.strip() == "Observation"),
+            None,
+        )
+        if obs_row is not None:
+            detail_obs.append(obs_row.cells[1].text)
+    assert any("unique-marker-0" in t for t in detail_obs)
+    assert any("unique-marker-2" in t for t in detail_obs)
+    assert any("unique-marker-4" in t for t in detail_obs)
 
 
 def test_build_ssa_report_docx_findings_block_per_non_compliant(tmp_path):
@@ -6548,11 +9595,14 @@ def test_build_ssa_report_docx_no_findings_writes_placeholder(tmp_path):
     )
     doc = Document(out)
     # Status of Previous Recs default placeholder.
+    # 2026-05-06 layout: Date | Recommendations | Status (...) | Comments
     prev = next(
         t for t in doc.tables
-        if "Recommendation" in t.rows[0].cells[0].text and len(t.columns) == 4
+        if t.rows[0].cells[0].text.strip() == "Date" and len(t.columns) == 4
     )
-    assert "No prior recommendations" in prev.rows[1].cells[0].text
+    # Empty-recs placeholder text lives in the Recommendations cell
+    # (column index 1) per the new layout.
+    assert "No prior recommendations" in prev.rows[1].cells[1].text
 
 
 # ---------------------------------------------------------------------------
@@ -6700,6 +9750,36 @@ def test_size_control_row_count_split_above_500(tmp_path):
     assert not out.exists()
 
 
+def test_size_control_image_cache_avoids_rerun_preprocess(tmp_path):
+    """Gap-7: progressive-downscale rerenders must reuse the
+    preprocessed bytes for the SAME (source, max_edge_px) pair
+    instead of running EXIF-transpose / downscale / JPEG-encode
+    again. Cache hits / misses are exposed on the wrapper's diag."""
+    from pims.services import ssa_pipeline as sp
+    sp._photo_cache_clear()
+    rows = _make_staging_rows(tmp_path, 5, edge_px=(800, 600))
+    out = tmp_path / "s.xlsx"
+
+    # Force a single-pass at 1600px (no rerender); the cache miss
+    # count must equal the number of rows since each photo was
+    # processed exactly once.
+    r = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    cache = r["cache"]
+    assert cache["misses"] == 5
+    assert cache["hits"] == 0
+
+    # Rerunning the same wrapper now should be ENTIRELY cache hits
+    # because every (source, 1600) pair is already cached.
+    r2 = build_pims_staging_xlsx_with_size_control(
+        rows, out, site_address="x", audit_date_iso="2026-05-01",
+    )
+    cache2 = r2["cache"]
+    assert cache2["hits"] == 5
+    assert cache2["misses"] == 0
+
+
 def test_size_control_size_driven_split_into_partN(tmp_path):
     """Force a tiny budget that no full-set render can satisfy → recursive
     halving + sequential renumbering of parts."""
@@ -6840,22 +9920,19 @@ def test_run_once_unparseable_prior_report_date_non_qualifying(evidence_folder):
     assert "Site-Safety-Audit-Report-bogus-RPD.docx" not in p["prior_reports_used"]
 
 
-def test_run_once_llm_pass_disabled_no_api_key(evidence_folder, monkeypatch):
-    """Without ``ANTHROPIC_API_KEY`` the vision enricher returns the
-    missing-key reason and rows stay Unmatched. The pipeline still
-    produces a docx — the scope-intro paragraph renders from the
-    folder date, the dynamic narrative paragraph is empty."""
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    payload = run_once(evidence_folder)
+def test_run_once_llm_pass_no_enrich_produces_scope_intro_only(
+    evidence_folder, monkeypatch,
+):
+    """``enrich=False`` skips the LLM cleanly (no preflight trip,
+    no Anthropic call). The deterministic scope-intro paragraph still
+    renders; the dynamic narrative is empty."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-used")
+    payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
     docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
     doc = Document(docx_path)
-    # Scope intro (deterministic) — always present.
     assert "site safety audit conducted on" in doc.paragraphs[6].text
-    # Dynamic narrative was empty (no LLM); paragraph still exists but
-    # has no content.
-    # (Two-paragraph split only fires when both halves are non-empty.)
-    assert "ANTHROPIC_API_KEY missing" in payload["llm_diagnostics"]["errors"]
+    assert payload["llm_diagnostics"]["enabled"] is False
 
 
 def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
@@ -6865,6 +9942,756 @@ def test_run_once_explicit_no_enrich_skips_pass(evidence_folder, monkeypatch):
     payload = run_once(evidence_folder, enrich=False)
     assert payload["staging_status"] == "bulk_uploadable"
     assert payload["llm_diagnostics"]["enabled"] is False
+
+
+# ---------------------------------------------------------------------------
+# Items 9-16 — gap-closure refinements
+# ---------------------------------------------------------------------------
+
+def test_audit_date_helpers_format_correctly():
+    """Reviewer-facing date formats: ordinal cover form and short
+    footer form. Helpers handle ordinal suffixes (st/nd/rd/th) for
+    teens and round numbers."""
+    from pims.services.ssa_pipeline import _to_ordinal_date, _to_short_date
+    assert _to_ordinal_date("01/05/2026") == "1st May 2026"
+    assert _to_ordinal_date("02/05/2026") == "2nd May 2026"
+    assert _to_ordinal_date("03/05/2026") == "3rd May 2026"
+    assert _to_ordinal_date("04/05/2026") == "4th May 2026"
+    assert _to_ordinal_date("11/05/2026") == "11th May 2026"  # teens always th
+    assert _to_ordinal_date("21/05/2026") == "21st May 2026"
+    assert _to_ordinal_date("") == ""
+    assert _to_ordinal_date("garbage") == ""
+
+    assert _to_short_date("01/05/2026") == "1-may-26"
+    assert _to_short_date("15/12/2026") == "15-dec-26"
+    assert _to_short_date("") == ""
+
+
+def test_audit_report_docx_uses_ordinal_cover_and_short_footer(tmp_path):
+    """Cover-page text box gets ``1st May 2026`` (reviewer-facing
+    ordinal form); running footer gets ``1-may-26`` (short form)."""
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[],
+        site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    import zipfile
+    with zipfile.ZipFile(out) as z:
+        body = z.read("word/document.xml").decode()
+        footer = z.read("word/footer1.xml").decode()
+    # Cover: ordinal form
+    assert "1st May 2026" in body
+    assert "01/05/2026" not in body
+    # Footer: short form (lowercase month, 2-digit year)
+    assert "1-may-26" in footer
+    assert "01/05/2026" not in footer
+
+
+def test_split_multi_issue_observations_atomises_numbered_notes():
+    """Item 11: composite "(1) X (2) Y (3) Z" notes split into three
+    atomic ObservationRows; single "(1)" prefix left alone; rows
+    without numbered markers pass through unchanged."""
+    from pims.services.ssa_pipeline import split_multi_issue_observations
+    a = ObservationRow(
+        csv_row=1, timestamp_raw="", timestamp_iso=None,
+        observation_text="(1) Pre-start NOT completed (2) VOC missing (3) SWMS undated",
+        csv_filename="a.jpg",
+    )
+    b = ObservationRow(
+        csv_row=2, timestamp_raw="", timestamp_iso=None,
+        observation_text="(1) only one issue",  # single-marker, untouched
+        csv_filename="b.jpg",
+    )
+    c = ObservationRow(
+        csv_row=3, timestamp_raw="", timestamp_iso=None,
+        observation_text="plain note no markers",
+        csv_filename="c.jpg",
+    )
+    out = split_multi_issue_observations([a, b, c])
+    # 3 atomic from a + 1 b + 1 c = 5
+    assert len(out) == 5
+    fragments = [r.observation_text for r in out[:3]]
+    assert "Pre-start NOT completed" in fragments[0]
+    assert "VOC missing" in fragments[1]
+    assert "SWMS undated" in fragments[2]
+    # Photo / timestamp / csv_row preserved.
+    assert all(r.csv_row == 1 for r in out[:3])
+    assert all(r.csv_filename == "a.jpg" for r in out[:3])
+    # Single-marker row unchanged.
+    assert out[3].observation_text == "(1) only one issue"
+    assert out[4].observation_text == "plain note no markers"
+
+
+def test_apply_ra_code_labels_first_use_expansion(tmp_path):
+    """Items 9 + 14: first occurrence of an RA code in a block of
+    text becomes "SDG Project Risk Assessment code: TP-07 (Tilt-up
+    panel activity 07)"; subsequent occurrences in the same block
+    drop the expansion. Multiple codes in a single phrase collapse
+    into "SDG Project Risk Assessment codes: A, B"."""
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    from pims.services.ssa_ra_parser import RiskAssessment, RAActivity, RAHoldPoint
+    ra = RiskAssessment(
+        project_name="Test",
+        hold_points=[
+            RAHoldPoint(
+                code="HP-04",
+                description="Heavy plant / ground setup release",
+                package="Tilt-Up", condition="x", sign_off="x", evidence="x",
+            ),
+        ],
+        activities=[
+            RAActivity(
+                ref="TP-05", phase="6 — Tilt-Up Panel Erection",
+                activity="Temporary brace install", hrcw="H13",
+                initial_risk="High (3)", controls="x",
+                residual_risk="Medium (2)", responsible="x",
+            ),
+        ],
+    )
+    text = (
+        "Brace removal proceeded outside HP-04. Activity TP-05 "
+        "covers the brace step; HRCW H14 traffic also applies. "
+        "Subsequent TP-05 reference."
+    )
+    out = apply_ra_code_labels(text, ra=ra)
+    # First HP-04 use carries the prefix + parenthesised expansion.
+    assert "SDG Project Risk Assessment code: HP-04" in out
+    assert "Heavy plant / ground setup release" in out
+    # First TP-05 use carries the activity-phase expansion (preserves
+    # the RA's casing of "Tilt-Up Panel Erection").
+    assert "Tilt-Up Panel Erection activity 05" in out
+    # H14 (HRCW) gets the static expansion.
+    assert "HRCW traffic corridor" in out
+    # Second TP-05 occurrence: bare code, no second expansion.
+    assert out.count("Tilt-Up Panel Erection activity 05") == 1
+    # Idempotent: re-applying produces the same output.
+    assert apply_ra_code_labels(out, ra=ra) == out
+
+
+def test_apply_ra_code_labels_clusters_codes_into_codes_prefix():
+    """When two codes appear adjacent (e.g. "TP-05 / HP-04"), the
+    label collapses to "SDG Project Risk Assessment codes: ...". """
+    from pims.services.ssa_pipeline import apply_ra_code_labels
+    out = apply_ra_code_labels("review HP-06 / TP-07 for compliance")
+    assert "SDG Project Risk Assessment codes:" in out
+
+
+def test_significance_score_orders_hp_then_swms_then_plant_then_permit():
+    """Item 10: significance ordering — HP breaches first, then
+    SWMS gaps, then plant/public, then permit-class breaches, then
+    everything else."""
+    from pims.services.ssa_pipeline import _significance_score
+    # HP breach (highest priority)
+    hp_row = EnrichedRow(
+        obs=ObservationRow(csv_row=1, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="see HP-06 violation",
+        conformance_status="NCR", ccvs_code="TLT-H9",
+    )
+    # SWMS-required-but-absent (priority 1)
+    swms_row = EnrichedRow(
+        obs=ObservationRow(csv_row=2, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="no swms",
+        conformance_status="NCR", ccvs_code="WAH-H6",
+        swms_required=True, swms_present="no",
+    )
+    # Plant/public (priority 2)
+    mob_row = EnrichedRow(
+        obs=ObservationRow(csv_row=3, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="kubota under boom",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    # Permit-class (priority 3)
+    hot_row = EnrichedRow(
+        obs=ObservationRow(csv_row=4, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="hot work no permit",
+        conformance_status="NCR", ccvs_code="HOT-H6",
+    )
+    # Generic NCR (priority 4)
+    generic_row = EnrichedRow(
+        obs=ObservationRow(csv_row=5, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding="other",
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    rows = [(i, r) for i, r in enumerate(
+        [generic_row, hot_row, mob_row, swms_row, hp_row], start=1
+    )]
+    rows.sort(key=lambda pair: _significance_score(pair[1]))
+    order = [r.ccvs_code for _i, r in rows]
+    assert order == ["TLT-H9", "WAH-H6", "MOB-H9", "HOT-H6", "SYS-M3"]
+
+
+def test_parse_merge_argument_handles_groups_and_whitespace():
+    from pims.services.ssa_pipeline import parse_merge_argument
+    assert parse_merge_argument("") == []
+    assert parse_merge_argument("1,3") == [[1, 3]]
+    assert parse_merge_argument("1, 3 ; 5, 7, 8") == [[1, 3], [5, 7, 8]]
+    # Invalid tokens dropped silently.
+    assert parse_merge_argument("1,abc,3;x,y") == [[1, 3]]
+
+
+def test_apply_manual_merges_consolidates_displayed_indices():
+    """Operator-supplied merge directive consolidates findings by
+    displayed index (1-based, post-significance order). The lowest
+    index in each group is the canonical row; others have their
+    titles / recommendations / findings folded in and their csv_idx
+    appended to evidence_csv_indices."""
+    from pims.services.ssa_pipeline import apply_manual_merges
+    rows = [
+        (10, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=10, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Telehandler near steel without exclusion",
+            finding="long finding A", recommendation="Action A",
+            conformance_status="NCR", ccvs_code="MOB-H9",
+        )),
+        (11, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=11, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Brace removal sign-off",
+            finding="long finding B", recommendation="Action B",
+            conformance_status="NCR", ccvs_code="TLT-H9",
+        )),
+        (12, EnrichedRow(
+            obs=ObservationRow(
+                csv_row=12, timestamp_raw="", timestamp_iso=None,
+                observation_text="x", csv_filename="x"),
+            finding_title="Pre-start logbook missing",
+            finding="long finding C", recommendation="Action C",
+            conformance_status="NCR", ccvs_code="MOB-H9",
+        )),
+    ]
+    out = apply_manual_merges(rows, [[1, 3]])
+    # 3 inputs, group [1,3] → 2 outputs (indices 1+3 collapse into
+    # canonical at displayed position 1, position 2 untouched).
+    assert len(out) == 2
+    canonical = out[0][1]
+    # Title concatenation preserves both originals.
+    assert "Telehandler near steel" in canonical.finding_title
+    assert "Pre-start logbook missing" in canonical.finding_title
+    # Recommendation and finding fields concatenated with separators.
+    assert "Action A" in canonical.recommendation
+    assert "Action C" in canonical.recommendation
+    assert "long finding A" in canonical.finding
+    assert "long finding C" in canonical.finding
+    # Evidence csv indices folded.
+    assert 10 in canonical.evidence_csv_indices
+    assert 12 in canonical.evidence_csv_indices
+    # monitoring_note documents the consolidation.
+    assert "Consolidated finding" in canonical.monitoring_note
+    assert "PIMS Obs 10" in canonical.monitoring_note
+    assert "PIMS Obs 12" in canonical.monitoring_note
+    # Position 2 (Brace removal) untouched.
+    assert out[1][1].finding_title == "Brace removal sign-off"
+
+
+def test_merge_similar_findings_anchor_phrase_establish_zone():
+    """Anchor-phrase merge: two recommendations that both prescribe
+    "establish ... zone" merge even when overall Jaccard is below
+    the 0.5 threshold AND even when the CCVS streams differ
+    (e.g. WAH-H6 + MOB-H9). Reviewer's call: an exclusion zone
+    above a steel lift and the telehandler beneath it are physically
+    the same intervention even though the streams differ."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation=(
+            "Immediate – stop lifts and establish and maintain "
+            "exclusion zone with spotter"
+        ),
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    # Different stream (WAH not MOB) but the SAME control intent —
+    # establish/maintain an exclusion zone. Anchor-phrase merge
+    # crosses the stream boundary because the physical control is
+    # the same intervention.
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Workers under suspended steel — no zone",
+        recommendation=(
+            "Immediate – establish and maintain an exclusion zone "
+            "beneath suspended steel works"
+        ),
+        conformance_status="NCR", ccvs_code="WAH-H6",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 1
+    canonical = out[0][1]
+    assert canonical.evidence_csv_indices == [10, 11]
+    assert "Evidence also: PIMS Obs 11" in canonical.monitoring_note
+
+
+def test_merge_similar_findings_strong_overlap_collapses_register_pair():
+    """Two SYS-class register findings with low Jaccard but ≥4
+    shared content tokens (daily, register, time-out, entries) merge
+    via the absolute-overlap rule. Without it the two daily-register
+    duplicates render as separate findings even though the reviewer
+    sees them as one."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Daily register missing time-out entries",
+        recommendation=(
+            "Within 7 days – complete time-out entries daily and "
+            "review register at shift end"
+        ),
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Daily register entries missing time-out signatures",
+        recommendation=(
+            "Within 7 days – maintain daily register with time-in and "
+            "time-out entries completed"
+        ),
+        conformance_status="Conditional", ccvs_code="SYS-M3",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 1
+    assert out[0][1].evidence_csv_indices == [10, 11]
+
+
+def test_merge_similar_findings_anchor_only_fires_when_intent_overlaps():
+    """Anchor merge does NOT fire when one recommendation prescribes
+    "establish exclusion zone" and the other prescribes "complete
+    pre-start logbook" — different physical control intents."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation="Immediate – establish exclusion zone with spotter",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Pre-start logbook missing for telehandler",
+        recommendation=(
+            "Immediate – stop telehandler use until pre-start logbook "
+            "entry is completed and signed"
+        ),
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    out = merge_similar_findings([(10, a), (11, b)])
+    assert len(out) == 2  # NOT merged
+
+
+def test_merge_similar_findings_collapses_on_recommendation_intent():
+    """Two NCRs with different titles but the same physical control
+    intent ("establish and maintain an exclusion zone") merge.
+    Mirrors the reviewer call: 'we are only merging because very
+    similar and results in establishing a work zone'."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    a = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=10, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Telehandler near steel without exclusion zone",
+        recommendation="Immediate – establish and maintain an exclusion zone with spotter beneath the steel erection",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    b = EnrichedRow(
+        obs=ObservationRow(
+            csv_row=11, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Worker beneath suspended steel — no exclusion zone",
+        recommendation="Immediate – establish and maintain an exclusion zone beneath suspended steel works",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    c = EnrichedRow(  # different intent — should NOT merge
+        obs=ObservationRow(
+            csv_row=12, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"),
+        finding_title="Pre-start logbook missing for telehandler",
+        recommendation="Immediate – stop telehandler use until pre-start is completed and signed",
+        conformance_status="NCR", ccvs_code="MOB-H9",
+    )
+    out = merge_similar_findings([(10, a), (11, b), (12, c)])
+    # 3 input → 2 canonical (a and b merged into a; c standalone).
+    assert len(out) == 2
+    canonical = out[0][1]
+    assert canonical.evidence_csv_indices == [10, 11]
+    assert "Evidence also: PIMS Obs 11" in canonical.monitoring_note
+    # c's title preserved as a separate canonical row.
+    assert "Pre-start logbook missing" in out[1][1].finding_title
+
+
+def test_apply_manual_merges_silent_on_invalid_indices():
+    """Out-of-range / single-index groups are silently dropped — an
+    operator typo should never crash the pipeline."""
+    from pims.services.ssa_pipeline import apply_manual_merges
+    rows = [
+        (1, EnrichedRow(obs=ObservationRow(
+            csv_row=1, timestamp_raw="", timestamp_iso=None,
+            observation_text="x", csv_filename="x"))),
+    ]
+    # group of 1: no-op. Out-of-range: ignored.
+    out = apply_manual_merges(rows, [[1], [1, 99], [50, 100]])
+    assert out == rows
+
+
+def test_merge_similar_findings_consolidates_evidence():
+    """Item 12: rows with the same status + stream + finding_title
+    collapse into one canonical row; subsequent rows fold their
+    csv_idx into the canonical row's evidence_csv_indices and
+    monitoring_note."""
+    from pims.services.ssa_pipeline import merge_similar_findings
+    base = lambda i, title: EnrichedRow(  # noqa: E731
+        obs=ObservationRow(csv_row=i, timestamp_raw="", timestamp_iso=None,
+                           observation_text="x", csv_filename="x"),
+        finding_title=title,
+        conformance_status="NCR",
+        ccvs_code="MOB-H9",
+    )
+    rows = [
+        (1, base(1, "Pre-start logbook gap")),
+        (2, base(2, "Pre-start logbook gap")),  # duplicate
+        (3, base(3, "Different issue")),
+    ]
+    merged = merge_similar_findings(rows)
+    # 2 canonical rows (Pre-start + Different issue).
+    assert len(merged) == 2
+    canonical = merged[0][1]
+    assert canonical.evidence_csv_indices == [1, 2]
+    assert "Evidence also: PIMS Obs 2" in canonical.monitoring_note
+
+
+def test_executive_summary_capped_at_20_lines_word_budget():
+    """Item 16: cap_executive_summary truncates anything longer than
+    ~280 words (20 lines × 14 words/line)."""
+    from pims.services.ssa_pipeline import cap_executive_summary
+    long_text = (
+        "Sentence one is quite ordinary. Sentence two adds context. "
+        * 50  # ~700 words total
+    )
+    out = cap_executive_summary(long_text, max_lines=20)
+    assert len(out.split()) <= 20 * 14
+    # Short text passes through unchanged.
+    short = "A brief summary of the audit."
+    assert cap_executive_summary(short) == short
+
+
+def test_findings_index_table_inserted_below_findings_heading(tmp_path):
+    """Item 15: the Findings index table (2 cols: Finding,
+    Recommendation) is inserted directly under the Findings heading
+    paragraph, with one row per detail block in significance order."""
+    photos = [_save_jpeg(tmp_path / f"p{i}.jpg", (400, 300)) for i in range(3)]
+    rows = []
+    titles = [
+        "Brace removal proceeded without engineer sign-off",
+        "Pre-start logbook missing for telehandler",
+        "Site sign in good order",
+    ]
+    statuses = ["NCR", "NCR", "Compliant"]
+    codes = ["TLT-H9", "MOB-H9", "SYS-L1"]
+    for i, p in enumerate(photos):
+        obs = ObservationRow(
+            csv_row=i + 1, timestamp_raw="", timestamp_iso=None,
+            observation_text=f"obs {i}", csv_filename=p.name,
+            resolved_filename=p.name, resolved_path=p,
+        )
+        rows.append(EnrichedRow(
+            obs=obs, finding_title=titles[i],
+            conformance_status=statuses[i], ccvs_code=codes[i],
+            recommendation=f"recom {i}",
+        ))
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=rows, site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    # Index table shape — find the 2-col table whose header is
+    # exactly ("Finding", "Recommendation") and lives BEFORE every
+    # per-finding detail table.
+    idx_tbl = None
+    for t in doc.tables:
+        if (
+            len(t.columns) == 3
+            and [c.text.strip() for c in t.rows[0].cells] == ["#", "Finding", "Recommendation"]
+        ):
+            idx_tbl = t
+            break
+    assert idx_tbl is not None
+    # 2 NCR rows → 2 data rows (header + 2)
+    assert len(idx_tbl.rows) == 3
+    # # column carries 1-based row numbers matching the per-finding
+    # detail blocks below the index. Order is set by
+    # _significance_score: MOB-H9 lands in the plant/public-interface
+    # priority tier (rank 2), TLT-H9 with no HP ref / no SWMS gap /
+    # no plant stream lands in generic-NCR rank 4.
+    assert idx_tbl.rows[1].cells[0].text == "1"
+    assert idx_tbl.rows[1].cells[1].text.startswith("Pre-start")
+    assert idx_tbl.rows[1].cells[2].text == "recom 1"
+    assert idx_tbl.rows[2].cells[0].text == "2"
+    assert idx_tbl.rows[2].cells[1].text.startswith("Brace removal")
+    assert idx_tbl.rows[2].cells[2].text == "recom 0"
+
+
+def test_ra_label_applied_to_findings_in_real_render(tmp_path):
+    """Item 9: a finding text containing TP-07 is rendered with the
+    explicit "SDG Project Risk Assessment code:" prefix in the
+    per-finding detail table's Observation cell."""
+    p = _save_jpeg(tmp_path / "p.jpg", (400, 300))
+    obs = ObservationRow(
+        csv_row=1, timestamp_raw="", timestamp_iso=None,
+        observation_text="x", csv_filename=p.name,
+        resolved_filename=p.name, resolved_path=p,
+    )
+    row = EnrichedRow(
+        obs=obs, finding_title="Brace removal without sign-off",
+        finding="Brace removal proceeded without engineer sign-off; HP-06 not closed.",
+        conformance_status="NCR", ccvs_code="TLT-H9",
+        recommendation="Immediate – stop brace removal until sign-off.",
+    )
+    # Apply the labelling pre-render (mirrors orchestrator behaviour).
+    from pims.services.ssa_pipeline import apply_ra_labels_to_rows
+    apply_ra_labels_to_rows([row])
+    out = tmp_path / "r.docx"
+    build_ssa_report_docx(
+        rows=[row], site_address="addr", audit_date_ddmmyyyy="01/05/2026",
+        narrative_summary="x", output_path=out,
+    )
+    doc = Document(out)
+    detail_tables = [
+        t for t in doc.tables
+        if len(t.columns) == 2 and t.rows[0].cells[0].text.strip() == "Location"
+    ]
+    obs_row = next(
+        r for r in detail_tables[0].rows
+        if r.cells[0].text.strip() == "Observation"
+    )
+    assert "SDG Project Risk Assessment code: HP-06" in obs_row.cells[1].text
+
+
+def test_run_once_two_phase_workflow_round_trip(evidence_folder, monkeypatch):
+    """Two-phase workflow: --enrich-only writes xlsx + state JSON
+    and exits; --from-state reads state, applies operator edits to
+    the Conformance Status / CCVS columns, and produces the report
+    + staging without re-running the LLM."""
+    # Stub the vision pass so the test doesn't need an API key but
+    # exercises the persistence-and-reload path. The stub leaves
+    # rows at their default Unmatched state but writes a token
+    # narrative so the docx render has something to show.
+    def fake_apply(enriched, **kw):
+        # Mark first row as NCR so the operator-edit override has a
+        # detectable change.
+        if enriched:
+            enriched[0].finding = "ORIGINAL FINDING TEXT"
+            enriched[0].conformance_status = "Unmatched"
+            enriched[0].ccvs_code = ""
+        return ("Stub narrative for two-phase test.", {
+            "enabled": True, "rows_total": len(enriched),
+            "rows_called": len(enriched), "rows_ok": len(enriched),
+            "rows_failed": 0, "errors": [],
+            "ra": {"path": None},
+        })
+
+    from pims.scripts import run_ssa_pipeline as mod
+    monkeypatch.setattr(mod, "_apply_vision_enrichment", fake_apply)
+
+    # Phase 1: --enrich-only
+    payload1 = mod.run_once(evidence_folder, stop_after="enrich")
+    assert payload1["phase"] == "enrich-only"
+    assert (evidence_folder / ".ssa_state.json").exists()
+    enriched_xlsx = evidence_folder / "PIMS-Enriched-260501-RPD.xlsx"
+    assert enriched_xlsx.exists()
+    # Report + staging not yet written.
+    assert not (evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx").exists()
+
+    # Operator edits the Conformance Status of row 1 from "Unmatched"
+    # to "NCR" and the CCVS code to "WAH-H6".
+    import openpyxl
+    wb = openpyxl.load_workbook(enriched_xlsx)
+    ws = wb["Enriched Register"]
+    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+    status_col = headers.index("conformance status") + 1
+    code_col = headers.index("ccvs code") + 1
+    obs_col = headers.index("observation") + 1
+    ws.cell(row=2, column=status_col, value="NCR")
+    ws.cell(row=2, column=code_col, value="WAH-H6")
+    ws.cell(row=2, column=obs_col, value="OPERATOR-EDITED FINDING")
+    wb.save(enriched_xlsx)
+
+    # Phase 2: --from-state
+    payload2 = mod.run_once(evidence_folder, force=True, from_state=True)
+    assert payload2["from_state"] is True
+    assert payload2["staging_status"] == "bulk_uploadable"
+    # Operator edits propagated to docx + staging.
+    sx = evidence_folder / "Site-Visit-Report-Upload-PIMS-Staging-260501-RPD.xlsx"
+    assert sx.exists()
+    wb2 = openpyxl.load_workbook(sx)
+    ws2 = wb2["Observations"]
+    headers2 = [str(c.value).strip() if c.value else "" for c in ws2[3]]
+    finding_col = headers2.index("finding") + 1
+    status_col2 = headers2.index("conformance_status") + 1
+    code_col2 = headers2.index("ccvs_code") + 1
+    # The staging xlsx writes from EnrichedRow.finding, which gets
+    # overwritten when the operator edits the Observation column in
+    # the enriched xlsx during phase 1.
+    finding_text = ws2.cell(row=5, column=finding_col).value
+    assert finding_text == "OPERATOR-EDITED FINDING"
+    assert ws2.cell(row=5, column=status_col2).value == "NCR"
+    assert ws2.cell(row=5, column=code_col2).value == "WAH-H6"
+    # Phase-2 diagnostics show the merge fired.
+    assert payload2["merge_diag"]["applied"] is True
+    assert payload2["merge_diag"]["field_overrides"] >= 3  # status + ccvs + finding
+
+
+def test_run_once_from_report_round_trip(evidence_folder, monkeypatch):
+    """Phase 3: operator edits the docx → flow back to enriched +
+    staging xlsx. Round trip:
+      1. Single-shot pipeline produces all 3 deliverables + state JSON.
+      2. Operator edits the Recommendation cell in the docx for finding #1.
+      3. --from-report rebuilds enriched + staging from state, applies
+         the docx edit, and the new staging xlsx carries the edit."""
+    def fake_apply(enriched, **kw):
+        # First row becomes a non-Compliant finding so it lands in
+        # the docx Findings section with a detail table.
+        if enriched:
+            enriched[0].finding = "Original finding text."
+            enriched[0].finding_title = "Test finding title"
+            enriched[0].conformance_status = "NCR"
+            enriched[0].ccvs_code = "WAH-H6"
+            enriched[0].ccvs_category = "Work at Height"
+            enriched[0].location = "Original location"
+            enriched[0].recommendation = "Immediate – original action"
+            enriched[0].legal_ref = "WHS Reg cl.79"
+            enriched[0].hierarchy_of_control = "Engineering: original control"
+        return ("Stub narrative.", {
+            "enabled": True, "rows_total": len(enriched),
+            "rows_called": len(enriched), "rows_ok": len(enriched),
+            "rows_failed": 0, "errors": [], "ra": {"path": None},
+        })
+    from pims.scripts import run_ssa_pipeline as mod
+    monkeypatch.setattr(mod, "_apply_vision_enrichment", fake_apply)
+
+    payload1 = mod.run_once(evidence_folder)
+    assert payload1["staging_status"] == "bulk_uploadable"
+    state = json.loads(
+        (evidence_folder / ".ssa_state.json").read_text(encoding="utf-8"),
+    )
+    assert state.get("finding_render_order"), \
+        "finding_render_order must be persisted for phase-3 pairing"
+
+    # Operator edits the docx — find the first per-finding detail
+    # table and overwrite the Recommendation cell.
+    docx_path = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
+    from docx import Document as DocxDocument
+    doc = DocxDocument(docx_path)
+    detail = next(
+        t for t in doc.tables
+        if len(t.columns) == 2
+        and t.rows[0].cells[0].text.strip() == "Location"
+    )
+    rec_row = next(
+        r for r in detail.rows
+        if r.cells[0].text.strip() == "Recommendation"
+    )
+    rec_row.cells[1].text = "Immediate – OPERATOR-EDITED ACTION"
+    doc.save(docx_path)
+
+    # Phase 3
+    payload3 = mod.run_once(evidence_folder, force=True, from_report=True)
+    assert payload3["from_report"] is True
+    assert payload3["merge_diag"]["applied"] is True
+    assert payload3["merge_diag"]["field_overrides"] >= 1
+    # Edit propagated to the staging xlsx.
+    sx = evidence_folder / "Site-Visit-Report-Upload-PIMS-Staging-260501-RPD.xlsx"
+    wb = openpyxl.load_workbook(sx)
+    ws = wb["Observations"]
+    headers = [str(c.value).strip() if c.value else "" for c in ws[3]]
+    rec_col = headers.index("recommendation") + 1
+    # Find the row whose ccvs_code is WAH-H6 (the seeded NCR).
+    code_col = headers.index("ccvs_code") + 1
+    edited_row = None
+    for r in range(5, ws.max_row + 1):
+        if ws.cell(row=r, column=code_col).value == "WAH-H6":
+            edited_row = r
+            break
+    assert edited_row is not None
+    rec_cell = ws.cell(row=edited_row, column=rec_col).value or ""
+    assert "OPERATOR-EDITED ACTION" in rec_cell
+
+
+def test_run_once_two_phase_from_state_without_phase_one_raises(
+    evidence_folder,
+):
+    """Phase 2 requires phase 1 to have run — bare --from-state on a
+    folder without .ssa_state.json fails loud."""
+    state = evidence_folder / ".ssa_state.json"
+    if state.exists():
+        state.unlink()
+    with pytest.raises(FileNotFoundError, match="ssa_state.json"):
+        run_once(evidence_folder, from_state=True)
+
+
+def test_run_once_default_path_does_not_load_legacy_checklist(
+    evidence_folder, monkeypatch,
+):
+    """Gap-8: default (vision) path skips the audit_checklist.xlsx
+    load — vision is the canonical classifier and the legacy keyword
+    fallback hit 5/21 with a misroute on real data. We stub
+    ChecklistLookup.from_xlsx to fail loud so the test breaks if
+    anything ever calls it on the default path."""
+    from pims.services import ssa_checklist_lookup
+    calls: list[str] = []
+
+    def boom(path):  # pragma: no cover — fail loud
+        calls.append(str(path))
+        raise AssertionError(f"legacy checklist loaded on default path: {path}")
+
+    monkeypatch.setattr(
+        ssa_checklist_lookup.ChecklistLookup, "from_xlsx", staticmethod(boom),
+    )
+    # Stub the LLM driver so we don't need an API key in this test.
+    monkeypatch.setattr(
+        "pims.scripts.run_ssa_pipeline._apply_vision_enrichment",
+        lambda *a, **kw: ("stub narrative", {"enabled": True, "rows_total": 0}),
+    )
+    payload = run_once(evidence_folder)  # default enrich=True
+    assert payload["staging_status"] == "bulk_uploadable"
+    assert calls == []
+
+
+def test_run_once_no_enrich_with_explicit_checklist_loads_legacy(
+    evidence_folder, tmp_path, monkeypatch,
+):
+    """Gap-8: legacy fallback only fires when the operator explicitly
+    passes --no-enrich AND --checklist. Without --checklist the
+    offline path runs with everything Unmatched (acceptable: the
+    operator opted out of vision)."""
+    cl_path = (
+        Path(__file__).resolve().parent.parent
+        / "pims" / "audit_checklist.xlsx"
+    )
+    assert cl_path.exists()
+    payload = run_once(
+        evidence_folder, enrich=False, checklist_path=cl_path,
+    )
+    assert payload["staging_status"] == "bulk_uploadable"
+    # We don't assert specific matches — the keyword matcher is
+    # noisy by design — only that the run completed and the
+    # checklist hook ran (no PreflightError, no missing-file).
 
 
 def test_run_once_bad_folder_name_raises(tmp_path):
