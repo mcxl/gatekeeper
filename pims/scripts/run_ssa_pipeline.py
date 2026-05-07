@@ -245,6 +245,58 @@ def _update_run_status(
         )
 
 
+def _resolve_resume_phase(folder: Path) -> tuple[str | None, str]:
+    """Inspect ``.ssa_state.json`` and pick the phase ``--resume`` runs.
+
+    Returns ``(phase, msg)``. ``phase`` is one of ``enrich-only`` /
+    ``from-state`` / ``from-report``, or ``None`` when there is nothing
+    to resume (caller prints ``msg`` and exits accordingly).
+
+    Resume rules:
+    - missing sidecar → cannot resume; tell the operator to start with
+      ``--enrich-only`` (or a full run).
+    - last attempt failed (``last_exit_code != 0``) → re-run that phase.
+    - otherwise → run ``next_suggested_phase``.
+    - terminal (``next_suggested_phase`` is ``None`` after a green
+      ``from-report`` or ``full-run``) → audit already complete.
+    """
+    state_path = folder / ".ssa_state.json"
+    if not state_path.exists():
+        return None, (
+            f"error: --resume requested but .ssa_state.json missing in "
+            f"{folder}. Start the audit with --enrich-only or run the "
+            f"full pipeline first."
+        )
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return None, f"error: could not read {state_path}: {exc}"
+    rs = state.get("run_status")
+    if not rs:
+        return None, (
+            f"error: {state_path} has no run_status block; sidecar was "
+            f"written by an older pipeline version. Re-run --enrich-only "
+            f"to refresh it."
+        )
+    if rs.get("last_exit_code", 0) != 0:
+        retry = rs.get("last_attempted_phase")
+        if retry in {"enrich-only", "from-state", "from-report"}:
+            return retry, ""
+        return None, (
+            f"error: previous run failed at phase "
+            f"{retry!r} which is not resumable; re-run explicitly."
+        )
+    nxt = rs.get("next_suggested_phase")
+    if nxt is None:
+        last = rs.get("last_completed_phase")
+        return None, f"audit complete (last phase: {last}); nothing to resume"
+    if nxt not in {"enrich-only", "from-state", "from-report"}:
+        return None, (
+            f"error: next_suggested_phase {nxt!r} is not a resumable phase"
+        )
+    return nxt, ""
+
+
 def _existing_run_record(folder: Path) -> dict | None:
     rj = folder / ".ssa_run.json"
     if not rj.exists():
@@ -1401,6 +1453,18 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     ap.add_argument(
+        "--resume", action="store_true",
+        help=(
+            "pick up from the last green phase recorded in "
+            ".ssa_state.json's run_status block. Runs the phase named "
+            "by next_suggested_phase; if the previous attempt failed, "
+            "re-runs the failed phase. Errors if the sidecar is "
+            "missing or the audit is already complete. Mutually "
+            "exclusive with --enrich-only / --from-state / "
+            "--from-report."
+        ),
+    )
+    ap.add_argument(
         "--merge", default="",
         help=(
             "merge directives by displayed finding number, e.g. "
@@ -1419,28 +1483,60 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        phase_flags = (args.enrich_only, args.from_state, args.from_report)
+        phase_flags = (
+            args.enrich_only, args.from_state, args.from_report, args.resume,
+        )
         if sum(bool(f) for f in phase_flags) > 1:
             print(
-                "error: --enrich-only / --from-state / --from-report "
-                "are mutually exclusive (they select one phase of the "
-                "review workflow).",
+                "error: --enrich-only / --from-state / --from-report / "
+                "--resume are mutually exclusive (they select one phase "
+                "of the review workflow).",
                 file=sys.stderr,
             )
             return 1
-        payload = run_once(
-            args.folder,
-            prepared_by=args.prepared_by,
-            ignore_freeze=args.ignore_freeze,
-            checklist_path=args.checklist,
-            force=args.force,
-            enrich=not args.no_enrich,
-            risk_assessment_path=args.risk_assessment,
-            merge_groups=parse_merge_argument(args.merge),
-            stop_after="enrich" if args.enrich_only else None,
-            from_state=args.from_state,
-            from_report=args.from_report,
+        if args.resume:
+            resume_phase, msg = _resolve_resume_phase(args.folder)
+            if resume_phase is None:
+                print(msg)
+                return 0 if msg.startswith("audit complete") else 1
+            print(f"resuming with phase: {resume_phase}")
+            args.enrich_only = (resume_phase == "enrich-only")
+            args.from_state = (resume_phase == "from-state")
+            args.from_report = (resume_phase == "from-report")
+        attempted_phase = (
+            "enrich-only" if args.enrich_only
+            else "from-state" if args.from_state
+            else "from-report" if args.from_report
+            else "full-run"
         )
+        try:
+            payload = run_once(
+                args.folder,
+                prepared_by=args.prepared_by,
+                ignore_freeze=args.ignore_freeze,
+                checklist_path=args.checklist,
+                force=args.force,
+                enrich=not args.no_enrich,
+                risk_assessment_path=args.risk_assessment,
+                merge_groups=parse_merge_argument(args.merge),
+                stop_after="enrich" if args.enrich_only else None,
+                from_state=args.from_state,
+                from_report=args.from_report,
+            )
+        except Exception as exc:
+            # Record failure on the sidecar so a subsequent --resume
+            # re-runs the phase that just failed rather than skipping
+            # ahead. Best-effort — never mask the original exception.
+            try:
+                _update_run_status(
+                    args.folder, attempted_phase,
+                    exit_code=1, error=str(exc),
+                )
+            except Exception:
+                log.warning(
+                    "could not record failure run_status", exc_info=True,
+                )
+            raise
     except PreflightError as e:
         # Preflight blocked the run before any rows processed; rc=3
         # distinguishes a config gap from a frozen folder (rc=2) and
