@@ -395,3 +395,19 @@ Default operating mode: **headless checkpoint-to-checkpoint**.
 - `_get_dominant_family()` in `agents/control_writer.py` — injects dominant control family constraint per task at generation time
 - Inference matrix suppression guards in `core/orchestrator.py` — scaffold-led remedial jobs suppress EWP/crane/admin categories not in source
 - Reviewer credibility floor in `core/reviewer_agent.py` — BELOW_WORKING_DRAFT forced if credibility_drift agent returns FAIL
+## Railway MCP Token
+
+- Railway MCP token is hardcoded in ~/.claude.json and overrides any env var. When token expires, update it there directly, NOT via setx.
+- The MCP uses RAILWAY_API_TOKEN, which is separate from `railway login` CLI auth.
+- After updating any MCP token/config, a full Claude Code restart is required to reload.
+
+## Code Edits
+
+- Make surgical, scoped edits and show a diff/summary before committing.
+- Do not commit or push without explicit user approval at visual checkpoints.
+- For multi-phase plans, complete one phase, run tests + lint, then pause for review before proceeding.
+
+## Supabase
+
+- Always verify project URL and table existence before running migrations or inserts (pims_staging vs pims_observations confusion has happened).
+- Confirm Supabase MCP auth is working at session start; if not, fall back to direct SQL via psql/scripts rather than burning the session debugging MCP.
