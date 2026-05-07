@@ -83,3 +83,17 @@ data/*_analysis.jsonl
 # Malformed path-literal directories (accidental creates)
 C:Users*/
 .venv-test/
+
+# Track skills inside .claude/ but keep other .claude/ contents ignored
+!.claude/skills/
+!.claude/skills/**
+
+# Re-include .claude/skills/ (parent dir un-ignore needed for ! rules to work)
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+
+# Also un-ignore .claude/commands/ for shared slash commands
+!.claude/commands/
+!.claude/commands/**
