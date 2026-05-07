@@ -182,6 +182,69 @@ def _compute_manifest(
     return h.hexdigest()
 
 
+_PHASE_NEXT: dict[str, str | None] = {
+    "enrich-only": "from-state",
+    "from-state": "from-report",
+    "from-report": None,
+    "full-run": None,
+}
+
+
+def _update_run_status(
+    folder: Path,
+    phase: str,
+    *,
+    exit_code: int = 0,
+    error: str | None = None,
+) -> None:
+    """Stamp a ``run_status`` block onto ``.ssa_state.json``.
+
+    Additive — phase 2/3 readers look up specific keys (``rows``,
+    ``finding_render_order`` etc.) and ignore unknown ones, so writing
+    a top-level ``run_status`` cannot break them. Slice B (``--resume``)
+    consumes this block to pick up from the last green phase.
+
+    Silently no-ops when the sidecar is missing or unreadable; the
+    caller's primary contract (writing deliverables) is unaffected.
+    """
+    state_path = folder / ".ssa_state.json"
+    if not state_path.exists():
+        return
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        log.warning(
+            "run_status: could not read %s", state_path, exc_info=True,
+        )
+        return
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if exit_code == 0:
+        last_completed = phase
+        next_suggested = _PHASE_NEXT.get(phase)
+    else:
+        last_completed = state.get("run_status", {}).get(
+            "last_completed_phase",
+        )
+        next_suggested = phase
+    state["run_status"] = {
+        "last_completed_phase": last_completed,
+        "last_attempted_phase": phase,
+        "last_run_at": now_iso,
+        "last_exit_code": exit_code,
+        "last_error": error,
+        "next_suggested_phase": next_suggested,
+    }
+    try:
+        state_path.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception:
+        log.warning(
+            "run_status: could not write %s", state_path, exc_info=True,
+        )
+
+
 def _existing_run_record(folder: Path) -> dict | None:
     rj = folder / ".ssa_run.json"
     if not rj.exists():
@@ -795,6 +858,7 @@ def run_once(
             json.dumps(payload, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        _update_run_status(folder, "from-report")
         return payload
 
     # Two-phase workflow short-circuit: when ``from_state`` is True,
@@ -941,6 +1005,7 @@ def run_once(
             json.dumps(payload, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        _update_run_status(folder, "from-state")
         return payload
 
     # --- parse + match + address ------------------------------------
@@ -1166,6 +1231,7 @@ def run_once(
             json.dumps(ph1_payload, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        _update_run_status(folder, "enrich-only")
         return ph1_payload
     report_diag = build_ssa_report_docx(
         enriched,
@@ -1277,6 +1343,7 @@ def run_once(
         json.dumps(payload, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+    _update_run_status(folder, "full-run")
     return payload
 
 
