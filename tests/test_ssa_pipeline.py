@@ -1482,6 +1482,28 @@ def test_run_once_idempotent_skip_on_unchanged_inputs(evidence_folder):
     assert p2["inputs_sha256"] == p1["inputs_sha256"]
 
 
+def test_run_once_phase_flags_bypass_idempotency_skip(evidence_folder):
+    """``--from-state`` and ``--from-report`` must NOT short-circuit on
+    the manifest-skip. The manifest hashes pipeline inputs only (CSV +
+    images + prior reports); operator edits to the enriched xlsx (phase
+    2's input) and the audit report docx (phase 3's input) are NOT
+    captured. Letting the skip fire on those phases silently drops the
+    edits unless the operator remembers ``--force``. Regression for the
+    Codex-flagged P1 on PR #12.
+    """
+    p1 = run_once(evidence_folder, enrich=False)
+    assert p1.get("skipped") is False
+    # Same inputs, same manifest, all outputs present.
+    # Without the phase-flag bypass these would return skipped=True.
+    p2 = run_once(evidence_folder, enrich=False, from_state=True)
+    assert p2.get("skipped") is not True
+    assert p2.get("from_state") is True
+    p3 = run_once(evidence_folder, enrich=False, from_report=True)
+    assert p3.get("skipped") is not True
+    assert p3.get("from_report") is True
+    assert p3.get("phase") == "from-report"
+
+
 def test_run_once_input_change_reruns_and_force_overrides(evidence_folder):
     p1 = run_once(evidence_folder)
     csv = evidence_folder / "Evidence_Master.csv"

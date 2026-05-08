@@ -780,6 +780,12 @@ def run_once(
     is present whose ``inputs_sha256`` matches the current manifest AND
     every recorded output still exists on disk, the run is a no-op and
     the existing payload is returned with ``skipped=True`` set.
+
+    The skip is suppressed when ``from_state`` or ``from_report`` is
+    True. The manifest only hashes pipeline inputs (CSV + images + prior
+    reports); it does not capture operator edits to the enriched xlsx
+    (phase 2's input) or audit report docx (phase 3's input). Allowing
+    the skip to fire on those phases would silently drop those edits.
     """
     folder = folder.resolve()
     if not folder.is_dir():
@@ -813,6 +819,8 @@ def run_once(
     prior_record = _existing_run_record(folder)
     if (
         not force
+        and not from_state
+        and not from_report
         and prior_record is not None
         and prior_record.get("inputs_sha256") == manifest
         and all((folder / n).exists() for n in prior_record.get("outputs", []))
