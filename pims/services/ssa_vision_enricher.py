@@ -1,0 +1,729 @@
+"""Vision-enabled per-observation enrichment for the SSA pipeline.
+
+For each evidence row this module sends the photo (downscaled,
+EXIF-normalised, base64-encoded) plus the auditor's raw observation
+text to an Anthropic vision call and receives a JSON record carrying:
+
+  - conformance_status  (Compliant / Conditional / NCR / Info / Unmatched)
+  - ccvs_code           (one of the 150 valid <STREAM>-<TIER> codes)
+  - ccvs_category       (plain-English category derived from the stream)
+  - finding             (multi-sentence narrative, year-12 plain English)
+  - legal_ref           (NSW WHS regulation / AS / SafeWork NSW citation)
+  - recommendation      (one-sentence corrective action)
+  - monitoring_note     (one-sentence reviewer follow-up cue)
+
+Replaces the keyword-based ``ChecklistLookup.match_observation``
+matcher — that approach hit 5/21 on real audit data with one outright
+misroute. The vision approach uses the photo as primary evidence,
+which matches how the human reviewer assigns these fields.
+
+LLM is on by default. ``ANTHROPIC_API_KEY`` must be set in the
+environment. When the key is missing or any individual call fails,
+the row falls back to ``conformance_status="Unmatched"`` and blank
+fields — never raises into the orchestrator.
+
+Cost expectation: ~21 rows × one Sonnet vision call ≈ $0.10–$0.20 per
+typical audit. Image is downscaled to 1024 px longest edge before
+base64 encoding to keep input tokens predictable.
+"""
+from __future__ import annotations
+
+import base64
+import json
+import logging
+import os
+from io import BytesIO
+from pathlib import Path
+from typing import Any
+
+import httpx
+
+from pims.services.ssa_ccvs_taxonomy import (
+    STREAM_TO_CATEGORY,
+    TIER_DESCRIPTION,
+    VALID_STATUSES,
+    category_for,
+    is_valid_code,
+)
+from pims.services.ssa_pipeline import EnrichedRow
+
+log = logging.getLogger(__name__)
+
+ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+VISION_MODEL = "claude-opus-4-7"
+
+# Largest edge for the photo passed into the vision call. 1024 px is
+# enough resolution for compliance evidence (signage legibility, edge
+# protection presence, PPE on workers) while keeping each call's input
+# tokens around 1k–1.5k for the image plus ~500 for text.
+_VISION_MAX_EDGE_PX = 1024
+
+# Hard cap on JSON output size — replies are small structured records,
+# 800 tokens is plenty for the longest finding paragraph + citations.
+_MAX_OUTPUT_TOKENS = 800
+
+
+def _encode_photo_for_vision(path: Path) -> tuple[str, str] | None:
+    """EXIF-normalise + downscale + JPEG-encode + base64.
+
+    Returns ``(base64_str, "image/jpeg")`` or ``None`` on failure /
+    missing file. JPEG quality 85 is the same setting as the embedded-
+    thumbnail path, so the image the LLM sees is consistent with what
+    the reviewer sees in the deliverable.
+    """
+    try:
+        from PIL import Image, ImageOps
+    except Exception:
+        log.warning("Pillow unavailable — vision enrichment skipped")
+        return None
+    if not path.exists():
+        return None
+    try:
+        with Image.open(path) as im:
+            im = ImageOps.exif_transpose(im)
+            longest = max(im.width, im.height)
+            if longest > _VISION_MAX_EDGE_PX:
+                ratio = _VISION_MAX_EDGE_PX / float(longest)
+                im = im.resize(
+                    (int(im.width * ratio), int(im.height * ratio)),
+                    Image.LANCZOS,
+                )
+            buf = BytesIO()
+            im.convert("RGB").save(buf, format="JPEG", quality=85)
+            data = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+            return data, "image/jpeg"
+    except Exception:
+        log.warning("vision photo encode failed for %s", path, exc_info=True)
+        return None
+
+
+_TIER_LIST = "\n".join(f"  {t}  {desc}" for t, desc in TIER_DESCRIPTION.items())
+_STREAM_LIST = "\n".join(
+    f"  {s}  {cat}" for s, cat in sorted(STREAM_TO_CATEGORY.items())
+)
+
+_SYSTEM_PROMPT = (
+    "You are an Australian construction WHS auditor reviewing one site "
+    "evidence photo plus the auditor's raw note. Classify the "
+    "observation against the canonical CCVS taxonomy and write the "
+    "review-ready finding.\n\n"
+    "OUTPUT JSON ONLY — no prose, no markdown fences. The JSON object "
+    "must carry exactly these keys:\n"
+    '  status               ∈ ["Compliant", "Conditional", "NCR", "Info", "Unmatched"]\n'
+    '  ccvs_code            "<STREAM>-<TIER>" or "" if no clear match\n'
+    '  ccvs_category        plain-English category for the chosen stream, or ""\n'
+    '  finding_title        SHORT plain-English sentence (max 12 words) '
+    'describing what the finding actually is. PREFER active-voice '
+    'sentences over noun phrases. Good examples: '
+    '"Temporary brace removal proceeded without engineer sign-off", '
+    '"Fire extinguishers stored on the ground rather than wall-mounted", '
+    '"Telehandler operated without a current pre-start". '
+    'Bad examples (do NOT use noun-phrase titles like): '
+    '"EWP Exclusion Zone", "Pre-Start Logbook Gap", '
+    '"SWMS Sign-On Date Missing". Used as the #N heading and as the '
+    'Findings index table label.\n'
+    '  location             site/area anchor with concrete reference, e.g. '
+    '"Unit 1 shell", "Tilt-up panel zone, north elevation", "Site office area"\n'
+    '  finding              2–4 sentence narrative, year-12 plain English\n'
+    '  hierarchy_of_control "<Tier>: <specific control>" — Tier is one of '
+    'Elimination / Substitution / Isolation / Engineering / Administrative / PPE; '
+    'specific control is the actual physical or procedural step, e.g. '
+    '"Engineering: Re-establish physical barriers at unit entry openings"\n'
+    '  required_action      SHORT directive sentence, max 15 words, '
+    'starting with "<Urgency> – " where Urgency is one of '
+    'Immediate / Within 7 days / Next audit / Ongoing.\n'
+    '\n'
+    '    VERB SELECTION — pick the verb that captures BOTH the '
+    'initial action AND any ongoing obligation. Australian WHS '
+    'reviewer language prefers paired verbs for controls that must '
+    'persist (exclusion zones, barriers, edge protection, signage, '
+    'permits in force):\n'
+    '      - "establish and maintain" — for exclusion zones, '
+    'barriers, edge protection, traffic controls, permits, '
+    'monitoring regimes (anything that has to be set up AND held '
+    'in place across the work). Use this in preference to '
+    '"demarcate", "set up", "implement" alone.\n'
+    '      - "install" / "mount" / "fit" — for one-shot physical '
+    'fixtures (extinguisher brackets, signage, cable trays).\n'
+    '      - "complete" / "sign" — for record-keeping (logbook '
+    'entries, pre-starts, SWMS sign-on).\n'
+    '      - "verify" / "audit" / "check" — for monitoring or '
+    'verification actions.\n'
+    '      - "stop" / "stand down" — when the corrective action '
+    'is to halt work until a control is in place.\n'
+    '\n'
+    '    EXAMPLES (good):\n'
+    '      "Immediate – establish and maintain an exclusion zone '
+    'beneath suspended steel works"\n'
+    '      "Within 7 days – mount extinguishers on compliant brackets '
+    'with location signage"\n'
+    '      "Immediate – stop telehandler use until pre-start and VOC '
+    'are completed"\n'
+    '      "Ongoing – maintain daily register with time-in / time-out '
+    'entries"\n'
+    '\n'
+    '    Do NOT name specific personnel, hold points, or activity '
+    'refs in this field — those belong in the finding text. Keep to '
+    'a directive verb phrase that fits a single line in a table cell.\n'
+    '  timeframe            one of: Immediate / Within 7 days / Next audit / '
+    'Ongoing / N/A — matches the urgency in required_action\n'
+    '  legal_ref            multi-instrument citation separated by "; " — '
+    'e.g. "WHS Act 2011 (NSW) s.19; WHS Reg r.291; SafeWork NSW Code of Practice: '
+    'Managing the Risk of Falls", or ""\n'
+    '  recommendation       one short sentence (paraphrase of required_action), or ""\n'
+    '  monitoring_note      one short sentence reviewer cue, or ""\n'
+    '  phase                "<phase number> — <phase name>" copied from the RA when the activity matches a phase, e.g. "6 — Tilt-Up Panel Erection"; "" if no RA / no clear match\n'
+    '  activity_ref         RA activity ref the observation maps to, e.g. "TP-05"; "" if none\n'
+    '  hold_point           RA Hold Point code if the activity is gated by one, e.g. "HP-06"; "" otherwise\n'
+    '  hrcw                 RA HRCW codes for the activity, comma-separated, e.g. "H14, H15"; "" if RA does not classify\n'
+    '  swms_required        true ONLY when the RA / WHS Reg requires a SWMS for this activity (HRCW work, scaffold, demolition, asbestos, height >2m, etc.). Otherwise false.\n'
+    '  swms_present         "yes" if a SWMS sign-on / sighted on site evidence is in the photo or note; "no" if SWMS required but absent / undated; "unknown" if not visible; "" when swms_required is false\n'
+    '  initial_risk         RA Initial Risk word for the matching activity ("High" / "Medium" / "Low") if the RA carries it for this activity; "" otherwise. Do not invent a rating from the photo alone.\n'
+    '  residual_risk        RA Residual Risk word for the matching activity if the RA carries it; "" otherwise. Do not invent.\n\n'
+    "STREAM PREFIXES (pick exactly one):\n"
+    f"{_STREAM_LIST}\n\n"
+    "SEVERITY TIERS:\n"
+    f"{_TIER_LIST}\n\n"
+    "CLASSIFICATION RULES:\n"
+    "- Compliant: photo shows the control in place AND the auditor's "
+    "  note describes a satisfactory state. Use a tier (usually L1/L2) "
+    "  but the row records compliance, not non-conformance.\n"
+    "- Conditional: control is present but partially in place, OR the "
+    "  evidence needs follow-up. Tier M3/M4 typical.\n"
+    "- NCR: control absent or seriously inadequate. Tier H6/H9.\n"
+    "- Info: contextual / record-keeping observation, no control "
+    "  judgement. Tier L1/L2 typical.\n"
+    "- Unmatched: neither photo nor note give enough signal to "
+    "  classify. Reviewer assigns at QA. Set ccvs_code, ccvs_category "
+    "  to \"\" in this case.\n\n"
+    "FINDING WRITING RULES (year-12 plain English, Australian):\n"
+    "- 2–4 sentences. Describe what was observed, why it matters, and "
+    "  what good looks like. Do not paraphrase the raw note — write "
+    "  the reviewer-grade finding.\n"
+    "- Reference the relevant regulation in plain English. Good: "
+    "  \"WHS Regulation 2017 cl.79 requires edge protection at this "
+    "  height; the site does not meet that standard.\" or \"This "
+    "  falls below the WHS Regulation 2017 cl.79 minimum.\" Bad: "
+    "  \"contrary to WHS Regulation 2017 cl.79\", \"in breach of\", "
+    "  \"in violation of\", \"non-compliant with\". The bad forms read "
+    "  as legal template phrasing; the good forms describe what the "
+    "  rule says and how the observation falls short.\n"
+    "- Banned vocabulary: crucial, pivotal, landscape, ensure, "
+    "  leverage, robust, comprehensive, navigate, delve, it's "
+    "  important to note, serves as, at its core.\n"
+    "- Banned constructions:\n"
+    "  * No em-dash clusters.\n"
+    "  * No rule-of-three lists. Examples that are FORBIDDEN: "
+    "    \"available, accessible, and clearly identified\", "
+    "    \"obscured, kicked, or removed\", "
+    "    \"fast, cheap, and reliable\". When citing what a rule "
+    "    requires, name ONE primary requirement and let the rule "
+    "    speak for itself, e.g. \"AS 2444 requires extinguishers "
+    "    to be mounted at marked locations\" — not \"AS 2444 "
+    "    requires extinguishers to be available, accessible, and "
+    "    clearly identified\".\n"
+    "  * No negative parallelism (\"not just X, but Y\", \"not only "
+    "    X but also Y\").\n"
+    "  * No signposting (\"firstly\", \"in conclusion\", \"to "
+    "    summarise\").\n"
+    "  * No sycophantic openers or closers (\"great question\", "
+    "    \"I hope this helps\").\n"
+    "  * No emoji, no curly quotes.\n"
+    "  * No passive voice without a named actor — write \"the "
+    "    auditor observed X\" or \"X was observed by the SD Group "
+    "    site manager\", not bare \"X was observed\".\n"
+    "  * No legalistic connectors — never write \"contrary to\", "
+    "    \"in breach of\", \"in violation of\", \"non-compliant "
+    "    with\", \"pursuant to\". Reference regulations by stating "
+    "    what the rule requires and how the observation falls short.\n"
+    "- Do not invent measurements, names, dates, or evidence not "
+    "  present in the photo or note.\n"
+    "- For Compliant rows, the finding describes what was seen and "
+    "  why it satisfies the requirement.\n\n"
+    "LEGAL_REF RULES:\n"
+    "- Use canonical Australian forms: \"NSW WHS Regulation 2017 cl.79\", "
+    "  \"WHS Act 2011 s.19\", \"AS/NZS 1576.1:2019\", \"SafeWork NSW "
+    "  Code of Practice: Construction Work (2022)\".\n"
+    "- Leave \"\" if you do not know the citation. Do not fabricate.\n\n"
+    "RECOMMENDATION + MONITORING_NOTE:\n"
+    "- Both single-sentence. Recommendation is the corrective action; "
+    "  monitoring_note is what the next audit should verify.\n"
+    "- For Compliant / Info rows, recommendation may be \"\" and "
+    "  monitoring_note records the verification cue."
+)
+
+
+_TRANSIENT_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+
+
+def _parse_json_object(text: str) -> dict[str, Any]:
+    """Forgiving JSON-object parse for LLM output.
+
+    Step 1: strip code fences if present.
+    Step 2: try ``json.loads`` directly.
+    Step 3: on failure, locate the first ``{`` and walk forward
+    counting brace depth (respecting strings and escapes) until the
+    matching ``}``; parse that substring. Handles cases where the
+    model wraps the JSON in prose like ``"Here is the result: { ... }"``
+    despite the explicit "JSON ONLY" instruction.
+
+    Raises ``json.JSONDecodeError`` (passed through) when no valid
+    JSON object can be extracted — caller wraps in try/except and
+    falls back to Unmatched.
+    """
+    s = text.strip()
+    if s.startswith("```"):
+        s = s.split("```", 2)[1]
+        if s.startswith("json"):
+            s = s[4:]
+        s = s.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Walk to find a balanced { ... } substring. Respect strings so
+    # braces inside string literals don't fool the depth counter.
+    start = s.find("{")
+    if start < 0:
+        raise json.JSONDecodeError("no { found in LLM output", s, 0)
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(s[start:i + 1])
+    raise json.JSONDecodeError("unbalanced { in LLM output", s, start)
+
+
+async def _vision_call(
+    photo_b64: str, photo_mime: str, observation_text: str,
+    site_address: str, audit_date_iso: str, api_key: str,
+    ra_context: str = "",
+    retries: int = 2,
+) -> dict[str, Any]:
+    """Single Anthropic vision call. Returns the parsed JSON dict.
+
+    Raises on HTTP error / JSON parse failure / network — caller wraps
+    in try/except and falls back to Unmatched on any failure.
+
+    ``ra_context`` is the compact project Risk Assessment block (per
+    ``ssa_ra_parser.compact_context_block``). When non-empty, the
+    model is instructed to cite RA hold-point codes (``HP-04``) and
+    activity refs (``TP-05``) inside the finding text, and to align
+    severity with the RA's Initial / Residual rubric where it can.
+    """
+    parts: list[str] = []
+    if ra_context:
+        parts.append(ra_context)
+        parts.append("")
+        parts.append(
+            "RA-ALIGNMENT INSTRUCTIONS:\n"
+            "- When this photo + note relates to a specific RA "
+            "  activity, reference the activity ref (e.g. TP-05) "
+            "  inside your finding sentence.\n"
+            "- When the activity is gated by a Hold Point, reference "
+            "  the HP code (e.g. HP-04) and what evidence the RA "
+            "  requires.\n"
+            "- When the RA states an HRCW category for that activity, "
+            "  mention it (e.g. \"HRCW H14 traffic corridor\").\n"
+            "- Pick the CCVS tier (H6/H9/M3/M4/L1/L2) consistent with "
+            "  the RA's Initial / Residual risk for the activity. NCR "
+            "  status when the observed control falls below the RA's "
+            "  minimum standard for that activity."
+        )
+        parts.append("")
+    parts.append(f"SITE: {site_address or '(unresolved)'}")
+    parts.append(f"AUDIT_DATE: {audit_date_iso}")
+    parts.append(f"AUDITOR_NOTE: {observation_text}")
+    user_text = "\n".join(parts) + "\n"
+    body = {
+        "model": VISION_MODEL,
+        "max_tokens": _MAX_OUTPUT_TOKENS,
+        "system": _SYSTEM_PROMPT,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": photo_mime,
+                            "data": photo_b64,
+                        },
+                    },
+                    {"type": "text", "text": user_text},
+                ],
+            }
+        ],
+    }
+    last_exc: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    ANTHROPIC_URL,
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": ANTHROPIC_VERSION,
+                        "content-type": "application/json",
+                    },
+                    json=body,
+                )
+            if resp.status_code in _TRANSIENT_HTTP_STATUSES:
+                raise httpx.HTTPStatusError(
+                    f"transient HTTP {resp.status_code}",
+                    request=resp.request, response=resp,
+                )
+            resp.raise_for_status()
+            text = resp.json()["content"][0]["text"].strip()
+            break
+        except (httpx.ConnectError, httpx.ReadError, httpx.WriteError,
+                httpx.TimeoutException, httpx.RemoteProtocolError,
+                httpx.HTTPStatusError) as exc:
+            last_exc = exc
+            if isinstance(exc, httpx.HTTPStatusError) and \
+                    exc.response.status_code not in _TRANSIENT_HTTP_STATUSES:
+                # 4xx (auth, bad request) — don't retry, surface
+                raise
+            if attempt >= retries:
+                raise
+            import asyncio
+            await asyncio.sleep(1.5 * (attempt + 1))
+    else:  # pragma: no cover — loop never falls through; either break or raise
+        raise RuntimeError(f"vision call failed after retries: {last_exc}")
+    return _parse_json_object(text)
+
+
+def _coerce_record(raw: dict[str, Any]) -> dict[str, str]:
+    """Validate + normalise a single LLM record.
+
+    - status falls back to ``"Unmatched"`` if not in the allowed set
+    - ccvs_code is dropped (and category cleared) if it does not
+      validate against the taxonomy
+    - ccvs_category is regenerated from the (validated) code so the
+      reviewer-facing label is always self-consistent
+    """
+    def _s(key: str) -> str:
+        v = raw.get(key, "")
+        return "" if v is None else str(v).strip()
+
+    status = _s("status") or "Unmatched"
+    if status not in VALID_STATUSES:
+        status = "Unmatched"
+
+    code = _s("ccvs_code").upper().replace(" ", "")
+    if code and not is_valid_code(code):
+        log.info("LLM returned invalid ccvs_code %r — dropping", code)
+        code = ""
+    category = category_for(code) if code else ""
+
+    # Hierarchy of Control — accept "<Tier>: <control>" or bare tier;
+    # validate the tier prefix against the canonical WHS hierarchy.
+    # Anything else collapses to "" so the template cell stays blank
+    # rather than carrying a fabricated label.
+    hoc_raw = _s("hierarchy_of_control").strip()
+    hoc = ""
+    if hoc_raw:
+        head = hoc_raw.split(":", 1)[0].strip().title()
+        if head == "Ppe":
+            head = "PPE"
+        if head in {"Elimination", "Substitution", "Isolation",
+                    "Engineering", "Administrative", "PPE"}:
+            hoc = hoc_raw  # preserve the "Tier: control" full string
+
+    # gap-5: SWMS verification — coerce truthy values to bool, gate
+    # swms_present to the canonical {yes,no,unknown,""} set so the
+    # staging xlsx column never carries a fabricated label.
+    swms_required = raw.get("swms_required")
+    if isinstance(swms_required, str):
+        swms_required = swms_required.strip().lower() in {"true", "yes", "1"}
+    else:
+        swms_required = bool(swms_required)
+    swms_present = _s("swms_present").lower()
+    if swms_present not in {"yes", "no", "unknown", ""}:
+        swms_present = "unknown"
+    if not swms_required:
+        # Unset swms_present when the row doesn't need a SWMS — keeps
+        # the staging cell clean and prevents accidental yes/no carry.
+        swms_present = ""
+
+    # gap-6: initial/residual risk — accept only the canonical H/M/L
+    # vocabulary. RA carries "High (3)" / "Medium (2)" / "Low (1)";
+    # the LLM may return either form, so collapse to the bare word.
+    def _risk(key: str) -> str:
+        v = _s(key).strip().split(" ", 1)[0].title()
+        return v if v in {"High", "Medium", "Low"} else ""
+
+    return {
+        "status": status,
+        "ccvs_code": code,
+        "ccvs_category": category,
+        "finding_title": _s("finding_title"),
+        "location": _s("location"),
+        "finding": _s("finding"),
+        "hierarchy_of_control": hoc,
+        "required_action": _s("required_action"),
+        "timeframe": _s("timeframe"),
+        "legal_ref": _s("legal_ref"),
+        "recommendation": _s("recommendation"),
+        "monitoring_note": _s("monitoring_note"),
+        "phase": _s("phase"),
+        "activity_ref": _s("activity_ref"),
+        "hold_point": _s("hold_point"),
+        "hrcw": _s("hrcw"),
+        "swms_required": swms_required,
+        "swms_present": swms_present,
+        "initial_risk": _risk("initial_risk"),
+        "residual_risk": _risk("residual_risk"),
+    }
+
+
+async def enrich_rows_with_vision(
+    rows: list[EnrichedRow],
+    site_address: str,
+    audit_date_iso: str,
+    ra_context: str = "",
+) -> dict[str, Any]:
+    """In-place enrichment: photo+note → status + CCVS + finding fields.
+
+    Returns a diagnostics dict for ``.ssa_run.json``:
+        {
+          "model":        str,
+          "rows_total":   int,
+          "rows_called":  int,    # rows that had a resolved photo
+          "rows_ok":      int,    # successful enrichments
+          "rows_failed":  int,    # API / parse / encode failures
+          "errors":       [str],  # short error reasons (deduped)
+        }
+
+    Rows without a resolved photo cannot be vision-classified — they
+    keep ``status="Unmatched"`` and blank fields.
+    """
+    diag: dict[str, Any] = {
+        "model": VISION_MODEL,
+        "rows_total": len(rows),
+        "rows_called": 0,
+        "rows_ok": 0,
+        "rows_failed": 0,
+        "errors": [],
+    }
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        log.warning(
+            "ANTHROPIC_API_KEY not set — vision enrichment skipped, "
+            "every row stays Unmatched"
+        )
+        diag["errors"].append("ANTHROPIC_API_KEY missing")
+        return diag
+
+    seen_errors: set[str] = set()
+    for row in rows:
+        path = row.obs.resolved_path
+        if path is None:
+            continue
+        encoded = _encode_photo_for_vision(path)
+        if encoded is None:
+            diag["rows_failed"] += 1
+            seen_errors.add(f"photo encode failed: {path.name}")
+            continue
+        photo_b64, photo_mime = encoded
+        diag["rows_called"] += 1
+
+        text = row.observation_text_clean or row.obs.observation_text or ""
+        try:
+            raw = await _vision_call(
+                photo_b64, photo_mime, text,
+                site_address, audit_date_iso, api_key,
+                ra_context=ra_context,
+            )
+        except httpx.HTTPStatusError as exc:
+            diag["rows_failed"] += 1
+            # Surface the API's own error message body so billing /
+            # auth / model-not-found issues don't read as "bad request"
+            # to the orchestrator.
+            try:
+                api_err = exc.response.json().get("error", {})
+                api_msg = api_err.get("message", "")[:160]
+                api_type = api_err.get("type", "")
+            except Exception:
+                api_msg = ""
+                api_type = ""
+            tag = f"http {exc.response.status_code}"
+            if api_type:
+                tag = f"{tag} {api_type}"
+            if api_msg:
+                tag = f"{tag}: {api_msg}"
+            seen_errors.add(tag)
+            continue
+        except Exception as exc:
+            diag["rows_failed"] += 1
+            seen_errors.add(f"{type(exc).__name__} on row {row.obs.csv_row}")
+            log.warning(
+                "vision call failed on row %s", row.obs.csv_row,
+                exc_info=True,
+            )
+            continue
+
+        try:
+            rec = _coerce_record(raw)
+        except Exception as exc:
+            diag["rows_failed"] += 1
+            seen_errors.add(f"parse error on row {row.obs.csv_row}: {exc}")
+            continue
+
+        row.conformance_status = rec["status"]
+        row.ccvs_code = rec["ccvs_code"]
+        row.ccvs_category = rec["ccvs_category"]
+        if rec["finding_title"]:
+            row.finding_title = rec["finding_title"]
+        if rec["location"]:
+            row.location = rec["location"]
+        if rec["finding"]:
+            row.finding = rec["finding"]
+        if rec["hierarchy_of_control"]:
+            row.hierarchy_of_control = rec["hierarchy_of_control"]
+        if rec["legal_ref"]:
+            row.legal_ref = rec["legal_ref"]
+        # Required-action and timeframe overlap with recommendation /
+        # due_category. Prefer the LLM's tier-prefixed strings — they
+        # render cleanly in the per-finding detail table — but fall
+        # back to recommendation when required_action is blank.
+        if rec["required_action"]:
+            row.recommendation = rec["required_action"]
+        elif rec["recommendation"]:
+            row.recommendation = rec["recommendation"]
+        if rec["monitoring_note"]:
+            row.monitoring_note = rec["monitoring_note"]
+        # timeframe — LLM's pick (Immediate / Within 7 days / Next
+        # audit / Ongoing / N/A) overrides the status-derived default
+        # so the docx Timeframe cell reflects the model's judgement
+        # for context-specific items (e.g. "Ongoing" maintenance vs
+        # one-shot "Immediate").
+        tf = rec["timeframe"].strip()
+        if tf in {"Immediate", "Within 7 days", "Next audit",
+                  "Ongoing", "N/A"}:
+            row.timeframe = tf
+        # gap-4: RA cross-reference fields.
+        if rec["phase"]:
+            row.phase = rec["phase"]
+        if rec["activity_ref"]:
+            row.activity_ref = rec["activity_ref"]
+        if rec["hold_point"]:
+            row.hold_point = rec["hold_point"]
+        if rec["hrcw"]:
+            row.hrcw = rec["hrcw"]
+        # gap-5: SWMS verification.
+        row.swms_required = rec["swms_required"]
+        if rec["swms_present"]:
+            row.swms_present = rec["swms_present"]
+        # gap-6: Initial / Residual risk axis (RA H/M/L).
+        if rec["initial_risk"]:
+            row.initial_risk = rec["initial_risk"]
+        if rec["residual_risk"]:
+            row.residual_risk = rec["residual_risk"]
+        diag["rows_ok"] += 1
+
+    diag["errors"] = sorted(seen_errors)
+    return diag
+
+
+async def generate_narrative_summary(
+    rows: list[EnrichedRow],
+    site_address: str,
+    audit_date_iso: str,
+) -> str:
+    """Compose the Executive Summary paragraph after vision enrichment.
+
+    Pulls from the now-populated ``finding`` + ``conformance_status``
+    fields. Returns ``""`` when no Anthropic key is set or the call
+    fails — caller substitutes the empty string into the template's
+    ``{{NARRATIVE_SUMMARY}}`` placeholder.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return ""
+    if not rows:
+        return ""
+
+    payload = [
+        {
+            "status": r.conformance_status,
+            "ccvs_category": r.ccvs_category,
+            "finding": r.finding or r.observation_text_clean,
+        }
+        for r in rows
+    ]
+
+    system = (
+        "You write the Executive Summary paragraph at the top of an "
+        "Australian construction site safety audit report. Output ONE "
+        "paragraph, MAXIMUM 140 words and 12 lines on an A4 page "
+        "(prefer 100 words). Provide site condition + the most "
+        "significant gaps only — do NOT enumerate every finding; the "
+        "Findings section below the summary already lists them all. "
+        "No bullets, no headings, no lists. "
+        "Open with the site address and audit date in a single "
+        "sentence. Then summarise the audit's overall picture grounded "
+        "in the findings supplied — note major non-conformance themes "
+        "by hazard family, balance with positive observations. End "
+        "with one sentence on the next-step posture (close out NCRs, "
+        "monitor Conditional). Australian English, year-12 plain "
+        "English. Banned vocabulary: crucial, pivotal, landscape, "
+        "ensure, leverage, robust, comprehensive, navigate, delve, "
+        "it's important to note, serves as, at its core. Banned "
+        "constructions: no em-dash clusters, no rule-of-three lists, "
+        "no negative parallelism (\"not just X, but Y\"), no "
+        "signposting (\"firstly\", \"in conclusion\"), no "
+        "sycophantic openers/closers, no emoji, no curly quotes, no "
+        "passive voice without a named actor, no legalistic "
+        "connectors (\"contrary to\", \"in breach of\", \"in "
+        "violation of\", \"non-compliant with\", \"pursuant to\"). "
+        "Do not invent counts, names, dates, or breaches not in the "
+        "input. Return ONLY the paragraph text — no JSON, no quotes, "
+        "no markdown."
+    )
+    user_text = (
+        f"SITE: {site_address or '(unresolved)'}\n"
+        f"AUDIT_DATE: {audit_date_iso}\n"
+        f"FINDINGS:\n{json.dumps(payload, ensure_ascii=False)}"
+    )
+    body = {
+        "model": VISION_MODEL,
+        "max_tokens": 600,
+        "system": system,
+        "messages": [{"role": "user", "content": user_text}],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                ANTHROPIC_URL,
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": ANTHROPIC_VERSION,
+                    "content-type": "application/json",
+                },
+                json=body,
+            )
+            resp.raise_for_status()
+            return resp.json()["content"][0]["text"].strip()
+    except Exception:
+        log.warning("narrative summary generation failed", exc_info=True)
+        return ""

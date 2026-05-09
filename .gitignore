@@ -28,6 +28,7 @@ patch_*.py
 !src/_SWMS-RPD-TASK-260318-V10_TEMPLATE.docx
 !pims/audit_report_template.docx
 !pims/RPD_SSA_template.docx
+!pims/templates/ssa/Site-Safety-Audit-Report.template.docx
 
 # PIMS audit-report runtime cache
 pims/data/
@@ -82,3 +83,17 @@ data/*_analysis.jsonl
 # Malformed path-literal directories (accidental creates)
 C:Users*/
 .venv-test/
+
+# Track skills inside .claude/ but keep other .claude/ contents ignored
+!.claude/skills/
+!.claude/skills/**
+
+# Re-include .claude/skills/ (parent dir un-ignore needed for ! rules to work)
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+
+# Also un-ignore .claude/commands/ for shared slash commands
+!.claude/commands/
+!.claude/commands/**
