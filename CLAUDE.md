@@ -459,8 +459,10 @@ Lessons baked into the system (do not re-learn):
 - Make surgical, scoped edits and show a diff/summary before committing.
 - Do not commit or push without explicit user approval at visual checkpoints.
 - For multi-phase plans, complete one phase, run tests + lint, then pause for review before proceeding.
+- When asked to show raw code or file contents, display the actual text verbatim — never summarise or paraphrase code.
 
 ## Supabase
 
 - Always verify project URL and table existence before running migrations or inserts (pims_staging vs pims_observations confusion has happened).
 - Confirm Supabase MCP auth is working at session start; if not, fall back to direct SQL via psql/scripts rather than burning the session debugging MCP.
+- Before any data import, verify in this order: (1) correct project URL, (2) target table exists, (3) unique index / conflict target if upserting, (4) run a small test batch before the full import.
