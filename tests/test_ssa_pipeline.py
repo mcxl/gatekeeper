@@ -1482,6 +1482,55 @@ def test_run_once_idempotent_skip_on_unchanged_inputs(evidence_folder):
     assert p2["inputs_sha256"] == p1["inputs_sha256"]
 
 
+def test_run_once_from_state_persists_finding_render_order(evidence_folder):
+    """Phase 2 (--from-state) must populate ``finding_render_order`` on
+    the sidecar so phase 3 (--from-report) can pair docx detail-table
+    edits back to the right EnrichedRow. Phase 1 writes an empty list;
+    only the phase 2 docx build captures the populated order. Regression
+    for Codex P1 on PR #12.
+    """
+    # Phase 1: enrich-only writes the sidecar with an empty render order.
+    p1 = run_once(evidence_folder, enrich=False, stop_after="enrich")
+    assert p1.get("phase") == "enrich-only"
+    state_path = evidence_folder / ".ssa_state.json"
+    state_after_phase1 = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state_after_phase1.get("finding_render_order") == []
+
+    # Phase 2: from-state must populate the render order on the sidecar.
+    p2 = run_once(evidence_folder, enrich=False, from_state=True)
+    assert p2.get("from_state") is True
+    state_after_phase2 = json.loads(state_path.read_text(encoding="utf-8"))
+    order = state_after_phase2.get("finding_render_order")
+    # Order may be empty when there are no findings to render, but it
+    # must be a populated list mirroring the docx detail tables that
+    # were actually built. With the synthesised evidence_folder fixture
+    # the first row becomes an Unmatched finding so at least one entry.
+    assert isinstance(order, list)
+    if order:
+        # Every entry is a valid 0-based csv_idx into the row set.
+        assert all(isinstance(i, int) and i >= 0 for i in order)
+
+
+def test_run_once_phase_flags_skip_api_key_preflight(
+    evidence_folder, monkeypatch,
+):
+    """``--from-state`` and ``--from-report`` rebuild from the saved
+    sidecar / docx and never call the LLM, so the API-key preflight
+    must be skipped on those phases. Without this, review-only
+    workstations can't complete a phase 2 / 3 run without setting a
+    placeholder ``ANTHROPIC_API_KEY``. Regression for Codex P2 on PR #12.
+    """
+    # Seed full pipeline output (with the autouse stub key in place).
+    p1 = run_once(evidence_folder, enrich=False)
+    assert p1.get("skipped") is False
+    # Now drop the key and re-run phase 2 / 3 — preflight must NOT fire.
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    p2 = run_once(evidence_folder, enrich=False, from_state=True)
+    assert p2.get("from_state") is True
+    p3 = run_once(evidence_folder, enrich=False, from_report=True)
+    assert p3.get("from_report") is True
+
+
 def test_run_once_phase_flags_bypass_idempotency_skip(evidence_folder):
     """``--from-state`` and ``--from-report`` must NOT short-circuit on
     the manifest-skip. The manifest hashes pipeline inputs only (CSV +

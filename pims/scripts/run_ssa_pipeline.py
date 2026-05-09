@@ -794,7 +794,12 @@ def run_once(
     # Runtime preflight — must happen before any row processing so a
     # missing API key (or other config gap) fails loud rather than
     # producing a structurally-valid but semantically-degraded run.
-    _preflight(enrich=enrich)
+    # ``--from-state`` and ``--from-report`` rebuild from the saved
+    # sidecar / docx and never call the LLM, so the API key is not
+    # required for those phases (review-only workstations can still
+    # complete a phase 2 / 3 run without ANTHROPIC_API_KEY).
+    needs_llm = enrich and not from_state and not from_report
+    _preflight(enrich=needs_llm)
 
     freeze = folder / ".ssa_freeze"
     if freeze.exists() and not ignore_freeze:
@@ -991,7 +996,12 @@ def run_once(
         site_for_docx = site_address or "[Site address - to be confirmed]"
         site_for_staging = site_address or ""
         # Build only the report + staging (skip enriched xlsx so the
-        # operator's edits stay intact).
+        # operator's edits stay intact). Capture finding_render_order so
+        # a subsequent phase 3 (--from-report) can pair docx detail-
+        # table edits back to the right EnrichedRow — phase 1 wrote an
+        # empty list to the sidecar, this phase 2 build is what actually
+        # populates it.
+        finding_render_order: list[int] = []
         report_diag = build_ssa_report_docx(
             enriched,
             site_address=site_for_docx,
@@ -1004,8 +1014,30 @@ def run_once(
             prior_audit_date_ddmmyy=prior_audit_date_ddmmyy,
             risk_assessment=None,
             merge_groups=merge_groups,
+            render_order_out=finding_render_order,
         )
         report_diag["prior_recs_count"] = len(prior_recs)
+        # Refresh the sidecar with the freshly-captured render order
+        # (mirrors the full-run path). Without this, phase 3 would see
+        # an empty finding_render_order and silently fail to pair docx
+        # detail-table edits back to the correct EnrichedRow.
+        if state_path.exists():
+            try:
+                existing_state = json.loads(
+                    state_path.read_text(encoding="utf-8"),
+                )
+                existing_state["finding_render_order"] = list(
+                    finding_render_order,
+                )
+                existing_state["rows"] = _serialise_rows(enriched)
+                state_path.write_text(
+                    json.dumps(existing_state, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+            except Exception:
+                log.warning(
+                    "phase 2: failed to refresh state JSON", exc_info=True,
+                )
         staging_result = build_pims_staging_xlsx_with_size_control(
             enriched,
             staging_path,
