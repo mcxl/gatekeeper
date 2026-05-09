@@ -1275,6 +1275,53 @@ def test_build_staging_xlsx_row5_data_id_blank_due_category(tmp_path):
     assert ws.cell(row=7, column=12).value == "Within 7 days"
 
 
+def test_staging_xlsx_blanks_conformance_status_for_unmatched_rows(tmp_path):
+    """Rows that finish in the in-pipeline default ``conformance_status=
+    "Unmatched"`` must NOT carry that string into the staging xlsx —
+    the upload validator at pims/routes.py:2220 only accepts {NCR,
+    Compliant, Conditional, Info, blank}, so writing ``Unmatched`` makes
+    PIMS reject the row at upload. Regression for Codex P1 on PR #12.
+
+    Behaviour: emit blank in the staging cell. Operator triages the row
+    inside PIMS post-upload; the row is still visible (and flagged
+    needs_review) in the enriched xlsx and audit-report docx.
+    """
+    p1 = _save_jpeg(tmp_path / "a.jpg", (800, 600))
+    p2 = _save_jpeg(tmp_path / "b.jpg", (800, 600), "blue")
+    obs1 = ObservationRow(csv_row=1, timestamp_raw="2026-05-01_09-15-22",
+                          timestamp_iso="2026-05-01_09-15-22",
+                          observation_text="ncr obs", csv_filename="a.jpg",
+                          resolved_filename="a.jpg", resolved_path=p1)
+    obs2 = ObservationRow(csv_row=2, timestamp_raw="2026-05-01_09-30-00",
+                          timestamp_iso="2026-05-01_09-30-00",
+                          observation_text="unclassified obs",
+                          csv_filename="b.jpg",
+                          resolved_filename="b.jpg", resolved_path=p2)
+    rows = [
+        EnrichedRow(obs=obs1, conformance_status="NCR", ccvs_code="WAH-H6"),
+        EnrichedRow(obs=obs2),  # default conformance_status="Unmatched"
+    ]
+    out = tmp_path / "staging.xlsx"
+    build_pims_staging_xlsx(
+        rows, out, site_address="addr", audit_date_iso="2026-05-01",
+    )
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Observations"]
+    headers = [
+        ("" if c.value is None else str(c.value).strip().lower())
+        for c in ws[3]
+    ]
+    cs_col = headers.index("conformance_status") + 1
+    nr_col = headers.index("needs_review") + 1
+    # Row 5: NCR → "NCR" written through.
+    assert ws.cell(row=5, column=cs_col).value == "NCR"
+    # Row 6: default Unmatched → blanked so the upload validator
+    # accepts the row. needs_review still TRUE so the operator can
+    # find these rows post-upload.
+    assert ws.cell(row=6, column=cs_col).value in (None, "")
+    assert ws.cell(row=6, column=nr_col).value == "TRUE"
+
+
 def test_xlsx_polish_widths_wrap_and_status_fills_applied(tmp_path):
     """The Enriched + Staging builders apply column widths, wrap_text on
     long-content cells, and status colour fills on the Conformance

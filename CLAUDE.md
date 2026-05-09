@@ -59,6 +59,48 @@ Closed benchmark streams are maintained by regression discipline, not casual reo
 6. When improving quality, compare against a stronger benchmark before changing logic blindly.
 7. When a benchmark reveals an architectural gap rather than an incremental gap, stop slicing and surface the product decision.
 
+## Verify-Then-Act Opening
+
+Before making any edits on a non-trivial task, open with an explicit assumption-verification pass:
+
+1. **Target file paths** — list expected paths, then Read/Glob to confirm they exist and match expectations.
+2. **DB schema / tables** — list expected tables and columns, then query Supabase (`list_tables` / `execute_sql`) to confirm. Do not assume `pims_staging` vs `pims_observations`, project URL, or column names.
+3. **Env vars and config locations** — list which env vars / config files the work depends on (e.g. `~/.claude/.env.mcp`, project `.env`, `settings.json`) and Read them to confirm presence and shape.
+4. **Owning agent / persona** — state which agent or product boundary owns the task (RA, SWMS, SWMS Review Engine, control pack, SSA pipeline) so the work lands in the right module.
+
+Show verification results and the proposed plan, then **wait for approval** before editing.
+
+Apply by default to any task that touches the database, file writes outside the obvious working file, multi-phase template/renderer changes, or cross-agent boundaries. Skip the formal pass only for trivial in-place edits to a file already open in the conversation.
+
+Why: recurring friction came from acting before verifying — `pims_staging` not existing, wrong Supabase project URL, files saved to default Claude dir, name typos, wrong section indexes in tests. Front-loading verification reduces wasted iterations on PDF→Supabase imports and multi-phase template work where rework is expensive.
+
+## Checkpoint-Driven Execution
+
+Treat any multi-step task as a phased task. For each phase:
+
+1. Implement the smallest coherent slice.
+2. Run tests + lint relevant to that slice.
+3. Show a diff summary (files changed, key hunks, contract impact).
+4. Wait for an explicit "go" before committing.
+5. Never push until explicitly approved (separate from commit approval).
+6. Scope guard: if a phase touches more than 3 files, pause and confirm scope first.
+
+Apply by default to any task with more than one logical step or any change that spans modules, schemas, or templates. Single-file trivial edits can skip the formal loop. Pairs with verify-then-act: verify assumptions first, then enter the checkpoint loop for execution.
+
+Why: the most successful sessions (PIMS audit phases 0–H, SWMS stabilisation with 39/39 tests, staging inbox feature) all used strict checkpoints. Less successful ones came from over-reaching or batching too much.
+
+## Output Length Rule
+
+If a response would exceed ~400 tokens (long plans, reports, generated code, large analyses), do not return it inline:
+
+1. Write it to an appropriate file (e.g. `docs/plan.md`, `docs/decisions/<slug>.md`, or the natural source path for code).
+2. Return a 5-bullet summary inline pointing at the file and stating the key takeaways.
+3. For incremental long output (multi-section reports), append to the file in chunks rather than re-emitting in chat.
+
+Apply to plans, design docs, decision logs, benchmark reports, large code generations, and any analysis longer than ~400 tokens. Short answers, single-file edits, and tool-call-driven work stay inline.
+
+Why: prior sessions were lost when output hit the ~500-token cap mid-response. Writing to disk + summarising inline avoids the cap and leaves a durable artifact.
+
 ## Benchmark-Led Development Rules
 
 Use benchmark-led development for SWMS, RA, and other structured outputs.
@@ -395,11 +437,22 @@ Default operating mode: **headless checkpoint-to-checkpoint**.
 - `_get_dominant_family()` in `agents/control_writer.py` — injects dominant control family constraint per task at generation time
 - Inference matrix suppression guards in `core/orchestrator.py` — scaffold-led remedial jobs suppress EWP/crane/admin categories not in source
 - Reviewer credibility floor in `core/reviewer_agent.py` — BELOW_WORKING_DRAFT forced if credibility_drift agent returns FAIL
-## Railway MCP Token
+## MCP Tokens (self-healing system)
 
-- Railway MCP token is hardcoded in ~/.claude.json and overrides any env var. When token expires, update it there directly, NOT via setx.
-- The MCP uses RAILWAY_API_TOKEN, which is separate from `railway login` CLI auth.
-- After updating any MCP token/config, a full Claude Code restart is required to reload.
+Source of truth: `~/.claude/.env.mcp` (gitignored, chmod 600). Do NOT edit `~/.claude.json` directly to rotate tokens — the SessionStart hook (`~/.claude/hooks/session-start.sh` -> `mcp_loader.py`) syncs `.env.mcp` -> `~/.claude.json` and validates each MCP server via `claude mcp list`.
+
+Rotation workflow when a token expires:
+1. Edit `~/.claude/.env.mcp`, set the new value
+2. Fully quit and relaunch Claude Code (MCP servers boot from `~/.claude.json` once at startup; the loader rewrites that file before MCP boots, but only on a fresh session)
+3. Run `/mcp-doctor` if anything still looks wrong
+
+Lessons baked into the system (do not re-learn):
+- Windows scoped env vars (User/Machine/Process) drift silently — env vars are NOT a viable source of truth for MCP tokens. The hardcoded value in `~/.claude.json` always wins.
+- PowerShell is denied by user permission rules, so loaders must use Python/Bash, not `setx` or `[Environment]::SetEnvironmentVariable`.
+- Never hand-write a custom Railway GraphQL probe — the auth header format varies by token type. Use `claude mcp list` as ground truth for connectivity/auth status.
+- Windows Python consoles default to cp1252 — keep loader output ASCII-only or `sys.stdout.reconfigure(encoding="utf-8")`.
+- Adobe AEM, Mermaid, Fireflies, HF, Zapier, Drive, Gmail, Calendar are Anthropic-hosted (claude.ai) MCPs with server-side OAuth — they cannot be self-healed locally; re-auth is via the `/mcp` UI.
+- Supabase and Readwise are OAuth-based locally; only Railway has a long-lived token in `.env.mcp`.
 
 ## Code Edits
 

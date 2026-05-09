@@ -2950,6 +2950,16 @@ def _staging_row_value(
     if header == "finding":
         return row.finding or ""
     if header == "conformance_status":
+        # ``Unmatched`` is the in-pipeline default for rows the vision
+        # path couldn't classify (missing photo, transient LLM failure,
+        # offline ``--no-enrich`` mode). The upload validator at
+        # pims/routes.py:2220 accepts only {NCR, Compliant, Conditional,
+        # Info, blank}, so writing "Unmatched" here makes PIMS reject
+        # the row at upload. Emit blank — operator triages the row
+        # post-upload — and keep the row visible in the enriched xlsx /
+        # docx where it's already flagged needs_review.
+        if row.conformance_status == "Unmatched":
+            return ""
         return row.conformance_status
     if header == "ccvs_code":
         return row.ccvs_code
