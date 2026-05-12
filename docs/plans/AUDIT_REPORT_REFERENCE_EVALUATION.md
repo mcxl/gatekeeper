@@ -384,89 +384,75 @@ One commit containing:
   `docs/decisions/2026-05-12-adopt-audit-report-visual-polish.md`
   documenting the merge-forward and why.
 
-### 4.8 Execution handoff (authoritative)
+### 4.8 Execution handoff
 
-This is the implementation contract. When the operator says "go",
-execute exactly these steps, in this order, in one coordinated
-commit.
+#### Implementation plan
 
-**Implementation plan:**
+1. Adopt the feature-branch renderer and template onto `main`.
+   - Source branch: `feat/audit-report-visual-polish`
+   - Bring forward:
+     - `pims/audit_report_docx.py`
+     - `pims/audit_report_template.docx`
+     - `pims/scripts/clean_audit_report_template.py`
+     - `tests/test_audit_report_template_clean.py`
+     - `tests/test_audit_report_body_section.py`
 
-1. **Adopt the feature-branch renderer and template onto `main`.**
-   Source branch: `feat/audit-report-visual-polish`. Bring forward
-   verbatim:
-   - `pims/audit_report_docx.py`
-   - `pims/audit_report_template.docx`
-   - `pims/scripts/clean_audit_report_template.py`
-   - `tests/test_audit_report_template_clean.py`
-   - `tests/test_audit_report_body_section.py`
+2. Reconcile the live route to the adopted renderer shape.
+   - Update `pims/routes.py` to match the adopted `SiteData` fields exactly.
+   - Keep current `main` data-layer wins intact.
+   - Prefetch photos for all observations, not NCR/Conditional only.
+   - Pass the report issue date explicitly at the route boundary.
+   - Do not call `date.today()` inside the renderer.
 
-2. **Reconcile the live route to the adopted renderer shape.**
-   - Update `pims/routes.py` to match the adopted `SiteData` fields
-     exactly.
-   - Keep current `main` data-layer wins intact (Anthropic SDK
-     migration, site resolver, CCVS fallback, approve guard,
-     SDGroup PDF promote).
-   - Prefetch photos for ALL observations (not NCR/Conditional only
-     — revert D9 filter).
-   - Pass the report issue date explicitly at the route boundary
-     (new `report_issue_date` field on `AuditReportRequest`).
-   - Do NOT call `date.today()` inside the renderer.
-
-3. **Implement the resolved output decisions in the same commit.**
-   - Keep the trailing AuditCo `Contact Us` page.
+3. Implement the resolved output decisions in the same commit.
+   - Keep the trailing AuditCo contact page.
    - Use one global `Photo N` counter across the whole report.
    - Use block-scoped `#N. <Status>` numbering per criterion block.
-   - Use `CONTRACTOR_CONFIG` keyed by `sites.client_name` for the
-     `Prepared For` block. RPD entry renders exactly:
+   - Use `CONTRACTOR_CONFIG` keyed by `sites.client_name` for the `Prepared For` block.
+   - For the RPD entry, render exactly:
      - `Matthew McCarthy`
      - `Robertson's Remedial and Painting Pty Ltd`
      - `10/ 56 Buffalo Road, GLADESVILLE 2111`
-   - Stray `Matt M` prefix overwritten by construction (text-frame
-     write), not by cleaner typo-strip.
-   - Title-page date = report issue / sign-off date, not inspection
-     date.
+   - Ensure the stray `Matt M` prefix is overwritten by construction, not left to template residue.
+   - Treat the title-page date as the report issue / sign-off date, not the inspection date.
    - Ignore the Cremorne PDF glyph artefact.
 
-4. **Lock the contract with a fingerprint regression test.**
+4. Lock the contract with a fingerprint regression test.
    - Add `tests/test_audit_report_contract.py`.
-   - References:
+   - Use the in-repo references:
      - `pims/7_Hampden_Rd_Cremorne.docx`
      - `pims/56-58_Fraters_Ave_Sans_Souci.docx`
-   - Snapshot fixtures under:
+   - Add snapshot fixtures under:
      - `tests/fixtures/audit_report_contracts/`
      - `tests/fixtures/audit_report_inputs/`
-   - Assert structure, text-frame content, tables, headers/footers,
-     and embedded-image counts.
+   - Assert structure, text-frame content, tables, headers/footers, and embedded-image counts.
 
-5. **Verify title-page text-frame paths and footer paths.**
-   - Renderer walks `<w:txbxContent>` / `<a:t>` (DrawingML).
-   - Title-page placeholders populate correctly.
-   - Footer date + `PAGE` / `NUMPAGES` field codes render correctly.
-   - Footer date uses the explicit report issue date.
+5. Verify the title-page text-frame paths and footer paths.
+   - Confirm the renderer walks text frames / DrawingML content.
+   - Confirm title-page placeholders populate correctly.
+   - Confirm footer date + page numbering render correctly.
+   - Confirm footer date uses the explicit report issue date.
 
-6. **Regenerate the report as v5 and validate against the references.**
-   - Generate v5 to
-     `G:\My Drive\alan_mcxico\SSA-evidence\2026-05-12-RPD-01\Audit_Report_96-98_Hampden_Rd_Russel_Lea_v5.docx`.
-   - Side-by-side vs Cremorne + Fraters.
-   - Every catalogued defect (§2) either fixed or explicitly
-     documented with operator sign-off.
+6. Regenerate the report as v5 and validate against the references.
+   - Generate the new v5 artifact.
+   - Compare it side-by-side against Cremorne and Fraters.
+   - Every catalogued defect must either be fixed or explicitly documented with operator sign-off.
 
-7. **Record the adoption decision.**
-   - Add `docs/decisions/2026-05-12-adopt-audit-report-visual-polish.md`.
-   - Document what was adopted, what was preserved from `main`, and
-     why.
+7. Record the adoption decision.
+   - Add:
+     - `docs/decisions/2026-05-12-adopt-audit-report-visual-polish.md`
+   - Document what was adopted, what was preserved from `main`, and why.
 
-8. **One coordinated commit covering:**
+8. Keep the implementation to one coordinated commit.
    - Renderer
    - Template
    - Cleaner
    - Route reconcile
    - Contract tests + fixtures
    - Decision record
-   - Regeneration / proof artefacts as appropriate
+   - Regeneration / proof artifacts as appropriate
 
-**Operator `/goal` prompt (paste verbatim to start execution):**
+#### Operator handoff prompt
 
 ```text
 /goal Bring the `feat/audit-report-visual-polish` audit-report renderer/template contract onto `main`, reconcile `pims/routes.py`, add a fingerprint contract test against the two in-repo reference DOCX files, and regenerate the report as v5.
@@ -523,6 +509,39 @@ Final deliverable:
 - Decisions made
 - Known limitations / follow-ups
 ```
+
+#### QA-correction note (Codex review, 2026-05-12, post-implementation)
+
+The implementation landed (commit `0085ab7` + follow-up `8d78858`)
+but a Codex QA pass flagged four follow-ups against the
+implementation contract above. They do not invalidate §4.8; they
+are corrections to claims/artefacts produced during execution:
+
+1. `tests/test_audit_report_contract.py` (item 4 above) is a
+   reference-file fingerprint pin only — it asserts the in-repo
+   references themselves match their JSON snapshots. It does NOT
+   yet render the audit report against fixture inputs and compare
+   the rendered output to the snapshots. The render-then-compare
+   regression test remains a follow-up; the current test does not
+   protect against renderer or template regressions.
+2. `pims/routes.py` only pre-fetches image bytes for
+   `open_actions` observations, not for every observation. Item 2
+   above asks for "all observations" prefetch; the implementation
+   narrowed it to open-actions because the adopted renderer only
+   consumes open-action photo bytes. Either expand the prefetch or
+   leave the comment/code narrowed — both are acceptable; the
+   current code does the latter, and the route comment has been
+   corrected to match.
+3. `report_issue_date` route-level test coverage is incomplete.
+   Cases now added in `tests/test_audit_report_routes.py`: missing
+   field, empty string, JSON `null`, invalid string, explicit
+   valid value round-trip.
+4. The audit-report local-render path is
+   `pims/scripts/generate_audit_report.py` (xlsx-driven), not
+   `scripts/render_site_visit_report.py` (which renders the Site
+   Visit Report xlsx). Any documentation pointing operators at
+   the latter for audit-report verification is wrong; the QA
+   handover has been corrected.
 
 ## 5. Resolved decisions (Codex review, 2026-05-12)
 

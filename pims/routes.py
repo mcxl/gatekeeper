@@ -3440,13 +3440,15 @@ async def generate_audit_report_rpd(
             if o.get("audit_id"):
                 audit_ref = await _fetch_audit_ref(o["audit_id"])
                 break
-        # Pre-fetch open-action photos. Per Codex resolved decision
-        # (2026-05-12), prefetch covers ALL observations — not just
-        # NCR/Conditional (the prior D9 filter was wrong against the
-        # reference docx which embeds photos on Compliant rows too).
-        # The adopted renderer only EMBEDS photos at open-action rows;
-        # if a future renderer wants checklist-row photos, the bytes
-        # are already available via obs_photo_bytes (kept local).
+        # Pre-fetch photos for the open-action observations only. The
+        # adopted renderer embeds photos exclusively in the Open Actions
+        # Register table; checklist rows do not carry images today. The
+        # D9 NCR/Conditional filter from main has been reverted (decision
+        # 1, 2026-05-12), but the operational fetch is still scoped to
+        # open_actions because that is the only set the renderer consumes
+        # — fetching photos for every observation would cost bandwidth
+        # the renderer cannot turn into output. If a future renderer
+        # adds checklist-row image embeds, expand the fetch set here.
         oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
         oa_photo_bytes = await _fetch_images(oa_photo_urls) if oa_photo_urls else []
         oa_photo_bytes_by_obs_id: dict[str, bytes] = {}

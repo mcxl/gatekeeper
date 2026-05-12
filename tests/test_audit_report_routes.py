@@ -281,3 +281,103 @@ def test_fetch_sends_constant_select_to_supabase(patched_routes, monkeypatch):
 
     assert _CaptureClient.last_params is not None
     assert _CaptureClient.last_params["select"] == patched_routes.OBSERVATION_SELECT_COLUMNS
+
+
+
+# ---------------------------------------------------------------------------
+# report_issue_date — route-level coverage (Codex QA finding 3, 2026-05-12)
+# ---------------------------------------------------------------------------
+
+
+def _capture_sites(patched_routes, monkeypatch, **kwargs) -> list:
+    """Run generate_audit_report_rpd with the supplied AuditReportRequest
+    kwargs and return the SiteData list that build_audit_report_docx
+    received. Shared helper for the report_issue_date matrix below."""
+    captured: dict = {}
+
+    async def fake_fetch_sites(_ids):
+        return [{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "address_raw": "1 A St", "project_value": 300_000,
+            "client_name": "Client A",
+        }]
+
+    async def fake_fetch_obs(_site_id):
+        return []
+
+    def fake_build(sites_data, **_kw):
+        captured["sites"] = list(sites_data)
+        from io import BytesIO
+        return BytesIO(b"PK")
+
+    monkeypatch.setattr(patched_routes, "_fetch_sites_by_id", fake_fetch_sites)
+    monkeypatch.setattr(patched_routes, "_fetch_observations_for_site", fake_fetch_obs)
+    monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda *_a, **_kw: True)
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
+    from pims import audit_report_docx as arpt
+    monkeypatch.setattr(arpt, "build_audit_report_docx", fake_build)
+
+    req = patched_routes.AuditReportRequest(
+        site_ids=["11111111-1111-1111-1111-111111111111"],
+        summary_text="s",
+        prepared_by="J",
+        inspection_datetime="23 Apr 2026 09:00 AEDT",
+        **kwargs,
+    )
+    asyncio.run(patched_routes.generate_audit_report_rpd(req, pims_sess="valid"))
+    return captured["sites"]
+
+
+def test_report_issue_date_missing_defaults_to_today_iso(patched_routes, monkeypatch):
+    """When the request omits report_issue_date, the route fills it with
+    today() as an ISO YYYY-MM-DD string."""
+    import re
+    sites = _capture_sites(patched_routes, monkeypatch)
+    assert sites[0].report_issue_date != ""
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", sites[0].report_issue_date), (
+        f"expected ISO YYYY-MM-DD, got {sites[0].report_issue_date!r}"
+    )
+
+
+def test_report_issue_date_empty_string_defaults_to_today_iso(patched_routes, monkeypatch):
+    """An empty string is treated the same as missing — the route falls
+    back to today()."""
+    import re
+    sites = _capture_sites(patched_routes, monkeypatch, report_issue_date="")
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", sites[0].report_issue_date)
+
+
+def test_report_issue_date_null_defaults_to_today_iso(patched_routes, monkeypatch):
+    """Pydantic JSON `null` (Python None) is accepted; route falls back."""
+    import re
+    sites = _capture_sites(patched_routes, monkeypatch, report_issue_date=None)
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", sites[0].report_issue_date)
+
+
+def test_report_issue_date_invalid_string_passes_through(patched_routes, monkeypatch):
+    """The route does not validate the date string format — an invalid
+    value passes through to SiteData verbatim. The renderer's
+    _format_audit_date returns empty on parse failure, and the cover
+    placeholder then falls back to date.today() display. The route
+    layer's contract is: accept any string, pass it through."""
+    sites = _capture_sites(patched_routes, monkeypatch, report_issue_date="not-a-date")
+    assert sites[0].report_issue_date == "not-a-date"
+
+
+def test_report_issue_date_explicit_iso_round_trip(patched_routes, monkeypatch):
+    """An explicit ISO string round-trips byte-identical onto SiteData."""
+    sites = _capture_sites(
+        patched_routes, monkeypatch, report_issue_date="2026-05-12"
+    )
+    assert sites[0].report_issue_date == "2026-05-12"
+
+
+def test_report_issue_date_explicit_formatted_round_trip(patched_routes, monkeypatch):
+    """An already-formatted 'DD Month YYYY' string round-trips verbatim
+    (the renderer's _format_audit_date will return empty and the caller
+    falls back to the raw value — covered by the renderer tests)."""
+    sites = _capture_sites(
+        patched_routes, monkeypatch, report_issue_date="12 May 2026"
+    )
+    assert sites[0].report_issue_date == "12 May 2026"
