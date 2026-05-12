@@ -594,6 +594,10 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
         "[Insert Site Address]": site_conducted,
         "[Insert Executive Summary]": exec_summary,
         "[Insert Score]": totals["score_text"],
+        # [Insert Flagged] = explicit count paragraph under the cover
+        # "Flagged Items" heading, matching the reference docx convention
+        # (REF p15 shows just the bare number).
+        "[Insert Flagged]": f"{totals['flagged']}",
     }
 
     # Inline substitution for "[Insert Current Date]" — preserves any
@@ -666,6 +670,11 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
         "Site conducted": site_conducted,
         "Prepared by": prepared_by,
         "Date of inspection": inspection_date_display,
+        # Reference docx table 7 reads "Site Inspection | <score_text>".
+        # Older templates carried "Flagged items | <N> flagged" or
+        # "Flagged observations | <N> flagged" here; map both so we're
+        # tolerant of either deployed template state.
+        "Site Inspection": totals["score_text"],
         "Flagged observations (row)": f"{totals['flagged']} flagged",
         "Flagged items (row)": f"{totals['flagged']} flagged",
     }

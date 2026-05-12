@@ -51,8 +51,14 @@ EXACT_PARAGRAPH_MATCHES = (
     "Findings",
     "RPD - Site Safety Inspections",
     "RPD – Site Safety Inspections",  # en-dash variant
-    "[Insert line items from Open Actions Register linked to the site address]",
-    "[Insert Summary of Findings from the Flagged Items in dot points]",
+    # NOTE: "[Insert Summary of Findings…]" and "[Insert line items from
+    # Open Actions Register…]" were previously listed here but they are
+    # cover-level placeholders the renderer populates with finding bullet
+    # lines — see audit_report_docx.py::_populate_cover. Deleting them
+    # from the template removes the cover bullets entirely. Do not add
+    # them back to this list. The companion script
+    # pims/scripts/repair_audit_report_template_cover.py restores them
+    # if a future cleaner pass accidentally drops them.
 )
 
 # Hard-coded example values that need replacing back to placeholders so the
