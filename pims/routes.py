@@ -3435,12 +3435,21 @@ async def generate_audit_report_rpd(
             if o.get("audit_id"):
                 audit_ref = await _fetch_audit_ref(o["audit_id"])
                 break
-        # Pre-fetch photos for ALL observations so the renderer can embed
-        # inline thumbnails on both Open Actions and matched checklist rows.
-        all_photo_urls = [o.get("photo_url") or "" for o in obs]
-        all_photo_bytes = await _fetch_images(all_photo_urls) if all_photo_urls else []
+        # D9: filter inline checklist photos to NCR / Conditional only.
+        # The reference docx files (pims/56-58_Fraters_Ave_Sans_Souci.docx,
+        # pims/7_Hampden_Rd_Cremorne.docx) carry 8-9 photos each — one per
+        # flagged item, not one per observation. Embedding every Compliant
+        # breadcrumb photo bloats the docx (27+ images for this site) and
+        # buries the actual findings under reference shots.
+        _PHOTO_FLAGGED = {"NCR", "Conditional"}
+        photo_obs = [
+            o for o in obs
+            if (o.get("conformance_status") or "").strip() in _PHOTO_FLAGGED
+        ]
+        photo_urls = [o.get("photo_url") or "" for o in photo_obs]
+        flagged_photo_bytes = await _fetch_images(photo_urls) if photo_urls else []
         obs_photo_bytes_by_obs_id: dict[str, bytes] = {}
-        for o, b in zip(obs, all_photo_bytes):
+        for o, b in zip(photo_obs, flagged_photo_bytes):
             if b:
                 obs_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
         oa_photo_bytes_by_obs_id: dict[str, bytes] = {
