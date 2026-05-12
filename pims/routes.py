@@ -36,6 +36,7 @@ import openpyxl
 from anthropic import AsyncAnthropic, APIStatusError
 
 from pims.services.site_resolver import resolve_site_id
+from pims.services.ccvs_fallback import apply_ccvs_fallback
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -235,6 +236,8 @@ SWING STAGE â€” Suspended Scaffold (WAH-H6, WAH-H9):
     emergency lowering operable from ground; suspension trauma rescue plan rehearsed
   Legal: WHS Regulation 2017 cl 228â€“244; AS/NZS 1576 (suspended scaffolding)
 
+- For routine systems/documentation/induction observations (SWMS completed, toolbox talks, project risk assessments, white-card / induction / daily sign-in records, SDS available, safety signage, emergency contact signs, first-aid kits, fire extinguishers, scaffold/permit/inspection records, electrical supply/leads/RCDs), DO NOT return null for ccvs_code. Pick the closest SYS-* code (SYS-L1 for induction/register/sign-in; SYS-M3 for SWMS/toolbox/permits/risk assessments/documents; SYS-M4 for inspections/scaff-tag; SYS-H6 for emergency response equipment & signage) or ENE-M4 for routine electrical setup. Reserve null for genuinely uncodeable observations only.
+
 - Return ONLY valid JSON. No commentary, no markdown fences."""
 
 
@@ -272,6 +275,15 @@ async def enrich_observation(
         except json.JSONDecodeError as e:
             log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
             return {}
+        # Phase 9 deterministic fallback: if Haiku left ccvs_code null
+        # on a coded status, try the keyword map. Pure safety net —
+        # never overrides a code Haiku set.
+        fallback_match = apply_ccvs_fallback(parsed, observation_text)
+        if fallback_match:
+            log.info(
+                "ccvs_fallback applied keyword=%r -> code=%s",
+                fallback_match, parsed.get("ccvs_code"),
+            )
         if (
             parsed.get("conformance_status") == "NCR"
             and parsed.get("observation_text_enriched")
@@ -3271,11 +3283,24 @@ async def data_quality_health(
             "observation_text_enriched": "is.null",
         },
     )
+    # Phase 9: approved rows with no CCVS code (excluding Pending which
+    # may still be in-flight). Surfaces missing taxonomy classification
+    # that the enrichment + fallback both failed to assign.
+    missing_ccvs_code = await _count(
+        "pims_observations",
+        {
+            "review_status": "eq.Approved",
+            "staging": "eq.false",
+            "conformance_status": "neq.Pending",
+            "ccvs_code": "is.null",
+        },
+    )
 
     return {
         "stale_unenriched_staging": stale_unenriched_staging,
         "orphan_site_id": orphan_site_id,
         "empty_enrichment_approved": empty_enrichment_approved,
+        "missing_ccvs_code": missing_ccvs_code,
         "as_of": datetime.now(timezone.utc).isoformat(),
     }
 

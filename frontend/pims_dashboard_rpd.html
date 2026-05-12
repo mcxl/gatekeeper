@@ -1386,6 +1386,9 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
   <span id="chipEmpty" class="dq-chip" data-zero="true" title="Approved observations with empty enrichment text." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
     <span class="dq-label">Empty enrichment</span> <span class="dq-count" id="chipEmptyCount">–</span>
   </span>
+  <span id="chipNoCcvs" class="dq-chip" data-zero="true" title="Approved observations with non-Pending status but no CCVS code (Haiku and deterministic fallback both came up null)." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
+    <span class="dq-label">Missing CCVS</span> <span class="dq-count" id="chipNoCcvsCount">–</span>
+  </span>
   <span id="dqAsOf" style="margin-left:auto;color:#64748b;font-size:0.72rem;"></span>
 </div>
 <style>
@@ -1408,6 +1411,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       set('chipStale',  j.stale_unenriched_staging);
       set('chipOrphan', j.orphan_site_id);
       set('chipEmpty',  j.empty_enrichment_approved);
+      set('chipNoCcvs', j.missing_ccvs_code || 0);
       const t = new Date(j.as_of).toLocaleTimeString();
       document.getElementById('dqAsOf').textContent = 'as of ' + t;
     } catch (e) { /* non-blocking */ }
