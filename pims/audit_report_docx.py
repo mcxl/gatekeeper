@@ -457,9 +457,13 @@ def _resolve_executive_summary(sites: list["SiteData"], totals: dict) -> str:
     s = sites[0]
     if s.summary_text and s.summary_text.strip():
         return s.summary_text.strip()
+    # D2 (residual): human-readable date inside the exec summary prose,
+    # matching the reference docx phrasing: "audit was conducted at
+    # <address> on <D Month YYYY>".
+    audit_date_display = _format_audit_date(s.inspection_datetime)
     return (
-        f"This Work Health and Safety audit was conducted on "
-        f"{s.inspection_datetime} at {s.address}. The inspection covered "
+        f"A site safety audit was conducted at {s.address} on "
+        f"{audit_date_display}. The inspection covered "
         f"{totals['total']} checklist items, identifying {totals['ncr']} "
         f"non-conformances and {totals['conditional']} conditional findings. "
         f"{totals['actions']} actions remain open at the time of this report."
