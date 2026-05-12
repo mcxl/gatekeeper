@@ -399,7 +399,9 @@ def _score_totals(sites: list["SiteData"]) -> dict:
                 conditional += 1
         actions += len(s.open_actions)
     flagged = total_items - passed
-    pct = round(100 * passed / total_items, 2) if total_items else 0
+    # D4: integer percent matches the reference docx convention
+    # (e.g. "47 / 48 (98%)"), not "47 / 48 (97.92%)".
+    pct = int(round(100 * passed / total_items)) if total_items else 0
     return {
         "total": total_items,
         "passed": passed,
@@ -412,16 +414,33 @@ def _score_totals(sites: list["SiteData"]) -> dict:
     }
 
 
+def _strip_company_suffix(name: str) -> str:
+    """D1: Strip trailing company-form suffixes from a client display
+    name. The reference docx files render the contractor as
+    "Robertson's Remedial and Painting", not "…Pty Ltd". Drop the
+    suffix at the title path so cover/Part B render the trade name."""
+    s = (name or "").strip()
+    for suffix in (
+        " Pty. Ltd.", " Pty Ltd.", " Pty. Ltd", " Pty Ltd",
+        " Pty. Limited", " Pty Limited",
+        " Pty.", " Pty",
+        " Ltd.", " Ltd",
+    ):
+        if s.endswith(suffix):
+            return s[: -len(suffix)].rstrip()
+    return s
+
+
 def _resolve_cover_title(sites: list["SiteData"]) -> str:
     if len(sites) == 1:
-        client = (sites[0].client or "").strip()
+        client = _strip_company_suffix(sites[0].client or "")
         if not client:
             raise ValueError(
                 "Single-site audit report requires a non-empty site.client "
                 "(populate sites.client_name); refusing to render a generic title."
             )
         return f"{client} – {_COVER_TITLE_SUFFIX}"
-    clients = {(s.client or "").strip() for s in sites}
+    clients = {_strip_company_suffix(s.client or "") for s in sites}
     clients.discard("")
     if len(clients) == 1:
         return f"{next(iter(clients))} – {_COVER_TITLE_SUFFIX}"
@@ -623,17 +642,27 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
         _replace_paragraph_with_lines(f_p, finding_lines)
 
     # --- Label/value tables -------------------------------------------
+    # D5: KPI labels match the reference docx convention
+    # ("Flagged observations" / "Open actions", not "Flagged items" /
+    # "Actions"). We accept BOTH spellings on lookup so the renderer is
+    # tolerant of templates that haven't been re-cleaned.
+    # D2: "Date of inspection" cell takes the human-readable
+    # `_format_audit_date(inspection_datetime)`, not the raw ISO string.
+    inspection_date_display = _format_audit_date(inspection_datetime)
     # Table 1 uses a single row with alternating label/value cells.
     label_values_single_row = {
         "Score": totals["score_text"],
-        "Flagged items": f"{totals['flagged']}",
-        "Actions": f"{totals['actions']}",
+        "Flagged observations": f"{totals['flagged']}",
+        "Flagged items": f"{totals['flagged']}",  # tolerant fallback
+        "Open actions": f"{totals['actions']}",
+        "Actions": f"{totals['actions']}",  # tolerant fallback
     }
     # Tables 2/5/7/9 use a two-cell label/value row.
     label_values_label_pair = {
         "Site conducted": site_conducted,
         "Prepared by": prepared_by,
-        "Date of inspection": inspection_datetime,
+        "Date of inspection": inspection_date_display,
+        "Flagged observations (row)": f"{totals['flagged']} flagged",
         "Flagged items (row)": f"{totals['flagged']} flagged",
     }
     # Table 9's label cell literal text is also "Flagged items" — to
@@ -663,10 +692,13 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
         # Two-cell label/value row.
         if n >= 2:
             label = cells[0].text.strip()
-            # Disambiguate "Flagged items" between Table 1 and Table 9.
+            # Disambiguate "Flagged items"/"Flagged observations" between
+            # Table 1 (single-row alternating, n>=4) and Table 9 (2-cell).
             target_key = label
             if label == "Flagged items" and len(table.rows) == 1 and n == 2:
                 target_key = "Flagged items (row)"
+            elif label == "Flagged observations" and len(table.rows) == 1 and n == 2:
+                target_key = "Flagged observations (row)"
             if target_key in label_values_label_pair:
                 _set_cell_text_preserving_style(
                     cells[1], label_values_label_pair[target_key]
@@ -944,12 +976,15 @@ def _part_d_signoff(doc: Document, site: SiteData) -> None:
     _page_break(doc)
     _h(doc, "Part D — Auditor Sign-off", size=13)
 
+    # D2: format the draft date as "D Month YYYY" (e.g. "30 April 2026"),
+    # not the raw ISO/datetime string from the request body.
+    draft_date_display = _format_audit_date(site.inspection_datetime)
     disclaimer = (
         "This report has been prepared in accordance with NSW WHS "
         "Regulation 2017 and SafeWork NSW codes of practice. Findings are "
         "based on conditions observed at the time of the audit. This "
         "document is a draft for review until signed by a competent "
-        f"person; the draft date is {site.inspection_datetime or '—'} and "
+        f"person; the draft date is {draft_date_display} and "
         f"the audit reference is {site.audit_ref or '—'}."
     )
     _italic_small(doc, disclaimer)

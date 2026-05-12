@@ -81,12 +81,19 @@ def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
     ):
         assert placeholder not in text, f"placeholder {placeholder!r} still in output"
 
-    # Title carries the client prefix.
-    assert "Acme Construction Pty Ltd – Site Safety Audit Report" in text
+    # D1: cover title strips company-form suffix ("Pty Ltd" et al.) from
+    # client_name. Reference docx files render the trade name only at the
+    # title path. (Part B metadata may still carry the legal entity name —
+    # that's correct; the trim is title-scoped.)
+    assert "Acme Construction – Site Safety Audit Report" in text
+    assert "Acme Construction Pty Ltd – Site Safety Audit Report" not in text, \
+        "D1: title must not include company-form suffix"
     # Address populated in cover table.
     assert "12 Example St, Sydney NSW 2000" in text
-    # Score + flagged surfaces.
-    assert "1 / 2 (50.0%)" in text or "1 / 2 (50%)" in text
+    # D4: score is integer-percent, not 2-decimal.
+    assert "1 / 2 (50%)" in text
+    assert "(50.0%)" not in text and "(50.00%)" not in text, \
+        "D4: score percent must be integer"
 
     # "Date of inspection" label-value row surfaces the populated value.
     found_date = False
