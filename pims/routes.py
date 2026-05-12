@@ -801,7 +801,32 @@ async def approve_staging_rpd(
     headers_repr    = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
     headers_minimal = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal")
 
+    guard_enabled = os.getenv("PIMS_APPROVE_ENRICHMENT_GUARD", "on").lower() != "off"
+
     async with httpx.AsyncClient(timeout=15) as client:
+        # Phase 6 idempotency: if an approved observation already exists for
+        # this staging_id, return it as 200 (covers double-click and approve/
+        # retry races) instead of failing with 409.
+        r_existing = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers_repr,
+            params={
+                "staging_id":    f"eq.{staging_id}",
+                "review_status": "eq.Approved",
+                "staging":       "eq.false",
+                "select":        "*",
+                "limit":         "1",
+            },
+        )
+        r_existing.raise_for_status()
+        existing_rows = r_existing.json()
+        if existing_rows:
+            return {
+                "observation": existing_rows[0],
+                "staging_id":  staging_id,
+                "message":     "Already approved — returning existing observation (idempotent).",
+            }
+
         r = await client.get(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
             headers=headers_repr,
@@ -820,6 +845,34 @@ async def approve_staging_rpd(
 
         if not staging.get("observation_text"):
             raise HTTPException(status_code=422, detail="Cannot approve a record with no observation_text.")
+
+        # Phase 6: poll-then-409 enrichment guard.
+        # If enrichment hasn't completed, poll the staging row up to 3× over
+        # 5s (catches the common race where background enrichment finishes
+        # between submit and approve). If still not enriched, return 409 and
+        # require the caller to hit /staging/{id}/retry-enrichment.
+        if guard_enabled and not staging.get("enriched"):
+            for _ in range(3):
+                await asyncio.sleep(1.0)
+                r_poll = await client.get(
+                    f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+                    headers=headers_repr,
+                    params={"id": f"eq.{staging_id}", "select": "*"},
+                )
+                r_poll.raise_for_status()
+                poll_rows = r_poll.json()
+                if poll_rows and poll_rows[0].get("enriched"):
+                    staging = poll_rows[0]
+                    break
+            else:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Enrichment not yet complete for this record. "
+                        f"POST /pims/staging/{staging_id}/retry-enrichment, "
+                        "then approve again."
+                    ),
+                )
 
         now_utc = datetime.now(timezone.utc).isoformat()
         obs_row = {field: staging.get(field) for field in STAGING_COPY_FIELDS}
@@ -895,6 +948,81 @@ async def approve_staging_rpd(
             response["ccvs_warning"] = f"CCVS code '{ccvs}' is not in the approved RPD taxonomy."
 
         return response
+
+
+@router.post("/staging/{staging_id}/retry-enrichment")
+async def retry_enrichment_rpd(
+    staging_id: str,
+    pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
+):
+    """Phase 6 retry endpoint. Re-runs enrich_observation against the
+    staging row's observation_text and patches the row with the result.
+    Idempotent — calling on an already-enriched row simply re-enriches."""
+    if not verify_session_cookie(pims_sess, "rpd"):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not _is_uuid(staging_id):
+        raise HTTPException(status_code=422, detail="Invalid staging_id format.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers_repr = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers=headers_repr,
+            params={"id": f"eq.{staging_id}", "select": "id,observation_text"},
+        )
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"Staging record {staging_id} not found.")
+        text = (rows[0].get("observation_text") or "").strip()
+        if not text:
+            raise HTTPException(status_code=422, detail="Cannot enrich a record with no observation_text.")
+
+        try:
+            enrichment = await enrich_observation(text)
+        except Exception as e:
+            log.error(f"retry-enrichment failed for {staging_id}: {type(e).__name__}: {e}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Enrichment call failed: {type(e).__name__}. Check logs.",
+            )
+        if not enrichment:
+            raise HTTPException(status_code=502, detail="Enrichment returned empty result.")
+
+        patch_payload = {
+            "conformance_status":        enrichment.get("conformance_status"),
+            "ccvs_code":                  enrichment.get("ccvs_code"),
+            "ccvs_category":              enrichment.get("ccvs_category"),
+            "ccvs_confidence":            enrichment.get("ccvs_confidence"),
+            "action_required":            enrichment.get("action_required", False),
+            "action_description":         enrichment.get("action_description"),
+            "responsible":                enrichment.get("responsible"),
+            "due_category":               enrichment.get("due_category", "N/A"),
+            "monitoring_note":            enrichment.get("monitoring_note"),
+            "observation_text_enriched":  enrichment.get("observation_text_enriched"),
+            "legal_reference":            enrichment.get("legal_reference"),
+            "recommendation":             enrichment.get("recommendation"),
+            "enriched":                   True,
+            "enriched_at":                datetime.now(timezone.utc).isoformat(),
+        }
+
+        r_patch = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+            headers={**headers_repr, "Prefer": "return=representation"},
+            params={"id": f"eq.{staging_id}"},
+            json=patch_payload,
+        )
+        r_patch.raise_for_status()
+        patched = r_patch.json()
+        return {
+            "ok":          True,
+            "staging_id":  staging_id,
+            "staging":     patched[0] if patched else None,
+            "message":     "Enrichment retry succeeded.",
+        }
 
 
 @router.post("/observation/{observation_id}/send-to-staging")
