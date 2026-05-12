@@ -33,6 +33,7 @@ from typing import Optional
 
 import httpx
 import openpyxl
+from anthropic import AsyncAnthropic, APIStatusError
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -249,53 +250,57 @@ async def enrich_observation(
         user_content = f"{user_content}\n\n{precedent_supplement}"
         if os.getenv("PIMS_LOG_PRECEDENT_PROMPT") == "1":
             log.info(f"PIMS precedent prompt (len={len(precedent_supplement)}):\n{precedent_supplement}")
+    model_id = os.getenv("PIMS_ENRICHMENT_MODEL", "claude-haiku-4-5-20251001")
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key":         ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type":      "application/json",
-                },
-                json={
-                    "model":      "claude-haiku-4-5",
-                    "max_tokens": 1024,
-                    "system":     ENRICHMENT_SYSTEM,
-                    "messages": [
-                        {"role": "user", "content": user_content}
-                    ],
-                },
+        client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, timeout=30)
+        msg = await client.messages.create(
+            model=model_id,
+            max_tokens=1024,
+            system=ENRICHMENT_SYSTEM,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        text = msg.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        text = text.strip()
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as e:
+            log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
+            return {}
+        if (
+            parsed.get("conformance_status") == "NCR"
+            and parsed.get("observation_text_enriched")
+            and parsed.get("legal_reference")
+            and "WHS Regulation 2017" not in parsed["observation_text_enriched"]
+        ):
+            tail = parsed["legal_reference"].split(";")[0].strip()
+            if not tail.lower().startswith("nsw "):
+                tail = "NSW " + tail
+            parsed["observation_text_enriched"] = (
+                parsed["observation_text_enriched"].rstrip().rstrip(".")
+                + f" (breach of {tail})."
             )
-            resp.raise_for_status()
-            data = resp.json()
-            text = data["content"][0]["text"].strip()
-            if text.startswith("```"):
-                text = text.split("```")[1]
-                if text.startswith("json"):
-                    text = text[4:]
-            text = text.strip()
-            try:
-                parsed = json.loads(text)
-            except json.JSONDecodeError as e:
-                log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
-                return {}
-            if (
-                parsed.get("conformance_status") == "NCR"
-                and parsed.get("observation_text_enriched")
-                and parsed.get("legal_reference")
-                and "WHS Regulation 2017" not in parsed["observation_text_enriched"]
-            ):
-                tail = parsed["legal_reference"].split(";")[0].strip()
-                if not tail.lower().startswith("nsw "):
-                    tail = "NSW " + tail
-                parsed["observation_text_enriched"] = (
-                    parsed["observation_text_enriched"].rstrip().rstrip(".")
-                    + f" (breach of {tail})."
-                )
-            return parsed
+        return parsed
+    except APIStatusError as e:
+        try:
+            body_str = json.dumps(e.body, default=str) if isinstance(e.body, (dict, list)) else str(e.body)
+        except Exception:
+            body_str = repr(e.body)
+        err_type = ""
+        try:
+            err_type = e.response.headers.get("anthropic-error-type", "") if getattr(e, "response", None) else ""
+        except Exception:
+            pass
+        log.error(
+            f"Haiku enrichment APIStatusError model={model_id} "
+            f"status={e.status_code} type={err_type!r} body={body_str[:2000]}"
+        )
+        raise
     except Exception as e:
-        log.error(f"Haiku enrichment failed: {type(e).__name__}: {e}")
+        log.error(f"Haiku enrichment failed model={model_id}: {type(e).__name__}: {e}")
         raise
 
 

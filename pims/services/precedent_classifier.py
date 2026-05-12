@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
+from anthropic import Anthropic, APIStatusError
 
 log = logging.getLogger(__name__)
 
@@ -164,34 +165,39 @@ def haiku_classify_batch(items: list[dict], api_key: str) -> list[Optional[Class
     out: list[Optional[ClassifyResult]] = [None] * len(items)
     if not items:
         return out
+    model_id = os.getenv("PIMS_PRECEDENT_MODEL", os.getenv("PIMS_ENRICHMENT_MODEL", "claude-haiku-4-5-20251001"))
     try:
-        with httpx.Client(timeout=60) as client:
-            r = client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key":         api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type":      "application/json",
-                },
-                json={
-                    "model":      "claude-haiku-4-5",
-                    "max_tokens": 1024,
-                    "system":     HAIKU_SYSTEM,
-                    "messages": [
-                        {"role": "user", "content": _build_haiku_user(items)},
-                    ],
-                },
-            )
-            r.raise_for_status()
-            text = r.json()["content"][0]["text"].strip()
-            if text.startswith("```"):
-                text = text.split("```")[1]
-                if text.startswith("json"):
-                    text = text[4:]
-            text = text.strip()
-            parsed = json.loads(text)
+        client = Anthropic(api_key=api_key, timeout=60)
+        msg = client.messages.create(
+            model=model_id,
+            max_tokens=1024,
+            system=HAIKU_SYSTEM,
+            messages=[{"role": "user", "content": _build_haiku_user(items)}],
+        )
+        text = msg.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        text = text.strip()
+        parsed = json.loads(text)
+    except APIStatusError as e:
+        try:
+            body_str = json.dumps(e.body, default=str) if isinstance(e.body, (dict, list)) else str(e.body)
+        except Exception:
+            body_str = repr(e.body)
+        err_type = ""
+        try:
+            err_type = e.response.headers.get("anthropic-error-type", "") if getattr(e, "response", None) else ""
+        except Exception:
+            pass
+        log.warning(
+            f"Haiku classify batch APIStatusError model={model_id} "
+            f"status={e.status_code} type={err_type!r} body={body_str[:2000]}"
+        )
+        return out
     except Exception as e:
-        log.warning(f"Haiku classify batch failed: {e}")
+        log.warning(f"Haiku classify batch failed model={model_id}: {e}")
         return out
     for entry in parsed:
         if not isinstance(entry, dict):
