@@ -36,7 +36,6 @@ from __future__ import annotations
 import json
 import time
 import zipfile
-from io import BytesIO
 from pathlib import Path
 
 import openpyxl
@@ -266,8 +265,7 @@ def test_match_photos_suffix_prefixed_disk_name(tmp_path):
 
 
 def test_match_photos_ambiguous_flags_no_silent_select(tmp_path):
-    a = _save_jpeg(tmp_path / "a" / "EV_001.jpg".replace("a/", "")) \
-        if False else _save_jpeg(tmp_path / "EV_001.jpg")
+    _save_jpeg(tmp_path / "EV_001.jpg")
     # Two distinct on-disk files with the same canonical name (different
     # case → same .lower()). Use suffix match to manufacture ambiguity:
     # two prefixed disk files, neither identical to the CSV token.
@@ -1683,7 +1681,7 @@ def test_run_once_prior_report_self_reference_excluded(evidence_folder):
     """The current run's freshly-generated report must NOT be hashed
     into the next manifest, otherwise reruns of the same folder would
     flap the manifest and never converge."""
-    p = run_once(evidence_folder)
+    run_once(evidence_folder)
     current = evidence_folder / "Site-Safety-Audit-Report-260501-RPD.docx"
     # Drop a qualifying older report; it should appear in the manifest
     # source list while the current target stays out.
