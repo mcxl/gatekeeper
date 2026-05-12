@@ -62,6 +62,51 @@ TABLE_BANNED_MARKERS = (
 )
 
 
+# Literal text-frame token replacements. The title page lives in
+# DrawingML text frames (<w:txbxContent> / <a:t>) where the renderer's
+# placeholder-replacement walk only fires for "[Insert …]" tokens.
+# Free-text typos and stale-author fragments need a separate pass
+# applied directly to the XML.
+TEXT_FRAME_REPLACEMENTS = {
+    # Template title typo. References render the correct spelling.
+    "Site Safet Audit": "Site Safety Audit",
+    # Stale author fragment in the Prepared-For block. The full name
+    # "Matthew McCarthy" stays; the preceding "Matt M" run is removed.
+    "Matt M ": "",
+    "Matt M": "",
+}
+
+
+def _replace_in_text_elements(doc, mapping: dict[str, str]) -> int:
+    """Walk every <w:t> and <a:t> node in the document (body + every
+    section's header/footer) and apply substring replacements. Returns
+    the total count of replacements made."""
+    import xml.etree.ElementTree as ET  # noqa: F401 — lxml elements work the same
+    W_T = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"
+    A_T = "{http://schemas.openxmlformats.org/drawingml/2006/main}t"
+    count = 0
+    roots = [doc.element.body]
+    for section in doc.sections:
+        try:
+            roots.append(section.header.part.element)
+            roots.append(section.footer.part.element)
+        except AttributeError:
+            continue
+    for root in roots:
+        for el in root.iter():
+            if el.tag not in (W_T, A_T):
+                continue
+            txt = el.text or ""
+            new = txt
+            for needle, replacement in mapping.items():
+                if needle in new:
+                    new = new.replace(needle, replacement)
+            if new != txt:
+                el.text = new
+                count += 1
+    return count
+
+
 def _clean(doc) -> dict:
     removed_paragraphs = 0
     removed_tables = 0
@@ -118,11 +163,15 @@ def _clean(doc) -> dict:
                 parent.remove(tbl)
                 removed_narrative_tables += 1
 
+    # 5) Text-frame literal replacements (typos + stale author fragments).
+    text_frame_replacements = _replace_in_text_elements(doc, TEXT_FRAME_REPLACEMENTS)
+
     return {
         "removed_paragraphs": removed_paragraphs,
         "removed_tables": removed_tables,
         "restored_values": restored_values,
         "removed_narrative_tables": removed_narrative_tables,
+        "text_frame_replacements": text_frame_replacements,
     }
 
 
@@ -147,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
         f"  removed example paragraphs: {result['removed_paragraphs']}\n"
         f"  removed scaffold tables:    {result['removed_tables']}\n"
         f"  restored placeholder cells: {result['restored_values']}\n"
-        f"  removed narrative tables:   {result['removed_narrative_tables']}"
+        f"  removed narrative tables:   {result['removed_narrative_tables']}\n"
+        f"  text-frame replacements:    {result.get('text_frame_replacements', 0)}"
     )
     return 0
 
