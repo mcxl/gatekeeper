@@ -31,34 +31,11 @@ EXAMPLE_PARAGRAPH_PREFIXES = (
     "Example….An inspection of the Robertson",
     "Example 26 / 35",
     "Example below",
-    "Example format below",
     "Powered mobile plant introduced without RPD verification",
     "Workers removing tiles/render were not initially wearing P2",
     "Silica controls for tile/bed removal non-compliant",
     "Required RCS danger signage not displayed",
     "Electrical equipment lacked supporting inspection",
-)
-
-# Phase-A-style section labels and template-body headings the renderer
-# now emits itself (post-Option-B reference-match refactor). Stripping
-# them from the template avoids double-headings in the rendered output.
-EXACT_PARAGRAPH_MATCHES = (
-    "Part A",
-    "Part B",
-    "Part C",
-    "Part D",
-    "Open Actions Register",
-    "Findings",
-    "RPD - Site Safety Inspections",
-    "RPD – Site Safety Inspections",  # en-dash variant
-    # NOTE: "[Insert Summary of Findings…]" and "[Insert line items from
-    # Open Actions Register…]" were previously listed here but they are
-    # cover-level placeholders the renderer populates with finding bullet
-    # lines — see audit_report_docx.py::_populate_cover. Deleting them
-    # from the template removes the cover bullets entirely. Do not add
-    # them back to this list. The companion script
-    # pims/scripts/repair_audit_report_template_cover.py restores them
-    # if a future cleaner pass accidentally drops them.
 )
 
 # Hard-coded example values that need replacing back to placeholders so the
@@ -89,7 +66,6 @@ def _clean(doc) -> dict:
     removed_paragraphs = 0
     removed_tables = 0
     restored_values = 0
-    removed_stray_tables = 0
 
     # 1) Delete example paragraphs by literal prefix.
     for prefix in EXAMPLE_PARAGRAPH_PREFIXES:
@@ -97,32 +73,6 @@ def _clean(doc) -> dict:
             if p.text.startswith(prefix):
                 p._element.getparent().remove(p._element)
                 removed_paragraphs += 1
-
-    # 1b) Delete exact-match paragraphs (Part A/B/C/D scaffold labels and
-    #     template-body headings the renderer re-emits).
-    for exact in EXACT_PARAGRAPH_MATCHES:
-        for p in list(doc.paragraphs):
-            if p.text.strip() == exact:
-                p._element.getparent().remove(p._element)
-                removed_paragraphs += 1
-
-    # 1c) Delete the stray "[placeholder] | Complete" 1-row cover table
-    #     (e.g. "[Insert Prepared by] | Complete"). It's a residue row
-    #     that pre-dates the original Phase H1 cleaner pass and the
-    #     renderer has no logic to fill or remove it.
-    for table in list(doc.tables):
-        rows = table.rows
-        if not rows:
-            continue
-        cells = rows[0].cells
-        if len(rows) == 1 and len(cells) == 2:
-            c1 = cells[1].text.strip().lower()
-            if c1 == "complete":
-                tbl = table._element
-                parent = tbl.getparent()
-                if parent is not None:
-                    parent.remove(tbl)
-                    removed_stray_tables += 1
 
     # 2) Delete "Photo N" scaffold tables.
     for table in list(doc.tables):
@@ -173,7 +123,6 @@ def _clean(doc) -> dict:
         "removed_tables": removed_tables,
         "restored_values": restored_values,
         "removed_narrative_tables": removed_narrative_tables,
-        "removed_stray_tables": removed_stray_tables,
     }
 
 
@@ -198,8 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         f"  removed example paragraphs: {result['removed_paragraphs']}\n"
         f"  removed scaffold tables:    {result['removed_tables']}\n"
         f"  restored placeholder cells: {result['restored_values']}\n"
-        f"  removed narrative tables:   {result['removed_narrative_tables']}\n"
-        f"  removed stray cover tables: {result['removed_stray_tables']}"
+        f"  removed narrative tables:   {result['removed_narrative_tables']}"
     )
     return 0
 

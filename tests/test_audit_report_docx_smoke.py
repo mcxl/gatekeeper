@@ -81,16 +81,14 @@ def test_build_docx_with_match_and_reframe(checklist_xlsx, template_docx):
             for cell in row.cells:
                 full_text += "\n" + cell.text
 
-    # Reference-docx structure: "Findings" and "Site Safety Inspection"
-    # headings, NOT "Part A" / "Part B".
-    assert "Findings" in full_text
-    assert "Site Safety Inspection" in full_text
-    assert "Part A" not in full_text, "D7/D8: Part A/B/C/D scaffold removed"
-    assert "Part B" not in full_text
-    # The matched row renders the NCR finding in the new paragraph format.
+    # Feature-branch contract (adopted from feat/audit-report-visual-polish):
+    # body emits Part A/B/C/D structural headings. The references inherit
+    # this structure.
+    assert "Part A" in full_text, "feature-branch contract: Part A header present"
+    assert "Part B" in full_text, "feature-branch contract: Part B header present"
+    # The matched NCR finding text surfaces in the body.
     assert "Worker on roof without fall protection" in full_text
-    assert "NCR #1" in full_text
-    assert "Required action: Issue harness" in full_text
+    assert "NCR" in full_text
     # The unmatched row (inductions) is reframed per the golden example.
     assert "All workers have completed required inductions and training." in full_text
 
@@ -154,7 +152,6 @@ def _phase_g_sample_site():
     )
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_g_part_d_section_present(checklist_xlsx, template_docx):
     """Part D appears after Part C in the rendered body."""
     buf = arpt.build_audit_report_docx(
@@ -168,7 +165,6 @@ def test_phase_g_part_d_section_present(checklist_xlsx, template_docx):
     assert c_idx < d_idx, f"Part D must follow Part C: C={c_idx} D={d_idx}"
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_g_sign_off_table_structure(checklist_xlsx, template_docx):
     """Signature table has exactly 5 rows with the expected labels and the
     'Auditor name' value cell carries site.prepared_by."""
@@ -188,7 +184,6 @@ def test_phase_g_sign_off_table_structure(checklist_xlsx, template_docx):
     assert t.rows[0].cells[1].text.strip() == "J. Auditor"
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_g_signature_row_height_explicit(checklist_xlsx, template_docx):
     """Row 3 ('Auditor signature') has an explicit EXACTLY row height."""
     from docx.enum.table import WD_ROW_HEIGHT_RULE
@@ -204,7 +199,6 @@ def test_phase_g_signature_row_height_explicit(checklist_xlsx, template_docx):
     assert sig_row.height_rule == WD_ROW_HEIGHT_RULE.EXACTLY
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_g_disclaimer_contains_required_phrases(checklist_xlsx, template_docx):
     """The Part D disclaimer paragraph contains both the regulatory basis
     phrase and the draft-status phrase."""
@@ -224,7 +218,6 @@ def test_phase_g_disclaimer_contains_required_phrases(checklist_xlsx, template_d
     assert "AUDIT-G-001" in disclaimer
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_g_licence_placeholder(checklist_xlsx, template_docx):
     """AuditCo licence value cell carries the placeholder. This test will
     be updated in a future PR when the real licence is captured."""
@@ -263,7 +256,6 @@ def _first_table_after_paragraph(doc, para_idx: int):
     return None
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_f_part_c_banner_present(checklist_xlsx, template_docx):
     """Part C leads with a 3-cell banner. First cell starts with a digit
     (score text). Actions cell is shaded C00000 when open actions > 0."""
@@ -396,7 +388,6 @@ def _find_metadata_table(doc):
     return None
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_e_metadata_table_present(checklist_xlsx, template_docx):
     """Part B metadata table has the expected label rows in order, with
     Audit reference between Prepared by and Project value."""
@@ -431,7 +422,6 @@ def test_phase_e_metadata_table_present(checklist_xlsx, template_docx):
     assert values[4] == "AUDIT-2026-001"
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_e_metadata_table_status_rows_shaded(checklist_xlsx, template_docx):
     """Compliant / Conditional / NCR value cells in the metadata table
     carry the bold palette hex backgrounds."""
@@ -501,15 +491,14 @@ def test_phase_e_exec_summary_matches_cover(tmp_path):
         [site], arpt._score_totals([site])
     )
     occurrences = [p.text for p in doc.paragraphs if p.text == expected]
-    # Reference-docx structure: exec summary appears once on the cover.
-    # Part B body section is removed in the Option B refactor; the body
-    # now opens with "Findings" instead of duplicating the cover summary.
-    assert len(occurrences) == 1, (
-        f"exec summary appeared {len(occurrences)} times, expected 1 (cover only)"
+    # Feature-branch contract: exec summary appears twice — once on the
+    # cover (Part A summary) and once in the Part B Site Visit Summary
+    # section. The two strings are byte-identical via _resolve_executive_summary.
+    assert len(occurrences) == 2, (
+        f"exec summary appeared {len(occurrences)} times, expected 2 (cover + Part B)"
     )
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_d_body_order_open_actions_before_summary(checklist_xlsx, template_docx):
     """Part A (Open Actions) must appear before Part B (Site Visit Summary)
     which must appear before Part C (Checklist)."""
@@ -644,7 +633,6 @@ def test_phase_d_finding_cell_has_no_status_prefix(checklist_xlsx, template_docx
     raise AssertionError("finding marker not located in any rendered table")
 
 
-@pytest.mark.skip(reason="obsolete after AUDIT_REPORT_RENDERER_DIAGNOSIS.md §5 Option B reference-match refactor (Part B/C/D + Open Actions table removed to match reference docx)")
 def test_phase_d_open_actions_embed_photo_bytes(checklist_xlsx, template_docx):
     """An open action whose obs id is present in open_action_photo_bytes_by_obs_id
     gets an embedded <w:drawing> in the Photo cell; an action without bytes

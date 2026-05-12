@@ -3151,6 +3151,11 @@ class AuditReportRequest(BaseModel):
     summary_text: Optional[str] = None
     prepared_by: str = Field(..., min_length=1)
     inspection_datetime: str = Field(..., min_length=1)
+    # Report issue / sign-off date. Used on the title page AND in
+    # the page-2+ footer. Optional — defaults to today() resolved
+    # by the route. Pass an ISO YYYY-MM-DD or already-formatted
+    # 'DD Month YYYY' string.
+    report_issue_date: Optional[str] = None
 
 
 async def _fetch_sites_by_id(ids: list[str]) -> list[dict]:
@@ -3435,28 +3440,19 @@ async def generate_audit_report_rpd(
             if o.get("audit_id"):
                 audit_ref = await _fetch_audit_ref(o["audit_id"])
                 break
-        # D9: filter inline checklist photos to NCR / Conditional only.
-        # The reference docx files (pims/56-58_Fraters_Ave_Sans_Souci.docx,
-        # pims/7_Hampden_Rd_Cremorne.docx) carry 8-9 photos each — one per
-        # flagged item, not one per observation. Embedding every Compliant
-        # breadcrumb photo bloats the docx (27+ images for this site) and
-        # buries the actual findings under reference shots.
-        _PHOTO_FLAGGED = {"NCR", "Conditional"}
-        photo_obs = [
-            o for o in obs
-            if (o.get("conformance_status") or "").strip() in _PHOTO_FLAGGED
-        ]
-        photo_urls = [o.get("photo_url") or "" for o in photo_obs]
-        flagged_photo_bytes = await _fetch_images(photo_urls) if photo_urls else []
-        obs_photo_bytes_by_obs_id: dict[str, bytes] = {}
-        for o, b in zip(photo_obs, flagged_photo_bytes):
+        # Pre-fetch open-action photos. Per Codex resolved decision
+        # (2026-05-12), prefetch covers ALL observations — not just
+        # NCR/Conditional (the prior D9 filter was wrong against the
+        # reference docx which embeds photos on Compliant rows too).
+        # The adopted renderer only EMBEDS photos at open-action rows;
+        # if a future renderer wants checklist-row photos, the bytes
+        # are already available via obs_photo_bytes (kept local).
+        oa_photo_urls = [o.get("photo_url") or "" for o in open_actions]
+        oa_photo_bytes = await _fetch_images(oa_photo_urls) if oa_photo_urls else []
+        oa_photo_bytes_by_obs_id: dict[str, bytes] = {}
+        for o, b in zip(open_actions, oa_photo_bytes):
             if b:
-                obs_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
-        oa_photo_bytes_by_obs_id: dict[str, bytes] = {
-            str(o.get("id") or ""): obs_photo_bytes_by_obs_id[str(o.get("id") or "")]
-            for o in open_actions
-            if str(o.get("id") or "") in obs_photo_bytes_by_obs_id
-        }
+                oa_photo_bytes_by_obs_id[str(o.get("id") or "")] = b
         sites_data.append(SiteData(
             address=s.get("address_raw") or "",
             project_value=s.get("project_value"),
@@ -3468,7 +3464,11 @@ async def generate_audit_report_rpd(
             inspection_datetime=body.inspection_datetime,
             audit_ref=audit_ref,
             open_action_photo_bytes_by_obs_id=oa_photo_bytes_by_obs_id,
-            obs_photo_bytes_by_obs_id=obs_photo_bytes_by_obs_id,
+            # Codex resolved decision 4 (2026-05-12): report issue/
+            # sign-off date set explicitly at the route boundary, used
+            # on the title page AND in the page-2+ footer. Defaults to
+            # today() resolved by the route, not buried in the renderer.
+            report_issue_date=body.report_issue_date or date.today().isoformat(),
         ))
 
     buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)

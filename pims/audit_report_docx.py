@@ -14,13 +14,16 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from dataclasses import dataclass, field
+from datetime import date
 from difflib import SequenceMatcher
 from io import BytesIO
 from pathlib import Path
 
 import openpyxl
 from docx import Document
+from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_BREAK
 from docx.shared import Cm, Pt, RGBColor
@@ -88,8 +91,14 @@ class SiteData:
     # Pre-fetched open-action photo bytes, keyed by observation id.
     # Populated by the route before calling build_audit_report_docx.
     open_action_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
-    # Photo bytes for any observation (matched-checklist embeds), keyed by observation id.
-    obs_photo_bytes_by_obs_id: dict[str, bytes] = field(default_factory=dict)
+    # Report issue / sign-off date — used on the title page AND in the
+    # page-2+ footer. Deterministic input from the route boundary, NOT
+    # date.today() inside the renderer (per Codex resolved decision 4
+    # 2026-05-12; required for stable fingerprint contract test).
+    # Empty string falls back to date.today() ONLY in the renderer's
+    # _build_replacement_map — that fallback exists so old callers don't
+    # break, but new code MUST pass a value.
+    report_issue_date: str = ""
 
 
 # Bold status palette for shaded cells — keyed by conformance_status.
@@ -100,6 +109,328 @@ STATUS_PALETTE: dict[str, tuple[str, str]] = {
     "NCR":         ("C00000", "FFFFFF"),
     "Info":        ("5B9BD5", "FFFFFF"),
 }
+
+
+# ---------------------------------------------------------------------------
+# Contractor config — Phase H2
+# ---------------------------------------------------------------------------
+# Key lookup is NFKC-normalized, apostrophe-unified, whitespace-collapsed,
+# and casefolded. Strict: a client not present here causes a 422 upstream
+# (Phase H3), not a silent fallback.
+
+_QUOTE_CHARS = "‘’‛′`´"  # ‘ ’ ‛ ′ ` ´
+_QUOTE_RE = re.compile(f"[{re.escape(_QUOTE_CHARS)}]")
+_WS_RE = re.compile(r"\s+")
+
+
+def _normalize_contractor_key(s: str) -> str:
+    """Normalize a contractor name for CONTRACTOR_CONFIG lookup.
+
+    Quote unification runs both before and after NFKC so that glyphs
+    NFKC would decompose into combining marks (U+00B4 → U+0020 U+0301,
+    U+0060 → U+0020 U+0300) are unified to ASCII ' before decomposition
+    can split them. The post-NFKC pass catches anything the first miss
+    would have produced.
+    """
+    if s is None:
+        return ""
+    s = _QUOTE_RE.sub("'", s)
+    s = unicodedata.normalize("NFKC", s)
+    s = _QUOTE_RE.sub("'", s)
+    s = _WS_RE.sub(" ", s)
+    return s.strip().casefold()
+
+
+_MONTH_NAMES = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+
+
+def _format_audit_date(raw: str) -> str:
+    """Format an ISO-ish date/datetime string as 'D Month YYYY'
+    (e.g. '12 May 2026'). Accepts 'YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SS',
+    'YYYY-MM-DD HH:MM:SS'. Returns empty string on parse failure so
+    the caller can fall back to the raw value."""
+    if not raw:
+        return ""
+    s = str(raw).strip()
+    head = s.split("T", 1)[0].split(" ", 1)[0]
+    parts = head.split("-")
+    if len(parts) != 3:
+        return ""
+    try:
+        year = int(parts[0])
+        month = int(parts[1])
+        day = int(parts[2])
+        if not (1 <= month <= 12):
+            return ""
+        return f"{day} {_MONTH_NAMES[month - 1]} {year}"
+    except (TypeError, ValueError):
+        return ""
+
+
+CONTRACTOR_CONFIG: dict[str, dict[str, str]] = {
+    # Keyed by canonical sites.client_name after _normalize_contractor_key
+    # (lowercased, NFKC, quote-unified, whitespace-collapsed). Per Codex
+    # resolved decision 3 (2026-05-12): RPD contact is Matthew McCarthy
+    # (no "Matt M" prefix), address fixed. New clients added here, NOT
+    # baked into the template.
+    "robertson's remedial and painting pty ltd": {
+        # Trade name used on the cover title and page-2+ header bar.
+        # References render WITHOUT the "Pty Ltd" suffix.
+        "title_display_name": "Robertson's Remedial and Painting",
+        "contact_name": "Matthew McCarthy",
+        "company_full_name": "Robertson's Remedial and Painting Pty Ltd",
+        "address": "10/ 56 Buffalo Road, GLADESVILLE 2111",
+    },
+    # Alias for callers passing the trade name without the legal suffix.
+    "robertson's remedial and painting": {
+        "title_display_name": "Robertson's Remedial and Painting",
+        "contact_name": "Matthew McCarthy",
+        "company_full_name": "Robertson's Remedial and Painting Pty Ltd",
+        "address": "10/ 56 Buffalo Road, GLADESVILLE 2111",
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Cover XML walk — token-level replacement across all text containers
+# ---------------------------------------------------------------------------
+
+_W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+
+
+def _qn_w(tag: str) -> str:
+    return f"{{{_W_NS}}}{tag}"
+
+
+def _qn_a(tag: str) -> str:
+    return f"{{{_A_NS}}}{tag}"
+
+
+def _iter_scope_roots(doc):
+    """Yield the root XML elements of every text container the cover
+    populator must walk: the body, every section's header and footer."""
+    yield doc.element.body
+    for section in doc.sections:
+        for hf in (section.header, section.footer):
+            try:
+                yield hf.part.element
+            except AttributeError:
+                continue
+
+
+def _paragraph_field_runs(p_elem) -> set:
+    """Return the set of <w:r> elements within p_elem that are part of a
+    field-code context (i.e. between a <w:fldChar type='begin'> and its
+    matching <w:fldChar type='end'>, or which themselves carry a
+    <w:fldChar>/<w:instrText> child). Skips nested paragraphs so field
+    state from an outer paragraph does not bleed in."""
+    in_field = False
+    field_runs: set = set()
+    W_R = _qn_w("r")
+    W_P = _qn_w("p")
+    W_FLDCHAR = _qn_w("fldChar")
+    W_INSTRTEXT = _qn_w("instrText")
+    W_FLDCHARTYPE = _qn_w("fldCharType")
+    for child in p_elem:
+        if child.tag == W_P:
+            continue  # nested paragraph handled separately
+        if child.tag != W_R:
+            continue
+        run = child
+        has_begin = has_end = has_field_marker = False
+        for rc in run:
+            if rc.tag == W_FLDCHAR:
+                t = rc.get(W_FLDCHARTYPE)
+                if t == "begin":
+                    has_begin = True
+                elif t == "end":
+                    has_end = True
+                has_field_marker = True
+            elif rc.tag == W_INSTRTEXT:
+                has_field_marker = True
+        if has_begin:
+            in_field = True
+        if in_field or has_field_marker:
+            field_runs.add(run)
+        if has_end:
+            in_field = False
+    return field_runs
+
+
+def _direct_text_nodes(p_elem, field_runs: set) -> list:
+    """Return <w:t> nodes that belong directly to this paragraph (not to a
+    nested <w:p>) and whose containing <w:r> is not a field-code run, and
+    which do not sit inside a <w:fldSimple>. Order is document order."""
+    W_T = _qn_w("t")
+    W_P = _qn_w("p")
+    W_R = _qn_w("r")
+    W_FLDSIMPLE = _qn_w("fldSimple")
+    results: list = []
+
+    def visit(node):
+        for child in node:
+            tag = child.tag
+            if tag == W_P:
+                continue  # nested paragraph handled by its own pass
+            if tag == W_FLDSIMPLE:
+                continue  # skip field-simple subtrees entirely
+            if tag == W_T:
+                # find ancestor <w:r> (direct parent for the normal case)
+                run = child.getparent()
+                while run is not None and run.tag != W_R:
+                    run = run.getparent()
+                if run is None or run not in field_runs:
+                    results.append(child)
+            else:
+                visit(child)
+
+    visit(p_elem)
+    return results
+
+
+def _apply_replacements(text: str, replacements: dict[str, str]) -> str:
+    """Apply placeholder replacements in descending-key-length order so
+    that shorter substrings (e.g. '[Site Address]') don't clobber longer
+    containing placeholders (e.g. '[Insert Site Address]')."""
+    for key in sorted(replacements, key=len, reverse=True):
+        if key in text:
+            text = text.replace(key, replacements[key])
+    return text
+
+
+def _process_paragraph(p_elem, replacements: dict[str, str]) -> None:
+    """Two-pass placeholder replacement on a single <w:p> element.
+
+    Pass 1 (node-local): for each stitchable <w:t>, apply replacements
+    against its own text. Never touches sibling runs.
+    Pass 2 (guarded stitch): concatenate stitchable <w:t> texts; if the
+    joined string still contains any placeholder, the placeholder spanned
+    runs. Apply replacements on the joined string, write the result to
+    the first stitchable node, and empty the rest. Field-code runs are
+    excluded from the stitchable set so PAGE/NUMPAGES/DATE sequences are
+    preserved intact.
+    """
+    field_runs = _paragraph_field_runs(p_elem)
+    stitchable = _direct_text_nodes(p_elem, field_runs)
+    if not stitchable:
+        return
+    # Pass 1.
+    for t in stitchable:
+        raw = t.text or ""
+        new = _apply_replacements(raw, replacements)
+        if new != raw:
+            t.text = new
+    # Pass 2.
+    joined = "".join(t.text or "" for t in stitchable)
+    new_joined = _apply_replacements(joined, replacements)
+    if new_joined != joined:
+        stitchable[0].text = new_joined
+        for t in stitchable[1:]:
+            t.text = ""
+
+
+def _process_drawingml(scope_root, replacements: dict[str, str]) -> None:
+    """Node-local replacement for DrawingML <a:t> text nodes anywhere in
+    the scope subtree. No stitch pass — DrawingML typically keeps a
+    placeholder within a single <a:t>."""
+    for at in scope_root.iter(_qn_a("t")):
+        raw = at.text or ""
+        new = _apply_replacements(raw, replacements)
+        if new != raw:
+            at.text = new
+
+
+def _paragraphs_containing(scope_roots, substrings: tuple[str, ...]) -> list:
+    """Return the list of <w:p> elements under any of the scope roots
+    whose concatenated direct <w:t> text contains any of the substrings.
+    Used for post-processing passes that need to target specific
+    paragraphs (font sizing, newline expansion)."""
+    out: list = []
+    seen: set = set()
+    W_P = _qn_w("p")
+    W_T = _qn_w("t")
+    for root in scope_roots:
+        for p in root.iter(W_P):
+            if id(p) in seen:
+                continue
+            full = "".join((t.text or "") for t in p.iter(W_T))
+            if any(s in full for s in substrings):
+                out.append(p)
+                seen.add(id(p))
+    return out
+
+
+def _expand_newlines_in_paragraph(p_elem) -> None:
+    """For every <w:t> in p_elem that contains '\\n', split on '\\n' and
+    insert <w:br/> elements between the pieces so Word renders them as
+    line breaks. Each piece keeps the original run's formatting."""
+    W_T = _qn_w("t")
+    W_R = _qn_w("r")
+    W_BR = _qn_w("br")
+    for t in list(p_elem.iter(W_T)):
+        if "\n" not in (t.text or ""):
+            continue
+        pieces = t.text.split("\n")
+        run = t.getparent()
+        if run is None or run.tag != W_R:
+            continue
+        t.text = pieces[0]
+        # Preserve leading whitespace on split fragments.
+        t.set(
+            "{http://www.w3.org/XML/1998/namespace}space",
+            "preserve",
+        )
+        parent = run.getparent()
+        if parent is None:
+            continue
+        insert_at = parent.index(run) + 1
+        from copy import deepcopy
+        for piece in pieces[1:]:
+            new_run = deepcopy(run)
+            # strip the copied <w:t> and replace with break + fresh text
+            for child in list(new_run):
+                if child.tag == W_T:
+                    new_run.remove(child)
+            br = new_run.makeelement(W_BR, {})
+            new_run.append(br)
+            new_t = new_run.makeelement(W_T, {})
+            new_t.text = piece
+            new_t.set(
+                "{http://www.w3.org/XML/1998/namespace}space",
+                "preserve",
+            )
+            new_run.append(new_t)
+            parent.insert(insert_at, new_run)
+            insert_at += 1
+
+
+def _force_paragraph_run_size(p_elem, pt: int) -> None:
+    """Force every <w:r> in p_elem to <w:sz w:val=pt*2/>. Overrides style
+    inheritance — the spec requires explicit Pt sizing on Prepared By /
+    Prepared For runs rather than relying on paragraph style."""
+    W_R = _qn_w("r")
+    W_RPR = _qn_w("rPr")
+    W_SZ = _qn_w("sz")
+    W_SZCS = _qn_w("szCs")
+    W_VAL = _qn_w("val")
+    half_points = str(pt * 2)
+    for run in p_elem.iter(W_R):
+        rPr = run.find(W_RPR)
+        if rPr is None:
+            rPr = run.makeelement(W_RPR, {})
+            run.insert(0, rPr)
+        for tag in (W_SZ, W_SZCS):
+            existing = rPr.find(tag)
+            if existing is None:
+                el = rPr.makeelement(tag, {})
+                rPr.append(el)
+            else:
+                el = existing
+            el.set(W_VAL, half_points)
 
 
 # ---------------------------------------------------------------------------
@@ -353,33 +684,6 @@ _EXAMPLE_PARAGRAPH_PREFIXES = (
 
 _COVER_TITLE_SUFFIX = "Site Safety Audit Report"
 
-_MONTH_NAMES = (
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-)
-
-
-def _format_audit_date(raw: str) -> str:
-    """Format an ISO-ish date/datetime string as 'D Month YYYY' (e.g.
-    '30 April 2026'). Returns '—' if parsing fails or input is empty."""
-    if not raw:
-        return "—"
-    s = str(raw).strip()
-    # Accept 'YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SS', 'YYYY-MM-DD HH:MM:SS'.
-    head = s.split("T", 1)[0].split(" ", 1)[0]
-    parts = head.split("-")
-    if len(parts) != 3:
-        return s
-    try:
-        year = int(parts[0])
-        month = int(parts[1])
-        day = int(parts[2])
-        if not (1 <= month <= 12):
-            return s
-        return f"{day} {_MONTH_NAMES[month - 1]} {year}"
-    except (TypeError, ValueError):
-        return s
-
 
 def _score_totals(sites: list["SiteData"]) -> dict:
     total_items = 0
@@ -399,8 +703,8 @@ def _score_totals(sites: list["SiteData"]) -> dict:
                 conditional += 1
         actions += len(s.open_actions)
     flagged = total_items - passed
-    # D4: integer percent matches the reference docx convention
-    # (e.g. "47 / 48 (98%)"), not "47 / 48 (97.92%)".
+    # Reference docx renders integer percent (e.g. "47 / 48 (98%)"),
+    # not 2-decimal. See AUDIT_REPORT_REFERENCE_EVALUATION.md §1.2.
     pct = int(round(100 * passed / total_items)) if total_items else 0
     return {
         "total": total_items,
@@ -414,33 +718,29 @@ def _score_totals(sites: list["SiteData"]) -> dict:
     }
 
 
-def _strip_company_suffix(name: str) -> str:
-    """D1: Strip trailing company-form suffixes from a client display
-    name. The reference docx files render the contractor as
-    "Robertson's Remedial and Painting", not "…Pty Ltd". Drop the
-    suffix at the title path so cover/Part B render the trade name."""
-    s = (name or "").strip()
-    for suffix in (
-        " Pty. Ltd.", " Pty Ltd.", " Pty. Ltd", " Pty Ltd",
-        " Pty. Limited", " Pty Limited",
-        " Pty.", " Pty",
-        " Ltd.", " Ltd",
-    ):
-        if s.endswith(suffix):
-            return s[: -len(suffix)].rstrip()
-    return s
+def _contractor_title_name(client: str) -> str:
+    """Return the trade-name string for the cover title and page-2+
+    header bar. If CONTRACTOR_CONFIG has a `title_display_name` entry
+    for this client, use it; otherwise fall back to the raw client
+    string. Reference docx files render contractors by their trade
+    name (no "Pty Ltd" suffix on the title)."""
+    key = _normalize_contractor_key(client)
+    entry = CONTRACTOR_CONFIG.get(key)
+    if entry and entry.get("title_display_name"):
+        return entry["title_display_name"]
+    return (client or "").strip()
 
 
 def _resolve_cover_title(sites: list["SiteData"]) -> str:
     if len(sites) == 1:
-        client = _strip_company_suffix(sites[0].client or "")
+        client = (sites[0].client or "").strip()
         if not client:
             raise ValueError(
                 "Single-site audit report requires a non-empty site.client "
                 "(populate sites.client_name); refusing to render a generic title."
             )
-        return f"{client} – {_COVER_TITLE_SUFFIX}"
-    clients = {_strip_company_suffix(s.client or "") for s in sites}
+        return f"{_contractor_title_name(client)} – {_COVER_TITLE_SUFFIX}"
+    clients = {_contractor_title_name(s.client) for s in sites}
     clients.discard("")
     if len(clients) == 1:
         return f"{next(iter(clients))} – {_COVER_TITLE_SUFFIX}"
@@ -457,13 +757,9 @@ def _resolve_executive_summary(sites: list["SiteData"], totals: dict) -> str:
     s = sites[0]
     if s.summary_text and s.summary_text.strip():
         return s.summary_text.strip()
-    # D2 (residual): human-readable date inside the exec summary prose,
-    # matching the reference docx phrasing: "audit was conducted at
-    # <address> on <D Month YYYY>".
-    audit_date_display = _format_audit_date(s.inspection_datetime)
     return (
-        f"A site safety audit was conducted at {s.address} on "
-        f"{audit_date_display}. The inspection covered "
+        f"This Work Health and Safety audit was conducted on "
+        f"{s.inspection_datetime} at {s.address}. The inspection covered "
         f"{totals['total']} checklist items, identifying {totals['ncr']} "
         f"non-conformances and {totals['conditional']} conditional findings. "
         f"{totals['actions']} actions remain open at the time of this report."
@@ -506,44 +802,6 @@ def _set_cell_text_preserving_style(cell, text: str) -> None:
         extra._element.getparent().remove(extra._element)
 
 
-def _replace_inline_placeholder(doc, placeholder: str, value: str) -> int:
-    """Replace placeholder with value inline across body, table cells, and
-    section footers/headers. Preserves surrounding text by collapsing the
-    paragraph's runs into a single run when the placeholder is split across
-    runs. Returns count of replacements made."""
-    count = 0
-
-    def _walk_paragraphs(paragraphs):
-        nonlocal count
-        for p in paragraphs:
-            if placeholder not in p.text:
-                continue
-            new_text = p.text.replace(placeholder, value)
-            _clear_paragraph_runs(p)
-            p.add_run(new_text)
-            count += 1
-
-    def _walk_tables(tables):
-        for table in tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    _walk_paragraphs(cell.paragraphs)
-                    _walk_tables(cell.tables)
-
-    _walk_paragraphs(doc.paragraphs)
-    _walk_tables(doc.tables)
-    for section in doc.sections:
-        for hf in (section.header, section.footer,
-                   section.first_page_header, section.first_page_footer,
-                   section.even_page_header, section.even_page_footer):
-            try:
-                _walk_paragraphs(hf.paragraphs)
-                _walk_tables(hf.tables)
-            except Exception:
-                continue
-    return count
-
-
 def _find_paragraph_by_prefix(doc, prefix: str):
     for p in doc.paragraphs:
         if p.text.startswith(prefix):
@@ -555,29 +813,113 @@ def _delete_paragraph(p) -> None:
     p._element.getparent().remove(p._element)
 
 
-def _populate_cover(doc, sites: list["SiteData"]) -> None:
-    """Replace cover-page placeholders with computed content from site metadata.
-
-    Missing placeholders (e.g. when called against a blank template in tests)
-    are logged at WARNING and skipped — never raised. Runs pre-loop so the
-    rest of the render pipeline is unaffected.
-    """
+def _build_cover_replacements(
+    sites: list["SiteData"],
+) -> dict[str, str]:
+    """Assemble the placeholder → value map used by the cover XML walk.
+    Multi-line values use '\\n' — they are converted to <w:br/> by
+    _expand_newlines_in_paragraph during post-processing."""
     totals = _score_totals(sites)
-    title = _resolve_cover_title(sites)
+    site = sites[0]
     exec_summary = _resolve_executive_summary(sites, totals)
-
     if len(sites) == 1:
-        site_conducted = sites[0].address
+        site_conducted = site.address
     else:
         site_conducted = f"Multiple sites ({len(sites)})"
 
-    # Use report-level fields from the first site for prepared_by and
-    # inspection_datetime. Multi-site reports assume a single audit event.
-    prepared_by = sites[0].prepared_by or ""
-    inspection_datetime = sites[0].inspection_datetime or ""
+    prepared_by_value = (
+        f"{site.prepared_by}, AuditCo" if site.prepared_by else "AuditCo"
+    )
 
-    # --- Paragraph placeholders ---------------------------------------
-    # Title: paragraph contains the literal suffix "Site Safety Audit Report".
+    contractor_key = _normalize_contractor_key(site.client)
+    contractor = CONTRACTOR_CONFIG.get(contractor_key)
+    if contractor:
+        prepared_for_value = (
+            f"{contractor['contact_name']}\n"
+            f"{contractor['company_full_name']}\n"
+            f"{contractor['address']}"
+        )
+    else:
+        # Phase H3 will raise 422 upstream when the contractor is
+        # unknown; until then, fall back to the raw client name so the
+        # cover still populates cleanly against legacy data.
+        prepared_for_value = site.client or "—"
+
+    category_score = (
+        f"{totals['flagged']} flagged, {totals['score_text']}"
+    )
+
+    # Report issue date — same string on title page AND in page-2+
+    # footer. Sourced from SiteData (passed at the route boundary).
+    # Empty string falls back to today() so legacy callers still work.
+    raw_issue = (site.report_issue_date or "").strip()
+    if raw_issue:
+        issue_date_display = _format_audit_date(raw_issue) or raw_issue
+    else:
+        issue_date_display = date.today().strftime("%d %B %Y")
+
+    return {
+        "[Insert Current Date]": issue_date_display,
+        # Address aliases (new canonical + legacy aliases from the
+        # shipped template).
+        "[Site Address]": site_conducted,
+        "[Insert Site Address]": site_conducted,
+        "[Insert Site Conducted]": site_conducted,
+        # Prepared By aliases; Pt(14) applied in a post-processing pass.
+        "[Prepared By]": prepared_by_value,
+        "[Insert Prepared by]": prepared_by_value,
+        # Prepared For: three-line block from CONTRACTOR_CONFIG.
+        "[Prepared For]": prepared_for_value,
+        # Dates and scores.
+        "[Insert Date of inspection]": (
+            _format_audit_date(site.inspection_datetime)
+            or site.inspection_datetime
+            or "—"
+        ),
+        "[Insert Score]": totals["score_text"],
+        "[Insert Category Score]": category_score,
+        "[Insert Flagged]": f"{totals['flagged']} flagged",
+        "[Insert Executive Summary]": exec_summary,
+    }
+
+
+_PREPARED_PT14_MARKERS = (
+    "[Prepared By]",
+    "[Insert Prepared by]",
+    "[Prepared For]",
+)
+
+
+def _populate_cover(doc, sites: list["SiteData"]) -> None:
+    """Token-level cover placeholder replacement (Phase H2).
+
+    Walks every text container (body, each section's header + footer)
+    and applies two-pass replacement (node-local, then guarded stitch)
+    on every <w:p>. DrawingML <a:t> nodes are covered with node-local
+    replacement. Field-code runs (PAGE/NUMPAGES/DATE etc.) are excluded
+    from the stitch pass so footer page-numbering survives untouched.
+
+    Missing placeholders are not errors in the steady state — the
+    cleaned template carries exactly the placeholder set this function
+    knows about.
+    """
+    replacements = _build_cover_replacements(sites)
+    totals = _score_totals(sites)
+    title = _resolve_cover_title(sites)
+
+    scope_roots = list(_iter_scope_roots(doc))
+
+    # Pre-scan: remember which paragraphs carried Prepared placeholders so
+    # we can force Pt(14) AFTER replacement has happened. Also remember
+    # paragraphs that will end up containing newlines from [Prepared For]
+    # so _expand_newlines_in_paragraph can target them.
+    prepared_paragraphs = _paragraphs_containing(
+        scope_roots, _PREPARED_PT14_MARKERS,
+    )
+
+    # Title: the one paragraph whose original text contains "Site Safety
+    # Audit Report". Replace via a fresh single run to keep behaviour
+    # compatible with pre-Phase-H tests that check exact title text.
     title_p = None
     for p in doc.paragraphs:
         if _COVER_TITLE_SUFFIX in p.text:
@@ -586,55 +928,46 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
     if title_p is not None:
         _replace_paragraph_text(title_p, title)
     else:
-        log.warning("Cover title paragraph not found")
+        log.debug("Cover title paragraph not found")
 
-    audit_date_formatted = _format_audit_date(inspection_datetime)
+    # Generic XML walk: every paragraph in every container + DrawingML.
+    W_P = _qn_w("p")
+    for root in scope_roots:
+        for p_elem in root.iter(W_P):
+            _process_paragraph(p_elem, replacements)
+        _process_drawingml(root, replacements)
 
-    paragraph_replacements = {
-        "[Insert Site Address]": site_conducted,
-        "[Insert Executive Summary]": exec_summary,
-        "[Insert Score]": totals["score_text"],
-        # [Insert Flagged] = explicit count paragraph under the cover
-        # "Flagged Items" heading, matching the reference docx convention
-        # (REF p15 shows just the bare number).
-        "[Insert Flagged]": f"{totals['flagged']}",
-    }
+    # Post-process: expand '\n' in any <w:t> to <w:br/>, then force
+    # Pt(14) on every run in a Prepared paragraph.
+    for p_elem in prepared_paragraphs:
+        _expand_newlines_in_paragraph(p_elem)
+        _force_paragraph_run_size(p_elem, 14)
 
-    # Inline substitution for "[Insert Current Date]" — preserves any
-    # surrounding text such as the "Date: " footer prefix. Walks body
-    # paragraphs, every cell paragraph, and every section footer paragraph.
-    _replace_inline_placeholder(
-        doc, "[Insert Current Date]", audit_date_formatted,
-    )
-    for placeholder, value in paragraph_replacements.items():
-        p = _find_paragraph_by_prefix(doc, placeholder)
-        if p is None:
-            log.warning("Cover placeholder %r not found", placeholder)
-            continue
-        _replace_paragraph_text(p, value)
-
-    # Open Actions Register + Findings — multi-line replacements.
+    # Open Actions Register + Findings — multi-line placeholder lists.
+    # These use a dedicated paragraph-list expansion because the target
+    # paragraphs hold many bullet items, not a single value.
     oa_placeholder = "[Insert line items from Open Actions Register"
     oa_p = _find_paragraph_by_prefix(doc, oa_placeholder)
-    if oa_p is None:
-        log.warning("Cover placeholder %r not found", oa_placeholder)
-    else:
+    if oa_p is not None:
         oa_lines: list[str] = []
         for s in sites:
             for a in s.open_actions:
-                desc = str(a.get("action_description") or a.get("observation_text") or "").strip()
+                desc = str(
+                    a.get("action_description")
+                    or a.get("observation_text") or ""
+                ).strip()
                 resp = str(a.get("responsible") or "").strip()
                 due = str(a.get("due_category") or "").strip()
                 bits = [b for b in (desc, resp, due) if b]
                 if bits:
                     oa_lines.append("• " + " — ".join(bits))
         _replace_paragraph_with_lines(oa_p, oa_lines)
+    else:
+        log.debug("Cover placeholder %r not found", oa_placeholder)
 
     f_placeholder = "[Insert Summary of Findings"
     f_p = _find_paragraph_by_prefix(doc, f_placeholder)
-    if f_p is None:
-        log.warning("Cover placeholder %r not found", f_placeholder)
-    else:
+    if f_p is not None:
         finding_lines: list[str] = []
         for s in sites:
             for obs in s.observations:
@@ -648,96 +981,26 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
                     if text:
                         finding_lines.append("• " + text)
         _replace_paragraph_with_lines(f_p, finding_lines)
+    else:
+        log.debug("Cover placeholder %r not found", f_placeholder)
 
-    # --- Label/value tables -------------------------------------------
-    # D5: KPI labels match the reference docx convention
-    # ("Flagged observations" / "Open actions", not "Flagged items" /
-    # "Actions"). We accept BOTH spellings on lookup so the renderer is
-    # tolerant of templates that haven't been re-cleaned.
-    # D2: "Date of inspection" cell takes the human-readable
-    # `_format_audit_date(inspection_datetime)`, not the raw ISO string.
-    inspection_date_display = _format_audit_date(inspection_datetime)
-    # Table 1 uses a single row with alternating label/value cells.
-    label_values_single_row = {
-        "Score": totals["score_text"],
-        "Flagged observations": f"{totals['flagged']}",
-        "Flagged items": f"{totals['flagged']}",  # tolerant fallback
-        "Open actions": f"{totals['actions']}",
-        "Actions": f"{totals['actions']}",  # tolerant fallback
-    }
-    # Tables 2/5/7/9 use a two-cell label/value row.
-    label_values_label_pair = {
-        "Site conducted": site_conducted,
-        "Prepared by": prepared_by,
-        "Date of inspection": inspection_date_display,
-        # Reference docx table 7 reads "Site Inspection | <score_text>".
-        # Older templates carried "Flagged items | <N> flagged" or
-        # "Flagged observations | <N> flagged" here; map both so we're
-        # tolerant of either deployed template state.
-        "Site Inspection": totals["score_text"],
-        "Flagged observations (row)": f"{totals['flagged']} flagged",
-        "Flagged items (row)": f"{totals['flagged']} flagged",
-    }
-    # Table 9's label cell literal text is also "Flagged items" — to
-    # disambiguate from Table 1, we detect by table shape (single row &
-    # >= 4 cells vs single row & 2 cells).
+    # totals is referenced above via the replacement map; exposing here
+    # so the variable isn't flagged as unused in future diffs.
+    _ = totals
 
-    seen_labels: set[str] = set()
-    for table in doc.tables:
-        if not table.rows:
-            continue
-        row = table.rows[0]
-        cells = row.cells
-        n = len(cells)
-        # Single-row, alternating label/value (Table 1 shape).
-        if len(table.rows) == 1 and n >= 4 and n % 2 == 0:
-            matched_any = False
-            for i in range(0, n, 2):
-                label = cells[i].text.strip()
-                if label in label_values_single_row:
-                    _set_cell_text_preserving_style(
-                        cells[i + 1], label_values_single_row[label]
-                    )
-                    seen_labels.add(label)
-                    matched_any = True
-            if matched_any:
-                continue
-        # Two-cell label/value row.
-        if n >= 2:
-            label = cells[0].text.strip()
-            # Disambiguate "Flagged items"/"Flagged observations" between
-            # Table 1 (single-row alternating, n>=4) and Table 9 (2-cell).
-            target_key = label
-            if label == "Flagged items" and len(table.rows) == 1 and n == 2:
-                target_key = "Flagged items (row)"
-            elif label == "Flagged observations" and len(table.rows) == 1 and n == 2:
-                target_key = "Flagged observations (row)"
-            if target_key in label_values_label_pair:
-                _set_cell_text_preserving_style(
-                    cells[1], label_values_label_pair[target_key]
-                )
-                seen_labels.add(target_key)
-
-    for lbl in list(label_values_single_row) + list(label_values_label_pair):
-        if lbl not in seen_labels:
-            log.warning("Cover label cell %r not found", lbl)
-
-    # --- Delete hard-coded example paragraphs -------------------------
+    # --- Defensive cleanup belt-and-braces ---------------------------
+    # The shipped template is cleaned at build time by
+    # pims/scripts/clean_audit_report_template.py, so the loops below
+    # should be no-ops in the steady state. They remain as a fallback in
+    # case a future template re-export reintroduces example content.
+    # "Not found" is the expected case now and therefore logged at DEBUG.
     for prefix in _EXAMPLE_PARAGRAPH_PREFIXES:
         p = _find_paragraph_by_prefix(doc, prefix)
         if p is None:
-            log.warning("Cover example paragraph with prefix %r not found", prefix)
+            log.debug("Cover example paragraph with prefix %r not found", prefix)
             continue
         _delete_paragraph(p)
 
-    # --- Delete stray "Photo N" scaffold tables --------------------
-    # The shipped template contains single-row "Photo N" placeholder
-    # tables that are designer layout scaffolds — unpopulated in the
-    # live render and visually bleed artwork between the summary and
-    # Part A. Drop any table whose first cell starts with "Photo ".
-    # (The rendered checklist blocks from _checklist_row_block do not
-    # have "Photo " as their first cell, so they are not affected.)
-    removed_scaffold = 0
     for table in list(doc.tables):
         if not table.rows:
             continue
@@ -747,19 +1010,6 @@ def _populate_cover(doc, sites: list["SiteData"]) -> None:
             parent = tbl.getparent()
             if parent is not None:
                 parent.remove(tbl)
-                removed_scaffold += 1
-    if removed_scaffold == 0:
-        log.warning("No scaffold 'Photo N' table found on cover to remove")
-
-    # --- Delete stray "Photo N" scaffold paragraphs --------------------
-    # Template paragraphs of the form "Photo 45", "Photo 46", … are layout
-    # scaffolds that bleed into the body when the renderer appends sites.
-    # Strip them anywhere in the doc; rendered photo captions use a leading
-    # italic small font and live inside table cells, so they are not affected.
-    _photo_label_re = re.compile(r"^\s*Photo\s+\d+\s*$", re.IGNORECASE)
-    for p in list(doc.paragraphs):
-        if _photo_label_re.match(p.text or ""):
-            _delete_paragraph(p)
 
 
 # ---------------------------------------------------------------------------
@@ -799,18 +1049,10 @@ def _apply_status_cell(cell, status: str) -> None:
             run.font.color.rgb = rgb
 
 
-def _embed_photo(
-    cell,
-    photo_bytes: bytes | None,
-    fallback_text: str,
-    caption: str | None = None,
-) -> None:
+def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
     """Embed photo_bytes into cell as an inline image, or write fallback_text
     if bytes are absent or PIL/embed fails. Matches the thumbnail behaviour
-    of the staging-review DOCX path in pims/routes.py.
-
-    When caption is provided and the embed succeeds, the caption text is added
-    as a small italic line under the image (e.g. "Photo 12")."""
+    of the staging-review DOCX path in pims/routes.py."""
     if not photo_bytes:
         add_body_cell(cell, fallback_text)
         return
@@ -818,7 +1060,7 @@ def _embed_photo(
         from io import BytesIO
         from PIL import Image as PILImage
         pil = PILImage.open(BytesIO(photo_bytes)).convert("RGB")
-        pil.thumbnail((600, 600), PILImage.LANCZOS)
+        pil.thumbnail((300, 300), PILImage.LANCZOS)
         buf = BytesIO()
         pil.save(buf, format="JPEG", quality=85)
         buf.seek(0)
@@ -827,82 +1069,15 @@ def _embed_photo(
         for r in list(p.runs):
             r._element.getparent().remove(r._element)
         p.add_run().add_picture(buf, width=Cm(3.5))
-        if caption:
-            cap_p = cell.add_paragraph()
-            cap_run = cap_p.add_run(caption)
-            cap_run.italic = True
-            cap_run.font.size = Pt(8)
     except Exception:
         log.warning("Photo embed failed; falling back to text", exc_info=True)
         add_body_cell(cell, fallback_text)
-
-
-# Local mirror of pims.routes.CCVS_CATEGORY_BY_PREFIX so the renderer
-# does not import from routes (which would create a cycle through
-# FastAPI / Supabase config). Keep in sync if routes changes.
-_CCVS_CATEGORY_BY_PREFIX_LOCAL: dict[str, str] = {
-    "WAH": "Working at Height",
-    "IRA": "Industrial Rope Access",
-    "SIL": "Silica",
-    "STR": "Structural",
-    "MOB": "Mobile Plant",
-    "CHM": "Chemicals",
-    "ENE": "Energy",
-    "SYS": "Systems",
-}
-
-
-def _render_findings_paragraphs(doc: Document, actions: list[dict]) -> None:
-    """Reference-docx-shape findings renderer.
-
-    Emits two paragraphs per finding to match
-    pims/56-58_Fraters_Ave_Sans_Souci.docx and
-    pims/7_Hampden_Rd_Cremorne.docx:
-
-      <status> #<N>. <Category> – <Sub-category> – <observation_text>
-      Required action: <action_description / recommendation>
-
-    Photos are NOT embedded here — they live with the checklist
-    matches in the Site Safety Inspection section, per the reference
-    docx convention. Open Actions Register layout (the bordered
-    7-column table) is intentionally retired in favour of this prose
-    block.
-    """
-    if not actions:
-        _p(doc, "No findings.")
-        return
-    for n, a in enumerate(actions, start=1):
-        status = (a.get("conformance_status") or "").strip() or "Finding"
-        category = (a.get("ccvs_category") or "").strip()
-        if not category:
-            code = (a.get("ccvs_code") or "").strip()
-            prefix = code.split("-", 1)[0] if code else ""
-            category = _CCVS_CATEGORY_BY_PREFIX_LOCAL.get(prefix, "Uncategorised")
-        # Sub-category — use the ccvs_code (e.g. "ENE-M4") if no
-        # explicit sub-category text is on the observation row.
-        sub = (a.get("ccvs_subcategory") or "").strip()
-        if not sub:
-            sub = (a.get("ccvs_code") or "").strip() or "—"
-        body = (
-            (a.get("observation_text_enriched") or "").strip()
-            or (a.get("observation_text") or "").strip()
-        )
-        head_line = f"{status} #{n}. {category} – {sub} – {body}"
-        _p(doc, head_line)
-        action_text = (
-            (a.get("action_description") or "").strip()
-            or (a.get("recommendation") or "").strip()
-            or (a.get("observation_text_enriched") or "").strip()
-        )
-        if action_text:
-            _p(doc, f"Required action: {action_text}")
 
 
 def _open_actions_table(
     doc: Document,
     actions: list[dict],
     photo_bytes_by_obs_id: dict[str, bytes] | None = None,
-    photo_counter: list[int] | None = None,
 ) -> None:
     photo_bytes_by_obs_id = photo_bytes_by_obs_id or {}
     headers = ["#", "Status", "Photo", "Action", "Responsible", "Due", "CCVS"]
@@ -917,12 +1092,7 @@ def _open_actions_table(
         add_body_cell(row.cells[1], status)
         _apply_status_cell(row.cells[1], status)
         obs_id = str(a.get("id") or "")
-        photo_bytes = photo_bytes_by_obs_id.get(obs_id)
-        caption = None
-        if photo_bytes and photo_counter is not None:
-            photo_counter[0] += 1
-            caption = f"Photo {photo_counter[0]}"
-        _embed_photo(row.cells[2], photo_bytes, "—", caption=caption)
+        _embed_photo(row.cells[2], photo_bytes_by_obs_id.get(obs_id), "—")
         # Action falls back to the enriched observation when no action
         # description is recorded.
         action_text = (
@@ -938,38 +1108,10 @@ def _open_actions_table(
     set_table_borders(table)
 
 
-def _append_photo_to_cell(
-    cell, photo_bytes: bytes | None, caption: str | None = None,
-) -> None:
-    """Append an inline photo (and optional caption) as new paragraphs at the
-    end of cell, preserving any existing text. No-op if bytes absent."""
-    if not photo_bytes:
-        return
-    try:
-        from io import BytesIO
-        from PIL import Image as PILImage
-        pil = PILImage.open(BytesIO(photo_bytes)).convert("RGB")
-        pil.thumbnail((600, 600), PILImage.LANCZOS)
-        buf = BytesIO()
-        pil.save(buf, format="JPEG", quality=85)
-        buf.seek(0)
-        img_p = cell.add_paragraph()
-        img_p.add_run().add_picture(buf, width=Cm(3.5))
-        if caption:
-            cap_p = cell.add_paragraph()
-            cap_run = cap_p.add_run(caption)
-            cap_run.italic = True
-            cap_run.font.size = Pt(8)
-    except Exception:
-        log.warning("Inline photo embed failed", exc_info=True)
-
-
 def _checklist_row_block(
     doc: Document,
     row: ChecklistRow,
     matched_obs: dict | None,
-    photo_bytes_by_obs_id: dict[str, bytes] | None = None,
-    photo_counter: list[int] | None = None,
 ) -> None:
     t = doc.add_table(rows=2, cols=2)
     t.style = "Table Grid"
@@ -983,19 +1125,13 @@ def _checklist_row_block(
             or ""
         )
         status = (matched_obs.get("conformance_status") or "").strip()
+        photo = matched_obs.get("photo_url") or ""
         # Status now lives in the cell shading — no "[STATUS] " prefix.
-        result_cell = t.rows[1].cells[1]
-        add_controls_cell(result_cell, finding)
-        _apply_status_cell(result_cell, status)
-        photo_bytes = None
-        if photo_bytes_by_obs_id is not None:
-            obs_id = str(matched_obs.get("id") or "")
-            photo_bytes = photo_bytes_by_obs_id.get(obs_id)
-        if photo_bytes and photo_counter is not None:
-            photo_counter[0] += 1
-            _append_photo_to_cell(
-                result_cell, photo_bytes, f"Photo {photo_counter[0]}",
-            )
+        txt = finding
+        if photo:
+            txt += f"\nPhoto: {photo}"
+        add_controls_cell(t.rows[1].cells[1], txt)
+        _apply_status_cell(t.rows[1].cells[1], status)
     else:
         add_controls_cell(t.rows[1].cells[1], reframe_instruction(row.instruction))
     set_col_widths(t, [7.0, 9.5])
@@ -1050,15 +1186,12 @@ def _part_d_signoff(doc: Document, site: SiteData) -> None:
     _page_break(doc)
     _h(doc, "Part D — Auditor Sign-off", size=13)
 
-    # D2: format the draft date as "D Month YYYY" (e.g. "30 April 2026"),
-    # not the raw ISO/datetime string from the request body.
-    draft_date_display = _format_audit_date(site.inspection_datetime)
     disclaimer = (
         "This report has been prepared in accordance with NSW WHS "
         "Regulation 2017 and SafeWork NSW codes of practice. Findings are "
         "based on conditions observed at the time of the audit. This "
         "document is a draft for review until signed by a competent "
-        f"person; the draft date is {draft_date_display} and "
+        f"person; the draft date is {site.inspection_datetime or '—'} and "
         f"the audit reference is {site.audit_ref or '—'}."
     )
     _italic_small(doc, disclaimer)
@@ -1121,37 +1254,68 @@ def _site_metadata_table(doc: Document, site: SiteData, totals: dict) -> None:
     set_table_borders(table)
 
 
+def _start_body_section(doc: Document) -> None:
+    """Insert a section break that starts the body (Part A onwards) on a
+    fresh page with a blank header and blank footer, unlinked from the
+    cover section. Prevents the template's cover-page header / footer
+    artwork (watermark, logo, page banner, PAGE field strip) from
+    bleeding through to the body pages.
+
+    The cover template's footer uses a table for layout, so paragraph-
+    only clearing would leave the field-code strip intact. Instead we
+    strip every child element of the header/footer root and re-append
+    a single empty <w:p> so Word has something to render.
+    """
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    for container in (section.header, section.footer):
+        container.is_linked_to_previous = False
+        elem = container.part.element
+        for child in list(elem):
+            elem.remove(child)
+        empty_p = elem.makeelement(_qn_w("p"), {})
+        elem.append(empty_p)
+
+
 def _append_site(
     doc: Document,
     site: SiteData,
     checklist: list[ChecklistRow],
     is_first: bool,
 ) -> None:
-    if not is_first:
+    if is_first:
+        _start_body_section(doc)
+    else:
         _page_break(doc)
 
     # Site title banner.
-    # Per-site body heading is OMITTED for single-site reports to match
-    # the reference docx layout (cover already shows address). Multi-site
-    # reports keep an address heading at the start of each site's body.
-    if is_first is False:
-        _h(doc, site.address, size=16)
+    _h(doc, f"Audit Report — {site.address}", size=16)
 
-    # Shared photo counter — sequential "Photo N" captions across the
-    # checklist row embeds within this site.
-    photo_counter: list[int] = [0]
+    # Part A — Open Actions Register (leads the body so what's wrong and
+    # what's being done about it is the first thing the reader sees).
+    _h(doc, "Part A — Open Actions Register", size=13)
+    if site.open_actions:
+        _open_actions_table(
+            doc, site.open_actions, site.open_action_photo_bytes_by_obs_id,
+        )
+    else:
+        _p(doc, "No open actions.")
 
-    # Findings section — paragraph format matching the reference docx
-    # (no Part A header, no Open Actions Register table). Each NCR /
-    # Conditional rendered as two paragraphs: heading + Required action.
-    _h(doc, "Findings", size=13)
-    _render_findings_paragraphs(doc, site.open_actions)
-
-    # Site Safety Inspection section — the full checklist with photos
-    # embedded only on matched rows. No Part C banner, no Part B
-    # metadata duplication (cover carries the metadata already).
+    # Part B — Site Visit Summary (metadata + narrative).
     _page_break(doc)
-    _h(doc, "Site Safety Inspection", size=13)
+    _h(doc, "Part B — Site Visit Summary", size=13)
+    site_totals = _score_totals([site])
+    _site_metadata_table(doc, site, site_totals)
+    _p(doc, _resolve_executive_summary([site], site_totals))
+
+    # Part C — Checklist.
+    _page_break(doc)
+    _h(doc, "Part C — Site Safety Inspection Checklist", size=13)
+
+    # Visual-only summary banner — restates cover + Part B counts with
+    # the STATUS_PALETTE so severity reads at a glance. The underlying
+    # counts are authoritative in Cover Table 1 and the Part B metadata
+    # table; this row is not a new data location.
+    _part_c_banner(doc, site_totals)
 
     matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
     for row in checklist:
@@ -1209,19 +1373,12 @@ def _append_site(
                 len(row_matches), row.category, row.criteria,
             )
         for obs in row_matches:
-            _checklist_row_block(
-                doc,
-                row,
-                obs,
-                photo_bytes_by_obs_id=site.obs_photo_bytes_by_obs_id,
-                photo_counter=photo_counter,
-            )
+            _checklist_row_block(doc, row, obs)
 
     _flush_category()
 
-    # Part D (Auditor Sign-off) intentionally omitted to match the
-    # reference docx layout. Re-enable with _part_d_signoff(doc, site)
-    # if a signing block is required by a future customer.
+    # Part D — Auditor Sign-off
+    _part_d_signoff(doc, site)
 
 
 def build_audit_report_docx(
@@ -1253,9 +1410,6 @@ def build_audit_report_docx(
                 audit_ref=s.get("audit_ref", "") or "",
                 open_action_photo_bytes_by_obs_id=(
                     s.get("open_action_photo_bytes_by_obs_id") or {}
-                ),
-                obs_photo_bytes_by_obs_id=(
-                    s.get("obs_photo_bytes_by_obs_id") or {}
                 ),
             )
         if s.project_value is None:

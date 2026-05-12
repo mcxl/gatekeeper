@@ -44,9 +44,21 @@ def _full_text(doc: Document) -> str:
     return "\n".join(parts)
 
 
-def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
+def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx, monkeypatch):
     if not TEMPLATE_PATH.exists():
         pytest.skip("shipped template not present")
+    # CONTRACTOR_CONFIG entry for the test client so the trade-name
+    # title path is exercised (matches the production RPD setup).
+    monkeypatch.setitem(
+        arpt.CONTRACTOR_CONFIG,
+        "acme construction pty ltd",
+        {
+            "title_display_name": "Acme Construction",
+            "contact_name": "Test Contact",
+            "company_full_name": "Acme Construction Pty Ltd",
+            "address": "1 Example St",
+        },
+    )
     site = arpt.SiteData(
         address="12 Example St, Sydney NSW 2000",
         project_value=500_000,
@@ -106,11 +118,12 @@ def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx):
     assert found_date, "Date of inspection row not located"
 
     # "Prepared by" label-value row surfaces the populated value.
+    # Feature branch appends ", AuditCo" to match the reference convention.
     found_prep = False
     for t in doc.tables:
         if t.rows and len(t.rows[0].cells) >= 2:
             if t.rows[0].cells[0].text.strip() == "Prepared by":
-                assert t.rows[0].cells[1].text.strip() == "J. Auditor"
+                assert t.rows[0].cells[1].text.strip() == "J. Auditor, AuditCo"
                 found_prep = True
                 break
     assert found_prep, "Prepared by row not located"
