@@ -176,19 +176,70 @@ async def run(staging_ids: list[str], dry_run: bool) -> None:
                 ok += 1
                 continue
 
+            # Phase 9.2 hardening: catch broader httpx.RequestError so
+            # transient connection issues don't abort the whole loop
+            # (the original Phase 3 run died on ConnectError mid-batch,
+            # leaving 15 rows where the observation was patched but
+            # staging silently lagged — the residue had to be repaired
+            # by SQL). Retry each PATCH once with backoff. Verify the
+            # staging row actually committed before touching observation.
+            patched_via_retry = False
+            for attempt in range(2):
+                try:
+                    await patch_staging(client, sid, patch_payload)
+                    break
+                except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                    if attempt == 0:
+                        log.warning("patch_staging retry %s: %s", sid, type(e).__name__)
+                        await asyncio.sleep(2.0)
+                        continue
+                    log.error("patch_staging failed %s: %s", sid, e)
+                    failed += 1
+                    patched_via_retry = False
+                    break
+            else:
+                patched_via_retry = False
+            # Verify staging row is now enriched=true before patching obs.
             try:
-                await patch_staging(client, sid, patch_payload)
-                obs_patched = await patch_observation_by_staging_id(client, sid, patch_payload)
-                log.info(
-                    "PATCHED staging=%s observations=%d status=%s ccvs=%s",
-                    sid, obs_patched,
-                    patch_payload.get("conformance_status"),
-                    patch_payload.get("ccvs_code"),
+                r_check = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/pims_staging",
+                    headers=_headers("return=representation"),
+                    params={"id": f"eq.{sid}", "select": "enriched"},
                 )
-                ok += 1
-            except httpx.HTTPStatusError as e:
-                log.error("patch failed %s: %s body=%s", sid, e, e.response.text[:500])
+                r_check.raise_for_status()
+                check_rows = r_check.json()
+                if not check_rows or not check_rows[0].get("enriched"):
+                    log.error("staging verify failed %s: not enriched after patch", sid)
+                    failed += 1
+                    continue
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                log.error("staging verify request failed %s: %s", sid, e)
                 failed += 1
+                continue
+            # Staging confirmed enriched; now safe to patch observation.
+            for attempt in range(2):
+                try:
+                    obs_patched = await patch_observation_by_staging_id(client, sid, patch_payload)
+                    log.info(
+                        "PATCHED staging=%s observations=%d status=%s ccvs=%s",
+                        sid, obs_patched,
+                        patch_payload.get("conformance_status"),
+                        patch_payload.get("ccvs_code"),
+                    )
+                    ok += 1
+                    patched_via_retry = True
+                    break
+                except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                    if attempt == 0:
+                        log.warning("patch_observation retry %s: %s", sid, type(e).__name__)
+                        await asyncio.sleep(2.0)
+                        continue
+                    log.error("patch_observation failed %s: %s — staging is enriched=true but observation lags",
+                              sid, e)
+                    failed += 1
+                    break
+            if not patched_via_retry and ok == 0:
+                pass  # already counted in failed
 
         log.info("summary: ok=%d skipped=%d failed=%d", ok, skipped, failed)
 

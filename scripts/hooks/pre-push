@@ -1,0 +1,23 @@
+#!/bin/sh
+# Pre-push hook: lint changed Python files only. Inherited 694-error
+# repo-wide tech debt is filed as separate cleanup; do not block pushes
+# of untouched legacy code.
+RANGE_TIP=$(git rev-parse HEAD 2>/dev/null)
+RANGE_BASE=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD~50 2>/dev/null)
+CHANGED=$(git diff --name-only --diff-filter=ACMR "$RANGE_BASE" "$RANGE_TIP" 2>/dev/null | grep -E '\.py$' || true)
+if [ -z "$CHANGED" ]; then
+  echo "[pre-push] No changed .py files; skipping ruff."
+  exit 0
+fi
+echo "[pre-push] Running ruff on changed files only..."
+if command -v ruff >/dev/null 2>&1; then
+  ruff check $CHANGED || exit 1
+elif [ -x .venv-test/Scripts/ruff.exe ]; then
+  .venv-test/Scripts/ruff.exe check $CHANGED || exit 1
+elif [ -x .venv/bin/ruff ]; then
+  .venv/bin/ruff check $CHANGED || exit 1
+else
+  echo "[pre-push] ruff not found on PATH or in .venv-test/.venv; skipping (not a hard fail)."
+  exit 0
+fi
+echo "[pre-push] Lint passed on changed files."

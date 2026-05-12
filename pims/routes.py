@@ -1144,6 +1144,69 @@ async def promote_pdf_observation_rpd(
         }
 
 
+@router.post("/pdf-observation/sdgroup/{observation_id}/promote")
+async def promote_pdf_observation_sdgroup(
+    observation_id: str,
+    pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
+):
+    """SDGroup equivalent of /pdf-observation/{id}/promote (Phase 7).
+
+    Backend-mediated PDF promote against the SDGroup Supabase project.
+    Replaces the legacy direct-Supabase
+        db.from('pims_observations').update({staging:false})
+    call in frontend/pims_dashboard_sdgroup.html. Resolver runs on the
+    SDGroup sites table (same shape as RPD's). Idempotent.
+    """
+    if not verify_session_cookie(pims_sess, "sdgroup"):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not _is_uuid(observation_id):
+        raise HTTPException(status_code=422, detail="Invalid observation_id format.")
+    if not SDG_SUPABASE_URL or not SDG_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="SDGroup Supabase not configured")
+
+    headers_repr = _supabase_headers(SDG_SUPABASE_SERVICE_KEY, prefer="return=representation")
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{SDG_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers_repr,
+            params={"id": f"eq.{observation_id}", "select": "*", "limit": "1"},
+        )
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"Observation {observation_id} not found.")
+        obs = rows[0]
+        if obs.get("staging") is False:
+            return {"observation": obs, "message": "Already promoted (idempotent)."}
+
+        resolved = await resolve_site_id(
+            obs.get("site_address"),
+            supabase_url=SDG_SUPABASE_URL,
+            supabase_key=SDG_SUPABASE_SERVICE_KEY,
+            client=client,
+        )
+        patch: dict = {"staging": False}
+        if resolved and not obs.get("site_id"):
+            patch["site_id"] = resolved
+
+        r_patch = await client.patch(
+            f"{SDG_SUPABASE_URL}/rest/v1/pims_observations",
+            headers={**headers_repr, "Prefer": "return=representation"},
+            params={"id": f"eq.{observation_id}"},
+            json=patch,
+        )
+        if r_patch.status_code not in (200, 204):
+            log.error(f"sdg pdf-observation promote failed {observation_id}: {r_patch.status_code} {r_patch.text}")
+            raise HTTPException(status_code=500, detail="Promotion failed.")
+        patched = r_patch.json()
+        return {
+            "observation": patched[0] if patched else None,
+            "site_id_resolved": resolved,
+            "message": "Promoted to live observations.",
+        }
+
+
 @router.post("/observation/{observation_id}/send-to-staging")
 async def send_observation_to_staging_rpd(
     request: Request,

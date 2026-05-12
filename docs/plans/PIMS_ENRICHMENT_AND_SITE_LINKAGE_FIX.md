@@ -510,22 +510,25 @@ Exit criterion: zero non-ambiguous orphans for any active site.
 
 - Migrating other Anthropic callers outside the two PIMS files
   (Phase 5 is intentionally narrow).
-  - **Tracking note:** other raw-httpx Anthropic callers in the repo
-    (`pims/audit_report_docx.py:284`, `core/document_extractor.py:167`,
-    plus any future grep hits for direct `api.anthropic.com/v1/messages`
-    POSTs) should migrate to the official SDK
-    (`anthropics/anthropic-sdk-python`, already pinned at
-    `anthropic==0.84.0` in `requirements.txt`) in the next
-    maintenance window. Benefits earned automatically: structured
-    `APIStatusError.body` on 4xx, built-in 429/500 retry with
-    backoff, typed response objects, connection pooling. The SDK
-    does **not** validate model ids at import (they're still
-    runtime strings), so the `PIMS_ENRICHMENT_MODEL` env-var
-    pattern from Phase 2 should be replicated for those callers
-    when migrated. No incident currently driving the migration —
-    both call sites already use the dated model id and have not
-    produced 400s. File this as a tech-debt item, not a recovery
-    phase.
+  - **Tracking note (corrected 2026-05-12):** the v3 note named
+    `pims/audit_report_docx.py:284` and `core/document_extractor.py:167`
+    as raw-httpx callers — they actually already use the SDK
+    (`anthropic.Anthropic()` / `anthropic.AsyncAnthropic()`), so no
+    migration needed there. The remaining raw-httpx callers live in
+    the SSA pipeline and SSA scripts (different product surface, not
+    affected by this incident):
+      - `pims/services/ssa_vision_enricher.py`
+      - `pims/services/audit_report_from_xlsx.py`
+      - `pims/scripts/ssa_review.py`
+      - `scripts/backfill_enrichment.py` (legacy; superseded by
+        `scripts/backfill_pims_enrichment.py`)
+      - `core/inference_matrix.py`
+    SDK migration would earn structured `APIStatusError.body` on 4xx,
+    built-in 429/500 retry, typed responses, connection pooling. The
+    SDK does NOT validate model ids at import, so an env-var pattern
+    like `PIMS_ENRICHMENT_MODEL` (Phase 2) should be replicated per
+    caller if migrated. No incident is currently driving this — file
+    as tech debt for the next SSA maintenance window.
 - General refactor of error handling across the PIMS codebase.
 - Slack / email alerting plumbing (separate operational slice).
 - Frontend rework beyond Phase 6 status pills + Phase 7 PDF route
