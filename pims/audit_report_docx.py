@@ -41,7 +41,14 @@ from src.docx_style_standard import (
 log = logging.getLogger(__name__)
 
 PIMS_DIR = Path(__file__).resolve().parent
-TEMPLATE_PATH = PIMS_DIR / "audit_report_template.docx"
+# Canonical template — same file the Site Visit Report renderer indexes
+# via pims/services/template_index.py. Switched 2026-05-13 (commit
+# following docs/plans/AUDIT_REPORT_CORRECT_TEMPLATE_DIAGNOSIS_AND_PLAN.md
+# §5 Step 1) after discovering the audit-report renderer was rendering
+# against the wrong (degraded) template all along. The reference docx
+# files in pims/ — 7_Hampden_Rd_Cremorne.docx and
+# 56-58_Fraters_Ave_Sans_Souci.docx — were produced from THIS template.
+TEMPLATE_PATH = PIMS_DIR / "RPD_SSA_template-inserted.docx"
 DATA_DIR = PIMS_DIR / "data"
 REFRAME_CACHE_PATH = DATA_DIR / "reframe_cache.jsonl"
 
@@ -1282,103 +1289,36 @@ def _append_site(
     checklist: list[ChecklistRow],
     is_first: bool,
 ) -> None:
-    if is_first:
-        _start_body_section(doc)
-    else:
+    """Stage A (2026-05-13): body-emission disabled.
+
+    The canonical template (RPD_SSA_template-inserted.docx) already
+    carries the full Site Safety Inspection body — heading, KPI table,
+    per-category banners, per-criterion tables, photo slots. The prior
+    renderer was emitting Part A/B/C/D + a duplicate Site Safety
+    Inspection section because it was paired with a degraded template
+    that lacked those sections.
+
+    For this stage we ONLY emit a non-first-site page break so multi-
+    site reports still separate cleanly. Stage B (separate commit) will
+    fill the template's existing checklist cells with observation data
+    via pims/services/template_index.py and pims/services/checklist_matcher.py.
+
+    Until Stage B lands, single-site reports against the canonical
+    template render with empty checklist defaults — every row shows
+    its template-default Compliant shading. Cover placeholders still
+    populate via _populate_cover. The body's hierarchical structure
+    is the template's own.
+    """
+    if not is_first:
         _page_break(doc)
-
-    # Site title banner.
-    _h(doc, f"Audit Report — {site.address}", size=16)
-
-    # Part A — Open Actions Register (leads the body so what's wrong and
-    # what's being done about it is the first thing the reader sees).
-    _h(doc, "Part A — Open Actions Register", size=13)
-    if site.open_actions:
-        _open_actions_table(
-            doc, site.open_actions, site.open_action_photo_bytes_by_obs_id,
-        )
-    else:
-        _p(doc, "No open actions.")
-
-    # Part B — Site Visit Summary (metadata + narrative).
-    _page_break(doc)
-    _h(doc, "Part B — Site Visit Summary", size=13)
-    site_totals = _score_totals([site])
-    _site_metadata_table(doc, site, site_totals)
-    _p(doc, _resolve_executive_summary([site], site_totals))
-
-    # Part C — Checklist.
-    _page_break(doc)
-    _h(doc, "Part C — Site Safety Inspection Checklist", size=13)
-
-    # Visual-only summary banner — restates cover + Part B counts with
-    # the STATUS_PALETTE so severity reads at a glance. The underlying
-    # counts are authoritative in Cover Table 1 and the Part B metadata
-    # table; this row is not a new data location.
-    _part_c_banner(doc, site_totals)
-
-    matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
-    for row in checklist:
-        row_matches: list[dict] = []
-        for obs in site.observations:
-            cand, _ = match_observation(obs, [row])
-            if cand is row:
-                row_matches.append(obs)
-        matches_by_row.append((row, row_matches))
-
-    has_duplicates = any(len(m) > 1 for _, m in matches_by_row)
-    if has_duplicates:
-        _p(
-            doc,
-            "Note: multiple observations are rendered against the same "
-            "criterion where applicable.",
-            size=9,
-        )
-
-    # Group rows by category, preserving xlsx order of first appearance.
-    current_category: str | None = None
-    category_group: list[tuple[ChecklistRow, list[dict]]] = []
-
-    def _flush_category():
-        nonlocal category_group
-        if not category_group:
-            return
-        total_obs = sum(len(m) for _, m in category_group)
-        compliant = sum(
-            1
-            for _, matches in category_group
-            for obs in matches
-            if (obs.get("conformance_status") or "").strip() == "Compliant"
-        )
-        if total_obs > 0:
-            _italic_small(
-                doc, f"Category score: {compliant}/{total_obs} compliant",
-            )
-        category_group = []
-
-    for row, row_matches in matches_by_row:
-        category = row.category or "Uncategorised"
-        if category != current_category:
-            _flush_category()
-            current_category = category
-            _h(doc, category, size=12)
-        category_group.append((row, row_matches))
-
-        if not row_matches:
-            _checklist_row_block(doc, row, None)
-            continue
-        if len(row_matches) > 1:
-            log.debug(
-                "Rendering %d observations against checklist row %s / %s",
-                len(row_matches), row.category, row.criteria,
-            )
-        for obs in row_matches:
-            _checklist_row_block(doc, row, obs)
-
-    _flush_category()
-
-    # Part D — Auditor Sign-off
-    _part_d_signoff(doc, site)
+    # Multi-site differentiator: emit the address heading so each
+    # site is identifiable in a stacked render. Single-site reports
+    # are identified by the title page + page-2 header bar already.
+    if not is_first:
+        _h(doc, site.address, size=16)
+    # Mark these locals as intentionally unused at this stage. Stage B
+    # will use them; lint check left clean by referencing them via _.
+    _ = (checklist, site.observations, site.open_actions)
 
 
 def build_audit_report_docx(
