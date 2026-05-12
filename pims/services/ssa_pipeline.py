@@ -182,6 +182,10 @@ def parse_evidence_csv(
 # ---------------------------------------------------------------------------
 
 _JPEG_EXTS = {".jpg", ".jpeg"}
+_IMAGE_EXTS = {
+    ".jpg", ".jpeg", ".png", ".heic", ".heif",
+    ".tif", ".tiff", ".webp", ".bmp", ".gif",
+}
 
 
 def _canonical_name(name: str) -> str:
@@ -218,7 +222,7 @@ def match_photos(
     by_stem: dict[str, list[Path]] = {}
     for p in on_disk:
         by_canonical.setdefault(_canonical_name(p.name), []).append(p)
-        if p.suffix.lower() in _JPEG_EXTS:
+        if p.suffix.lower() in _IMAGE_EXTS:
             by_stem.setdefault(_stem(p.name), []).append(p)
 
     for row in rows:
@@ -240,8 +244,12 @@ def match_photos(
             ))
             continue
 
-        # Rule 3: stem match across the JPEG family.
-        if Path(canon).suffix in _JPEG_EXTS:
+        # Rule 3: stem match across all image extensions.
+        # Runs for bare-stem CSV tokens (no extension), JPEG-family
+        # tokens, and any other image extension. Allows the matcher
+        # to resolve IMG_2447 -> IMG_2447.JPG/.PNG/etc on disk.
+        canon_suffix = Path(canon).suffix
+        if canon_suffix in _IMAGE_EXTS or canon_suffix == "":
             hits = list(by_stem.get(_stem(token), []))
             if len(hits) == 1:
                 row.resolved_filename = hits[0].name

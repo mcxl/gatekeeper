@@ -74,6 +74,11 @@ def _save_jpeg(path: Path, size=(800, 600), color="red") -> Path:
     return path
 
 
+def _save_png(path: Path, size=(800, 600), color="red") -> Path:
+    Image.new("RGB", size, color).save(path, "PNG")
+    return path
+
+
 @pytest.fixture(autouse=True)
 def _stub_anthropic_key(monkeypatch):
     """Most tests don't exercise the live vision path — they either
@@ -281,6 +286,49 @@ def test_match_photos_missing_flags_needs_review(tmp_path):
     assert rows[0].resolved_path is None
     assert "photo_missing" in rows[0].review_reasons
     assert any(w.reason == "photo_missing" for w in warnings)
+
+
+def test_match_photos_bare_stem_resolves_to_jpeg(tmp_path):
+    """CSV token has no extension (just ``IMG_2447``) — stem match should
+    still resolve to ``IMG_2447.JPG`` on disk. Regression for empty-
+    enrichment bug seen on 2026-05-12-RPD."""
+    p = _save_jpeg(tmp_path / "IMG_2447.JPG")
+    rows = [_row("IMG_2447")]
+    warnings = match_photos(rows, [p])
+    assert rows[0].resolved_path == p
+    assert any(w.reason == "extension_swap" for w in warnings)
+
+
+def test_match_photos_bare_stem_resolves_to_png(tmp_path):
+    """CSV token has no extension and the on-disk file is PNG. Verifies
+    that ``by_stem`` indexes non-JPEG extensions."""
+    p = _save_png(tmp_path / "IMG_2450.PNG")
+    rows = [_row("IMG_2450")]
+    warnings = match_photos(rows, [p])
+    assert rows[0].resolved_path == p
+    assert any(w.reason == "extension_swap" for w in warnings)
+
+
+def test_match_photos_png_canonical_exact(tmp_path):
+    """CSV says ``IMG_2450.PNG`` and disk has ``IMG_2450.PNG`` — exact
+    canonical match, no warnings."""
+    p = _save_png(tmp_path / "IMG_2450.PNG")
+    rows = [_row("IMG_2450.PNG")]
+    warnings = match_photos(rows, [p])
+    assert warnings == []
+    assert rows[0].resolved_path == p
+
+
+def test_match_photos_bare_stem_ambiguous_across_image_formats(tmp_path):
+    """CSV bare stem matches both a JPG and a PNG with the same stem on
+    disk — must flag ambiguous rather than silently pick one."""
+    p1 = _save_jpeg(tmp_path / "IMG_2447.JPG")
+    p2 = _save_png(tmp_path / "IMG_2447.PNG")
+    rows = [_row("IMG_2447")]
+    warnings = match_photos(rows, [p1, p2])
+    assert rows[0].resolved_path is None
+    assert "photo_match_ambiguous" in rows[0].review_reasons
+    assert any(w.reason == "photo_match_ambiguous" for w in warnings)
 
 
 # ---------------------------------------------------------------------------
