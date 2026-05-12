@@ -29,24 +29,77 @@ from typing import Optional
 # before more general ones (e.g. "first aid" before "aid").
 KEYWORD_TO_CCVS: list[tuple[str, str, str]] = [
     # (keyword substring, ccvs_code, ccvs_category)
+    # Order matters: more specific terms first, generic catch-alls last.
+
+    # Industrial Rope Access — IRA-H6 (must precede 'access' / scaffold rules)
+    ("rope access",        "IRA-H6", "Industrial Rope Access"),
+
+    # Mobile plant / cranes — MOB-H6 (must precede generic scaffold)
+    ("tower crane",        "MOB-H6", "Mobile Plant"),
+    ("gantry crane",       "MOB-H6", "Mobile Plant"),
+    ("mobile crane",       "MOB-H6", "Mobile Plant"),
+    ("crane",              "MOB-H6", "Mobile Plant"),
+    ("ewp",                "MOB-H6", "Mobile Plant"),
+
+    # Silica / dust generation — SIL-H6
+    ("silica",             "SIL-H6", "Silica"),
+    ("tile bed",           "SIL-H6", "Silica"),
+    ("rendering",          "SIL-H6", "Silica"),
+    ("grinding",           "SIL-H6", "Silica"),
+    ("render ",            "SIL-H6", "Silica"),
+
+    # Demolition / structural — STR-H6
+    ("demolition",         "STR-H6", "Structural"),
+    ("demo ",              "STR-H6", "Structural"),
+    ("non-load bearing",   "STR-H6", "Structural"),
+
+    # Working at height — WAH-H6 (specific phrases before generic scaffold)
+    ("fall arrest",        "WAH-H6", "Working at Height"),
+    ("harness",            "WAH-H6", "Working at Height"),
+    ("edge protect",       "WAH-H6", "Working at Height"),
+    ("hop up",             "WAH-H6", "Working at Height"),
+    ("guard rail",         "WAH-H6", "Working at Height"),
+    ("balcony edge",       "WAH-H6", "Working at Height"),
+    ("balcony remediation","WAH-H6", "Working at Height"),
+    ("scaffold tower",     "WAH-H6", "Working at Height"),
+    ("tower top",          "WAH-H6", "Working at Height"),
+    ("heights",            "WAH-H6", "Working at Height"),
+
     # Emergency response — SYS-H6
     ("fire extinguisher",  "SYS-H6", "Systems"),
     ("first aid",          "SYS-H6", "Systems"),
     ("emergency contact",  "SYS-H6", "Systems"),
     ("emergency",          "SYS-H6", "Systems"),
-    # Inspections / scaffold / permit — SYS-M4
+
+    # Inspections / scaffold / permit — SYS-M4 (most specific scaffold-* before catch-all)
     ("scaff tag",          "SYS-M4", "Systems"),
+    ("scaffold tag",       "SYS-M4", "Systems"),
     ("scaffold inspect",   "SYS-M4", "Systems"),
     ("permit",             "SYS-M4", "Systems"),
     ("scaffold access",    "SYS-M4", "Systems"),
-    # Documentation / SWMS / toolbox / risk-assessment / SDS / signage — SYS-M3
-    ("swms",               "SYS-M3", "Systems"),
-    ("toolbox",            "SYS-M3", "Systems"),
-    ("risk assessment",    "SYS-M3", "Systems"),
-    ("sds",                "SYS-M3", "Systems"),
-    ("safety data sheet",  "SYS-M3", "Systems"),
-    ("signage",            "SYS-M3", "Systems"),
-    ("notice",             "SYS-M3", "Systems"),
+    ("scaffold",           "SYS-M4", "Systems"),  # catch-all for generic scaffold photos
+
+    # Documentation / SWMS / toolbox / risk / SDS / signage / barricading — SYS-M3
+    ("swms",                  "SYS-M3", "Systems"),
+    ("safe work method",      "SYS-M3", "Systems"),
+    ("toolbox",               "SYS-M3", "Systems"),
+    ("risk assessment",       "SYS-M3", "Systems"),
+    ("sds",                   "SYS-M3", "Systems"),
+    ("safety data sheet",     "SYS-M3", "Systems"),
+    ("signage",               "SYS-M3", "Systems"),
+    ("site sign",             "SYS-M3", "Systems"),
+    ("notification",          "SYS-M3", "Systems"),
+    ("notice",                "SYS-M3", "Systems"),
+    ("notif",                 "SYS-M3", "Systems"),  # catches abbreviated/truncated forms
+    ("barricade",             "SYS-M3", "Systems"),
+    ("barricaded",            "SYS-M3", "Systems"),
+    ("exclusion zone",        "SYS-M3", "Systems"),
+    ("certified anchor",      "SYS-M3", "Systems"),
+    ("anchor sign",           "SYS-M3", "Systems"),
+    ("materials handling",    "SYS-M3", "Systems"),
+    ("waste",                 "SYS-M3", "Systems"),
+    ("storage",               "SYS-M3", "Systems"),
+
     # Induction / register / sign-in — SYS-L1
     ("white card",         "SYS-L1", "Systems"),
     ("induction",          "SYS-L1", "Systems"),
@@ -57,6 +110,7 @@ KEYWORD_TO_CCVS: list[tuple[str, str, str]] = [
     ("checkout",           "SYS-L1", "Systems"),
     ("check-out",          "SYS-L1", "Systems"),
     ("register",           "SYS-L1", "Systems"),
+
     # Energy / electrical — ENE-M4
     ("rcd",                "ENE-M4", "Energy"),
     ("electrical lead",    "ENE-M4", "Energy"),

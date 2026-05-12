@@ -94,3 +94,58 @@ def test_sets_confidence_medium_when_unset():
     parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
     apply_ccvs_fallback(parsed, "SWMS reviewed today.")
     assert parsed.get("ccvs_confidence") == "Medium"
+
+
+# Phase 9.1 expansion — additional vocabulary from non-Hampden sites.
+
+
+def test_rope_access_maps_to_ira_h6():
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Rope access photo of stage two")
+    assert parsed["ccvs_code"] == "IRA-H6"
+    assert parsed["ccvs_category"] == "Industrial Rope Access"
+
+
+def test_tower_crane_maps_to_mob_h6():
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Scaffold Gantry tower crane")
+    assert parsed["ccvs_code"] == "MOB-H6"
+
+
+def test_silica_maps_to_sil_h6():
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Silica producing tile bed removal in progress")
+    assert parsed["ccvs_code"] == "SIL-H6"
+
+
+def test_demolition_maps_to_str_h6():
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Demolition of internal wall today")
+    assert parsed["ccvs_code"] == "STR-H6"
+
+
+def test_heights_maps_to_wah_h6():
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Hazard identified heights on edge of slab")
+    assert parsed["ccvs_code"] == "WAH-H6"
+
+
+def test_notification_maps_to_sys_m3():
+    """'Notification to tenants' was missed by v1 keyword 'notice'."""
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Notification to tenants and residents")
+    assert parsed["ccvs_code"] == "SYS-M3"
+
+
+def test_generic_scaffold_falls_through_to_sys_m4():
+    """Bare 'scaffold' photo (not tower / not access) → SYS-M4 inspection family."""
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Scaffold tagging service")
+    assert parsed["ccvs_code"] == "SYS-M4"
+
+
+def test_scaffold_tower_overrides_generic_scaffold():
+    """'Scaffold tower top' is a height photo, not an inspection."""
+    parsed = {"ccvs_code": None, "conformance_status": "Compliant"}
+    apply_ccvs_fallback(parsed, "Scaffold tower top photo")
+    assert parsed["ccvs_code"] == "WAH-H6"
