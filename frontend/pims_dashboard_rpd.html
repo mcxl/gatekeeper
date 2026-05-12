@@ -3966,11 +3966,17 @@ function renderAllObsMobile(obs) {
       }
 
       try {
-        const { error } = await db
-          .from('pims_observations')
-          .update({ staging: false })
-          .eq('id', observationId);
-        if (error) throw error;
+        // Phase 7: backend-mediated promote so the site_id resolver runs
+        // server-side. Direct Supabase update path retired.
+        const resp = await fetch(`/pims/pdf-observation/${observationId}/promote`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!resp.ok) {
+          const body = await resp.text();
+          throw new Error(`HTTP ${resp.status}: ${body || resp.statusText}`);
+        }
 
         if (hasButton) {
           btn.textContent = '✓ Promoted';

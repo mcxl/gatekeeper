@@ -34,6 +34,8 @@ from typing import Optional
 import httpx
 import openpyxl
 from anthropic import AsyncAnthropic, APIStatusError
+
+from pims.services.site_resolver import resolve_site_id
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -874,6 +876,35 @@ async def approve_staging_rpd(
                     ),
                 )
 
+        # Phase 7: resolve site_id from staging.site_address. If blank,
+        # fall back to pims_audits.site_name. If both fail, return 409
+        # so the operator fills the address in the staging UI first.
+        address_for_resolver = staging.get("site_address")
+        if not address_for_resolver:
+            audit_id = staging.get("audit_id")
+            if audit_id:
+                r_audit = await client.get(
+                    f"{RPD_SUPABASE_URL}/rest/v1/pims_audits",
+                    headers=headers_repr,
+                    params={"id": f"eq.{audit_id}", "select": "site_name", "limit": "1"},
+                )
+                if r_audit.status_code == 200 and r_audit.json():
+                    address_for_resolver = r_audit.json()[0].get("site_name")
+        if not address_for_resolver:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Site address required before approve. Set it on the "
+                    "staging row inline, then retry."
+                ),
+            )
+        resolved_site_id = await resolve_site_id(
+            address_for_resolver,
+            supabase_url=RPD_SUPABASE_URL,
+            supabase_key=RPD_SUPABASE_SERVICE_KEY,
+            client=client,
+        )
+
         now_utc = datetime.now(timezone.utc).isoformat()
         obs_row = {field: staging.get(field) for field in STAGING_COPY_FIELDS}
         obs_row.update({
@@ -884,6 +915,8 @@ async def approve_staging_rpd(
             "staging":       False,
             "needs_review":  False,
         })
+        if resolved_site_id:
+            obs_row["site_id"] = resolved_site_id
 
         r2 = await client.post(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
@@ -1022,6 +1055,80 @@ async def retry_enrichment_rpd(
             "staging_id":  staging_id,
             "staging":     patched[0] if patched else None,
             "message":     "Enrichment retry succeeded.",
+        }
+
+
+@router.post("/pdf-observation/{observation_id}/promote")
+async def promote_pdf_observation_rpd(
+    observation_id: str,
+    pims_sess: str | None = Cookie(default=None, alias="pims_sess"),
+):
+    """Phase 7: backend-mediated PDF promote.
+
+    Replaces the legacy frontend direct-Supabase
+        db.from('pims_observations').update({staging:false}).eq('id', id)
+    call so the resolver runs server-side and site_id is always set on
+    promotion when address resolves unambiguously.
+
+    Idempotent: re-calling on an already-promoted row returns 200 with
+    the existing row.
+    """
+    if not verify_session_cookie(pims_sess, "rpd"):
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if not _is_uuid(observation_id):
+        raise HTTPException(status_code=422, detail="Invalid observation_id format.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers_repr = _supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=representation")
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=headers_repr,
+            params={"id": f"eq.{observation_id}", "select": "*", "limit": "1"},
+        )
+        r.raise_for_status()
+        rows = r.json()
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"Observation {observation_id} not found.")
+        obs = rows[0]
+
+        # Idempotency: already promoted → return the row.
+        if obs.get("staging") is False:
+            return {
+                "observation": obs,
+                "message": "Already promoted (idempotent).",
+            }
+
+        # Resolve site_id from this row's site_address before promotion.
+        # If unresolvable, still promote (matches legacy behaviour) but
+        # the dashboard chip will surface the orphan.
+        resolved = await resolve_site_id(
+            obs.get("site_address"),
+            supabase_url=RPD_SUPABASE_URL,
+            supabase_key=RPD_SUPABASE_SERVICE_KEY,
+            client=client,
+        )
+        patch: dict = {"staging": False}
+        if resolved and not obs.get("site_id"):
+            patch["site_id"] = resolved
+
+        r_patch = await client.patch(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers={**headers_repr, "Prefer": "return=representation"},
+            params={"id": f"eq.{observation_id}"},
+            json=patch,
+        )
+        if r_patch.status_code not in (200, 204):
+            log.error(f"pdf-observation promote failed {observation_id}: {r_patch.status_code} {r_patch.text}")
+            raise HTTPException(status_code=500, detail="Promotion failed.")
+
+        patched = r_patch.json()
+        return {
+            "observation": patched[0] if patched else None,
+            "site_id_resolved": resolved,
+            "message": "Promoted to live observations.",
         }
 
 
@@ -2464,8 +2571,15 @@ async def upload_observations_xlsx(
                 continue
 
             needs_review = _parse_upload_bool(row.get("needs_review")) or ccvs_invalid
+            resolved_upload_site_id = await resolve_site_id(
+                site_address,
+                supabase_url=RPD_SUPABASE_URL,
+                supabase_key=RPD_SUPABASE_SERVICE_KEY,
+                client=client,
+            )
             insert_row = {
                 "site_address": site_address,
+                "site_id": resolved_upload_site_id,
                 "audit_date": audit_date_value,
                 "observation_text": observation_text,
                 "conformance_status": conformance_status,
