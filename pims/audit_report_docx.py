@@ -824,6 +824,67 @@ def _embed_photo(
         add_body_cell(cell, fallback_text)
 
 
+# Local mirror of pims.routes.CCVS_CATEGORY_BY_PREFIX so the renderer
+# does not import from routes (which would create a cycle through
+# FastAPI / Supabase config). Keep in sync if routes changes.
+_CCVS_CATEGORY_BY_PREFIX_LOCAL: dict[str, str] = {
+    "WAH": "Working at Height",
+    "IRA": "Industrial Rope Access",
+    "SIL": "Silica",
+    "STR": "Structural",
+    "MOB": "Mobile Plant",
+    "CHM": "Chemicals",
+    "ENE": "Energy",
+    "SYS": "Systems",
+}
+
+
+def _render_findings_paragraphs(doc: Document, actions: list[dict]) -> None:
+    """Reference-docx-shape findings renderer.
+
+    Emits two paragraphs per finding to match
+    pims/56-58_Fraters_Ave_Sans_Souci.docx and
+    pims/7_Hampden_Rd_Cremorne.docx:
+
+      <status> #<N>. <Category> – <Sub-category> – <observation_text>
+      Required action: <action_description / recommendation>
+
+    Photos are NOT embedded here — they live with the checklist
+    matches in the Site Safety Inspection section, per the reference
+    docx convention. Open Actions Register layout (the bordered
+    7-column table) is intentionally retired in favour of this prose
+    block.
+    """
+    if not actions:
+        _p(doc, "No findings.")
+        return
+    for n, a in enumerate(actions, start=1):
+        status = (a.get("conformance_status") or "").strip() or "Finding"
+        category = (a.get("ccvs_category") or "").strip()
+        if not category:
+            code = (a.get("ccvs_code") or "").strip()
+            prefix = code.split("-", 1)[0] if code else ""
+            category = _CCVS_CATEGORY_BY_PREFIX_LOCAL.get(prefix, "Uncategorised")
+        # Sub-category — use the ccvs_code (e.g. "ENE-M4") if no
+        # explicit sub-category text is on the observation row.
+        sub = (a.get("ccvs_subcategory") or "").strip()
+        if not sub:
+            sub = (a.get("ccvs_code") or "").strip() or "—"
+        body = (
+            (a.get("observation_text_enriched") or "").strip()
+            or (a.get("observation_text") or "").strip()
+        )
+        head_line = f"{status} #{n}. {category} – {sub} – {body}"
+        _p(doc, head_line)
+        action_text = (
+            (a.get("action_description") or "").strip()
+            or (a.get("recommendation") or "").strip()
+            or (a.get("observation_text_enriched") or "").strip()
+        )
+        if action_text:
+            _p(doc, f"Required action: {action_text}")
+
+
 def _open_actions_table(
     doc: Document,
     actions: list[dict],
@@ -1057,41 +1118,27 @@ def _append_site(
         _page_break(doc)
 
     # Site title banner.
-    _h(doc, f"Audit Report — {site.address}", size=16)
+    # Per-site body heading is OMITTED for single-site reports to match
+    # the reference docx layout (cover already shows address). Multi-site
+    # reports keep an address heading at the start of each site's body.
+    if is_first is False:
+        _h(doc, site.address, size=16)
 
-    # Shared photo counter — ensures sequential "Photo N" captions across
-    # Open Actions and Part C checklist embeds within this site.
+    # Shared photo counter — sequential "Photo N" captions across the
+    # checklist row embeds within this site.
     photo_counter: list[int] = [0]
 
-    # Part A — Open Actions Register (leads the body so what's wrong and
-    # what's being done about it is the first thing the reader sees).
-    _h(doc, "Part A — Open Actions Register", size=13)
-    if site.open_actions:
-        _open_actions_table(
-            doc,
-            site.open_actions,
-            site.open_action_photo_bytes_by_obs_id,
-            photo_counter=photo_counter,
-        )
-    else:
-        _p(doc, "No open actions.")
+    # Findings section — paragraph format matching the reference docx
+    # (no Part A header, no Open Actions Register table). Each NCR /
+    # Conditional rendered as two paragraphs: heading + Required action.
+    _h(doc, "Findings", size=13)
+    _render_findings_paragraphs(doc, site.open_actions)
 
-    # Part B — Site Visit Summary (metadata + narrative).
+    # Site Safety Inspection section — the full checklist with photos
+    # embedded only on matched rows. No Part C banner, no Part B
+    # metadata duplication (cover carries the metadata already).
     _page_break(doc)
-    _h(doc, "Part B — Site Visit Summary", size=13)
-    site_totals = _score_totals([site])
-    _site_metadata_table(doc, site, site_totals)
-    _p(doc, _resolve_executive_summary([site], site_totals))
-
-    # Part C — Checklist.
-    _page_break(doc)
-    _h(doc, "Part C — Site Safety Inspection Checklist", size=13)
-
-    # Visual-only summary banner — restates cover + Part B counts with
-    # the STATUS_PALETTE so severity reads at a glance. The underlying
-    # counts are authoritative in Cover Table 1 and the Part B metadata
-    # table; this row is not a new data location.
-    _part_c_banner(doc, site_totals)
+    _h(doc, "Site Safety Inspection", size=13)
 
     matches_by_row: list[tuple[ChecklistRow, list[dict]]] = []
     for row in checklist:
@@ -1159,8 +1206,9 @@ def _append_site(
 
     _flush_category()
 
-    # Part D — Auditor Sign-off
-    _part_d_signoff(doc, site)
+    # Part D (Auditor Sign-off) intentionally omitted to match the
+    # reference docx layout. Re-enable with _part_d_signoff(doc, site)
+    # if a signing block is required by a future customer.
 
 
 def build_audit_report_docx(
