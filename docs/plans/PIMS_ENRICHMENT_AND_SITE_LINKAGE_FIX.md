@@ -510,6 +510,22 @@ Exit criterion: zero non-ambiguous orphans for any active site.
 
 - Migrating other Anthropic callers outside the two PIMS files
   (Phase 5 is intentionally narrow).
+  - **Tracking note:** other raw-httpx Anthropic callers in the repo
+    (`pims/audit_report_docx.py:284`, `core/document_extractor.py:167`,
+    plus any future grep hits for direct `api.anthropic.com/v1/messages`
+    POSTs) should migrate to the official SDK
+    (`anthropics/anthropic-sdk-python`, already pinned at
+    `anthropic==0.84.0` in `requirements.txt`) in the next
+    maintenance window. Benefits earned automatically: structured
+    `APIStatusError.body` on 4xx, built-in 429/500 retry with
+    backoff, typed response objects, connection pooling. The SDK
+    does **not** validate model ids at import (they're still
+    runtime strings), so the `PIMS_ENRICHMENT_MODEL` env-var
+    pattern from Phase 2 should be replicated for those callers
+    when migrated. No incident currently driving the migration —
+    both call sites already use the dated model id and have not
+    produced 400s. File this as a tech-debt item, not a recovery
+    phase.
 - General refactor of error handling across the PIMS codebase.
 - Slack / email alerting plumbing (separate operational slice).
 - Frontend rework beyond Phase 6 status pills + Phase 7 PDF route
