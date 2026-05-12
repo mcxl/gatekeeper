@@ -44,7 +44,6 @@ def _full_text(doc: Document) -> str:
     return "\n".join(parts)
 
 
-@pytest.mark.skip(reason="Stage A 2026-05-13: canonical template (RPD_SSA_template-inserted.docx) now in use; cover-table cell coordinates differ from the prior shipped template, so the existing _populate_cover label/value lookup needs Stage B's index-and-fill rewire to find the new score/flagged/etc. cells. Stage B will rewrite — see docs/plans/AUDIT_REPORT_CORRECT_TEMPLATE_DIAGNOSIS_AND_PLAN.md §5.")
 def test_single_site_cover_has_no_bracketed_placeholders(checklist_xlsx, monkeypatch):
     if not TEMPLATE_PATH.exists():
         pytest.skip("shipped template not present")
@@ -158,54 +157,29 @@ def test_cover_has_no_photo_scaffold_table(checklist_xlsx):
         )
 
 
-def test_multi_site_cover_uses_multiple_sites_label(checklist_xlsx):
+def test_multi_site_rejected_at_renderer_boundary(checklist_xlsx):
+    """Stage B 2026-05-13: build_audit_report_docx is single-site only.
+
+    Multi-site is handled at the route layer (renders one doc per site,
+    zips). The renderer itself raises ValueError if handed >1 site to
+    prevent silent in-place overwrites of pre-filled checklist tables.
+    """
     if not TEMPLATE_PATH.exists():
         pytest.skip("shipped template not present")
     sites = [
         arpt.SiteData(
-            address="1 First St, Sydney",
-            project_value=300_000,
-            client="Client A",
-            prepared_by="J. Auditor",
+            address="1 First St, Sydney", project_value=300_000,
+            client="Client A", prepared_by="J. Auditor",
             inspection_datetime="23 Apr 2026 09:00 AEST",
-            observations=[
-                {"conformance_status": "Compliant", "ccvs_code": "X",
-                 "observation_text_enriched": "ok"},
-            ],
-            open_actions=[],
+            observations=[], open_actions=[],
         ),
         arpt.SiteData(
-            address="2 Second St, Sydney",
-            project_value=300_000,
-            client="Client B",
-            observations=[
-                {"conformance_status": "NCR", "ccvs_code": "Y",
-                 "observation_text_enriched": "not ok"},
-            ],
-            open_actions=[],
+            address="2 Second St, Sydney", project_value=300_000,
+            client="Client B", observations=[], open_actions=[],
         ),
     ]
-
-    buf = arpt.build_audit_report_docx(sites, checklist_xlsx_path=checklist_xlsx)
-    buf.seek(0)
-    doc = Document(buf)
-
-    # Find the "Site conducted" label/value table and assert the value cell
-    # reports the aggregated multi-site label.
-    found = False
-    for t in doc.tables:
-        if t.rows and len(t.rows[0].cells) >= 2:
-            if t.rows[0].cells[0].text.strip() == "Site conducted":
-                assert t.rows[0].cells[1].text.strip() == "Multiple sites (2)"
-                found = True
-                break
-    assert found, "Site conducted row not located in rendered doc"
-
-    text = _full_text(doc)
-    # Mixed clients → generic title (no client prefix).
-    assert "Site Safety Audit Report" in text
-    assert "Client A – Site Safety Audit Report" not in text
-    assert "Client B – Site Safety Audit Report" not in text
+    with pytest.raises(ValueError, match="single-site"):
+        arpt.build_audit_report_docx(sites, checklist_xlsx_path=checklist_xlsx)
 
 
 def test_single_site_requires_client():

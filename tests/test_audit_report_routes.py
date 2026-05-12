@@ -177,8 +177,14 @@ def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkey
     async def fake_fetch_obs(_site_id):
         return []
 
+    # Stage B (2026-05-13): build_audit_report_docx is single-site-only;
+    # the route calls it once per site for multi-site requests. Capture
+    # every invocation so we can assert both sites received the right
+    # threaded fields.
+    all_calls: list = []
+
     def fake_build(sites_data, **_kw):
-        captured["sites"] = list(sites_data)
+        all_calls.append(list(sites_data))
         from io import BytesIO
         return BytesIO(b"PK\x03\x04")
 
@@ -187,12 +193,8 @@ def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkey
     monkeypatch.setattr(patched_routes, "verify_session_cookie", lambda *_a, **_kw: True)
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(patched_routes, "RPD_SUPABASE_SERVICE_KEY", "test-key")
-    # Template + xlsx existence checks read from disk; point them at real files.
     from pims import audit_report_docx as arpt
-    monkeypatch.setattr(arpt, "TEMPLATE_PATH", arpt.TEMPLATE_PATH)  # no-op but explicit
-    # Patch build_audit_report_docx at its import site in pims.routes by
-    # intercepting the inline `from pims.audit_report_docx import ...` — we
-    # do that by replacing the builder on the source module before import.
+    monkeypatch.setattr(arpt, "TEMPLATE_PATH", arpt.TEMPLATE_PATH)
     monkeypatch.setattr(arpt, "build_audit_report_docx", fake_build)
 
     req = patched_routes.AuditReportRequest(
@@ -207,11 +209,16 @@ def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkey
 
     asyncio.run(patched_routes.generate_audit_report_rpd(req, pims_sess="valid"))
 
-    assert "sites" in captured
-    assert len(captured["sites"]) == 2
-    for s in captured["sites"]:
+    # One build call per site for the multi-site path.
+    assert len(all_calls) == 2
+    # Each call carries exactly one SiteData (single-site contract).
+    flattened = [s for call in all_calls for s in call]
+    assert len(flattened) == 2
+    for s in flattened:
         assert s.prepared_by == "J. Auditor"
         assert s.inspection_datetime == "23 Apr 2026 09:00 AEDT"
+    # Keep the legacy "sites" key for downstream backward compat.
+    captured["sites"] = flattened
 
 
 def _happy_path_with_datetime(patched_routes, monkeypatch, dt_string: str) -> list:

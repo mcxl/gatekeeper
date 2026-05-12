@@ -1081,6 +1081,406 @@ def _embed_photo(cell, photo_bytes: bytes | None, fallback_text: str) -> None:
         add_body_cell(cell, fallback_text)
 
 
+# ---------------------------------------------------------------------------
+# Stage B (2026-05-13): index-and-fill helpers for canonical template.
+# See docs/plans/CODEX_REVIEW_audit_report_stage_b.md.
+# ---------------------------------------------------------------------------
+
+_WORST_STATUS_RANK = {"Compliant": 1, "Conditional": 2, "NCR": 3}
+
+
+def _normalize_criteria(s: str) -> str:
+    """Collapse whitespace and casefold for cross-source criteria matching."""
+    return " ".join((s or "").split()).strip().casefold()
+
+
+def _inactive_planning_section(project_value: float | None) -> str:
+    """Return the canonical-template planning section name that does NOT
+    apply to this site. Used to paint the inactive tier as N/A.
+
+    For sites at or above VALUE_THRESHOLD ($250K), the <$250K planning
+    section is inactive. Below, the >$250K planning section is inactive.
+    """
+    from pims.services.template_index import PLANNING_HIGH, PLANNING_LOW
+    if project_value is None:
+        return ""
+    return PLANNING_LOW if float(project_value) >= VALUE_THRESHOLD else PLANNING_HIGH
+
+
+def _build_criteria_to_line_item(items: list) -> dict[str, object]:
+    """Map normalized template criterion text → LineItem.
+
+    Returns a dict keyed by `_normalize_criteria(line_item.item_text)`.
+    Duplicate keys are not expected (each criterion is unique in the
+    template); if seen, the first wins and a warning is logged so
+    operators can resolve the upstream collision.
+    """
+    out: dict[str, object] = {}
+    for li in items:
+        key = _normalize_criteria(li.item_text)
+        if not key:
+            continue
+        if key in out:
+            log.warning(
+                "Duplicate template criterion %r at header_table_idx=%d "
+                "(first wins; second at %d ignored)",
+                li.item_text, out[key].header_table_idx, li.header_table_idx,
+            )
+            continue
+        out[key] = li
+    return out
+
+
+_BRIDGE_RATIO_THRESHOLD = 0.50
+# The xlsx (operator-curated) and the template (operator-curated)
+# express the same checklist criteria with materially different wording
+# (e.g. xlsx "01. Does the site sign include …?" vs template "For
+# projects > $250,000 in contract value site sign includes …"). Strict
+# text equality and difflib 0.75 both reject these as non-matches even
+# though they describe the same criterion. The bridge layer therefore
+# runs at 0.50 — lower-precision, higher-recall — and relies on the
+# section-name family to disambiguate.
+#
+# Hard mismatches (xlsx has Scaffolding section with no template
+# equivalent; xlsx GWH has 11 rows vs template GWH 14) are surfaced as
+# warnings in the alignment report, not blocking.
+
+
+def _section_family(section_or_category: str) -> str:
+    """Reduce a section or category name to a comparable family key.
+
+    Drops leading "NN. " number prefixes, drops the "(project value
+    >$250K)" / "(project value <$250K)" tier suffix, collapses
+    whitespace, lowercases. So:
+
+      "01. Planning and Risk Management (Project Value >$250K)"
+      "Planning and risk management (project value >$250K)"
+      "Planning and risk management (project value <$250K)"
+
+    all reduce to "planning and risk management". The tier split is
+    handled separately by _inactive_planning_section, which scopes
+    matches to the active tier only.
+    """
+    s = (section_or_category or "").strip()
+    s = re.sub(r"^\s*\d+[.)]\s*", "", s)
+    s = re.sub(r"\s*\(\s*project\s*value\s*[<>]?\s*\$?\s*\d+[Kk]?\s*\)\s*", "", s, flags=re.IGNORECASE)
+    return " ".join(s.split()).casefold()
+
+
+def _verify_xlsx_template_alignment(
+    items: list, checklist: list[ChecklistRow], active_section: str | None = None,
+) -> dict:
+    """Best-effort alignment report between active-sheet xlsx and template.
+
+    Per the operator-curated data shape (2026-05-13), strict alignment
+    is not achievable: xlsx and template were authored independently
+    and carry different sectional breakdowns + worded criteria. This
+    function returns a structured report (does NOT raise) so callers
+    can surface drift in logs / debug output without blocking the
+    render.
+
+    Returns:
+      {
+        "unaligned_rows":    [ChecklistRow.criteria strings the bridge
+                              could not place onto any LineItem],
+        "orphan_xlsx_sections": [xlsx category names with no template
+                                 family equivalent],
+      }
+    """
+    inactive = _inactive_planning_section_from_active(active_section) if active_section else None
+    scoped = [li for li in items if li.section != inactive] if inactive else items
+
+    family_to_items: dict[str, list] = {}
+    for li in scoped:
+        family_to_items.setdefault(_section_family(li.section), []).append(li)
+
+    xlsx_families = {_section_family(r.category) for r in checklist if r.category}
+    orphan_xlsx_sections = sorted(xlsx_families - set(family_to_items.keys()))
+
+    unaligned: list[str] = []
+    for row in checklist:
+        family = _section_family(row.category)
+        candidates = family_to_items.get(family, [])
+        key = _normalize_criteria(row.criteria)
+        if not key:
+            continue
+        # In-family best match.
+        best = 0.0
+        for li in candidates:
+            r = SequenceMatcher(None, _normalize_criteria(li.item_text), key).ratio()
+            if r > best:
+                best = r
+        if best < _BRIDGE_RATIO_THRESHOLD:
+            unaligned.append(row.criteria)
+
+    if unaligned:
+        log.warning(
+            "Stage B alignment drift: %d xlsx row(s) cannot be bridged "
+            "to any template LineItem (in-family ratio < %.2f). "
+            "Observations matching these rows will render as unmatched. "
+            "First samples: %s",
+            len(unaligned), _BRIDGE_RATIO_THRESHOLD,
+            [m[:80] for m in unaligned[:3]],
+        )
+    if orphan_xlsx_sections:
+        log.warning(
+            "Stage B alignment drift: %d xlsx category/categories have "
+            "no template family equivalent: %s",
+            len(orphan_xlsx_sections), orphan_xlsx_sections,
+        )
+    return {
+        "unaligned_rows": unaligned,
+        "orphan_xlsx_sections": orphan_xlsx_sections,
+    }
+
+
+def _inactive_planning_section_from_active(active: str) -> str:
+    from pims.services.template_index import PLANNING_HIGH, PLANNING_LOW
+    if active == PLANNING_HIGH:
+        return PLANNING_LOW
+    if active == PLANNING_LOW:
+        return PLANNING_HIGH
+    return ""
+
+
+_OBS_TO_LINE_ITEM_RATIO = 0.30
+# Observation → LineItem direct bridge. Operator-curated xlsx is missing
+# the ccvs_code / ccvs_category / observation_text_enriched columns
+# `match_observation()` was designed around (as of 2026-05-13), so xlsx
+# cannot serve as the matching bridge in production. The direct
+# observation → LineItem path uses:
+#   - observation.ccvs_category   → scopes candidates to a section family
+#   - observation_text_enriched   → fuzzy-matches against LineItem.item_text
+# Threshold 0.30 is low because observation narratives describe an
+# incident at a criterion ("worker observed without harness") and
+# LineItem text describes the compliant state ("Workers wearing
+# harnesses at height"), so token overlap is partial by construction.
+
+
+def _match_obs_to_line_item(
+    obs: dict, items: list, inactive_planning_section: str,
+) -> object | None:
+    """Best-match a single observation to a template LineItem.
+
+    Returns None when no candidate clears _OBS_TO_LINE_ITEM_RATIO or
+    the best candidate is in the inactive planning tier (treated as
+    unmatched per Codex Q-B1).
+    """
+    obs_text = (
+        obs.get("observation_text_enriched")
+        or obs.get("observation_text")
+        or ""
+    ).strip().casefold()
+    if not obs_text:
+        return None
+
+    # Filter inactive planning tier and (when obs.ccvs_category is present
+    # and resolves to a real template family) restrict candidates to that
+    # family. Falls back to all items when the family hint is unhelpful.
+    candidates = items
+    if inactive_planning_section:
+        candidates = [li for li in candidates if li.section != inactive_planning_section]
+
+    def _best(items_list):
+        best_ratio = 0.0
+        best_li = None
+        for li in items_list:
+            r = SequenceMatcher(None, _normalize_criteria(li.item_text), obs_text).ratio()
+            if r > best_ratio:
+                best_ratio = r
+                best_li = li
+        return best_li, best_ratio
+
+    # First try in-family (using ccvs_category as a hint). If that
+    # doesn't clear threshold, fall back to global search — the
+    # ccvs_category field is operator-supplied and frequently
+    # mis-categorised (e.g. a harness-at-height observation tagged
+    # "Worker competency and PPE" when its real home is "General work
+    # at height").
+    cat = (obs.get("ccvs_category") or "").strip()
+    family_li = None
+    family_ratio = 0.0
+    if cat:
+        family = _section_family(cat)
+        same_family = [li for li in candidates if _section_family(li.section) == family]
+        if same_family:
+            family_li, family_ratio = _best(same_family)
+
+    if family_li is not None and family_ratio >= _OBS_TO_LINE_ITEM_RATIO:
+        return family_li
+
+    global_li, global_ratio = _best(candidates)
+    if global_li is not None and global_ratio >= _OBS_TO_LINE_ITEM_RATIO:
+        return global_li
+    return None
+
+
+def _match_observations_to_line_items(
+    items: list,
+    checklist: list[ChecklistRow],  # noqa: ARG001 — kept for signature stability + future ccvs use
+    observations: list[dict],
+    inactive_planning_section: str,
+) -> tuple[dict[int, list[dict]], list[dict]]:
+    """Aggregate observations onto template LineItems by header_table_idx.
+
+    Each observation is matched directly to a LineItem via
+    `_match_obs_to_line_item`. The `checklist` parameter is retained
+    for signature stability and to support a future xlsx-augmented
+    matching path (once the xlsx carries the ccvs columns
+    `match_observation` was designed for).
+    """
+    matched: dict[int, list[dict]] = {}
+    unmatched: list[dict] = []
+    for obs in observations:
+        li = _match_obs_to_line_item(obs, items, inactive_planning_section)
+        if li is None:
+            log.warning(
+                "Stage B unmatched obs id=%s ccvs=%s status=%s text=%r",
+                obs.get("id"), obs.get("ccvs_code"),
+                obs.get("conformance_status"),
+                (obs.get("observation_text_enriched")
+                 or obs.get("observation_text") or "")[:60],
+            )
+            unmatched.append(obs)
+            continue
+        matched.setdefault(li.header_table_idx, []).append(obs)
+    return matched, unmatched
+
+
+def _worst_status(observations: list[dict]) -> str:
+    """Return the worst-severity status across observations.
+
+    NCR > Conditional > Compliant. 'Info' does not lift severity and
+    falls back to Compliant if it's the only status seen (matches the
+    SVR matcher's compliant_verified semantics — Info is informational
+    and never drives a state worse than compliant).
+    """
+    worst_rank = 0
+    worst = "Compliant"
+    for obs in observations:
+        status = (obs.get("conformance_status") or "").strip()
+        rank = _WORST_STATUS_RANK.get(status, 0)
+        if rank > worst_rank:
+            worst_rank = rank
+            worst = status
+    return worst
+
+
+def _set_status_cell(cell, label: str, bg_hex: str, font_hex: str) -> None:
+    """Write `label` into a status cell with explicit shading + font colour.
+
+    Mutates the cell in place. Replaces existing run content (single
+    run, single paragraph after this returns)."""
+    _set_cell_text_preserving_style(cell, label)
+    set_cell_shading(cell, bg_hex)
+    rgb = RGBColor.from_string(font_hex)
+    for p in cell.paragraphs:
+        for run in p.runs:
+            run.font.color.rgb = rgb
+
+
+def _set_narrative_cell(cell, narratives: list[str]) -> None:
+    """Write concatenated narratives separated by blank lines.
+
+    Empty `narratives` clears the cell (Stage B obs-table cells should
+    not retain template-default text when force_na=True). Each entry
+    becomes its own paragraph; an empty paragraph separates them.
+    """
+    # Wipe every paragraph in the cell.
+    for p in list(cell.paragraphs):
+        _clear_paragraph_runs(p)
+    # Remove all but the first paragraph; we'll repopulate.
+    paragraphs = list(cell.paragraphs)
+    for extra in paragraphs[1:]:
+        extra._element.getparent().remove(extra._element)
+    if not narratives:
+        return
+    first_p = cell.paragraphs[0]
+    first_p.add_run(narratives[0])
+    for narrative in narratives[1:]:
+        sep = cell.add_paragraph("")
+        body_p = cell.add_paragraph()
+        body_p.add_run(narrative)
+        _ = sep
+
+
+def _fill_line_item(
+    doc: Document,
+    line_item,
+    palette: dict[str, tuple[str, str]],
+    na_fill: str,
+    observations: list[dict],
+    photo_counter_state: list[int],
+    photo_bytes_by_obs_id: dict[str, bytes],
+    force_na: bool = False,
+) -> None:
+    """Fill one LineItem's status cell + narrative cell + photo cells.
+
+    Contract:
+      - Status cell: `doc.tables[line_item.header_table_idx].rows[0].cells[1]`
+        (pinned by tests/test_audit_report_fill.py).
+      - Narrative cell: `doc.tables[line_item.obs_table_idx].rows[0].cells[0]`
+        (pinned by tests/test_audit_report_fill.py).
+      - Photo cells: `line_item.photo_cells` in `doc.tables[line_item.obs_table_idx]`.
+      - force_na=True → ignore observations, paint N/A. Used for the
+        inactive planning tier and for unmatched items in NA_SECTIONS.
+      - Empty observations + force_na=False → no-op (template default
+        Compliant shading shows through).
+    """
+    header_table = doc.tables[line_item.header_table_idx]
+    obs_table = doc.tables[line_item.obs_table_idx]
+    status_cell = header_table.rows[0].cells[1]
+    narrative_cell = obs_table.rows[0].cells[0]
+
+    if force_na:
+        _set_status_cell(status_cell, "N/A", na_fill, "000000")
+        _set_narrative_cell(narrative_cell, [])
+        return
+
+    if not observations:
+        return  # Compliant default shading from the template stays.
+
+    status = _worst_status(observations)
+    bg_hex, font_hex = palette.get(status, palette.get("Compliant", ("00B050", "FFFFFF")))
+    _set_status_cell(status_cell, status, bg_hex, font_hex)
+
+    narratives: list[str] = []
+    for obs in observations:
+        text = (
+            obs.get("observation_text_enriched")
+            or obs.get("observation_text")
+            or ""
+        ).strip()
+        if text:
+            narratives.append(text)
+    _set_narrative_cell(narrative_cell, narratives)
+
+    # Photos: first-slot-wins, log overflow.
+    photo_slots = list(line_item.photo_cells)
+    obs_with_photos = [o for o in observations
+                       if photo_bytes_by_obs_id.get(str(o.get("id") or ""))]
+    if obs_with_photos and not photo_slots:
+        log.warning(
+            "Stage B no photo slots in obs_table_idx=%d but %d obs have photos; "
+            "all dropped",
+            line_item.obs_table_idx, len(obs_with_photos),
+        )
+        return
+    for i, obs in enumerate(obs_with_photos):
+        if i >= len(photo_slots):
+            log.warning(
+                "Stage B photo-slot overflow at obs_table_idx=%d "
+                "(slots=%d, photos=%d); extras dropped",
+                line_item.obs_table_idx, len(photo_slots), len(obs_with_photos),
+            )
+            break
+        (slot_row, slot_col) = photo_slots[i]
+        cell = obs_table.rows[slot_row].cells[slot_col]
+        photo_bytes = photo_bytes_by_obs_id.get(str(obs.get("id") or ""))
+        _embed_photo(cell, photo_bytes, f"Photo {photo_counter_state[0] + 1}")
+        photo_counter_state[0] += 1
+
+
 def _open_actions_table(
     doc: Document,
     actions: list[dict],
@@ -1283,42 +1683,145 @@ def _start_body_section(doc: Document) -> None:
         elem.append(empty_p)
 
 
+def _populate_cover_cells_from_index(doc: Document, sites: list["SiteData"]) -> None:
+    """Populate the canonical template's cover info table by label.
+
+    The cover info table carries label/value pairs (Score, Flagged
+    items, Actions, Site conducted, Prepared by, Date of inspection,
+    Site Inspection). _populate_cover already replaces [Insert ...]
+    placeholders via the DrawingML / paragraph walker, but the canonical
+    template's cover table may carry literal label/value cells whose
+    value cells do NOT contain placeholders (so the walker can't reach
+    them).
+
+    This function uses index.cover_cells to write the canonical value
+    into the value cell beside each known label. Only writes when the
+    value cell currently appears empty or carries the literal placeholder
+    text — preserves any operator-supplied value otherwise (defensive).
+    """
+    from pims.services.template_index import get_index
+
+    index = get_index()
+    totals = _score_totals(sites)
+    site = sites[0]
+    if len(sites) == 1:
+        site_conducted = site.address
+    else:
+        site_conducted = f"Multiple sites ({len(sites)})"
+    prepared_by_value = (
+        f"{site.prepared_by}, AuditCo" if site.prepared_by else "AuditCo"
+    )
+    date_value = (
+        _format_audit_date(site.inspection_datetime)
+        or site.inspection_datetime
+        or "—"
+    )
+
+    cover_values: dict[str, str] = {
+        "Score": totals["score_text"],
+        "Flagged items": str(totals["flagged"]),
+        "Actions": str(totals["actions"]),
+        "Site conducted": site_conducted,
+        "Prepared by": prepared_by_value,
+        "Date of inspection": date_value,
+    }
+
+    for label, cell_info in index.cover_cells.items():
+        if label == "Site Inspection":
+            continue  # heading, not a value cell
+        new_value = cover_values.get(label)
+        if new_value is None:
+            continue
+        try:
+            tbl = doc.tables[cell_info.table_idx]
+            cell = tbl.rows[cell_info.value_row].cells[cell_info.value_col]
+        except IndexError:
+            log.warning(
+                "Stage B cover-cell index out of range: label=%r table_idx=%d "
+                "value_row=%d value_col=%d",
+                label, cell_info.table_idx, cell_info.value_row, cell_info.value_col,
+            )
+            continue
+        # The canonical template carries stale baked-in values
+        # (e.g. Score='86 / 86 (100%)', Date of inspection='30 Apr 2026')
+        # that must always be overwritten with the live render's values.
+        # No preservation guard — the template is not the source of truth
+        # for these cells, the render is.
+        _set_cell_text_preserving_style(cell, new_value)
+
+
 def _append_site(
     doc: Document,
     site: SiteData,
     checklist: list[ChecklistRow],
-    is_first: bool,
 ) -> None:
-    """Stage A (2026-05-13): body-emission disabled.
+    """Stage B: fill the canonical template's pre-existing checklist
+    structure with observation data.
 
-    The canonical template (RPD_SSA_template-inserted.docx) already
-    carries the full Site Safety Inspection body — heading, KPI table,
-    per-category banners, per-criterion tables, photo slots. The prior
-    renderer was emitting Part A/B/C/D + a duplicate Site Safety
-    Inspection section because it was paired with a degraded template
-    that lacked those sections.
+    Behaviour (per docs/plans/CODEX_REVIEW_audit_report_stage_b.md §2):
 
-    For this stage we ONLY emit a non-first-site page break so multi-
-    site reports still separate cleanly. Stage B (separate commit) will
-    fill the template's existing checklist cells with observation data
-    via pims/services/template_index.py and pims/services/checklist_matcher.py.
+      1. Build the template index (LineItems + palette + na_fill +
+         cover_cells).
+      2. Determine the inactive planning tier for this site.
+      3. Verify the active xlsx sheet's Criteria column aligns with
+         template LineItem.item_text (fail loud on drift).
+      4. Match observations to LineItems via match_observation +
+         criteria bridge, keyed by header_table_idx.
+      5. For each LineItem, fill: matched → status+narrative+photos;
+         inactive planning tier → N/A; unmatched in NA_SECTIONS → N/A;
+         unmatched in COMPLIANT_DEFAULT_SECTIONS → no-op (template
+         default Compliant shading stays).
+      6. Increment a single global photo_counter across the document.
+      7. Log unmatched observations (don't block render).
 
-    Until Stage B lands, single-site reports against the canonical
-    template render with empty checklist defaults — every row shows
-    its template-default Compliant shading. Cover placeholders still
-    populate via _populate_cover. The body's hierarchical structure
-    is the template's own.
+    Single-site contract is enforced upstream in build_audit_report_docx.
+    Multi-site responses are zipped by the route layer.
     """
-    if not is_first:
-        _page_break(doc)
-    # Multi-site differentiator: emit the address heading so each
-    # site is identifiable in a stacked render. Single-site reports
-    # are identified by the title page + page-2 header bar already.
-    if not is_first:
-        _h(doc, site.address, size=16)
-    # Mark these locals as intentionally unused at this stage. Stage B
-    # will use them; lint check left clean by referencing them via _.
-    _ = (checklist, site.observations, site.open_actions)
+    from pims.services.template_index import (
+        COMPLIANT_DEFAULT_SECTIONS,
+        NA_SECTIONS,
+        get_index,
+    )
+
+    index = get_index()
+    inactive = _inactive_planning_section(site.project_value)
+    active_section = _inactive_planning_section_from_active(inactive) or None
+
+    # Report (not block on) xlsx ↔ template alignment drift. Unbridgeable
+    # rows surface as unmatched observations downstream; orphan xlsx
+    # categories (e.g. Scaffolding which has no template equivalent
+    # 2026-05-13) are logged for operator follow-up.
+    _verify_xlsx_template_alignment(index.items, checklist, active_section)
+
+    matched, unmatched = _match_observations_to_line_items(
+        index.items, checklist, site.observations, inactive,
+    )
+    if unmatched:
+        log.info(
+            "Stage B: %d observation(s) unmatched against template; "
+            "first ids=%s",
+            len(unmatched),
+            [str(o.get("id")) for o in unmatched[:5]],
+        )
+
+    photo_counter_state = [0]
+    photo_bytes_by_obs_id = site.open_action_photo_bytes_by_obs_id or {}
+
+    for li in index.items:
+        force_na = False
+        obs_for_item: list[dict] = matched.get(li.header_table_idx, [])
+
+        if inactive and li.section == inactive:
+            force_na = True
+        elif not obs_for_item and li.section in NA_SECTIONS:
+            force_na = True
+        elif not obs_for_item and li.section in COMPLIANT_DEFAULT_SECTIONS:
+            continue  # template default Compliant shading stays
+
+        _fill_line_item(
+            doc, li, index.palette, index.na_fill, obs_for_item,
+            photo_counter_state, photo_bytes_by_obs_id, force_na=force_na,
+        )
 
 
 def build_audit_report_docx(
@@ -1326,10 +1829,18 @@ def build_audit_report_docx(
     checklist_xlsx_path: str | os.PathLike | None = None,
     template_path: str | os.PathLike | None = None,
 ) -> BytesIO:
-    """Build the audit report .docx across one or more sites.
+    """Build the audit report .docx for a single site against the
+    canonical template (RPD_SSA_template-inserted.docx).
 
-    Raises FileNotFoundError if the template or checklist xlsx is missing,
-    and ValueError if any site has a null project_value.
+    Single-site contract (Stage B, 2026-05-13): this function fills
+    the canonical template's pre-existing checklist tables in place.
+    In-place mutation makes multi-site-in-one-doc unsafe (site 2 would
+    overwrite site 1's cells), so multi-site is delegated to the route
+    layer which renders one doc per site and zips them.
+
+    Raises:
+      FileNotFoundError — template or checklist xlsx missing.
+      ValueError — site has null project_value, or len(sites_data) != 1.
     """
     tpath = Path(template_path) if template_path else TEMPLATE_PATH
     if not tpath.exists():
@@ -1351,18 +1862,28 @@ def build_audit_report_docx(
                 open_action_photo_bytes_by_obs_id=(
                     s.get("open_action_photo_bytes_by_obs_id") or {}
                 ),
+                report_issue_date=s.get("report_issue_date") or "",
             )
         if s.project_value is None:
             raise ValueError(f"Site {s.address!r} has null project_value")
         sites.append(s)
 
+    if len(sites) != 1:
+        raise ValueError(
+            f"build_audit_report_docx is single-site-only "
+            f"(Stage B canonical-template contract); got {len(sites)} sites. "
+            f"Multi-site callers must render one doc per site and zip at "
+            f"the route layer."
+        )
+
+    site = sites[0]
     doc = Document(str(tpath))
     apply_document_font(doc)
     _populate_cover(doc, sites)
+    _populate_cover_cells_from_index(doc, sites)
 
-    for i, site in enumerate(sites):
-        checklist = load_checklist(site.project_value, checklist_xlsx_path)
-        _append_site(doc, site, checklist, is_first=(i == 0))
+    checklist = load_checklist(site.project_value, checklist_xlsx_path)
+    _append_site(doc, site, checklist)
 
     buf = BytesIO()
     doc.save(buf)

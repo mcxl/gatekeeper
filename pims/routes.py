@@ -3473,12 +3473,39 @@ async def generate_audit_report_rpd(
             report_issue_date=body.report_issue_date or date.today().isoformat(),
         ))
 
-    buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
-    filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
+    # Stage B (2026-05-13): build_audit_report_docx is single-site-only
+    # because the canonical-template path mutates pre-existing tables in
+    # place. Multi-site requests render one doc per site and zip them.
+    if len(sites_data) == 1:
+        buf = build_audit_report_docx(sites_data, checklist_xlsx_path=xlsx_path)
+        filename = f"PIMS_Audit_Report_{date.today().isoformat()}.docx"
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    import zipfile as _zipfile
+    zbuf = BytesIO()
+    used_names: set[str] = set()
+    with _zipfile.ZipFile(zbuf, "w", _zipfile.ZIP_DEFLATED) as zf:
+        for s in sites_data:
+            site_buf = build_audit_report_docx([s], checklist_xlsx_path=xlsx_path)
+            slug = re.sub(r"[^A-Za-z0-9._-]+", "_", (s.address or "site")).strip("_") or "site"
+            base = f"PIMS_Audit_Report_{date.today().isoformat()}_{slug}"
+            name = f"{base}.docx"
+            n = 2
+            while name in used_names:
+                name = f"{base}_{n}.docx"
+                n += 1
+            used_names.add(name)
+            zf.writestr(name, site_buf.getvalue())
+    zbuf.seek(0)
+    zip_filename = f"PIMS_Audit_Reports_{date.today().isoformat()}.zip"
     return StreamingResponse(
-        buf,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        zbuf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={zip_filename}"},
     )
 
 
