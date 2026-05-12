@@ -1374,6 +1374,50 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
   </div>
 </header>
 
+<!-- Phase 5.5: Data quality chips -->
+<div id="dataQualityChips" style="display:flex;gap:8px;padding:6px 16px;background:#0f172a;border-bottom:1px solid #1e293b;font-size:0.78rem;color:#94a3b8;align-items:center;flex-wrap:wrap;">
+  <span style="font-weight:600;color:#cbd5e1;">Data quality:</span>
+  <span id="chipStale" class="dq-chip" data-zero="true" title="Staging rows submitted >1h ago that never enriched (Anthropic API failure)." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
+    <span class="dq-label">Stale staging</span> <span class="dq-count" id="chipStaleCount">–</span>
+  </span>
+  <span id="chipOrphan" class="dq-chip" data-zero="true" title="Approved observations with no site_id link." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
+    <span class="dq-label">Orphan site_id</span> <span class="dq-count" id="chipOrphanCount">–</span>
+  </span>
+  <span id="chipEmpty" class="dq-chip" data-zero="true" title="Approved observations with empty enrichment text." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
+    <span class="dq-label">Empty enrichment</span> <span class="dq-count" id="chipEmptyCount">–</span>
+  </span>
+  <span id="dqAsOf" style="margin-left:auto;color:#64748b;font-size:0.72rem;"></span>
+</div>
+<style>
+  .dq-chip[data-zero="false"] { background:#7f1d1d; color:#fecaca; border-color:#991b1b !important; }
+  .dq-chip[data-zero="true"]  { background:#1e293b; }
+  .dq-chip:hover { filter:brightness(1.15); }
+</style>
+<script>
+  async function refreshDataQualityChips() {
+    try {
+      const r = await fetch('/pims/health/data-quality', { credentials: 'same-origin' });
+      if (!r.ok) return;
+      const j = await r.json();
+      const set = (id, n) => {
+        const chip = document.getElementById(id);
+        const countEl = chip.querySelector('.dq-count');
+        countEl.textContent = String(n);
+        chip.setAttribute('data-zero', n === 0 ? 'true' : 'false');
+      };
+      set('chipStale',  j.stale_unenriched_staging);
+      set('chipOrphan', j.orphan_site_id);
+      set('chipEmpty',  j.empty_enrichment_approved);
+      const t = new Date(j.as_of).toLocaleTimeString();
+      document.getElementById('dqAsOf').textContent = 'as of ' + t;
+    } catch (e) { /* non-blocking */ }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    refreshDataQualityChips();
+    setInterval(refreshDataQualityChips, 60_000);
+  });
+</script>
+
 <!-- Filters -->
 <div class="filters-bar" id="filtersBar">
   <div class="filter-toggle" onclick="toggleFilters()">

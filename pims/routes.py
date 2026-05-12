@@ -2971,6 +2971,74 @@ async def list_eligible_sites(
         return r.json()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 5.5 — Data quality chips
+# Three counts surfaced as dashboard chips so silent enrichment / linkage
+# failures cannot sit unnoticed for hours.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/health/data-quality")
+async def data_quality_health(
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Returns three counts for the dashboard staleness/quality chips:
+        stale_unenriched_staging : staging rows enriched=false older than 1h
+        orphan_site_id           : approved observations with site_id IS NULL
+        empty_enrichment_approved: approved observations with empty enriched text
+    """
+    if not verify_session_cookie(pims_sess, "rpd"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+
+    headers = _supabase_headers(
+        RPD_SUPABASE_SERVICE_KEY, prefer="count=exact"
+    )
+    headers["Range-Unit"] = "items"
+    headers["Range"] = "0-0"  # we only want the count header
+
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+
+    async def _count(path: str, params: dict) -> int:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                f"{RPD_SUPABASE_URL}/rest/v1/{path}",
+                headers={**headers, "Prefer": "count=exact"},
+                params={**params, "select": "id"},
+            )
+            r.raise_for_status()
+            content_range = r.headers.get("Content-Range", "*/0")
+            try:
+                return int(content_range.split("/")[-1])
+            except (ValueError, IndexError):
+                return 0
+
+    stale_unenriched_staging = await _count(
+        "pims_staging",
+        {"enriched": "eq.false", "submitted_at": f"lt.{one_hour_ago}"},
+    )
+    orphan_site_id = await _count(
+        "pims_observations",
+        {"review_status": "eq.Approved", "site_id": "is.null", "staging": "eq.false"},
+    )
+    empty_enrichment_approved = await _count(
+        "pims_observations",
+        {
+            "review_status": "eq.Approved",
+            "staging": "eq.false",
+            "observation_text_enriched": "is.null",
+        },
+    )
+
+    return {
+        "stale_unenriched_staging": stale_unenriched_staging,
+        "orphan_site_id": orphan_site_id,
+        "empty_enrichment_approved": empty_enrichment_approved,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+
 @router.post("/audit-report/rpd")
 async def generate_audit_report_rpd(
     body: AuditReportRequest,
