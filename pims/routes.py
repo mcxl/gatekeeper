@@ -2403,6 +2403,78 @@ async def download_staging_xlsx(
     )
 
 
+_XLSX_PHOTO_BUCKET_FOLDER = "xlsx-uploads"
+
+
+def _sanitise_photo_filename(name: str) -> str:
+    """Strip path separators / unsafe chars from a photo filename token."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", name.strip())
+    return cleaned[:120] or "photo"
+
+
+def _extract_xlsx_photo_map(ws) -> dict[int, dict]:
+    """Map 1-indexed worksheet row → {data, content_type, ext} for embedded
+    images. openpyxl exposes anchors as 0-indexed; we normalise to xlsx
+    row numbers so callers can key against `parsed_rows[_row]`.
+    """
+    out: dict[int, dict] = {}
+    images = getattr(ws, "_images", None) or []
+    for img in images:
+        anchor = getattr(img, "anchor", None)
+        if anchor is None or getattr(anchor, "_from", None) is None:
+            continue
+        row_1based = int(anchor._from.row) + 1
+        if row_1based in out:
+            continue  # one photo per row; ignore duplicates
+        try:
+            data = img._data() if callable(img._data) else img._data
+        except Exception as exc:
+            log.warning("xlsx image extract failed row=%s: %s", row_1based, exc)
+            continue
+        if not data:
+            continue
+        fmt = (getattr(img, "format", None) or "jpeg").lower()
+        if fmt in ("jpg", "jpeg"):
+            ext, ct = "jpg", "image/jpeg"
+        elif fmt == "png":
+            ext, ct = "png", "image/png"
+        elif fmt == "gif":
+            ext, ct = "gif", "image/gif"
+        else:
+            ext, ct = fmt, f"image/{fmt}"
+        out[row_1based] = {"data": data, "content_type": ct, "ext": ext}
+    return out
+
+
+async def _upload_xlsx_photo(
+    client: httpx.AsyncClient,
+    supabase_url: str,
+    service_key: str,
+    audit_date_value: str,
+    filename: str,
+    payload: dict,
+) -> str | None:
+    """PUT embedded xlsx image to pims-photos. Returns public URL or None."""
+    storage_path = f"{_XLSX_PHOTO_BUCKET_FOLDER}/{audit_date_value}/{filename}"
+    put = await client.put(
+        f"{supabase_url}/storage/v1/object/pims-photos/{storage_path}",
+        headers={
+            "apikey":        service_key,
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type":  payload["content_type"],
+            "x-upsert":      "true",
+        },
+        content=payload["data"],
+    )
+    if put.status_code not in (200, 201):
+        log.warning(
+            "xlsx photo upload failed path=%s %s %s",
+            storage_path, put.status_code, put.text[:200],
+        )
+        return None
+    return f"{supabase_url}/storage/v1/object/public/pims-photos/{storage_path}"
+
+
 @router.post("/upload/observations")
 async def upload_observations_xlsx(
     request: Request,
@@ -2496,6 +2568,10 @@ async def upload_observations_xlsx(
             status_code=422,
             detail="No data rows with observation_text found from row 5 onward",
         )
+    # Extract embedded photos keyed by xlsx row number. Site Visit Report
+    # workbooks embed iPhone photos in the "photo" column; the prior
+    # ingester ignored them, leaving photo_url NULL on every row.
+    photo_map = _extract_xlsx_photo_map(ws)
     if len(parsed_rows) > MAX_UPLOAD_ROWS:
         raise HTTPException(
             status_code=422,
@@ -2652,6 +2728,31 @@ async def upload_observations_xlsx(
                 supabase_key=RPD_SUPABASE_SERVICE_KEY,
                 client=client,
             )
+
+            # Upload any embedded photo for this row to pims-photos and
+            # capture the public URL. The xlsx may also carry a photo_refs
+            # filename token (e.g. "IMG_2450.PNG") from the iPhone — prefer
+            # that for the storage filename so reviewers can correlate.
+            photo_url_value: str | None = None
+            stored_filename: str | None = None
+            row_photo = photo_map.get(row_num)
+            if row_photo is not None:
+                ref_token = _cell_text(row.get("photo_refs"))
+                if ref_token:
+                    cleaned = _sanitise_photo_filename(ref_token.split(",")[0])
+                    stem = cleaned.rsplit(".", 1)[0] if "." in cleaned else cleaned
+                    stored_filename = f"{stem}.{row_photo['ext']}"
+                else:
+                    stored_filename = f"row{row_num}.{row_photo['ext']}"
+                photo_url_value = await _upload_xlsx_photo(
+                    client,
+                    RPD_SUPABASE_URL,
+                    RPD_SUPABASE_SERVICE_KEY,
+                    audit_date_value,
+                    stored_filename,
+                    row_photo,
+                )
+
             insert_row = {
                 "site_address": site_address,
                 "site_id": resolved_upload_site_id,
@@ -2667,6 +2768,8 @@ async def upload_observations_xlsx(
                 "monitoring_note": _cell_text(row.get("monitoring_note")) or None,
                 "legal_ref": _cell_text(row.get("legal_ref")) or None,
                 "photo_refs": _cell_text(row.get("photo_refs")) or None,
+                "photo_url": photo_url_value,
+                "filename": stored_filename,
                 "prepared_by": _cell_text(row.get("prepared_by")) or "Alan Richardson",
                 "source_pdf": None
                 if is_current_audit
