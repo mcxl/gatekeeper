@@ -1395,6 +1395,45 @@ def _match_observations_to_line_items(
     return matched, unmatched
 
 
+def _clear_cell_photos(cell) -> None:
+    """Strip any baked-in inline images (`<w:drawing>`) and stray text
+    from a cell, leaving a single empty paragraph.
+
+    The canonical template carries ~74 example photos baked into per-
+    criterion photo cells by the original template curator. Without
+    this pass those example photos render in the live report whenever
+    a photo cell isn't filled with live data — visually attributing
+    photos from prior jobs to the current audit. Called once per
+    LineItem photo slot at render start before _fill_line_item.
+    """
+    tc = cell._tc
+    # Remove every <w:p> child, then re-append a single empty <w:p>
+    # so the cell remains structurally valid.
+    p_tag = _qn_w("p")
+    for child in list(tc):
+        if child.tag == p_tag:
+            tc.remove(child)
+    empty = tc.makeelement(p_tag, {})
+    tc.append(empty)
+
+
+def _clear_all_template_photo_cells(doc: Document, index) -> None:
+    """Iterate every indexed LineItem's photo cells and strip baked-in
+    template imagery. Idempotent — running on a fresh-from-template doc
+    or a partially-filled doc both leave photo cells empty."""
+    for li in index.items:
+        try:
+            obs_table = doc.tables[li.obs_table_idx]
+        except IndexError:
+            continue
+        for (r, c) in li.photo_cells:
+            try:
+                cell = obs_table.rows[r].cells[c]
+            except IndexError:
+                continue
+            _clear_cell_photos(cell)
+
+
 def _worst_status(observations: list[dict]) -> str:
     """Return the worst-severity status across observations.
 
@@ -1840,6 +1879,13 @@ def _append_site(
     # categories (e.g. Scaffolding which has no template equivalent
     # 2026-05-13) are logged for operator follow-up.
     _verify_xlsx_template_alignment(index.items, checklist, active_section)
+
+    # Clear baked-in example photos from every photo cell BEFORE filling.
+    # The canonical template ships ~74 example photos in per-criterion
+    # photo slots (curated from a prior audit); without this pass, those
+    # photos visually attribute prior-job imagery to the current audit
+    # wherever live data doesn't overwrite them. Fix 2026-05-13.
+    _clear_all_template_photo_cells(doc, index)
 
     matched, unmatched = _match_observations_to_line_items(
         index.items, checklist, site.observations, inactive,
