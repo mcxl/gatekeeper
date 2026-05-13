@@ -284,3 +284,56 @@ def test_inactive_planning_section_membership_in_na_sections_constants_consisten
     # via _inactive_planning_section).
     assert PLANNING_HIGH not in NA_SECTIONS
     assert PLANNING_LOW not in NA_SECTIONS
+
+
+# ---------------------------------------------------------------------------
+# ccvs-prefix family map (Stage B+ matcher improvement 2026-05-13)
+# ---------------------------------------------------------------------------
+
+def test_ccvs_prefix_family_known_prefixes():
+    """The ccvs_code first three chars map to a deterministic template
+    section family. Live data audit 2026-05-12 captured these prefixes
+    in production observations."""
+    assert arpt._ccvs_prefix_family("WAH-H6") == "general work at height"
+    assert arpt._ccvs_prefix_family("wah-h6") == "general work at height"  # case-insensitive
+    assert arpt._ccvs_prefix_family("SIL-H6") == "hazardous substances and silica control"
+    assert arpt._ccvs_prefix_family("CHM-M3") == "hazardous substances and silica control"
+    assert arpt._ccvs_prefix_family("ENE-M4") == "energy and services"
+    assert arpt._ccvs_prefix_family("PPE-G1") == "worker competency and ppe"
+
+
+def test_ccvs_prefix_family_unmapped_returns_none():
+    """SYS-prefixed observations don't have a clean template family
+    (they span Planning, Worker comp, Plant equipment, Hazardous subs
+    depending on narrative). The matcher falls through to global
+    search rather than forcing a wrong family."""
+    assert arpt._ccvs_prefix_family("SYS-M3") is None
+    assert arpt._ccvs_prefix_family("SYS-L1") is None
+    assert arpt._ccvs_prefix_family("XYZ-Z9") is None
+
+
+def test_ccvs_prefix_family_handles_missing_or_short():
+    assert arpt._ccvs_prefix_family(None) is None
+    assert arpt._ccvs_prefix_family("") is None
+    assert arpt._ccvs_prefix_family("WA") is None  # too short
+    assert arpt._ccvs_prefix_family("W") is None
+
+
+def test_match_obs_to_line_item_prefers_ccvs_prefix_over_ccvs_category():
+    """When obs.ccvs_code resolves to a deterministic family and
+    obs.ccvs_category suggests a different (wrong) family, the prefix
+    wins. Real example: harness obs tagged ccvs_category='Worker
+    competency and PPE' but ccvs_code='WAH-H6' (the right home is
+    General work at height)."""
+    idx = get_index()
+    obs = {
+        "id": "o1",
+        "conformance_status": "NCR",
+        "ccvs_code": "WAH-H6",
+        "ccvs_category": "Worker competency and PPE",  # misleading
+        "observation_text_enriched":
+            "A worker was observed at height without a harness or fall arrest.",
+    }
+    li = arpt._match_obs_to_line_item(obs, idx.items, inactive_planning_section="")
+    assert li is not None
+    assert arpt._section_family(li.section) == "general work at height"

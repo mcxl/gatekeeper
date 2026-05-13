@@ -1243,18 +1243,53 @@ def _inactive_planning_section_from_active(active: str) -> str:
     return ""
 
 
-_OBS_TO_LINE_ITEM_RATIO = 0.30
+_OBS_TO_LINE_ITEM_RATIO_FAMILY = 0.25
+_OBS_TO_LINE_ITEM_RATIO_GLOBAL = 0.25
 # Observation → LineItem direct bridge. Operator-curated xlsx is missing
-# the ccvs_code / ccvs_category / observation_text_enriched columns
-# `match_observation()` was designed around (as of 2026-05-13), so xlsx
-# cannot serve as the matching bridge in production. The direct
-# observation → LineItem path uses:
-#   - observation.ccvs_category   → scopes candidates to a section family
-#   - observation_text_enriched   → fuzzy-matches against LineItem.item_text
-# Threshold 0.30 is low because observation narratives describe an
-# incident at a criterion ("worker observed without harness") and
-# LineItem text describes the compliant state ("Workers wearing
-# harnesses at height"), so token overlap is partial by construction.
+# the ccvs columns match_observation was designed for, so xlsx cannot
+# serve as the matching bridge in production. The direct path uses:
+#   1. obs.ccvs_code prefix  (deterministic per CCVS_PREFIX_TO_FAMILY)
+#   2. obs.ccvs_category     (fuzzy section-family hint)
+#   3. observation_text      (global difflib fallback)
+# Threshold 0.25 reflects the fact that obs narratives describe
+# incidents ("worker observed without harness") while LineItem text
+# describes the compliant state ("Workers wearing harnesses at height"),
+# so token overlap is partial by construction. Live data audit at
+# 2026-05-13 against 96-98 Hampden Rd showed 0.30 missed ~50% of
+# real obs; 0.25 with ccvs-prefix scoping recovers most of them.
+
+# ccvs_code prefix → template section family (canonical, case-insensitive).
+# The first three chars of ccvs_code carry the discipline; remaining
+# chars are the criterion index within that discipline. Real codes seen
+# 2026-05-12 audit: WAH-H6, SIL-H6, CHM-M3, ENE-M4, PPE-G1, PPE-G2,
+# SYS-L1/M3/M4/H6.
+#
+# SYS is deliberately absent: in observed data, SYS-prefixed obs span
+# Planning, Worker competency, Hazardous substances, and Plant and
+# equipment depending on narrative content. Forcing it to one family
+# would worsen matches; SYS-prefixed obs fall through to ccvs_category
+# then global search.
+CCVS_PREFIX_TO_FAMILY: dict[str, str] = {
+    "wah": "general work at height",
+    "sil": "hazardous substances and silica control",
+    "chm": "hazardous substances and silica control",
+    "ene": "energy and services",
+    "ppe": "worker competency and ppe",
+    "dem": "demolition and temporary works",
+    "rop": "rope access",
+    "pla": "plant and equipment safety",
+}
+
+
+def _ccvs_prefix_family(ccvs_code: str | None) -> str | None:
+    """Return the section family implied by a ccvs_code prefix, or None."""
+    if not ccvs_code:
+        return None
+    code = ccvs_code.strip().lower()
+    if len(code) < 3:
+        return None
+    prefix = code[:3]
+    return CCVS_PREFIX_TO_FAMILY.get(prefix)
 
 
 def _match_obs_to_line_item(
@@ -1262,9 +1297,13 @@ def _match_obs_to_line_item(
 ) -> object | None:
     """Best-match a single observation to a template LineItem.
 
-    Returns None when no candidate clears _OBS_TO_LINE_ITEM_RATIO or
-    the best candidate is in the inactive planning tier (treated as
-    unmatched per Codex Q-B1).
+    Pipeline:
+      1. Filter out inactive planning tier candidates.
+      2. Try ccvs_code prefix family (deterministic).
+      3. Try ccvs_category fuzzy family hint.
+      4. Fall back to global difflib search.
+
+    Returns None when no candidate clears the threshold.
     """
     obs_text = (
         obs.get("observation_text_enriched")
@@ -1274,9 +1313,6 @@ def _match_obs_to_line_item(
     if not obs_text:
         return None
 
-    # Filter inactive planning tier and (when obs.ccvs_category is present
-    # and resolves to a real template family) restrict candidates to that
-    # family. Falls back to all items when the family hint is unhelpful.
     candidates = items
     if inactive_planning_section:
         candidates = [li for li in candidates if li.section != inactive_planning_section]
@@ -1291,27 +1327,31 @@ def _match_obs_to_line_item(
                 best_li = li
         return best_li, best_ratio
 
-    # First try in-family (using ccvs_category as a hint). If that
-    # doesn't clear threshold, fall back to global search — the
-    # ccvs_category field is operator-supplied and frequently
-    # mis-categorised (e.g. a harness-at-height observation tagged
-    # "Worker competency and PPE" when its real home is "General work
-    # at height").
+    # Tier 1: ccvs_code prefix → deterministic family.
+    prefix_family = _ccvs_prefix_family(obs.get("ccvs_code"))
+    if prefix_family:
+        prefix_items = [li for li in candidates
+                        if _section_family(li.section) == prefix_family]
+        if prefix_items:
+            li, ratio = _best(prefix_items)
+            if li is not None and ratio >= _OBS_TO_LINE_ITEM_RATIO_FAMILY:
+                return li
+
+    # Tier 2: ccvs_category fuzzy section-family hint.
     cat = (obs.get("ccvs_category") or "").strip()
-    family_li = None
-    family_ratio = 0.0
     if cat:
-        family = _section_family(cat)
-        same_family = [li for li in candidates if _section_family(li.section) == family]
-        if same_family:
-            family_li, family_ratio = _best(same_family)
+        cat_family = _section_family(cat)
+        cat_items = [li for li in candidates
+                     if _section_family(li.section) == cat_family]
+        if cat_items:
+            li, ratio = _best(cat_items)
+            if li is not None and ratio >= _OBS_TO_LINE_ITEM_RATIO_FAMILY:
+                return li
 
-    if family_li is not None and family_ratio >= _OBS_TO_LINE_ITEM_RATIO:
-        return family_li
-
-    global_li, global_ratio = _best(candidates)
-    if global_li is not None and global_ratio >= _OBS_TO_LINE_ITEM_RATIO:
-        return global_li
+    # Tier 3: global difflib.
+    li, ratio = _best(candidates)
+    if li is not None and ratio >= _OBS_TO_LINE_ITEM_RATIO_GLOBAL:
+        return li
     return None
 
 
