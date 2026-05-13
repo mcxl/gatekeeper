@@ -2961,9 +2961,13 @@ async def reenrich_live_observations(
             f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
             headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY),
             params={
+                # Pick up any approved live row that lacks an LLM rewrite,
+                # regardless of source. xlsx Site Visit Report imports
+                # set source_pdf to the workbook filename but still need
+                # enrichment for action_description / responsible / etc —
+                # the xlsx only carries CCVS code and conformance status.
                 "select": "id,observation_text",
                 "staging": "eq.false",
-                "source_pdf": "is.null",
                 "observation_text_enriched": "is.null",
             },
         )
@@ -3343,17 +3347,15 @@ async def data_quality_health(
         "pims_observations",
         {"review_status": "eq.Approved", "site_id": "is.null", "staging": "eq.false"},
     )
-    # xlsx-imported rows (source_pdf IS NOT NULL) arrive pre-classified
-    # from the Site Visit Report upload — LLM enrichment is not expected
-    # to run on them, so they must not be flagged as "empty enrichment".
-    # The chip should only surface native dashboard rows that bypassed
-    # the enricher.
+    # xlsx Site Visit Report imports populate CCVS code + conformance
+    # status but leave the enrichment fields (observation_text_enriched,
+    # action_description, responsible) blank. They DO need the LLM pass,
+    # so the chip counts them honestly regardless of source_pdf.
     empty_enrichment_approved = await _count(
         "pims_observations",
         {
             "review_status": "eq.Approved",
             "staging": "eq.false",
-            "source_pdf": "is.null",
             "observation_text_enriched": "is.null",
         },
     )
