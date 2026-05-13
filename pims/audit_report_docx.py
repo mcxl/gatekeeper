@@ -1328,13 +1328,21 @@ def _match_obs_to_line_item(
         return best_li, best_ratio
 
     # Tier 1: ccvs_code prefix → deterministic family.
+    # The ccvs_code prefix IS the truth signal — operator-tagged at obs
+    # capture time, deterministically maps to one template family.
+    # Difflib here is just disambiguating WHICH item in family receives
+    # the obs; we accept the best-scoring item with no threshold,
+    # because dropping the obs is worse than placing it on the closest
+    # in-family criterion. (Threshold-gated tiers below still apply
+    # for ccvs_category-only and global-fallback paths where the
+    # signal is weaker.)
     prefix_family = _ccvs_prefix_family(obs.get("ccvs_code"))
     if prefix_family:
         prefix_items = [li for li in candidates
                         if _section_family(li.section) == prefix_family]
         if prefix_items:
-            li, ratio = _best(prefix_items)
-            if li is not None and ratio >= _OBS_TO_LINE_ITEM_RATIO_FAMILY:
+            li, _ratio = _best(prefix_items)
+            if li is not None:
                 return li
 
     # Tier 2: ccvs_category fuzzy section-family hint.
