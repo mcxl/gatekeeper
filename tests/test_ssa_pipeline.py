@@ -348,6 +348,19 @@ def test_extract_site_address_no_hit_returns_none():
     assert extract_site_address(rows) is None
 
 
+def test_extract_site_address_stops_at_lowercase_scope_note():
+    # Regression for 2026-05-13 Le Vesinet incident: address tail used
+    # to greedy-match every non-comma non-period char, so a trailing
+    # scope phrase like "render work by others" got glued onto
+    # site_address and broke site_id resolution for 16 rows.
+    rows = [_row("a.jpg")]
+    rows[0].observation_text = (
+        "12-14 Le Vesinet Dr Hunters Hill render work by others"
+    )
+    addr = extract_site_address(rows)
+    assert addr == "12-14 Le Vesinet Dr Hunters Hill"
+
+
 # ---------------------------------------------------------------------------
 # ChecklistLookup
 # ---------------------------------------------------------------------------

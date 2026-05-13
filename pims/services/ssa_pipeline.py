@@ -321,7 +321,10 @@ _ADDRESS_RE = re.compile(
     r"\b\d{1,5}[A-Za-z]?(?:-\d{1,5}[A-Za-z]?)?\s+"
     r"(?:[A-Z][A-Za-z'’]+\s+){1,4}"
     + _STREET_TYPES
-    + r"\b[^.\n,]*",
+    # Suburb tail: up to 3 further Capitalised words. Stops at the first
+    # lowercase token (e.g. scope notes like "render work by others")
+    # so trailing free-text cannot get concatenated into site_address.
+    + r"(?:\s+[A-Z][A-Za-z'’]+){0,3}",
     re.UNICODE,
 )
 

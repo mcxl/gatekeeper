@@ -3343,11 +3343,17 @@ async def data_quality_health(
         "pims_observations",
         {"review_status": "eq.Approved", "site_id": "is.null", "staging": "eq.false"},
     )
+    # xlsx-imported rows (source_pdf IS NOT NULL) arrive pre-classified
+    # from the Site Visit Report upload — LLM enrichment is not expected
+    # to run on them, so they must not be flagged as "empty enrichment".
+    # The chip should only surface native dashboard rows that bypassed
+    # the enricher.
     empty_enrichment_approved = await _count(
         "pims_observations",
         {
             "review_status": "eq.Approved",
             "staging": "eq.false",
+            "source_pdf": "is.null",
             "observation_text_enriched": "is.null",
         },
     )
