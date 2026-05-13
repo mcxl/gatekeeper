@@ -103,16 +103,13 @@ VALID_CCVS = {
     "SYS-H6",
 }
 
-CCVS_CATEGORY_BY_PREFIX = {
-    "WAH": "Working at Height",
-    "IRA": "Industrial Rope Access",
-    "SIL": "Silica",
-    "STR": "Structural",
-    "MOB": "Mobile Plant",
-    "CHM": "Chemicals",
-    "ENE": "Energy",
-    "SYS": "Systems",
-}
+# NOTE: ccvs_category is derived deterministically from ccvs_code via
+# pims.services.ssa_ccvs_taxonomy.category_for() — single source of
+# truth across the ingester, enricher and report renderer. The prior
+# CCVS_CATEGORY_BY_PREFIX map covered only 8 of the 25 streams and
+# used drifted names ("Working at Height" vs canonical "Work at
+# Height"), causing column-I "ccvs category" to be NULL or
+# inconsistent on downloaded reports.
 
 STAGING_COPY_FIELDS = [
     "audit_id", "site_address", "seq_no", "observation_date", "observation_text",
@@ -348,7 +345,7 @@ async def enrich_and_update(
     patch = {
         "conformance_status":        enrichment.get("conformance_status"),
         "ccvs_code":                 enrichment.get("ccvs_code"),
-        "ccvs_category":             enrichment.get("ccvs_category"),
+        "ccvs_category":             _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
         "ccvs_confidence":           enrichment.get("ccvs_confidence"),
         "action_required":           enrichment.get("action_required", False),
         "action_description":        enrichment.get("action_description"),
@@ -429,7 +426,7 @@ async def _record_precedent_feedback(
         "recommendation_text":   recommendation,
         "observation_text":      obs_text,
         "ccvs_code":             staging.get("ccvs_code"),
-        "ccvs_category":         staging.get("ccvs_category"),
+        "ccvs_category":         _derive_ccvs_category(staging.get("ccvs_code")) or staging.get("ccvs_category"),
         "section_name":          None,
         "status_normalized":     status,
         "source_observation_id": str(new_obs_id),
@@ -617,7 +614,7 @@ async def insert_staging(
         "enriched_at":        None,
         "conformance_status": enrichment.get("conformance_status"),
         "ccvs_code":          enrichment.get("ccvs_code"),
-        "ccvs_category":      enrichment.get("ccvs_category"),
+        "ccvs_category":      _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
         "ccvs_confidence":    enrichment.get("ccvs_confidence"),
         "action_required":    enrichment.get("action_required", False),
         "action_description": enrichment.get("action_description"),
@@ -1040,7 +1037,7 @@ async def retry_enrichment_rpd(
         patch_payload = {
             "conformance_status":        enrichment.get("conformance_status"),
             "ccvs_code":                  enrichment.get("ccvs_code"),
-            "ccvs_category":              enrichment.get("ccvs_category"),
+            "ccvs_category":              _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
             "ccvs_confidence":            enrichment.get("ccvs_confidence"),
             "action_required":            enrichment.get("action_required", False),
             "action_description":         enrichment.get("action_description"),
@@ -1391,10 +1388,16 @@ def _parse_upload_date(value) -> str | None:
 
 
 def _derive_ccvs_category(code: str | None) -> str | None:
-    if not code:
-        return None
-    prefix = code.split("-", 1)[0]
-    return CCVS_CATEGORY_BY_PREFIX.get(prefix)
+    """Canonical category for a CCVS code (one of 25 stream names).
+
+    Returns None when ``code`` is missing or doesn't match the
+    canonical <STREAM>-<TIER> shape. Delegates to the single source
+    of truth in pims.services.ssa_ccvs_taxonomy so the ingester,
+    enricher and report renderer all agree on category names.
+    """
+    from pims.services.ssa_ccvs_taxonomy import category_for
+    out = category_for(code or "")
+    return out or None
 
 
 def _period_window(period: str) -> tuple[date, date, date, date, str, str]:
@@ -2629,11 +2632,16 @@ async def upload_observations_xlsx(
                 ccvs_code = None
                 ccvs_invalid = True
 
-            ccvs_category = _cell_text(row.get("ccvs_category")) or _cell_text(row.get("section"))
-            if not ccvs_category:
-                ccvs_category = _derive_ccvs_category(ccvs_code)
-            if not ccvs_category:
-                ccvs_category = None
+            # Canonical category derived from CCVS code wins over xlsx
+            # cell text — keeps the column on the canonical 25-stream
+            # set even when the uploaded workbook carries drifted
+            # free-text ("Systems – Permits, SWMS, Inspections").
+            ccvs_category = (
+                _derive_ccvs_category(ccvs_code)
+                or _cell_text(row.get("ccvs_category"))
+                or _cell_text(row.get("section"))
+                or None
+            )
 
             site_address = _cell_text(row.get("site_address")) or None
             row_id = _cell_text(row.get("id")) or ""
@@ -2845,7 +2853,7 @@ async def _reenrich_one_preserving(
         fields = {
             "conformance_status":        enrichment.get("conformance_status"),
             "ccvs_code":                 enrichment.get("ccvs_code"),
-            "ccvs_category":             enrichment.get("ccvs_category"),
+            "ccvs_category":             _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
             "ccvs_confidence":           enrichment.get("ccvs_confidence"),
             "action_description":        enrichment.get("action_description"),
             "responsible":               enrichment.get("responsible"),
@@ -2940,7 +2948,7 @@ async def _reenrich_obs_preserving(
         fields = {
             "conformance_status":        enrichment.get("conformance_status"),
             "ccvs_code":                 enrichment.get("ccvs_code"),
-            "ccvs_category":             enrichment.get("ccvs_category"),
+            "ccvs_category":             _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
             "action_description":        enrichment.get("action_description"),
             "responsible":               enrichment.get("responsible"),
             "due_category":              enrichment.get("due_category"),
