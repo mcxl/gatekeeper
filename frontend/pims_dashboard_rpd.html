@@ -1952,11 +1952,13 @@ function populateFilters() {
 }
 
 function isLiveAuditRecord(o) {
-  return o.staging === false && !o.source_pdf;
+  // "Historical" means a PDF-imported back-loaded audit. xlsx Site Visit
+  // Report uploads are current work — they belong in Live, not Historical.
+  return o.staging === false && !(o.source_pdf && /\.pdf$/i.test(o.source_pdf));
 }
 
 function isHistoricalRecord(o) {
-  return o.staging === false && Boolean(o.source_pdf);
+  return o.staging === false && Boolean(o.source_pdf) && /\.pdf$/i.test(o.source_pdf);
 }
 
 function updateTabButtons() {
