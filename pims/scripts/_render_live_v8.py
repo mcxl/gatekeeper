@@ -75,9 +75,12 @@ async def fetch():
         r.raise_for_status()
         obs = r.json()
     open_actions = [o for o in obs if o.get("action_required")]
+    # Stage B fetches photos for ALL observations because the renderer
+    # embeds them in per-criterion checklist photo cells, not just
+    # the Open Actions Register.
     photo_bytes_by_id: dict[str, bytes] = {}
     async with httpx.AsyncClient(timeout=60) as c:
-        for o in open_actions:
+        for o in obs:
             url = o.get("photo_url")
             if not url:
                 continue
