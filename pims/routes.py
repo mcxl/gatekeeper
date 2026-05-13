@@ -2765,6 +2765,11 @@ async def upload_observations_xlsx(
                 "site_address": site_address,
                 "site_id": resolved_upload_site_id,
                 "audit_date": audit_date_value,
+                # observation_date drives the date-window filter on the
+                # Site Visit Report xlsx endpoint. xlsx imports carry
+                # only audit_date in the workbook; mirror it so rows
+                # are visible to date-scoped report queries.
+                "observation_date": audit_date_value,
                 "observation_text": observation_text,
                 "conformance_status": conformance_status,
                 "ccvs_code": ccvs_code,
