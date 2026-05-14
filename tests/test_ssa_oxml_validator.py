@@ -60,16 +60,6 @@ def _build_minimal_report(out: Path) -> None:
 
 
 @pytest.mark.skipif(_DOTNET_MISSING, reason="dotnet not available on this host")
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "known: <w:tblBorders> emitted out of schema order in "
-        "_apply_all_cell_borders (pims/services/ssa_pipeline.py:1089). "
-        "Schema requires tblBorders at position 11 in <w:tblPr>, before "
-        "<w:tblLook>; .append() puts it after. Follow-up commit fixes "
-        "this and removes the xfail mark."
-    ),
-)
 def test_validate_docx_clean_output_has_no_errors(tmp_path):
     """build_ssa_report_docx output must validate clean against the
     Microsoft 365 schema."""
