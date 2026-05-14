@@ -1476,9 +1476,9 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       </div>
       <div class="manager-controls">
         <div class="period-toggle">
-          <button class="period-btn" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
+          <button class="period-btn active" id="periodBtnWeek" onclick="setKpiPeriod('week')">Week</button>
           <button class="period-btn" id="periodBtnMonth" onclick="setKpiPeriod('month')">Month</button>
-          <button class="period-btn active" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
+          <button class="period-btn" id="periodBtnQuarter" onclick="setKpiPeriod('quarter')">Quarter</button>
         </div>
         <button class="btn btn-orange" onclick="downloadManagerReport()">Download Report</button>
       </div>
@@ -1487,6 +1487,14 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       <div class="manager-main">
         <div class="manager-panel">
           <div class="manager-panel-title">Site Breakdown</div>
+          <div style="padding:8px 12px 4px 12px;">
+            <input
+              id="managerSiteFilterInput"
+              type="text"
+              oninput="onManagerSiteSearch(this.value)"
+              placeholder="🔍 Filter by site address..."
+              style="width:280px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.78rem;">
+          </div>
           <div class="table-wrap">
             <table class="dt manager-site-table">
               <thead>
@@ -1548,13 +1556,17 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       <span class="card-title">Open Actions Register</span>
       <span class="card-meta" id="openActionsCount"></span>
     </div>
-    <div class="dt-desktop" style="padding:12px 14px 0 14px;">
+    <div class="dt-desktop" style="padding:12px 14px 0 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="period-toggle" style="margin:0;">
+        <button class="period-btn active" id="openActionsScopeWeek" onclick="setOpenActionsScope('week')">This Week</button>
+        <button class="period-btn" id="openActionsScopeAll" onclick="setOpenActionsScope('all')">All Open</button>
+      </div>
       <input
         id="actionsSiteFilterInput"
         type="text"
         oninput="onActionsSiteSearch()"
         placeholder="🔍 Filter by site address..."
-        style="margin-bottom:12px;width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
+        style="width:300px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;">
     </div>
     <div class="card-body table-wrap dt-desktop" style="padding:0">
       <table class="dt">
@@ -1811,9 +1823,12 @@ let allAudits = [], allObs = [], filtered = [], editingId = null;
 let currentTab = 'live';
 let pendingStagingCount = 0;
 let tabDefaultResolved = false;
-let kpiPeriod = 'quarter';
+let kpiPeriod = 'week';
 let activeCcvsTooltip = null;
 const PAGE_SIZE = 25;
+const ALL_OBS_PAGE_SIZE = 10;
+let openActionsScope = 'week'; // 'week' | 'all'
+let managerSiteSearch = '';
 let liveObsPage = 1;
 let historicalObsPage = 1;
 
@@ -2452,11 +2467,19 @@ function renderCcvsBars(containerId, rows, compareLabel) {
   }).join('');
 }
 
+function onManagerSiteSearch(val) {
+  managerSiteSearch = String(val || '').trim().toLowerCase();
+  renderManagerBoard();
+}
+
 function renderManagerSiteTable(rows) {
   const tbody = document.getElementById('managerSiteBody');
   if (!tbody) return;
+  const filteredRows = managerSiteSearch
+    ? rows.filter(r => String(r.site_address || '').toLowerCase().includes(managerSiteSearch))
+    : rows;
   const siteMap = new Map();
-  rows.forEach(row => {
+  filteredRows.forEach(row => {
     const site = String(row.site_address || '').trim() || 'No site address';
     if (!siteMap.has(site)) {
       siteMap.set(site, { site, ncr: 0, conditional: 0, compliant: 0, total: 0 });
@@ -2568,14 +2591,28 @@ async function downloadManagerReport() {
     showToast('Report download failed: ' + err.message, 'error');
   }
 }
+function setOpenActionsScope(scope) {
+  openActionsScope = scope;
+  const wkBtn = document.getElementById('openActionsScopeWeek');
+  const allBtn = document.getElementById('openActionsScopeAll');
+  if (wkBtn) wkBtn.classList.toggle('active', scope === 'week');
+  if (allBtn) allBtn.classList.toggle('active', scope === 'all');
+  renderActions();
+}
+
 function renderActions() {
   const tbody = document.getElementById('actionsTableBody');
   tbody.innerHTML = '';
   const siteSearch = (document.getElementById('actionsSiteFilterInput')?.value || '').trim().toLowerCase();
-  const actions = filtered
+  let actions = filtered
     .filter(o => o.action_required && o.closeout_status !== 'Closed')
     .filter(o => !siteSearch || String(o.site_address || '').toLowerCase().includes(siteSearch));
-  document.getElementById('openActionsCount').textContent = `${actions.length} open`;
+  if (openActionsScope === 'week') {
+    const wk = getPeriodWindow('week', 0);
+    actions = rowsForWindow(actions, wk);
+  }
+  const scopeLabel = openActionsScope === 'week' ? ' (this week)' : '';
+  document.getElementById('openActionsCount').textContent = `${actions.length} open${scopeLabel}`;
   if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
   actions.forEach(o => {
     const tr = document.createElement('tr');
@@ -2619,7 +2656,7 @@ function changeAllObsPage(delta) {
   const tableRows = (currentTab === 'live' && liveSiteSearch)
     ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
     : filtered;
-  const totalPages = Math.max(1, Math.ceil(tableRows.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(tableRows.length / ALL_OBS_PAGE_SIZE));
   const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
   if (currentTab === 'historical') {
     historicalObsPage = nextPage;
@@ -2652,7 +2689,7 @@ function renderAllObs() {
     ? filtered.filter(o => String(o.site_address || '').toLowerCase().includes(liveSiteSearch))
     : filtered;
   const total = tableRows.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / ALL_OBS_PAGE_SIZE));
   const currentPage = currentTab === 'historical' ? historicalObsPage : liveObsPage;
   const safePage = Math.min(totalPages, Math.max(1, currentPage));
   if (currentTab === 'historical') {
@@ -2661,8 +2698,8 @@ function renderAllObs() {
     liveObsPage = safePage;
   }
 
-  const start = (safePage - 1) * PAGE_SIZE;
-  const pageRows = tableRows.slice(start, start + PAGE_SIZE);
+  const start = (safePage - 1) * ALL_OBS_PAGE_SIZE;
+  const pageRows = tableRows.slice(start, start + ALL_OBS_PAGE_SIZE);
 
   if (prevBtn) prevBtn.disabled = safePage <= 1;
   if (nextBtn) nextBtn.disabled = safePage >= totalPages;
@@ -2722,7 +2759,8 @@ function renderAllObs() {
         <td style="max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>
         <td style="padding-right:20px;white-space:nowrap;">
           <button onclick="openModal('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:5px;cursor:pointer;margin-right:4px;">✎ Edit</button>
-          ${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">↩ Send back</button>` : ''}
+          ${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;margin-right:4px;">↩ Send back</button>` : ''}
+          <button onclick="deleteObservation('${o.id}')" title="Delete observation" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#dc2626;border:none;border-radius:5px;cursor:pointer;">🗑 Delete</button>
         </td>`;
     } else {
       tr.innerHTML = `
@@ -2746,6 +2784,50 @@ function renderAllObs() {
   }
 
   renderAllObsMobile(pageRows);
+}
+
+// ── Delete observation (cascade: photo + staging row + observation) ──
+function _storagePathFromPhotoUrl(url) {
+  if (!url) return null;
+  const marker = '/public/pims-photos/';
+  const i = String(url).indexOf(marker);
+  if (i === -1) return null;
+  try { return decodeURIComponent(String(url).slice(i + marker.length).split('?')[0]); }
+  catch { return String(url).slice(i + marker.length).split('?')[0]; }
+}
+
+async function deleteObservation(id) {
+  const obs = allObs.find(x => x.id === id);
+  if (!obs) return;
+  const label = `${obs.site_address || 'No site'} · seq ${obs.seq_no ?? '—'}`;
+  const parts = ['observation row'];
+  if (obs.staging_id) parts.push('linked staging record');
+  const photoPath = _storagePathFromPhotoUrl(obs.photo_url);
+  if (photoPath) parts.push('photo in pims-photos');
+  if (!confirm(`Delete this observation and cascade?\n\n${label}\n\nWill remove: ${parts.join(', ')}.\n\nThis cannot be undone.`)) return;
+  const warnings = [];
+  try {
+    if (photoPath) {
+      const { error: storageErr } = await db.storage.from('pims-photos').remove([photoPath]);
+      if (storageErr) warnings.push('photo: ' + storageErr.message);
+    }
+    if (obs.staging_id) {
+      const { error: stagingErr } = await db.from('pims_staging').delete().eq('id', obs.staging_id);
+      if (stagingErr) warnings.push('staging: ' + stagingErr.message);
+    }
+    const { error } = await db.from('pims_observations').delete().eq('id', id);
+    if (error) throw error;
+    const idx = allObs.findIndex(x => x.id === id);
+    if (idx !== -1) allObs.splice(idx, 1);
+    applyFilters({ resetPages: false });
+    const msg = warnings.length
+      ? 'Observation deleted (with warnings: ' + warnings.join('; ') + ')'
+      : 'Observation deleted';
+    if (typeof showToast === 'function') showToast(msg, warnings.length ? 'warning' : 'success');
+    else if (warnings.length) alert(msg);
+  } catch (err) {
+    alert('Delete failed: ' + err.message + (warnings.length ? '\nPartial: ' + warnings.join('; ') : ''));
+  }
 }
 
 // ── Inline PATCH helpers ──
