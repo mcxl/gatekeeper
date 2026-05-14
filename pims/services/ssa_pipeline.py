@@ -30,6 +30,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Iterable
 
+from pims.services.ssa_quality import make_docx_deterministic
+
 log = logging.getLogger(__name__)
 
 
@@ -2905,6 +2907,14 @@ def build_ssa_report_docx(
 
     doc.save(tmp)
     os.replace(tmp, output_path)
+    # Deterministic post-pass: stable zip mtimes + strip non-deterministic
+    # OOXML metadata so re-runs over the same inputs are byte-identical.
+    import datetime as _dt
+    try:
+        _audit_date = _dt.datetime.strptime(audit_date_ddmmyyyy, "%d/%m/%Y").date()
+    except (ValueError, TypeError):
+        _audit_date = _dt.date(2000, 1, 1)
+    make_docx_deterministic(output_path, _audit_date)
     return diagnostics
 
 
