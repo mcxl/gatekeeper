@@ -1386,7 +1386,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
   <span id="chipEmpty" class="dq-chip" data-zero="true" title="Approved observations with empty enrichment text." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
     <span class="dq-label">Empty enrichment</span> <span class="dq-count" id="chipEmptyCount">–</span>
   </span>
-  <span id="chipNoCcvs" class="dq-chip" data-zero="true" title="Approved observations with non-Pending status but no CCVS code (Haiku and deterministic fallback both came up null)." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
+  <span id="chipNoCcvs" class="dq-chip" data-zero="true" onclick="toggleMissingCcvsFilter()" title="Click to filter Live Audit Observations to rows missing a CCVS code." style="padding:3px 9px;border-radius:999px;border:1px solid #334155;cursor:pointer;">
     <span class="dq-label">Missing CCVS</span> <span class="dq-count" id="chipNoCcvsCount">–</span>
   </span>
   <span id="dqAsOf" style="margin-left:auto;color:#64748b;font-size:0.72rem;"></span>
@@ -1834,6 +1834,7 @@ const ALL_OBS_PAGE_SIZE = 10;
 let openActionsScope = 'week'; // 'week' | 'all'
 let managerSiteSearch = '';
 let siteBreakdownScope = 'week'; // 'week' | 'all'
+let dqFilterMissingCcvs = false;
 let liveObsPage = 1;
 let historicalObsPage = 1;
 
@@ -2031,6 +2032,11 @@ function applyFilters(options = {}) {
     if (audit  && o.audit_id !== audit) return false;
     if (status && o.conformance_status !== status) return false;
     if (cat    && o.ccvs_code !== cat && o.ccvs_category !== cat) return false;
+    if (dqFilterMissingCcvs) {
+      const hasCcvs = String(o.ccvs_code || '').trim() !== '';
+      const isPending = o.conformance_status === 'Pending';
+      if (hasCcvs || isPending) return false;
+    }
     return true;
   });
 
@@ -2608,6 +2614,22 @@ async function downloadManagerReport() {
     showToast('Report download failed: ' + err.message, 'error');
   }
 }
+function toggleMissingCcvsFilter() {
+  dqFilterMissingCcvs = !dqFilterMissingCcvs;
+  const chip = document.getElementById('chipNoCcvs');
+  if (chip) chip.style.outline = dqFilterMissingCcvs ? '2px solid #fbbf24' : '';
+  if (dqFilterMissingCcvs && currentTab !== 'live') {
+    setActiveTab('live');
+  } else {
+    liveObsPage = 1;
+    applyFilters({ resetPages: false });
+  }
+  if (dqFilterMissingCcvs) {
+    const card = document.getElementById('all-obs-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
 function setOpenActionsScope(scope) {
   openActionsScope = scope;
   const wkBtn = document.getElementById('openActionsScopeWeek');
