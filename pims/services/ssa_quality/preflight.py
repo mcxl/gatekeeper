@@ -18,9 +18,12 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from pims.services.ssa_pipeline import SSA_REPORT_TEMPLATE
 from pims.services.ssa_quality.libreoffice_smoke import _find_soffice
 from pims.services.ssa_quality.oxml_validator import _find_dotnet
+
+# ``SSA_REPORT_TEMPLATE`` is imported lazily inside ``_check_template``;
+# top-level import would create a cycle because ``ssa_pipeline`` itself
+# imports from ``ssa_quality`` (which imports this module).
 
 
 # Folder name contract — mirrors run_ssa_pipeline.py's _FOLDER_RE.
@@ -123,6 +126,7 @@ def _check_images(folder: Path) -> CheckResult:
 
 def _check_template() -> CheckResult:
     label = "SSA report template readable at configured path"
+    from pims.services.ssa_pipeline import SSA_REPORT_TEMPLATE
     if SSA_REPORT_TEMPLATE.is_file():
         return _ok(label, str(SSA_REPORT_TEMPLATE))
     return _fail(label, f"missing: {SSA_REPORT_TEMPLATE}")
