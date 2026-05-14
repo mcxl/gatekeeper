@@ -30,7 +30,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Iterable
 
-from pims.services.ssa_quality import make_docx_deterministic
+from pims.services.ssa_quality import make_docx_deterministic, validate_docx
 
 log = logging.getLogger(__name__)
 
@@ -2915,6 +2915,20 @@ def build_ssa_report_docx(
     except (ValueError, TypeError):
         _audit_date = _dt.date(2000, 1, 1)
     make_docx_deterministic(output_path, _audit_date)
+    # OOXML schema validation (soft-skip if dotnet missing). Errors are
+    # logged and surfaced via the diagnostics dict; the build does not
+    # abort on findings so callers retain control over hard-fail policy.
+    _validation = validate_docx(output_path)
+    diagnostics["oxml_validation_errors"] = (
+        [e.short() for e in _validation.errors] if _validation.available else None
+    )
+    if _validation.available and _validation.errors:
+        log.warning(
+            "OOXML schema validation: %d error(s) in %s",
+            len(_validation.errors), output_path.name,
+        )
+        for _e in _validation.errors[:5]:
+            log.warning("  %s", _e.short())
     return diagnostics
 
 

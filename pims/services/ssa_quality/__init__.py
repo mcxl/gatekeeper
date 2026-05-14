@@ -10,5 +10,11 @@ across Phases 1-5 of the SDG-SSA quality hardening plan
 - preflight         (Phase 4) — --check folder/inputs validation
 """
 from .determinism import make_docx_deterministic
+from .oxml_validator import ValidationError, ValidationResult, validate_docx
 
-__all__ = ["make_docx_deterministic"]
+__all__ = [
+    "make_docx_deterministic",
+    "ValidationError",
+    "ValidationResult",
+    "validate_docx",
+]
