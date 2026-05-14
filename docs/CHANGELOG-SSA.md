@@ -3,6 +3,31 @@
 Scoped changelog for the Site Safety Audit pipeline and its quality
 guards. Newest at top.
 
+## 2026-05-15
+
+### Added
+
+- **Full drift checker.** Two new checks beyond the minimal v1 CSV
+  header check:
+  - Every `PH_*` placeholder constant in `ssa_pipeline.py` must appear
+    as literal text in the SSA report template `.docx` (concatenated
+    `<w:t>` text across all `word/*.xml` parts, so tokens split across
+    formatting boundaries are still caught).
+  - Every `STAGING_HEADERS` entry must have a corresponding
+    `_STAGING_COL_WIDTHS` key. Subset semantics, not equality —
+    `_STAGING_COL_WIDTHS` legitimately carries forward-defined
+    gap-4/5/6 columns (phase, activity_ref, hrcw, swms_required, etc.)
+    that aren't yet in `STAGING_HEADERS`.
+
+### Changed
+
+- **Placeholder tokens centralised.** `build_ssa_report_docx` no longer
+  carries inline `{{SITE_ADDRESS}}` / `{{NARRATIVE_SUMMARY}}` /
+  `{{AUDIT_DATE}}` / `{{PREPARED_BY}}` strings in its `body_replacements`
+  and `footer_replacements` dicts. They're now module-level
+  `PH_*` constants plus an `SSA_REPORT_PLACEHOLDERS` tuple, which the
+  drift checker walks. Pure refactor — no behaviour change.
+
 ## 2026-05-14
 
 ### Added
