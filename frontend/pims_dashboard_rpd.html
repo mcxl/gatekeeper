@@ -3107,7 +3107,19 @@ async function submitAuditReport() {
   });
   if (!resp.ok) {
     const txt = await resp.text();
-    alert('Site Visit Report failed: ' + txt);
+    let msg = txt;
+    try {
+      const j = JSON.parse(txt);
+      if (j && j.detail && typeof j.detail === 'object' && j.detail.error) {
+        const samp = (j.detail.missing_sample || [])
+          .map(r => `  · ${r.site_address || '—'} seq ${r.seq_no ?? '—'} (${r.observation_date || '—'})`)
+          .join('\n');
+        msg = `${j.detail.error}\n\n${j.detail.missing_count} rows missing CCVS.\nSample:\n${samp}\n\n${j.detail.remedy}`;
+      } else if (j && j.detail) {
+        msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+      }
+    } catch (e) {}
+    alert('Site Visit Report failed: ' + msg);
     return;
   }
   const blob = await resp.blob();

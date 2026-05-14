@@ -421,7 +421,11 @@ def _build_cross_reference(
                 )
                 status = obs.get("conformance_status") or ""
                 photo = obs.get("photo_url") or obs.get("photo_refs") or ""
+                ccvs_code = (obs.get("ccvs_code") or "").strip()
+                ccvs_cat = (obs.get("ccvs_category") or "").strip()
                 cell_text = f"[{status}] {evidence}".strip()
+                if ccvs_code or ccvs_cat:
+                    cell_text += f"\nCCVS: {ccvs_code} · {ccvs_cat}".rstrip(" ·")
                 if photo:
                     cell_text += f"\nPhoto: {photo}"
                 _set_cell_text(row.cells[3], cell_text, size_pt=9)
@@ -437,9 +441,9 @@ def _build_unmatched_appendix(
     _heading(doc, "Appendix: Unmatched Observations", size_pt=14)
     _para(doc, UNMATCHED_APPENDIX_HEADER, italic=True, size_pt=9)
 
-    table = doc.add_table(rows=1, cols=5)
+    table = doc.add_table(rows=1, cols=6)
     table.style = "Table Grid"
-    headers = ["Date", "Observation Text", "CCVS Code", "Photo Ref", "Conformance Status"]
+    headers = ["Date", "Observation Text", "CCVS Code", "CCVS Category", "Photo Ref", "Conformance Status"]
     for cell, txt in zip(table.rows[0].cells, headers):
         _set_cell_text(cell, txt, bold=True, size_pt=9)
         _shade_cell(cell, "D9D9D9")
@@ -453,12 +457,13 @@ def _build_unmatched_appendix(
             size_pt=9,
         )
         _set_cell_text(row.cells[2], obs.get("ccvs_code") or "", size_pt=9)
+        _set_cell_text(row.cells[3], obs.get("ccvs_category") or "", size_pt=9)
         _set_cell_text(
-            row.cells[3],
+            row.cells[4],
             obs.get("photo_url") or obs.get("photo_refs") or "",
             size_pt=9,
         )
-        _set_cell_text(row.cells[4], obs.get("conformance_status") or "", size_pt=9)
+        _set_cell_text(row.cells[5], obs.get("conformance_status") or "", size_pt=9)
 
 
 # ─── Public entry point ────────────────────────────────────────────────

@@ -3385,6 +3385,57 @@ OBSERVATION_SELECT_COLUMNS = (
 )
 
 
+def _assert_ccvs_complete(rows: list[dict]) -> None:
+    """Refuse report generation if any row is missing a CCVS code.
+
+    Reports are operator-facing audit deliverables — every line item must
+    carry a CCVS code and category. Category is derivable from code via
+    pims.services.ssa_ccvs_taxonomy, so the actual gate is on ccvs_code.
+    Rows that have a valid code but no stored category get their category
+    backfilled in-place so the renderer can rely on both fields.
+    """
+    missing: list[dict] = []
+    for o in rows:
+        code = (o.get("ccvs_code") or "").strip()
+        if not code:
+            missing.append({
+                "id": o.get("id"),
+                "seq_no": o.get("seq_no"),
+                "site_address": o.get("site_address"),
+                "observation_date": o.get("observation_date"),
+            })
+            continue
+        if not (o.get("ccvs_category") or "").strip():
+            derived = _derive_ccvs_category(code)
+            if derived:
+                o["ccvs_category"] = derived
+            else:
+                missing.append({
+                    "id": o.get("id"),
+                    "seq_no": o.get("seq_no"),
+                    "site_address": o.get("site_address"),
+                    "observation_date": o.get("observation_date"),
+                    "ccvs_code": code,
+                    "reason": "code does not map to a canonical category",
+                })
+    if missing:
+        sample = missing[:10]
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "CCVS code missing on one or more observations",
+                "remedy": (
+                    "Open the RPD dashboard, click the red 'Missing CCVS' "
+                    "chip to filter the affected rows, then fill the CCVS "
+                    "code via the Edit modal on each row. Re-run the "
+                    "report once all rows have a code."
+                ),
+                "missing_count": len(missing),
+                "missing_sample": sample,
+            },
+        )
+
+
 async def _fetch_observations_for_site(site_id: str) -> list[dict]:
     """Paginate observations for a single site via PostgREST Range headers.
 
@@ -3790,6 +3841,8 @@ async def generate_site_visit_xlsx(
             detail="No observations found for the selected sites and date range.",
         )
 
+    _assert_ccvs_complete(rows)
+
     buf_out = await _build_staging_format_xlsx(rows, presentation=True)
     fname = f"Site_Visit_Report_{date.today().isoformat()}.xlsx"
     return StreamingResponse(
@@ -3877,6 +3930,8 @@ async def generate_site_visit_report(
         items = [ChecklistItem.from_row(r) for r in cl.json()]
 
     observations = await _fetch_observations_for_site(site_id)
+
+    _assert_ccvs_complete(observations)
 
     if observations:
         dates = sorted(o["observation_date"] for o in observations
