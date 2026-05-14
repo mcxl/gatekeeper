@@ -2825,47 +2825,36 @@ function renderAllObs() {
   renderAllObsMobile(pageRows);
 }
 
-// ── Delete observation (cascade: photo + staging row + observation) ──
-function _storagePathFromPhotoUrl(url) {
-  if (!url) return null;
-  const marker = '/public/pims-photos/';
-  const i = String(url).indexOf(marker);
-  if (i === -1) return null;
-  try { return decodeURIComponent(String(url).slice(i + marker.length).split('?')[0]); }
-  catch { return String(url).slice(i + marker.length).split('?')[0]; }
-}
-
+// ── Delete observation (cascade via backend, uses service-role key) ──
 async function deleteObservation(id) {
   const obs = allObs.find(x => x.id === id);
   if (!obs) return;
   const label = `${obs.site_address || 'No site'} · seq ${obs.seq_no ?? '—'}`;
   const parts = ['observation row'];
   if (obs.staging_id) parts.push('linked staging record');
-  const photoPath = _storagePathFromPhotoUrl(obs.photo_url);
-  if (photoPath) parts.push('photo in pims-photos');
+  if (obs.photo_url && String(obs.photo_url).includes('/public/pims-photos/')) parts.push('photo in pims-photos');
   if (!confirm(`Delete this observation and cascade?\n\n${label}\n\nWill remove: ${parts.join(', ')}.\n\nThis cannot be undone.`)) return;
-  const warnings = [];
   try {
-    if (photoPath) {
-      const { error: storageErr } = await db.storage.from('pims-photos').remove([photoPath]);
-      if (storageErr) warnings.push('photo: ' + storageErr.message);
+    const resp = await fetch(`/pims/observation/${encodeURIComponent(id)}/delete`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${txt || resp.statusText}`);
     }
-    if (obs.staging_id) {
-      const { error: stagingErr } = await db.from('pims_staging').delete().eq('id', obs.staging_id);
-      if (stagingErr) warnings.push('staging: ' + stagingErr.message);
-    }
-    const { error } = await db.from('pims_observations').delete().eq('id', id);
-    if (error) throw error;
+    const result = await resp.json().catch(() => ({}));
     const idx = allObs.findIndex(x => x.id === id);
     if (idx !== -1) allObs.splice(idx, 1);
     applyFilters({ resetPages: false });
+    const warnings = result.warnings || [];
     const msg = warnings.length
-      ? 'Observation deleted (with warnings: ' + warnings.join('; ') + ')'
+      ? 'Observation deleted (warnings: ' + warnings.join('; ') + ')'
       : 'Observation deleted';
     if (typeof showToast === 'function') showToast(msg, warnings.length ? 'warning' : 'success');
     else if (warnings.length) alert(msg);
   } catch (err) {
-    alert('Delete failed: ' + err.message + (warnings.length ? '\nPartial: ' + warnings.join('; ') : ''));
+    alert('Delete failed: ' + err.message);
   }
 }
 

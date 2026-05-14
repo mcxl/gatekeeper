@@ -794,6 +794,80 @@ async def delete_staging_row(
     return {"ok": True, "id": staging_id}
 
 
+@router.post("/observation/{observation_id}/delete")
+async def delete_observation_cascade(
+    observation_id: str,
+    request: Request,
+    pims_sess: str | None = Cookie(default=None, alias=COOKIE_NAME),
+):
+    """Cascade-delete an observation: storage photo + linked staging row + observation."""
+    if not verify_session_cookie(pims_sess, "rpd"):
+        raise HTTPException(status_code=401, detail="Session expired.")
+    if not RPD_SUPABASE_URL or not RPD_SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    if not _is_uuid(observation_id):
+        raise HTTPException(status_code=400, detail="Invalid id")
+
+    warnings: list[str] = []
+    async with httpx.AsyncClient(timeout=20) as client:
+        # 1. Look up the row to find the photo and any staging link.
+        r = await client.get(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY),
+            params={
+                "id": f"eq.{observation_id}",
+                "select": "id,photo_url,staging_id",
+            },
+        )
+        if r.status_code != 200:
+            log.error(f"Obs lookup failed {observation_id}: {r.status_code} {r.text}")
+            raise HTTPException(status_code=500, detail="Lookup failed")
+        rows = r.json() or []
+        if not rows:
+            raise HTTPException(status_code=404, detail="Observation not found")
+        obs = rows[0]
+        photo_url = obs.get("photo_url") or ""
+        staging_id = obs.get("staging_id")
+
+        # 2. Storage delete (pims-photos only).
+        marker = "/public/pims-photos/"
+        idx = photo_url.find(marker)
+        if idx != -1:
+            storage_path = photo_url[idx + len(marker):].split("?", 1)[0]
+            sr = await client.request(
+                "DELETE",
+                f"{RPD_SUPABASE_URL}/storage/v1/object/pims-photos/{storage_path}",
+                headers={
+                    "apikey": RPD_SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {RPD_SUPABASE_SERVICE_KEY}",
+                },
+            )
+            if sr.status_code not in (200, 204, 404):
+                warnings.append(f"photo: {sr.status_code}")
+
+        # 3. Staging delete (if linked).
+        if staging_id and _is_uuid(str(staging_id)):
+            sd = await client.delete(
+                f"{RPD_SUPABASE_URL}/rest/v1/pims_staging",
+                headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal"),
+                params={"id": f"eq.{staging_id}"},
+            )
+            if sd.status_code not in (200, 204):
+                warnings.append(f"staging: {sd.status_code}")
+
+        # 4. Observation delete.
+        od = await client.delete(
+            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+            headers=_supabase_headers(RPD_SUPABASE_SERVICE_KEY, prefer="return=minimal"),
+            params={"id": f"eq.{observation_id}"},
+        )
+        if od.status_code not in (200, 204):
+            log.error(f"Obs delete failed {observation_id}: {od.status_code} {od.text}")
+            raise HTTPException(status_code=500, detail="Delete failed")
+
+    return {"ok": True, "id": observation_id, "warnings": warnings}
+
+
 @router.post("/staging/{staging_id}/approve")
 async def approve_staging_rpd(
     request: Request,
