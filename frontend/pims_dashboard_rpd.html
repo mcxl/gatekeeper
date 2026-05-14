@@ -1487,7 +1487,11 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
       <div class="manager-main">
         <div class="manager-panel">
           <div class="manager-panel-title">Site Breakdown</div>
-          <div style="padding:8px 12px 4px 12px;">
+          <div style="padding:8px 12px 4px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="period-toggle" style="margin:0;">
+              <button class="period-btn active" id="siteBreakdownScopeWeek" onclick="setSiteBreakdownScope('week')">This Week</button>
+              <button class="period-btn" id="siteBreakdownScopeAll" onclick="setSiteBreakdownScope('all')">All</button>
+            </div>
             <input
               id="managerSiteFilterInput"
               type="text"
@@ -1829,6 +1833,7 @@ const PAGE_SIZE = 25;
 const ALL_OBS_PAGE_SIZE = 10;
 let openActionsScope = 'week'; // 'week' | 'all'
 let managerSiteSearch = '';
+let siteBreakdownScope = 'week'; // 'week' | 'all'
 let liveObsPage = 1;
 let historicalObsPage = 1;
 
@@ -2472,6 +2477,15 @@ function onManagerSiteSearch(val) {
   renderManagerBoard();
 }
 
+function setSiteBreakdownScope(scope) {
+  siteBreakdownScope = scope;
+  const wkBtn = document.getElementById('siteBreakdownScopeWeek');
+  const allBtn = document.getElementById('siteBreakdownScopeAll');
+  if (wkBtn) wkBtn.classList.toggle('active', scope === 'week');
+  if (allBtn) allBtn.classList.toggle('active', scope === 'all');
+  renderManagerBoard();
+}
+
 function renderManagerSiteTable(rows) {
   const tbody = document.getElementById('managerSiteBody');
   if (!tbody) return;
@@ -2526,7 +2540,10 @@ function renderManagerBoard() {
     if (btn) btn.classList.toggle('active', kpiPeriod === period);
   });
 
-  renderManagerSiteTable(currentRows);
+  const siteTableRows = siteBreakdownScope === 'all'
+    ? filtered
+    : rowsForWindow(filtered, getPeriodWindow('week', 0));
+  renderManagerSiteTable(siteTableRows);
   renderCcvsBars('managerCcvsBars', currentRows, currentWindow.compareLabel);
 
   const complianceCard = document.querySelector('.metric-compliance');
