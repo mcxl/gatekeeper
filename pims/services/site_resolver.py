@@ -113,3 +113,65 @@ async def resolve_site_id(
     if len(matches) == 1:
         return matches[0]
     return None
+
+
+async def resolve_or_create_site_id(
+    address_raw: Optional[str],
+    *,
+    supabase_url: Optional[str] = None,
+    supabase_key: Optional[str] = None,
+    client: Optional[httpx.AsyncClient] = None,
+) -> Optional[str]:
+    """Like resolve_site_id, but creates a new active sites row when there
+    is no canonical match. Returns None only if the address is empty,
+    Supabase config is missing, or the canonical form is ambiguous (>1
+    existing match — don't auto-create when the operator may have meant
+    one of the existing rows).
+    """
+    canonical = canonicalise_address(address_raw)
+    if not canonical:
+        return None
+
+    url = (supabase_url or os.getenv("RPD_SUPABASE_URL") or "").rstrip("/")
+    key = supabase_key or os.getenv("RPD_SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        return None
+
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+    async def _resolve_or_insert(c: httpx.AsyncClient) -> Optional[str]:
+        rl = await c.get(
+            f"{url}/rest/v1/sites",
+            headers=headers,
+            params={"active": "eq.true", "select": "id,address_raw"},
+        )
+        rl.raise_for_status()
+        rows = rl.json()
+        matches = [r["id"] for r in rows if canonicalise_address(r.get("address_raw")) == canonical]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            return None  # ambiguous — let caller leave site_id NULL
+        ri = await c.post(
+            f"{url}/rest/v1/sites",
+            headers={**headers, "Prefer": "return=representation"},
+            json={"address_raw": (address_raw or "").strip(), "active": True},
+        )
+        if ri.status_code not in (200, 201):
+            return None
+        body = ri.json()
+        if isinstance(body, list) and body:
+            return body[0].get("id")
+        if isinstance(body, dict):
+            return body.get("id")
+        return None
+
+    if client is None:
+        async with httpx.AsyncClient(timeout=10) as c:
+            return await _resolve_or_insert(c)
+    return await _resolve_or_insert(client)

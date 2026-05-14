@@ -1,4 +1,4 @@
-﻿"""
+"""
 pims/routes.py â€” PIMS observation endpoints for Safe Method / Gatekeeper
 
 Routes:
@@ -35,7 +35,7 @@ import httpx
 import openpyxl
 from anthropic import AsyncAnthropic, APIStatusError
 
-from pims.services.site_resolver import resolve_site_id
+from pims.services.site_resolver import resolve_or_create_site_id
 from pims.services.ccvs_fallback import apply_ccvs_fallback
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -981,7 +981,7 @@ async def approve_staging_rpd(
                     "staging row inline, then retry."
                 ),
             )
-        resolved_site_id = await resolve_site_id(
+        resolved_site_id = await resolve_or_create_site_id(
             address_for_resolver,
             supabase_url=RPD_SUPABASE_URL,
             supabase_key=RPD_SUPABASE_SERVICE_KEY,
@@ -1187,7 +1187,7 @@ async def promote_pdf_observation_rpd(
         # Resolve site_id from this row's site_address before promotion.
         # If unresolvable, still promote (matches legacy behaviour) but
         # the dashboard chip will surface the orphan.
-        resolved = await resolve_site_id(
+        resolved = await resolve_or_create_site_id(
             obs.get("site_address"),
             supabase_url=RPD_SUPABASE_URL,
             supabase_key=RPD_SUPABASE_SERVICE_KEY,
@@ -1251,7 +1251,7 @@ async def promote_pdf_observation_sdgroup(
         if obs.get("staging") is False:
             return {"observation": obs, "message": "Already promoted (idempotent)."}
 
-        resolved = await resolve_site_id(
+        resolved = await resolve_or_create_site_id(
             obs.get("site_address"),
             supabase_url=SDG_SUPABASE_URL,
             supabase_key=SDG_SUPABASE_SERVICE_KEY,
@@ -2804,7 +2804,7 @@ async def upload_observations_xlsx(
                 continue
 
             needs_review = _parse_upload_bool(row.get("needs_review")) or ccvs_invalid
-            resolved_upload_site_id = await resolve_site_id(
+            resolved_upload_site_id = await resolve_or_create_site_id(
                 site_address,
                 supabase_url=RPD_SUPABASE_URL,
                 supabase_key=RPD_SUPABASE_SERVICE_KEY,
