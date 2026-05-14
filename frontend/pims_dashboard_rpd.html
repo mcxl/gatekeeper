@@ -1395,6 +1395,20 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
   .dq-chip[data-zero="false"] { background:#7f1d1d; color:#fecaca; border-color:#991b1b !important; }
   .dq-chip[data-zero="true"]  { background:#1e293b; }
   .dq-chip:hover { filter:brightness(1.15); }
+  .finding-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .finding-clamp.expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
+  .finding-toggle:hover { background:#eff6ff; }
 </style>
 <script>
   async function refreshDataQualityChips() {
@@ -2790,7 +2804,10 @@ function renderAllObs() {
       </td>
         <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
-        <td style="max-width:420px;white-space:normal;line-height:1.4;" title="${esc(o.observation_text || '')}">${esc(o.observation_text_enriched || o.observation_text || '—')}</td>
+        <td style="max-width:420px;white-space:normal;line-height:1.4;" title="${esc(o.observation_text || '')}">
+          <div class="finding-clamp">${esc(o.observation_text_enriched || o.observation_text || '—')}</div>
+          <button type="button" class="finding-toggle" onclick="toggleFindingClamp(this)" style="margin-top:4px;padding:2px 8px;font-size:0.7rem;font-weight:600;color:#2563eb;background:transparent;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;">Show more</button>
+        </td>
         <td>${badge(o.conformance_status)}</td>
         <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
@@ -2823,6 +2840,14 @@ function renderAllObs() {
   }
 
   renderAllObsMobile(pageRows);
+}
+
+// ── Finding cell clamp toggle ──
+function toggleFindingClamp(btn) {
+  const clamp = btn.previousElementSibling;
+  if (!clamp) return;
+  const expanded = clamp.classList.toggle('expanded');
+  btn.textContent = expanded ? 'Show less' : 'Show more';
 }
 
 // ── Delete observation (cascade via backend, uses service-role key) ──
