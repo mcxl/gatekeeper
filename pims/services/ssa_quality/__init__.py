@@ -10,6 +10,7 @@ across Phases 1-5 of the SDG-SSA quality hardening plan
 - preflight         (Phase 4) — --check folder/inputs validation
 """
 from .determinism import make_docx_deterministic
+from .libreoffice_smoke import SmokeResult, smoke_test_docx
 from .oxml_validator import ValidationError, ValidationResult, validate_docx
 
 __all__ = [
@@ -17,4 +18,6 @@ __all__ = [
     "ValidationError",
     "ValidationResult",
     "validate_docx",
+    "SmokeResult",
+    "smoke_test_docx",
 ]
