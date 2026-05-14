@@ -2683,7 +2683,10 @@ function renderActions() {
       <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
       <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
-      <td style="max-width:420px;white-space:normal;line-height:1.4;">${esc(o.action_description || '—')}</td>
+      <td style="max-width:420px;white-space:normal;line-height:1.4;">
+        <div class="finding-clamp">${esc(o.action_description || '—')}</div>
+        <button type="button" class="finding-toggle" onclick="toggleFindingClamp(this)" style="margin-top:4px;padding:2px 8px;font-size:0.7rem;font-weight:600;color:#2563eb;background:transparent;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;">Show more</button>
+      </td>
       <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
       <td>${dueLabel(o.due_category)}</td>
       <td style="padding-right:20px;white-space:nowrap;">
@@ -2812,7 +2815,10 @@ function renderAllObs() {
         <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
-        <td style="max-width:220px;color:var(--text-light)">${trunc(o.monitoring_note,90)}</td>
+        <td style="max-width:220px;color:var(--text-light)">
+          <div class="finding-clamp">${esc(o.monitoring_note || '—')}</div>
+          <button type="button" class="finding-toggle" onclick="toggleFindingClamp(this)" style="margin-top:4px;padding:2px 8px;font-size:0.7rem;font-weight:600;color:#2563eb;background:transparent;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;">Show more</button>
+        </td>
         <td style="padding-right:20px;white-space:nowrap;">
           <button onclick="openModal('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:5px;cursor:pointer;margin-right:4px;">✎ Edit</button>
           ${o.staging_id ? `<button onclick="sendObservationToStaging('${o.id}')" style="padding:4px 10px;font-size:0.72rem;font-weight:600;color:#fff;background:#64748b;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;margin-right:4px;">↩ Send back</button>` : ''}
