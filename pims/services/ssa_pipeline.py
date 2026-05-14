@@ -77,6 +77,22 @@ class ObservationRow:
 _REQUIRED_HEADER = ("timestamp", "observation", "filename")
 _TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
+# Placeholder tokens substituted by build_ssa_report_docx. Centralised here so
+# the drift checker (tools/check_ssa_drift.py) can verify each token exists as
+# literal text in the SSA report template. Body and footer dicts both use the
+# same set of tokens; only the source value differs (long-form date in body
+# vs short-form date in footer for AUDIT_DATE).
+PH_SITE_ADDRESS = "{{SITE_ADDRESS}}"
+PH_NARRATIVE_SUMMARY = "{{NARRATIVE_SUMMARY}}"
+PH_AUDIT_DATE = "{{AUDIT_DATE}}"
+PH_PREPARED_BY = "{{PREPARED_BY}}"
+SSA_REPORT_PLACEHOLDERS: tuple[str, ...] = (
+    PH_SITE_ADDRESS,
+    PH_NARRATIVE_SUMMARY,
+    PH_AUDIT_DATE,
+    PH_PREPARED_BY,
+)
+
 
 def _decode_csv_bytes(raw: bytes) -> str:
     """Detect UTF-8 / UTF-8-SIG / CP1252 and return a unicode string.
@@ -2681,16 +2697,16 @@ def build_ssa_report_docx(
     audit_date_ordinal = _to_ordinal_date(audit_date_ddmmyyyy)
     audit_date_short = _to_short_date(audit_date_ddmmyyyy)
     body_replacements = {
-        "{{SITE_ADDRESS}}": full_site,
-        "{{NARRATIVE_SUMMARY}}": combined_narrative,
-        "{{AUDIT_DATE}}": audit_date_ordinal or audit_date_ddmmyyyy or "",
-        "{{PREPARED_BY}}": prepared_by or "",
+        PH_SITE_ADDRESS: full_site,
+        PH_NARRATIVE_SUMMARY: combined_narrative,
+        PH_AUDIT_DATE: audit_date_ordinal or audit_date_ddmmyyyy or "",
+        PH_PREPARED_BY: prepared_by or "",
     }
     footer_replacements = {
-        "{{SITE_ADDRESS}}": full_site,
-        "{{NARRATIVE_SUMMARY}}": combined_narrative,
-        "{{AUDIT_DATE}}": audit_date_short or audit_date_ddmmyyyy or "",
-        "{{PREPARED_BY}}": prepared_by or "",
+        PH_SITE_ADDRESS: full_site,
+        PH_NARRATIVE_SUMMARY: combined_narrative,
+        PH_AUDIT_DATE: audit_date_short or audit_date_ddmmyyyy or "",
+        PH_PREPARED_BY: prepared_by or "",
     }
     _replace_tokens_in_part(doc.part, body_replacements)
     # Split the combined narrative into the canonical two-paragraph
