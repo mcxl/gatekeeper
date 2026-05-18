@@ -1503,7 +1503,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
           <div class="manager-panel-title">Site Breakdown</div>
           <div style="padding:8px 12px 4px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <div class="period-toggle" style="margin:0;">
-              <button class="period-btn active" id="siteBreakdownScopeWeek" onclick="setSiteBreakdownScope('week')">This Week</button>
+              <button class="period-btn active" id="siteBreakdownScopeWeek" onclick="setSiteBreakdownScope('week')">Last 2 Weeks</button>
               <button class="period-btn" id="siteBreakdownScopeAll" onclick="setSiteBreakdownScope('all')">All</button>
             </div>
             <input
@@ -1576,7 +1576,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
     </div>
     <div class="dt-desktop" style="padding:12px 14px 0 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <div class="period-toggle" style="margin:0;">
-        <button class="period-btn active" id="openActionsScopeWeek" onclick="setOpenActionsScope('week')">This Week</button>
+        <button class="period-btn active" id="openActionsScopeWeek" onclick="setOpenActionsScope('week')">Last 2 Weeks</button>
         <button class="period-btn" id="openActionsScopeAll" onclick="setOpenActionsScope('all')">All Open</button>
       </div>
       <input
@@ -2527,7 +2527,7 @@ function renderManagerSiteTable(rows) {
   const rowsOut = Array.from(siteMap.values())
     .sort((a, b) => b.ncr - a.ncr || b.total - a.total || a.site.localeCompare(b.site));
   if (!rowsOut.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No live observations in selected period.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No live observations in the last 2 weeks.</td></tr>';
     return;
   }
   tbody.innerHTML = rowsOut.map(site => `
@@ -2560,9 +2560,15 @@ function renderManagerBoard() {
     if (btn) btn.classList.toggle('active', kpiPeriod === period);
   });
 
-  const siteTableRows = siteBreakdownScope === 'all'
-    ? filtered
-    : rowsForWindow(filtered, getPeriodWindow('week', 0));
+  let siteTableRows;
+  if (siteBreakdownScope === 'all') {
+    siteTableRows = filtered;
+  } else {
+    const wkNow = getPeriodWindow('week', 0);
+    const wkPrev = getPeriodWindow('week', -1);
+    const twoWeek = { start: wkPrev.start, end: wkNow.end };
+    siteTableRows = rowsForWindow(filtered, twoWeek);
+  }
   renderManagerSiteTable(siteTableRows);
   renderCcvsBars('managerCcvsBars', currentRows, currentWindow.compareLabel);
 
@@ -2661,10 +2667,11 @@ function renderActions() {
     .filter(o => o.action_required && o.closeout_status !== 'Closed')
     .filter(o => !siteSearch || String(o.site_address || '').toLowerCase().includes(siteSearch));
   if (openActionsScope === 'week') {
-    const wk = getPeriodWindow('week', 0);
-    actions = rowsForWindow(actions, wk);
+    const wkNow = getPeriodWindow('week', 0);
+    const wkPrev = getPeriodWindow('week', -1);
+    actions = rowsForWindow(actions, { start: wkPrev.start, end: wkNow.end });
   }
-  const scopeLabel = openActionsScope === 'week' ? ' (this week)' : '';
+  const scopeLabel = openActionsScope === 'week' ? ' (last 2 weeks)' : '';
   document.getElementById('openActionsCount').textContent = `${actions.length} open${scopeLabel}`;
   if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
   actions.forEach(o => {
