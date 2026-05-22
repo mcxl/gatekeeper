@@ -283,9 +283,10 @@ async def enrich_observation(
         user_content = f"{user_content}\n\n{precedent_supplement}"
         if os.getenv("PIMS_LOG_PRECEDENT_PROMPT") == "1":
             log.info(f"PIMS precedent prompt (len={len(precedent_supplement)}):\n{precedent_supplement}")
-    model_id = os.getenv("PIMS_ENRICHMENT_MODEL", "claude-haiku-4-5-20251001")
+    primary_model = os.getenv("PIMS_ENRICHMENT_MODEL", "claude-haiku-4-5-20251001")
+    fallback_model = os.getenv("PIMS_ENRICHMENT_FALLBACK_MODEL", "claude-sonnet-4-6")
 
-    async def _one_call() -> Optional[dict]:
+    async def _one_call(model_id: str) -> Optional[dict]:
         client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, timeout=30)
         msg = await client.messages.create(
             model=model_id,
@@ -297,13 +298,13 @@ async def enrich_observation(
         parsed = _extract_json_object(raw)
         if parsed is None:
             log.warning(
-                "Haiku JSON parse failed model=%s | raw_head=%r",
+                "Enrichment JSON parse failed model=%s | raw_head=%r",
                 model_id, raw[:200],
             )
             return None
-        # Phase 9 deterministic fallback: if Haiku left ccvs_code null
+        # Phase 9 deterministic fallback: if the model left ccvs_code null
         # on a coded status, try the keyword map. Pure safety net —
-        # never overrides a code Haiku set.
+        # never overrides a code the model set.
         fallback_match = apply_ccvs_fallback(parsed, observation_text)
         if fallback_match:
             log.info(
@@ -325,10 +326,23 @@ async def enrich_observation(
             )
         return parsed
 
+    def _is_overloaded(exc: BaseException) -> bool:
+        if not isinstance(exc, APIStatusError):
+            return False
+        if exc.status_code == 529:
+            return True
+        body = exc.body if isinstance(exc.body, dict) else {}
+        err = body.get("error") if isinstance(body.get("error"), dict) else {}
+        return err.get("type") == "overloaded_error"
+
     last_exc: Optional[BaseException] = None
-    for attempt in (1, 2):
+    # Attempt 1: primary model. Attempt 2: same model, OR fallback model
+    # if attempt 1 was rejected as overloaded — Haiku 529 today is the
+    # dominant transient failure and Sonnet has more headroom.
+    attempts = [primary_model, primary_model]
+    for idx, model_id in enumerate(attempts, start=1):
         try:
-            return await _one_call()
+            return await _one_call(model_id)
         except APIStatusError as e:
             try:
                 body_str = json.dumps(e.body, default=str) if isinstance(e.body, (dict, list)) else str(e.body)
@@ -340,18 +354,24 @@ async def enrich_observation(
             except Exception:
                 pass
             log.error(
-                "Haiku enrichment APIStatusError model=%s attempt=%d "
+                "Enrichment APIStatusError model=%s attempt=%d "
                 "status=%s type=%r body=%s",
-                model_id, attempt, e.status_code, err_type, body_str[:2000],
+                model_id, idx, e.status_code, err_type, body_str[:2000],
             )
             last_exc = e
+            if idx == 1 and _is_overloaded(e) and fallback_model and fallback_model != primary_model:
+                attempts[1] = fallback_model
+                log.info(
+                    "Enrichment cascading to fallback model=%s after overloaded primary=%s",
+                    fallback_model, primary_model,
+                )
         except Exception as e:
             log.error(
-                "Haiku enrichment failed model=%s attempt=%d: %s: %s",
-                model_id, attempt, type(e).__name__, e,
+                "Enrichment failed model=%s attempt=%d: %s: %s",
+                model_id, idx, type(e).__name__, e,
             )
             last_exc = e
-        if attempt == 1:
+        if idx == 1:
             await asyncio.sleep(2.0)
     # Both attempts exhausted — re-raise so callers can surface the failure
     assert last_exc is not None
