@@ -238,14 +238,45 @@ SWING STAGE â€” Suspended Scaffold (WAH-H6, WAH-H9):
 - Return ONLY valid JSON. No commentary, no markdown fences."""
 
 
+def _extract_json_object(text: str) -> Optional[dict]:
+    """Strip fences and find the outermost JSON object in `text`.
+
+    Returns the parsed dict, or None if no valid JSON object can be
+    recovered. Tolerates leading/trailing prose and ```json fences.
+    """
+    s = text.strip()
+    if s.startswith("```"):
+        # ```json ... ``` or ``` ... ```
+        s = s.split("```", 2)
+        s = s[1] if len(s) >= 2 else ""
+        if s.startswith("json"):
+            s = s[4:]
+        s = s.strip().rstrip("`").strip()
+    # Find first { and matching last }
+    start = s.find("{")
+    end = s.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    candidate = s[start:end + 1]
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
 async def enrich_observation(
     observation_text: str,
     precedent_supplement: str = "",
-) -> dict:
+) -> Optional[dict]:
     """Call Claude Haiku to classify and enrich a PIMS observation.
 
     `precedent_supplement` is appended to the user message so that
     ENRICHMENT_SYSTEM stays fixed and cacheable. Pass "" to skip.
+
+    Returns the parsed enrichment dict, or None on hard failure
+    (parse error, empty/invalid response). Retries once with backoff
+    on transient API exceptions before giving up.
     """
     user_content = f"Observation: {observation_text}"
     if precedent_supplement:
@@ -253,25 +284,23 @@ async def enrich_observation(
         if os.getenv("PIMS_LOG_PRECEDENT_PROMPT") == "1":
             log.info(f"PIMS precedent prompt (len={len(precedent_supplement)}):\n{precedent_supplement}")
     model_id = os.getenv("PIMS_ENRICHMENT_MODEL", "claude-haiku-4-5-20251001")
-    try:
+
+    async def _one_call() -> Optional[dict]:
         client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, timeout=30)
         msg = await client.messages.create(
             model=model_id,
-            max_tokens=1024,
+            max_tokens=2048,
             system=ENRICHMENT_SYSTEM,
             messages=[{"role": "user", "content": user_content}],
         )
-        text = msg.content[0].text.strip()
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        text = text.strip()
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError as e:
-            log.warning(f"Haiku JSON parse failed: {e} | raw: {text[:200]}")
-            return {}
+        raw = msg.content[0].text or ""
+        parsed = _extract_json_object(raw)
+        if parsed is None:
+            log.warning(
+                "Haiku JSON parse failed model=%s | raw_head=%r",
+                model_id, raw[:200],
+            )
+            return None
         # Phase 9 deterministic fallback: if Haiku left ccvs_code null
         # on a coded status, try the keyword map. Pure safety net —
         # never overrides a code Haiku set.
@@ -295,24 +324,38 @@ async def enrich_observation(
                 + f" (breach of {tail})."
             )
         return parsed
-    except APIStatusError as e:
+
+    last_exc: Optional[BaseException] = None
+    for attempt in (1, 2):
         try:
-            body_str = json.dumps(e.body, default=str) if isinstance(e.body, (dict, list)) else str(e.body)
-        except Exception:
-            body_str = repr(e.body)
-        err_type = ""
-        try:
-            err_type = e.response.headers.get("anthropic-error-type", "") if getattr(e, "response", None) else ""
-        except Exception:
-            pass
-        log.error(
-            f"Haiku enrichment APIStatusError model={model_id} "
-            f"status={e.status_code} type={err_type!r} body={body_str[:2000]}"
-        )
-        raise
-    except Exception as e:
-        log.error(f"Haiku enrichment failed model={model_id}: {type(e).__name__}: {e}")
-        raise
+            return await _one_call()
+        except APIStatusError as e:
+            try:
+                body_str = json.dumps(e.body, default=str) if isinstance(e.body, (dict, list)) else str(e.body)
+            except Exception:
+                body_str = repr(e.body)
+            err_type = ""
+            try:
+                err_type = e.response.headers.get("anthropic-error-type", "") if getattr(e, "response", None) else ""
+            except Exception:
+                pass
+            log.error(
+                "Haiku enrichment APIStatusError model=%s attempt=%d "
+                "status=%s type=%r body=%s",
+                model_id, attempt, e.status_code, err_type, body_str[:2000],
+            )
+            last_exc = e
+        except Exception as e:
+            log.error(
+                "Haiku enrichment failed model=%s attempt=%d: %s: %s",
+                model_id, attempt, type(e).__name__, e,
+            )
+            last_exc = e
+        if attempt == 1:
+            await asyncio.sleep(2.0)
+    # Both attempts exhausted — re-raise so callers can surface the failure
+    assert last_exc is not None
+    raise last_exc
 
 
 async def enrich_and_update(
@@ -320,8 +363,15 @@ async def enrich_and_update(
     supabase_service_key: str,
     record_id: str,
     observation_text: str,
+    *,
+    project_value_explicit: Optional[str] = None,
+    chat_value_hint: Optional[str] = None,
 ) -> None:
-    """Background task â€” enrich observation and patch the staging record."""
+    """Background task â€” enrich observation and patch the staging record.
+
+    The kwargs are optional and only consumed by the shared-knowledge
+    enrichment context layer. Existing callers do not need to change.
+    """
     # Precedent retrieval — failure-tolerant; never breaks enrichment.
     precedents = []
     supplement = ""
@@ -335,18 +385,79 @@ async def enrich_and_update(
     except Exception as e:
         log.warning(f"precedent retrieval failed for {record_id}: {e}")
 
+    # Shared RPD SSA knowledge context — failure-tolerant; never breaks
+    # the existing enrichment path. If PIMS_SSA_KNOWLEDGE_ROOT is unset
+    # or the corpus is missing, ``ctx.available`` will be False and the
+    # supplement is empty.
+    knowledge_supplement = ""
+    knowledge_provenance = None
     try:
-        enrichment = await enrich_observation(observation_text, supplement)
+        from pims.services.enrichment_context import build_enrichment_context
+        ctx = build_enrichment_context(
+            observation_text=observation_text,
+            project_value_explicit=project_value_explicit,
+            chat_value_hint=chat_value_hint,
+        )
+        if ctx.available and ctx.supplement:
+            knowledge_supplement = ctx.supplement
+            knowledge_provenance = ctx.provenance
+    except Exception as e:
+        log.warning(f"knowledge context build failed for {record_id}: {e}")
+
+    combined_supplement = "\n\n".join(s for s in (supplement, knowledge_supplement) if s)
+
+    try:
+        enrichment = await enrich_observation(observation_text, combined_supplement)
     except Exception as e:
         log.error(f"Background enrichment failed for {record_id}: {e}")
         return
 
+    # Reject empty / unparseable enrichment: leave the row at enriched=False
+    # so it surfaces in the UI as needing retry, instead of writing all-NULL
+    # finding columns with enriched=True (the previous silent-corrupt path).
+    if not enrichment or not enrichment.get("conformance_status"):
+        log.warning(
+            "Skipping PATCH for %s — enrichment empty or missing conformance_status",
+            record_id,
+        )
+        return
+
+    # Validate before patching. Falls back to passing the raw enrichment
+    # through on any internal validation error so the existing path is
+    # preserved.
+    validation_messages: list[str] = []
+    needs_review = False
+    try:
+        from pims.services.enrichment_validation import validate_enrichment
+        result = validate_enrichment(
+            enrichment,
+            legal_whitelist=getattr(knowledge_provenance, "legal_whitelist", []) or [],
+            project_value_conflict=getattr(knowledge_provenance, "project_value_conflict", False),
+            project_value_scope=getattr(knowledge_provenance, "project_value_scope", "unknown"),
+        )
+        enrichment = result.enrichment
+        validation_messages = result.messages
+        needs_review = result.needs_review
+        if validation_messages:
+            log.info(
+                "enrichment_validation messages for %s: %s",
+                record_id, "; ".join(validation_messages),
+            )
+    except Exception as e:
+        log.warning(f"enrichment validation skipped for {record_id}: {e}")
+
     headers = _supabase_headers(supabase_service_key, prefer="return=minimal")
+    # When validation flags review, downgrade confidence so the staging
+    # UI prioritises it. ccvs_confidence is an existing column — no
+    # schema change.
+    ccvs_confidence = enrichment.get("ccvs_confidence")
+    if needs_review:
+        ccvs_confidence = "Low"
     patch = {
         "conformance_status":        enrichment.get("conformance_status"),
         "ccvs_code":                 enrichment.get("ccvs_code"),
         "ccvs_category":             _derive_ccvs_category(enrichment.get("ccvs_code")) or enrichment.get("ccvs_category"),
-        "ccvs_confidence":           enrichment.get("ccvs_confidence"),
+        "ccvs_confidence":           ccvs_confidence,
         "action_required":           enrichment.get("action_required", False),
         "action_description":        enrichment.get("action_description"),
         "responsible":               enrichment.get("responsible"),
