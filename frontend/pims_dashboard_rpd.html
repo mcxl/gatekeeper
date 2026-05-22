@@ -1678,7 +1678,18 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
           background:#F47920; border:none; border-radius:6px; cursor:pointer;">
           &#8593; Upload XLSX
         </button>
+        <button id="bulkRetryBtn" onclick="retrySelected()" disabled style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#7c3aed; border:none; border-radius:6px; cursor:not-allowed; opacity:0.55;">
+          ↻ Retry Selected
+        </button>
+        <button id="bulkApproveBtn" onclick="approveSelected()" disabled style="
+          padding:4px 14px; font-size:0.78rem; font-weight:600; color:#fff;
+          background:#16a34a; border:none; border-radius:6px; cursor:not-allowed; opacity:0.55;">
+          ✓ Approve Selected
+        </button>
         <span id="staging-select-count" style="font-size:0.75rem; color:#64748b;"></span>
+        <span id="staging-bulk-progress" style="font-size:0.75rem; color:#7c3aed; font-weight:600;"></span>
       </div>
 
       <div style="margin-bottom:16px;">
@@ -3415,6 +3426,15 @@ function renderAllObsMobile(obs) {
       const el = document.getElementById('staging-select-count');
       if (el) el.textContent = checked > 0 ? `${checked} of ${total} selected (all pages)` : '';
       applyStagingSelectionToDom();
+      const retryBtn = document.getElementById('bulkRetryBtn');
+      const apprBtn  = document.getElementById('bulkApproveBtn');
+      const enabled = checked > 0 && !_bulkPromoteInProgress;
+      [retryBtn, apprBtn].forEach(b => {
+        if (!b) return;
+        b.disabled = !enabled;
+        b.style.cursor  = enabled ? 'pointer' : 'not-allowed';
+        b.style.opacity = enabled ? '1' : '0.55';
+      });
     }
 
     function _getExportIds() {
@@ -3920,6 +3940,15 @@ function renderAllObsMobile(obs) {
                   border-radius:5px;cursor:${approved ? 'not-allowed' : 'pointer'};">
                 ${approved ? '✓ Approved' : '✓ Approve'}
               </button>
+              ${(!approved && row.enriched !== true) ? `
+              <button
+                id="retry-${row.id}"
+                onclick="retryStagingRecord('${row.id}')"
+                title="Re-run enrichment for this row"
+                style="margin-left:6px;padding:4px 10px;font-size:0.78rem;font-weight:600;color:#fff;
+                  background:#7c3aed;border:none;border-radius:5px;cursor:pointer;">
+                ↻ Retry
+              </button>` : ''}
               <button
                 onclick="deleteStagingRecord('${row.id}')"
                 title="Delete this staging row"
@@ -4348,6 +4377,71 @@ function renderAllObsMobile(obs) {
         }
         return false;
       }
+    }
+
+    async function retryStagingRecord(stagingId, options = {}) {
+      const { skipReload = false, suppressToast = false } = options;
+      const btn = document.getElementById(`retry-${stagingId}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Retrying…'; btn.style.cursor = 'not-allowed'; btn.style.opacity = '0.6'; }
+      try {
+        const resp = await fetch(`/pims/staging/${stagingId}/retry-enrichment`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          const detail = await resp.text().catch(() => resp.statusText);
+          throw new Error(`${resp.status}: ${detail}`);
+        }
+        if (!skipReload && !_bulkPromoteInProgress) {
+          await loadStaging();
+        }
+        if (!suppressToast) showToast('Enrichment retried.', 'success');
+        return true;
+      } catch (err) {
+        if (btn) { btn.disabled = false; btn.textContent = '↻ Retry'; btn.style.cursor = 'pointer'; btn.style.opacity = '1'; }
+        if (!suppressToast) showToast('Retry failed: ' + err.message, 'error');
+        return false;
+      }
+    }
+
+    async function retrySelected() {
+      const ids = Array.from(selectedStagingIds);
+      if (!ids.length) { showToast('No rows selected.', 'warning'); return; }
+      if (!confirm(`Retry enrichment on ${ids.length} selected row(s)?`)) return;
+      _bulkPromoteInProgress = true;
+      updateSelectCount();
+      const progress = document.getElementById('staging-bulk-progress');
+      let ok = 0, fail = 0;
+      for (let i = 0; i < ids.length; i++) {
+        if (progress) progress.textContent = `Retrying ${i+1}/${ids.length}… (${ok} ok, ${fail} failed)`;
+        const success = await retryStagingRecord(ids[i], { skipReload: true, suppressToast: true });
+        success ? ok++ : fail++;
+        if (i < ids.length - 1) await new Promise(r => setTimeout(r, 2400));
+      }
+      _bulkPromoteInProgress = false;
+      if (progress) progress.textContent = '';
+      showToast(`Retry complete — ${ok} succeeded, ${fail} failed.`, fail === 0 ? 'success' : 'warning');
+      await loadStaging();
+    }
+
+    async function approveSelected() {
+      const ids = Array.from(selectedStagingIds);
+      if (!ids.length) { showToast('No rows selected.', 'warning'); return; }
+      if (!confirm(`Approve ${ids.length} selected row(s)?`)) return;
+      _bulkPromoteInProgress = true;
+      updateSelectCount();
+      const progress = document.getElementById('staging-bulk-progress');
+      let ok = 0, fail = 0;
+      for (let i = 0; i < ids.length; i++) {
+        if (progress) progress.textContent = `Approving ${i+1}/${ids.length}… (${ok} ok, ${fail} failed)`;
+        const success = await approveStagingRecord(ids[i], { skipConfirm: true, skipReload: true, suppressToast: true });
+        success ? ok++ : fail++;
+        if (i < ids.length - 1) await new Promise(r => setTimeout(r, 500));
+      }
+      _bulkPromoteInProgress = false;
+      if (progress) progress.textContent = '';
+      showToast(`Approve complete — ${ok} succeeded, ${fail} failed.`, fail === 0 ? 'success' : 'warning');
+      await Promise.all([loadData(), loadStaging()]);
     }
 
     function showToast(message, type = 'info') {
