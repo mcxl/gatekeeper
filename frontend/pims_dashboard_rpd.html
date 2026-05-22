@@ -4328,6 +4328,7 @@ function renderAllObsMobile(obs) {
         skipConfirm = false,
         skipReload = false,
         suppressToast = false,
+        _autoRetried = false,
       } = options;
       const btn = document.getElementById(`btn-${stagingId}`);
       if (!btn || btn.disabled) return false;
@@ -4341,6 +4342,26 @@ function renderAllObsMobile(obs) {
           method: 'POST',
           credentials: 'same-origin',
         });
+        // Self-heal: if the row isn't enriched yet, run retry-enrichment
+        // once and re-attempt approval. Saves the operator a click.
+        if (resp.status === 409 && !_autoRetried) {
+          const detail = await resp.text().catch(() => '');
+          if (detail.includes('Enrichment not yet complete')) {
+            btn.textContent = 'Enriching…';
+            const retried = await retryStagingRecord(stagingId, {
+              skipReload: true, suppressToast: true,
+            });
+            if (retried) {
+              btn.textContent = 'Approving…';
+              return await approveStagingRecord(stagingId, {
+                skipConfirm: true, skipReload, suppressToast,
+                _autoRetried: true,
+              });
+            }
+            throw new Error('409: enrichment retry failed — try again or check logs');
+          }
+          throw new Error(`409: ${detail}`);
+        }
         if (!resp.ok) {
           const detail = await resp.text().catch(() => resp.statusText);
           throw new Error(`${resp.status}: ${detail}`);
