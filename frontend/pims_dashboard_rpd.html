@@ -4205,15 +4205,24 @@ function renderAllObsMobile(obs) {
       const row = stagingData.find(r => r.id === id) || stagingPdfRows.find(r => r.id === id);
       if (!row || row[field] === val) return;
       const tableName = stagingData.some(r => r.id === id) ? 'pims_staging' : 'pims_observations';
+      // When an operator fills conformance/ccvs on a previously-unenriched
+      // staging row, also flip enriched=true so the approve guard and the
+      // dashboard's enriched-state UI stay consistent with the data.
+      const patch = { [field]: val };
+      const flagFieldsTouched = (field === 'conformance_status' || field === 'ccvs_code');
+      if (tableName === 'pims_staging' && flagFieldsTouched && val && row.enriched !== true) {
+        patch.enriched = true;
+        patch.enriched_at = new Date().toISOString();
+      }
       try {
-        const { error } = await db.from(tableName).update({ [field]: val }).eq('id', id);
+        const { error } = await db.from(tableName).update(patch).eq('id', id);
         if (error) throw error;
-        row[field] = val;
+        Object.assign(row, patch);
         input.style.borderColor = 'var(--green)';
         setTimeout(() => { input.style.borderColor = 'transparent'; }, 1000);
       } catch (err) {
         input.value = row[field] || '';
-        showToast('Site address update failed: ' + err.message, 'error');
+        showToast('Update failed: ' + err.message, 'error');
       }
     }
 

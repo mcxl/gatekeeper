@@ -1043,11 +1043,15 @@ async def approve_staging_rpd(
             raise HTTPException(status_code=422, detail="Cannot approve a record with no observation_text.")
 
         # Phase 6: poll-then-409 enrichment guard.
-        # If enrichment hasn't completed, poll the staging row up to 3× over
-        # 5s (catches the common race where background enrichment finishes
-        # between submit and approve). If still not enriched, return 409 and
-        # require the caller to hit /staging/{id}/retry-enrichment.
-        if guard_enabled and not staging.get("enriched"):
+        # A row is "approvable" if either auto-enrichment has run (enriched=true)
+        # OR an operator has filled in conformance_status inline. The latter
+        # covers the case where the user reviews the photo + caption and types
+        # the CCVS/conformance themselves; re-running enrichment would clobber
+        # their manual entries.
+        def _row_ready(r: dict) -> bool:
+            return bool(r.get("enriched") or r.get("conformance_status"))
+
+        if guard_enabled and not _row_ready(staging):
             for _ in range(3):
                 await asyncio.sleep(1.0)
                 r_poll = await client.get(
@@ -1057,7 +1061,7 @@ async def approve_staging_rpd(
                 )
                 r_poll.raise_for_status()
                 poll_rows = r_poll.json()
-                if poll_rows and poll_rows[0].get("enriched"):
+                if poll_rows and _row_ready(poll_rows[0]):
                     staging = poll_rows[0]
                     break
             else:
@@ -1066,7 +1070,7 @@ async def approve_staging_rpd(
                     detail=(
                         "Enrichment not yet complete for this record. "
                         f"POST /pims/staging/{staging_id}/retry-enrichment, "
-                        "then approve again."
+                        "or fill in Conformance manually, then approve again."
                     ),
                 )
 
