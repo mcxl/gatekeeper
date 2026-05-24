@@ -29,6 +29,16 @@ from docx.oxml.ns import qn
 from docx.shared import Cm
 
 PHOTO_WIDTH_CM = 2.5
+
+# Client code -> human-readable name shown in the running header. The
+# folder naming convention ``YYYY-MM-DD-<CLIENT>-NN`` uses the 3-letter
+# code; this map expands it for display. Used by _build_running_header
+# and by the CLI script generate_audit_report.py.
+CLIENT_DISPLAY_NAMES: dict[str, str] = {
+    "RPD": "Robertson's Remedial and Painting",
+}
+DEFAULT_CLIENT_DISPLAY_NAME = "Robertson's Remedial and Painting"
+
 from pims.services import ccvs_section_map  # noqa: E402
 from pims.services.template_index import (  # noqa: E402
     NA_SECTIONS,
@@ -1186,6 +1196,7 @@ def _build_site_doc(
     audit_date_str: str,
     prepared_by: str,
     exec_summary_text: str,
+    client_display_name: str = DEFAULT_CLIENT_DISPLAY_NAME,
 ) -> bytes:
     doc = Document(str(TEMPLATE_PATH))
     tables = doc.tables
@@ -1484,7 +1495,13 @@ def _build_site_doc(
     # is Aptos; recipient-side substitution is acceptable.
     _enforce_aptos_everywhere(doc)
 
-    # Unify every table's gridlines to dotted light-grey (McKinsey-style).
+    # Branded running header on every section: <client> – Site Safety Audit
+    # Report (left) + AuditCo logo (right). Suppressed on cover page.
+    _build_running_header(doc, client_display_name)
+
+    # Unify every body-level table's gridlines to dotted light-grey (McKinsey-
+    # style). doc.tables excludes header/footer tables, so the borderless
+    # header table is untouched.
     _apply_dotted_grid_to_all_tables(doc)
 
     # Save to bytes.
@@ -2090,6 +2107,96 @@ def _enforce_aptos_everywhere(doc) -> None:
             rPr.insert(0, rFonts)
         for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
             rFonts.set(qn(attr), _BODY_FONT)
+
+
+def _set_table_no_borders(table) -> None:
+    """Strip all borders from a table (sides + inside H/V). Used by the
+    running-header layout table."""
+    from docx.oxml import OxmlElement
+    tbl = table._tbl
+    tblPr = tbl.find(qn("w:tblPr"))
+    if tblPr is None:
+        tblPr = OxmlElement("w:tblPr")
+        tbl.insert(0, tblPr)
+    existing = tblPr.find(qn("w:tblBorders"))
+    if existing is not None:
+        tblPr.remove(existing)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), "nil")
+        borders.append(b)
+    tblPr.append(borders)
+
+
+def _build_running_header(
+    doc, client_display_name: str, logo_path=None,
+) -> None:
+    """Stamp a branded running header on every section: a 2-cell borderless
+    table with '<client> – Site Safety Audit Report' on the left and the
+    AuditCo logo on the right.
+
+    First-page suppression: sets
+    ``section.different_first_page_header_footer = True`` so the cover
+    (page 1) renders header-free while subsequent pages carry the header.
+    """
+    from pathlib import Path
+    from docx.shared import Cm, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import OxmlElement
+
+    if logo_path is None:
+        logo_path = (
+            Path(__file__).resolve().parent.parent / "assets" / "AuditCo.png"
+        )
+    logo_path = Path(logo_path) if not isinstance(logo_path, Path) else logo_path
+
+    header_text = f"{client_display_name} – Site Safety Audit Report"
+
+    for section in doc.sections:
+        section.different_first_page_header_footer = True
+
+        header = section.header
+        # Unlink from previous so this section's header is editable
+        # (no-op on section 0; required on subsequent sections).
+        try:
+            header.is_linked_to_previous = False
+        except Exception:
+            pass
+
+        # Wipe existing header content so the template's baked-in default
+        # header (if any) doesn't stack with ours.
+        hdr_el = header._element
+        for child in list(hdr_el):
+            hdr_el.remove(child)
+        # Headers MUST contain at least one paragraph element to be valid.
+        hdr_el.append(OxmlElement("w:p"))
+
+        tbl = header.add_table(rows=1, cols=2, width=Cm(16))
+        tbl.autofit = False
+        tbl.columns[0].width = Cm(13)
+        tbl.columns[1].width = Cm(3)
+        _set_table_no_borders(tbl)
+
+        # Left cell — title text
+        left_cell = tbl.rows[0].cells[0]
+        # Clear default empty paragraph content
+        left_p = left_cell.paragraphs[0]
+        left_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = left_p.add_run(header_text)
+        run.font.name = _BODY_FONT
+        run.font.size = Pt(10)
+        run.font.color.rgb = RGBColor(0x40, 0x40, 0x40)
+
+        # Right cell — logo
+        right_cell = tbl.rows[0].cells[1]
+        right_p = right_cell.paragraphs[0]
+        right_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        if logo_path.exists():
+            try:
+                right_p.add_run().add_picture(str(logo_path), width=Cm(2.5))
+            except Exception:
+                pass  # unloadable image -> degrade to text-only header
 
 
 _GRID_BORDER_COLOR = "BFBFBF"  # light grey
@@ -2853,6 +2960,7 @@ async def _build_one_site(
     ix: TemplateIndex, site_address: str, site_obs: list[ParsedObs],
     prepared_by_override: str | None,
     enrich_findings_override: bool | None = None,
+    client_display_name: str = DEFAULT_CLIENT_DISPLAY_NAME,
 ) -> tuple[str, bytes]:
     await proofread_observations(site_obs)
     # Wording-enrichment staging stage (no-op unless feature flag is on).
@@ -2883,6 +2991,7 @@ async def _build_one_site(
     payload = _build_site_doc(
         ix, chosen_tier, site_obs, mapping,
         site_address, audit_date_str, prepared_by, summary,
+        client_display_name=client_display_name,
     )
     payload = await _final_spell_pass_async(payload)
     safe_addr = re.sub(r"[^A-Za-z0-9_-]+", "_", site_address)[:80] or "site"
@@ -2894,6 +3003,7 @@ async def build(
     prepared_by: str | None = None,
     enrich_findings: bool | None = None,
     photos_dir=None,
+    client_display_name: str | None = None,
 ) -> tuple[str, bytes]:
     """Build one or more audit reports from a Site_Visit_Report-format xlsx.
 
@@ -2902,6 +3012,10 @@ async def build(
     referenced by name are loaded from disk and embedded alongside any
     images embedded directly in the xlsx.
 
+    ``client_display_name`` (optional) overrides the client name shown in
+    the docx running header. Defaults to
+    ``DEFAULT_CLIENT_DISPLAY_NAME``.
+
     Returns ``(".docx", bytes)`` for a single-site upload, or
     ``(".zip", bytes)`` containing one .docx per site for multi-site uploads.
     """
@@ -2909,6 +3023,9 @@ async def build(
     obs = parse_xlsx(xlsx_bytes, photos_dir=photos_dir)
     if not obs:
         raise ValueError("xlsx contained no observation rows")
+
+    if client_display_name is None:
+        client_display_name = DEFAULT_CLIENT_DISPLAY_NAME
 
     grouped: dict[str, list[ParsedObs]] = defaultdict(list)
     for o in obs:
@@ -2919,6 +3036,7 @@ async def build(
         site, rows = next(iter(grouped.items()))
         _, payload = await _build_one_site(
             ix, site, rows, prepared_by, enrich_findings,
+            client_display_name=client_display_name,
         )
         return ".docx", payload
 
@@ -2927,6 +3045,7 @@ async def build(
     for site, rows in grouped.items():
         safe, payload = await _build_one_site(
             ix, site, rows, prepared_by, enrich_findings,
+            client_display_name=client_display_name,
         )
         results.append((safe, payload))
 

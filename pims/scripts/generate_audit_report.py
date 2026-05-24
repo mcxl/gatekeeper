@@ -133,10 +133,20 @@ def main() -> int:
         print(f"WARNING: could not pre-parse xlsx for audit_date: {e}",
               file=sys.stderr)
 
+    # Resolve client display name from the folder's client code (RPD/SDG).
+    _, client_code, _ = _parse_folder_id(args.xlsx_path.parent.name)
+    client_display_name = (
+        audit_report_from_xlsx.CLIENT_DISPLAY_NAMES.get(
+            client_code or "",
+            audit_report_from_xlsx.DEFAULT_CLIENT_DISPLAY_NAME,
+        )
+    )
+
     ext, payload = asyncio.run(
         audit_report_from_xlsx.build(
             raw, args.prepared_by, enrich_findings=args.enrich_findings,
             photos_dir=photos_dir,
+            client_display_name=client_display_name,
         )
     )
     out_dir = args.out or args.xlsx_path.parent
