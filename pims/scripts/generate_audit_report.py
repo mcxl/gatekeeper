@@ -5,11 +5,18 @@ Usage:
     python pims/scripts/generate_audit_report.py path/to/Site_Visit_Report.xlsx
     python pims/scripts/generate_audit_report.py path/to/file.xlsx --prepared-by "Alan Richardson"
     python pims/scripts/generate_audit_report.py path/to/file.xlsx --out path/to/out_dir/
+
+Output filename convention:
+    RPD_SSA_Audit_Report_<YYYY-MM-DD>-<NN>.docx
+
+where YYYY-MM-DD is the audit date and NN is the sub-id parsed from the
+parent folder name (e.g. ``2026-05-22-RPD-03`` -> NN = ``03``).
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -34,6 +41,47 @@ if _env_file.exists():
             os.environ[_k] = _v
 
 from pims.services import audit_report_from_xlsx  # noqa: E402
+
+
+# Folder name canonical form: ``YYYY-MM-DD-<CLIENT>-NN`` where CLIENT is
+# RPD or SDG. NN is the audit sub-id.
+_FOLDER_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(RPD|SDG)-(\d{2})$")
+
+
+def _parse_folder_id(folder_name: str) -> tuple[str | None, str | None, str | None]:
+    """Return (audit_date, client_code, nn) if folder_name matches the
+    canonical form ``YYYY-MM-DD-<CLIENT>-NN``, else (None, None, None)."""
+    m = _FOLDER_RE.match(folder_name)
+    if not m:
+        return (None, None, None)
+    return (m.group(1), m.group(2), m.group(3))
+
+
+def _compose_output_name(
+    xlsx_path: Path, ext: str, xlsx_audit_date: str | None
+) -> str:
+    """Build the output filename.
+
+    Primary source for audit_date and NN is the parent folder name (canonical
+    ``YYYY-MM-DD-<CLIENT>-NN``). Falls back to the xlsx audit_date and today's
+    date if the folder name is non-canonical; NN defaults to ``01`` with a
+    stderr warning.
+    """
+    parent = xlsx_path.parent.name
+    audit_date, _client, nn = _parse_folder_id(parent)
+    if audit_date is None:
+        audit_date = (xlsx_audit_date or date.today().isoformat())
+        nn = "01"
+        print(
+            f"WARNING: parent folder '{parent}' does not match "
+            f"YYYY-MM-DD-<RPD|SDG>-NN; defaulting NN=01 and "
+            f"audit_date={audit_date}",
+            file=sys.stderr,
+        )
+    if ext == ".docx":
+        return f"RPD_SSA_Audit_Report_{audit_date}-{nn}{ext}"
+    # Multi-site zip case
+    return f"RPD_SSA_Audit_Reports_{audit_date}-{nn}{ext}"
 
 
 def main() -> int:
@@ -73,6 +121,18 @@ def main() -> int:
             photos_dir = sib
             break
 
+    # Read audit_date from xlsx as a fallback for filename composition;
+    # folder name is the primary source.
+    xlsx_audit_date: str | None = None
+    try:
+        obs = audit_report_from_xlsx.parse_xlsx(raw, photos_dir=photos_dir)
+        xlsx_audit_date = next(
+            (o.audit_date for o in obs if getattr(o, "audit_date", None)), None
+        )
+    except Exception as e:
+        print(f"WARNING: could not pre-parse xlsx for audit_date: {e}",
+              file=sys.stderr)
+
     ext, payload = asyncio.run(
         audit_report_from_xlsx.build(
             raw, args.prepared_by, enrich_findings=args.enrich_findings,
@@ -81,12 +141,7 @@ def main() -> int:
     )
     out_dir = args.out or args.xlsx_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = date.today().isoformat()
-    out_name = (
-        f"RPD_SSA_AuditReport_{stamp}{ext}"
-        if ext == ".docx"
-        else f"RPD_SSA_AuditReports_{stamp}{ext}"
-    )
+    out_name = _compose_output_name(args.xlsx_path, ext, xlsx_audit_date)
     out_path = out_dir / out_name
     out_path.write_bytes(payload)
     print(f"WROTE {out_path}  ({len(payload):,} bytes)")
