@@ -1,26 +1,28 @@
-"""Generate an Outlook .msg email draft for an audit report.
+"""Generate an .eml email draft for an audit report.
 
 Usage:
     py -m pims.scripts.generate_audit_email_msg <xlsx_path>
 
-Writes ``Email_Draft_<YYMMDD>_<site-slug>.msg`` next to the xlsx.
-Double-clicking the .msg opens it in Outlook as an editable draft with
-To: pre-filled (Matt + Nick at RPD), Subject set, and body ready to
-send.
+Writes ``Email_Draft_<YYMMDD>_<site-slug>.eml`` next to the xlsx.
+Double-clicking the .eml opens it in the operator's default mail
+client. The ``X-Unsent: 1`` header (an Outlook 2016+ convention)
+makes Outlook open the file as an editable draft rather than as a
+received message — To/Subject/Body are populated and the user can
+hit Send directly.
 
-Requires:
-- Windows with Outlook installed (any version with COM)
-- Outlook profile configured for the user
-- Pre-flight launches Outlook if it isn't already running
+Why .eml instead of .msg:
+.msg requires Outlook COM, which can fail with CO_E_SERVER_EXEC_FAILURE
+when Outlook isn't already running. .eml is a portable RFC822 file
+that Python's stdlib can author with zero external dependencies.
 """
 from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
-import tempfile
 from datetime import date
+from email.message import EmailMessage
+from email.policy import SMTP as _SMTP_POLICY
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,10 +32,10 @@ if str(_REPO_ROOT) not in sys.path:
 
 # Fixed To: line for the RPD client. Uses the "Display Name <email>"
 # form so Outlook shows the friendly name when the operator opens the
-# draft; resolution falls back to plain email if the GAL/contacts don't
-# have a match.
+# draft. Comma-separated per RFC 5322 (Outlook accepts comma or
+# semicolon, but the email stdlib emits comma).
 RPD_TO_RECIPIENTS = (
-    "Matthew McCarthy <matt@rpd.net.au>; "
+    "Matthew McCarthy <matt@rpd.net.au>, "
     "Nick Vuckovic <nick@rpd.net.au>"
 )
 DEFAULT_GREETING_TARGET = "Matt and Nick"
@@ -63,74 +65,34 @@ def _resolve_report_name(xlsx_path: Path, audit_date: str) -> str:
     return f"RPD_SSA_Audit_Report_{audit_date or 'unknown'}.docx"
 
 
-def _ensure_outlook_running() -> None:
-    """Pre-flight: start Outlook (minimized) if no outlook.exe process
-    exists. Non-fatal — a hard COM failure later will surface a clearer
-    error than this pre-flight ever could."""
-    try:
-        ps = (
-            "$p = Get-Process outlook -ErrorAction SilentlyContinue; "
-            "if (-not $p) { "
-            "  Start-Process outlook -WindowStyle Minimized; "
-            "  Start-Sleep -Seconds 4 "
-            "} else { Write-Host 'outlook already running' }"
-        )
-        subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive",
-             "-Command", ps],
-            check=True, capture_output=True, text=True,
-        )
-    except Exception as e:
-        print(f"WARNING: outlook pre-flight failed: {e}", file=sys.stderr)
+def _build_eml_bytes(
+    subject: str,
+    body: str,
+    to: str = RPD_TO_RECIPIENTS,
+) -> bytes:
+    """Build an RFC822 .eml message ready to be written to disk.
+
+    The ``X-Unsent: 1`` header is an Outlook 2016+ convention that tells
+    Outlook to open the file as an editable draft rather than as a
+    received message. Mail clients that don't understand the header
+    just ignore it.
+    """
+    msg = EmailMessage(policy=_SMTP_POLICY)
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg["X-Unsent"] = "1"
+    msg.set_content(body, subtype="plain", charset="utf-8")
+    return bytes(msg)
 
 
-def _save_msg_via_outlook(
+def _save_eml(
     out_path: Path,
     subject: str,
     body: str,
     to: str = RPD_TO_RECIPIENTS,
 ) -> None:
-    """Write a .msg file via PowerShell + Outlook COM.
-
-    Subject and body go via UTF-8 temp files so PowerShell escaping
-    issues (apostrophes, em-dashes, bullets) can't corrupt them.
-    """
-    with tempfile.TemporaryDirectory() as td:
-        td_path = Path(td)
-        subject_file = td_path / "subject.txt"
-        body_file = td_path / "body.txt"
-        subject_file.write_text(subject, encoding="utf-8-sig")
-        body_file.write_text(body, encoding="utf-8-sig")
-
-        # Single-quoted PS strings: literal, no expansion. Format paths as
-        # PS-friendly (backslash-escape single quotes; on Windows the paths
-        # have no single quotes anyway).
-        def _ps_str(s: str) -> str:
-            return "'" + str(s).replace("'", "''") + "'"
-
-        ps_script = (
-            "$ErrorActionPreference = 'Stop'\n"
-            f"$subj = Get-Content -Raw -Encoding UTF8 {_ps_str(subject_file)}\n"
-            f"$bod  = Get-Content -Raw -Encoding UTF8 {_ps_str(body_file)}\n"
-            "$ol = New-Object -ComObject Outlook.Application\n"
-            "$mail = $ol.CreateItem(0)\n"  # 0 = olMailItem
-            f"$mail.To = {_ps_str(to)}\n"
-            "$mail.Subject = $subj.TrimEnd(\"`r\",\"`n\")\n"
-            "$mail.Body = $bod\n"
-            f"$mail.SaveAs({_ps_str(out_path)}, 9)\n"  # 9 = olMSGUnicode
-        )
-
-        result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive",
-             "-Command", ps_script],
-            capture_output=True, text=True,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Outlook COM failed (rc={result.returncode}):\n"
-                f"STDOUT: {result.stdout}\n"
-                f"STDERR: {result.stderr}"
-            )
+    """Write an .eml file at ``out_path`` with To/Subject/Body filled."""
+    out_path.write_bytes(_build_eml_bytes(subject, body, to))
 
 
 def main() -> int:
@@ -170,12 +132,11 @@ def main() -> int:
 
     subject, body = _compose_subject_and_body(obs, report_path)
 
-    msg_name = f"Email_Draft_{stamp}_{_slug(site)}.msg"
-    msg_path = out_dir / msg_name
+    eml_name = f"Email_Draft_{stamp}_{_slug(site)}.eml"
+    eml_path = out_dir / eml_name
 
-    _ensure_outlook_running()
-    _save_msg_via_outlook(msg_path, subject, body)
-    print(f"WROTE {msg_path}")
+    _save_eml(eml_path, subject, body)
+    print(f"WROTE {eml_path}")
 
     if args.legacy_txt:
         txt_name = f"Email_Draft_{stamp}_{_slug(site)}.txt"

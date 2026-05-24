@@ -1,13 +1,9 @@
-"""Unit tests for the pure-Python helpers in
+"""Unit tests for the .eml writer in
 ``pims/scripts/generate_audit_email_msg.py``.
-
-The Outlook-COM bits (``_save_msg_via_outlook``, ``_ensure_outlook_running``)
-require Windows + Outlook + a configured profile; their integration is
-exercised manually during the per-folder render verification step,
-not in CI.
 """
 from __future__ import annotations
 
+import email
 from pathlib import Path
 
 import pytest
@@ -15,8 +11,10 @@ import pytest
 from pims.scripts.generate_audit_email_msg import (
     DEFAULT_GREETING_TARGET,
     RPD_TO_RECIPIENTS,
+    _build_eml_bytes,
     _compose_subject_and_body,
     _resolve_report_name,
+    _save_eml,
 )
 
 
@@ -134,16 +132,69 @@ def test_compose_custom_greeting_target():
     assert "Hi Matt and Nick," not in body
 
 
-# ---------- import safety ----------
+# ---------- .eml writer ----------
 
-def test_module_imports_on_non_windows_without_pywin32():
-    """The Outlook-COM code path is only invoked at runtime (in main());
-    plain imports must succeed on any platform."""
+def test_build_eml_bytes_has_required_headers():
+    raw = _build_eml_bytes("My Subject", "My Body").decode("utf-8")
+    assert "To: " in raw
+    assert "Subject: My Subject" in raw
+    assert "X-Unsent: 1" in raw
+    assert "My Body" in raw
+
+
+def test_build_eml_bytes_to_field_contains_both_recipients():
+    raw = _build_eml_bytes("S", "B").decode("utf-8")
+    # Parse the message and read the To header
+    msg = email.message_from_string(raw)
+    to = msg["To"]
+    assert "matt@rpd.net.au" in to
+    assert "nick@rpd.net.au" in to
+    assert "Matthew McCarthy" in to
+    assert "Nick Vuckovic" in to
+
+
+def test_build_eml_bytes_preserves_unicode_in_body():
+    """Em-dash, bullet point, apostrophe must survive RFC822 encoding."""
+    import email.policy
+    body = "Hi —\n• one\n• two\n• it's working"
+    raw = _build_eml_bytes("Test", body)
+    msg = email.message_from_bytes(raw, policy=email.policy.default)
+    decoded_body = msg.get_content()
+    assert "—" in decoded_body
+    assert "•" in decoded_body
+    assert "it's working" in decoded_body
+
+
+def test_build_eml_bytes_x_unsent_for_outlook_editable_open():
+    """Outlook treats X-Unsent: 1 as a hint to open as a draft, not a
+    received message — without this, Send would be disabled in the
+    opened window."""
+    raw = _build_eml_bytes("S", "B").decode("utf-8")
+    msg = email.message_from_string(raw)
+    assert msg.get("X-Unsent") == "1"
+
+
+def test_save_eml_writes_file(tmp_path):
+    out = tmp_path / "Email_Draft_260522_test.eml"
+    _save_eml(out, "Sub", "Body")
+    assert out.exists()
+    raw = out.read_bytes()
+    assert b"X-Unsent: 1" in raw
+    assert b"Sub" in raw
+
+
+def test_save_eml_overwrites_existing(tmp_path):
+    out = tmp_path / "x.eml"
+    out.write_bytes(b"old content")
+    _save_eml(out, "New Subject", "New Body")
+    raw = out.read_bytes()
+    assert b"old content" not in raw
+    assert b"New Subject" in raw
+
+
+def test_module_imports_cleanly():
+    """Imports must succeed on any platform — no Outlook/COM dependency."""
     import pims.scripts.generate_audit_email_msg as m
     assert m is not None
-
-
-def test_save_msg_signature():
-    """The save function exists and is callable (signature only)."""
-    from pims.scripts.generate_audit_email_msg import _save_msg_via_outlook
-    assert callable(_save_msg_via_outlook)
+    assert callable(m._save_eml)
+    assert callable(m._build_eml_bytes)
