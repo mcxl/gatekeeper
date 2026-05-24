@@ -1474,10 +1474,15 @@ def _build_site_doc(
     # final position.
     _strip_empty_paragraphs_before_register(doc)
 
-    # Apply body-only typography pass (Calibri 10pt, line spacing 1.15) so
+    # Apply body-only typography pass (Aptos 10pt, line spacing 1.15) so
     # body paragraphs read consistently. Skips the cover (first heading
     # block) and the back-cover footer paragraph.
     _apply_body_typography(doc)
+
+    # Force Aptos on every run in the document (including cover and any
+    # region the body-typography pass skipped). Hard rule: all source text
+    # is Aptos; recipient-side substitution is acceptable.
+    _enforce_aptos_everywhere(doc)
 
     # Unify every table's gridlines to dotted light-grey (McKinsey-style).
     _apply_dotted_grid_to_all_tables(doc)
@@ -1493,6 +1498,10 @@ def _build_site_doc(
 
     # Apply uniform footer: Date | Prepared by | Page X of Y.
     payload = _apply_uniform_footer(payload, prepared_by)
+
+    # Final Aptos enforcement at the theme + styles layer (belt + suspenders
+    # on top of the run-level enforcement already applied to document.xml).
+    payload = _patch_theme_and_styles_aptos(payload)
     return payload
 
 
@@ -1904,7 +1913,7 @@ _COVER_END_ANCHORS = (
     "executive summary",
 )
 
-_BODY_FONT = "Calibri"
+_BODY_FONT = "Aptos"
 _BODY_FONT_PT = 10.0
 
 
@@ -2025,9 +2034,9 @@ def _reposition_register_before_back_cover(doc) -> None:
 
 
 def _apply_body_typography(doc) -> None:
-    """Set Calibri 10pt + line spacing 1.15 on every run inside the body
-    region (between cover end and back cover). Leaves cover and back cover
-    untouched."""
+    """Set body font (Aptos) at 10pt + line spacing 1.15 on every run inside
+    the body region (between cover end and back cover). Leaves cover and
+    back cover untouched; :func:`_enforce_aptos_everywhere` handles those."""
     body = doc.element.body
     children = list(body)
     start, end = _find_body_range(doc)
@@ -2061,6 +2070,26 @@ def _apply_body_typography(doc) -> None:
                     current_half_pt = 20
                 if current_half_pt <= int(_BODY_FONT_PT * 2):
                     sz.set(qn("w:val"), str(int(_BODY_FONT_PT * 2)))
+
+
+def _enforce_aptos_everywhere(doc) -> None:
+    """Walk every run in the document body and force rFonts to Aptos
+    (ascii/hAnsi/cs/eastAsia). Unlike :func:`_apply_body_typography`, this
+    does NOT skip the cover or back-cover regions — it applies the font
+    rule globally. Sizes are left untouched."""
+    from docx.oxml import OxmlElement
+    body = doc.element.body
+    for r_el in body.iter(qn("w:r")):
+        rPr = r_el.find(qn("w:rPr"))
+        if rPr is None:
+            rPr = OxmlElement("w:rPr")
+            r_el.insert(0, rPr)
+        rFonts = rPr.find(qn("w:rFonts"))
+        if rFonts is None:
+            rFonts = OxmlElement("w:rFonts")
+            rPr.insert(0, rFonts)
+        for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
+            rFonts.set(qn(attr), _BODY_FONT)
 
 
 _GRID_BORDER_COLOR = "BFBFBF"  # light grey
@@ -2577,26 +2606,26 @@ def _build_uniform_footer_xml(prepared_by: str) -> bytes:
         '<w:pPr>'
         '<w:jc w:val="center"/>'
         '<w:rPr>'
-        '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>'
+        '<w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/>'
         '<w:color w:val="595959"/>'
         '<w:sz w:val="18"/>'
         '</w:rPr>'
         '</w:pPr>'
-        f'<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        f'<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         f'<w:t xml:space="preserve">Date: {today_x}    •    Prepared by: {pb}    •    Page </w:t></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:fldChar w:fldCharType="begin"/></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:fldChar w:fldCharType="end"/></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:t xml:space="preserve"> of </w:t></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:fldChar w:fldCharType="begin"/></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>'
-        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
         '<w:fldChar w:fldCharType="end"/></w:r>'
         '</w:p>'
         '</w:ftr>'
@@ -2626,6 +2655,61 @@ def _apply_uniform_footer(docx_bytes: bytes, prepared_by: str) -> bytes:
         for name, data in parts.items():
             zout.writestr(name, data)
     return out_buf.getvalue()
+
+
+_THEME_LATIN_RE = re.compile(r'<a:latin typeface="[^"]*"(\s*[^/>]*)/>')
+_STYLES_FONT_ATTR_RE = re.compile(
+    r'w:(ascii|hAnsi|cs|eastAsia)="(Calibri Light|Calibri|Arial|Times New Roman)"'
+)
+
+
+def _patch_theme_and_styles_aptos(docx_bytes: bytes) -> bytes:
+    """Post-build pass: rewrite ``word/theme/theme1.xml`` so the major and
+    minor Latin theme fonts are Aptos, and ``word/styles.xml`` so any
+    style's explicit Calibri/Arial/Times font is Aptos.
+
+    Belt-and-suspenders for the "all font Aptos" rule. Wrapped in try/except
+    so a missing or malformed theme falls back silently to the explicit
+    run-level Aptos that :func:`_enforce_aptos_everywhere` already wrote."""
+    try:
+        in_buf = BytesIO(docx_bytes)
+        parts: dict[str, bytes] = {}
+        with zipfile.ZipFile(in_buf, "r") as zin:
+            for name in zin.namelist():
+                parts[name] = zin.read(name)
+
+        changed = False
+
+        # theme1.xml — every <a:latin typeface="..."/> becomes Aptos.
+        for name in list(parts):
+            if name.startswith("word/theme/") and name.endswith(".xml"):
+                txt = parts[name].decode("utf-8", "ignore")
+                new = _THEME_LATIN_RE.sub(
+                    r'<a:latin typeface="Aptos"\1/>', txt
+                )
+                if new != txt:
+                    parts[name] = new.encode("utf-8")
+                    changed = True
+
+        # styles.xml — override any baked Calibri/Arial/Times in rFonts.
+        styles_path = "word/styles.xml"
+        if styles_path in parts:
+            txt = parts[styles_path].decode("utf-8", "ignore")
+            new = _STYLES_FONT_ATTR_RE.sub(r'w:\1="Aptos"', txt)
+            if new != txt:
+                parts[styles_path] = new.encode("utf-8")
+                changed = True
+
+        if not changed:
+            return docx_bytes
+
+        out_buf = BytesIO()
+        with zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as zout:
+            for name, data in parts.items():
+                zout.writestr(name, data)
+        return out_buf.getvalue()
+    except Exception:
+        return docx_bytes
 
 
 def _raw_xml_cleanup(docx_bytes: bytes, body_replacements: dict[str, str]) -> bytes:
