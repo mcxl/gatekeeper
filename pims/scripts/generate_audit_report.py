@@ -57,6 +57,34 @@ def _parse_folder_id(folder_name: str) -> tuple[str | None, str | None, str | No
     return (m.group(1), m.group(2), m.group(3))
 
 
+def _render_pdf_sibling(docx_path: Path) -> Path | None:
+    """Render a .pdf next to the .docx using docx2pdf (Word COM under the
+    hood on Windows). Returns the pdf path on success, None otherwise.
+
+    Failures are intentionally non-fatal: the operator can still issue
+    the .docx if Word is unavailable. A clear warning is written to
+    stderr so the failure isn't silent.
+    """
+    pdf_path = docx_path.with_suffix(".pdf")
+    try:
+        from docx2pdf import convert as _docx_convert
+    except ImportError:
+        print("WARNING: docx2pdf not installed; skipping PDF export.",
+              file=sys.stderr)
+        return None
+    try:
+        _docx_convert(str(docx_path), str(pdf_path))
+    except Exception as e:
+        print(f"WARNING: PDF export failed ({e}); .docx still written.",
+              file=sys.stderr)
+        return None
+    if not pdf_path.exists():
+        print("WARNING: PDF export reported success but file is missing.",
+              file=sys.stderr)
+        return None
+    return pdf_path
+
+
 def _compose_output_name(
     xlsx_path: Path, ext: str, xlsx_audit_date: str | None
 ) -> str:
@@ -91,6 +119,9 @@ def main() -> int:
                    help="Override Prepared by on the cover.")
     p.add_argument("--out", type=Path, default=None,
                    help="Output directory (defaults to xlsx_path.parent).")
+    p.add_argument("--no-pdf", action="store_true",
+                   help="Skip the sibling .pdf render (Word COM via "
+                        "docx2pdf). Useful when Word is busy/unavailable.")
     enrich = p.add_mutually_exclusive_group()
     enrich.add_argument("--enrich-findings", dest="enrich_findings",
                         action="store_true", default=None,
@@ -155,6 +186,14 @@ def main() -> int:
     out_path = out_dir / out_name
     out_path.write_bytes(payload)
     print(f"WROTE {out_path}  ({len(payload):,} bytes)")
+
+    # Render a sibling PDF for single-site docx outputs. Multi-site zip
+    # bundles are left as-is; operator can extract and convert manually
+    # if needed.
+    if ext == ".docx" and not args.no_pdf:
+        pdf = _render_pdf_sibling(out_path)
+        if pdf is not None:
+            print(f"WROTE {pdf}  ({pdf.stat().st_size:,} bytes)")
     return 0
 
 
