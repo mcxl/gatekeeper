@@ -64,9 +64,19 @@ def main() -> int:
         print("ERROR: empty file", file=sys.stderr)
         return 2
 
+    # Auto-discover the sibling photos folder (any directory ending in
+    # "-photos" inside the xlsx's parent). Photos referenced by name in
+    # photo_refs will be loaded from there.
+    photos_dir = None
+    for sib in args.xlsx_path.parent.iterdir():
+        if sib.is_dir() and sib.name.lower().endswith("-photos"):
+            photos_dir = sib
+            break
+
     ext, payload = asyncio.run(
         audit_report_from_xlsx.build(
             raw, args.prepared_by, enrich_findings=args.enrich_findings,
+            photos_dir=photos_dir,
         )
     )
     out_dir = args.out or args.xlsx_path.parent

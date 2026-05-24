@@ -76,6 +76,7 @@ class ParsedObs:
     prepared_by: str
     due_category: str
     photo_image: bytes | None
+    photo_refs: str = ""
 
 
 @dataclass
@@ -130,10 +131,42 @@ CANONICAL_HEADERS = {
 }
 
 
+_STREET_TYPE_ALIASES = {
+    "st": "Street", "street": "Street",
+    "rd": "Road", "road": "Road",
+    "ave": "Avenue", "av": "Avenue", "avenue": "Avenue",
+    "cres": "Crescent", "crescent": "Crescent",
+    "pl": "Place", "place": "Place",
+    "ln": "Lane", "lane": "Lane",
+    "ct": "Court", "court": "Court",
+    "dr": "Drive", "drive": "Drive",
+    "pde": "Parade", "parade": "Parade",
+    "tce": "Terrace", "terrace": "Terrace",
+    "hwy": "Highway", "highway": "Highway",
+    "blvd": "Boulevard", "boulevard": "Boulevard",
+    "cl": "Close", "close": "Close",
+}
+
+
 def _norm_site_address(s: str) -> str:
     if not s:
         return ""
-    return re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+", " ", s).strip()
+    # Canonicalise common street-type abbreviations so 'St' and 'Street'
+    # collapse to one site (and likewise for Rd/Road, Ave/Avenue, etc.).
+    def _sub(m: "re.Match[str]") -> str:
+        return _STREET_TYPE_ALIASES[m.group(0).lower().rstrip(".")]
+    # Only match a street-type token when preceded by a word (so 'St' in
+    # 'St Ives' is left alone, but 'West St Crows Nest' becomes 'West Street').
+    # Match only when followed by end-of-string, comma, or a lowercase
+    # token — so 'West St Crows Nest' → 'West Street Crows Nest' but
+    # 'Killeaton St St Ives' / 'Mt Colah' (St/Mt followed by capitalised
+    # suburb) is left intact.
+    # Replace only the FIRST street-type token. Avoids "St Ives" /
+    # "Mt Colah" suburbs after the real street-type token from also being
+    # normalised (e.g. 'Killeaton St St Ives' → 'Killeaton Street St Ives').
+    pattern = r"(?<=\w )(?:" + "|".join(sorted(_STREET_TYPE_ALIASES.keys(), key=len, reverse=True)) + r")\.?\b"
+    return re.sub(pattern, _sub, s, count=1, flags=re.IGNORECASE)
 
 
 def _extract_xlsx_images(xlsx_bytes: bytes) -> dict[int, bytes]:
@@ -191,7 +224,101 @@ def _extract_xlsx_images(xlsx_bytes: bytes) -> dict[int, bytes]:
     return out
 
 
-def parse_xlsx(xlsx_bytes: bytes) -> list[ParsedObs]:
+def _load_photos_from_dir(photos_dir) -> dict[str, bytes]:
+    """Map every image file in photos_dir to its bytes, keyed by both
+    full filename (case-insensitive) and basename without extension."""
+    out: dict[str, bytes] = {}
+    if photos_dir is None:
+        return out
+    from pathlib import Path as _P
+    p = _P(photos_dir)
+    if not p.exists() or not p.is_dir():
+        return out
+    for f in p.iterdir():
+        if not f.is_file():
+            continue
+        if f.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp", ".heic"):
+            continue
+        try:
+            data = f.read_bytes()
+        except Exception:
+            continue
+        out[f.name.lower()] = data
+        out[f.stem.lower()] = data
+    return out
+
+
+def _resolve_photo_for_refs(photo_refs: str, photo_lookup: dict[str, bytes]) -> bytes | None:
+    """Pick the first matching photo from photo_lookup for a comma- or
+    semicolon-separated photo_refs string. Tries exact match, then
+    substring match (timestamp inside a prefixed filename like
+    '00003020-PHOTO-2026-05-22-08-46-32.jpg')."""
+    if not photo_refs or not photo_lookup:
+        return None
+    import re as _re
+    refs = [r.strip() for r in _re.split(r"[;,]", photo_refs) if r.strip()]
+    for ref in refs:
+        key = ref.lower()
+        if key in photo_lookup:
+            return photo_lookup[key]
+        stem = key.rsplit(".", 1)[0]
+        if stem in photo_lookup:
+            return photo_lookup[stem]
+        # Substring/timestamp match: any disk filename containing the
+        # xlsx ref's stem.
+        for name, data in photo_lookup.items():
+            if stem and stem in name:
+                return data
+        # Looser: match on the date+hour+minute portion (drop the seconds)
+        # so '2026-05-22-13-57-06' finds '00003031-...-2026-05-22-13-57-39'.
+        m = _re.search(r"(\d{4}-\d{2}-\d{2}-\d{2}-\d{2})", stem)
+        if m:
+            prefix = m.group(1)
+            best = None
+            best_diff = None
+            for name, data in photo_lookup.items():
+                if prefix in name:
+                    # tiebreak by total time difference if seconds differ
+                    m2 = _re.search(prefix + r"-(\d{2})", name)
+                    diff = abs(int(m2.group(1)) - int(stem.rsplit("-", 1)[-1])) if m2 else 999
+                    if best_diff is None or diff < best_diff:
+                        best, best_diff = data, diff
+            if best is not None:
+                return best
+    return None
+
+
+def _build_positional_photo_assignments(
+    obs_rows: list, photos_dir
+) -> dict[int, bytes]:
+    """Fallback when no obs has a name-resolved photo: assign photos to
+    observations in xlsx row order, using the alphabetically-sorted file
+    list from photos_dir. Returns {row_idx: bytes}."""
+    out: dict[int, bytes] = {}
+    if photos_dir is None:
+        return out
+    from pathlib import Path as _P
+    p = _P(photos_dir)
+    if not p.exists():
+        return out
+    files = sorted(
+        (f for f in p.iterdir()
+         if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".heic")),
+        key=lambda f: f.name.lower(),
+    )
+    if not files:
+        return out
+    for idx, o in enumerate(obs_rows):
+        if idx >= len(files):
+            break
+        try:
+            out[o.row_idx] = files[idx].read_bytes()
+        except Exception:
+            continue
+    return out
+
+
+def parse_xlsx(xlsx_bytes: bytes, photos_dir=None) -> list[ParsedObs]:
     wb = openpyxl.load_workbook(BytesIO(xlsx_bytes), data_only=True)
     if "Observations" not in wb.sheetnames:
         raise ValueError("Sheet 'Observations' not found in xlsx")
@@ -218,6 +345,9 @@ def parse_xlsx(xlsx_bytes: bytes) -> list[ParsedObs]:
     # Photo extraction: openpyxl misses oneCellAnchor images, so parse the
     # drawing XML directly and resolve image refs through the rels file.
     row_to_image = _extract_xlsx_images(xlsx_bytes)
+    # Also load photos from the sibling photos folder if provided. The
+    # xlsx stores filenames in photo_refs; the actual JPGs live on disk.
+    photo_lookup = _load_photos_from_dir(photos_dir)
 
     out: list[ParsedObs] = []
     for r in range(data_start, ws.max_row + 1):
@@ -231,7 +361,11 @@ def parse_xlsx(xlsx_bytes: bytes) -> list[ParsedObs]:
         site = _norm_site_address(cell("site_address"))
         if not site and not cell("observation_text") and not cell("finding"):
             continue  # blank row
-        out.append(ParsedObs(
+        photo_refs_val = cell("photo_refs")
+        photo_image = row_to_image.get(r)
+        if photo_image is None:
+            photo_image = _resolve_photo_for_refs(photo_refs_val, photo_lookup)
+        out.append(ParsedObs(  # noqa: filled then positional fallback below
             row_idx=r,
             site_address=site,
             audit_date=cell("audit_date"),
@@ -246,8 +380,18 @@ def parse_xlsx(xlsx_bytes: bytes) -> list[ParsedObs]:
             legal_ref=cell("legal_ref"),
             prepared_by=cell("prepared_by"),
             due_category=cell("due_category"),
-            photo_image=row_to_image.get(r),
+            photo_image=photo_image,
+            photo_refs=photo_refs_val,
         ))
+
+    # Positional fallback: if every obs is still photoless but photos_dir
+    # has images, assign them by xlsx row order.
+    if photos_dir and out and not any(o.photo_image for o in out):
+        positional = _build_positional_photo_assignments(out, photos_dir)
+        if positional:
+            for o in out:
+                if o.photo_image is None and o.row_idx in positional:
+                    o.photo_image = positional[o.row_idx]
     return out
 
 
@@ -1281,9 +1425,11 @@ def _build_site_doc(
             "This report includes a high proportion of observations pending "
             "manual review. Verify the appendix before issuing.")
 
-    # Append unmatched observations appendix.
-    if appendix:
-        _append_unmatched_appendix(doc, ix, site_address, appendix, active_to_global)
+    # Append verbatim Observations Register — every xlsx row, in xlsx order,
+    # regardless of whether it was checklist-mapped. Ensures Compliant rows
+    # are not absorbed silently into boilerplate checklist ticks. Replaces
+    # the legacy "Unmatched observations" appendix.
+    _append_observations_register(doc, ix, site_address, site_obs)
 
     # Rebuild the Media summary section from the photos that were actually
     # embedded in the line items (in document order). Excess template
@@ -1313,6 +1459,29 @@ def _build_site_doc(
     _delete_file_summary(doc)
     _strip_swms_file_refs(doc)
 
+    # Move the appended Observations Register to sit BEFORE the back-cover
+    # paragraph (template's "Offices in Sydney …" block) so the back cover
+    # remains the final page of the report.
+    _reposition_register_before_back_cover(doc)
+
+    # Remove the back-cover paragraph (Contact Us page) entirely so the
+    # report ends with the Observations Register.
+    _remove_back_cover_paragraph(doc)
+
+    # Collapse the template's trailing empty paragraphs that otherwise push
+    # the Observations Register onto its own near-empty page. Must run
+    # AFTER reposition so we're stripping blanks above the register's
+    # final position.
+    _strip_empty_paragraphs_before_register(doc)
+
+    # Apply body-only typography pass (Calibri 10pt, line spacing 1.15) so
+    # body paragraphs read consistently. Skips the cover (first heading
+    # block) and the back-cover footer paragraph.
+    _apply_body_typography(doc)
+
+    # Unify every table's gridlines to dotted light-grey (McKinsey-style).
+    _apply_dotted_grid_to_all_tables(doc)
+
     # Save to bytes.
     buf = BytesIO()
     doc.save(buf)
@@ -1321,6 +1490,9 @@ def _build_site_doc(
     # Raw-XML cleanup pass for tokens that paragraph traversal didn't reach,
     # plus today's date footer rewrite.
     payload = _raw_xml_cleanup(payload, body_replacements)
+
+    # Apply uniform footer: Date | Prepared by | Page X of Y.
+    payload = _apply_uniform_footer(payload, prepared_by)
     return payload
 
 
@@ -1723,6 +1895,419 @@ def _insert_top_banner(doc: Document, text: str) -> None:
         run.bold = True
 
 
+_BACK_COVER_PREFIXES = (
+    "offices in sydney",
+    "auditors located",
+)
+
+_COVER_END_ANCHORS = (
+    "executive summary",
+)
+
+_BODY_FONT = "Calibri"
+_BODY_FONT_PT = 10.0
+
+
+def _is_back_cover_paragraph(p_el) -> bool:
+    txt = "".join(
+        t.text or "" for t in p_el.iter(qn("w:t"))
+    ).strip().lower()
+    return any(txt.startswith(p) for p in _BACK_COVER_PREFIXES)
+
+
+def _find_body_range(doc) -> tuple[int, int]:
+    """Return (start_idx, end_idx_exclusive) of body children in doc.element.body.
+
+    Cover = children before the first paragraph whose text starts with
+    'Executive Summary'. Back cover = the first paragraph whose text
+    starts with one of _BACK_COVER_PREFIXES, and everything after it.
+    """
+    body = doc.element.body
+    children = list(body)
+    start = 0
+    for i, ch in enumerate(children):
+        if ch.tag != qn("w:p"):
+            continue
+        txt = "".join(t.text or "" for t in ch.iter(qn("w:t"))).strip().lower()
+        if any(txt.startswith(a) for a in _COVER_END_ANCHORS):
+            start = i
+            break
+    end = len(children)
+    for i in range(len(children) - 1, start, -1):
+        ch = children[i]
+        if ch.tag != qn("w:p"):
+            continue
+        if _is_back_cover_paragraph(ch):
+            end = i
+            break
+    return start, end
+
+
+def _remove_back_cover_paragraph(doc) -> None:
+    """Remove the template's back-cover paragraph (the 'Offices in Sydney…'
+    block containing the Contact Us shape) so the report ends cleanly
+    with the Observations Register."""
+    body = doc.element.body
+    for ch in list(body):
+        if ch.tag == qn("w:p") and _is_back_cover_paragraph(ch):
+            body.remove(ch)
+            break
+
+
+def _insert_contact_us_back_cover_image(doc) -> None:
+    """Insert the AuditCo 'How to Contact Us' graphic (assets/
+    contact_us_back_cover.png) into the back-cover paragraph as a full-page
+    inline image so the back page matches the branded template. The
+    existing back-cover textbox content (phone, email, web) sits over the
+    image because it's an anchored shape."""
+    from pathlib import Path
+    from docx.shared import Cm
+    img_path = Path(__file__).resolve().parent.parent / "assets" / "contact_us_back_cover.png"
+    if not img_path.exists():
+        return
+    body = doc.element.body
+    children = list(body)
+    back_p = None
+    for ch in children:
+        if ch.tag == qn("w:p") and _is_back_cover_paragraph(ch):
+            back_p = ch
+            break
+    if back_p is None:
+        return
+    # Resolve the python-docx Paragraph wrapper for the back-cover element.
+    from docx.text.paragraph import Paragraph
+    back_para = Paragraph(back_p, doc.part)
+    # Prepend a new run with the inline image at A4 page size.
+    new_run = back_para.add_run()
+    # Move the new run to the front of the paragraph so the image sits
+    # behind the absolutely-positioned textbox content.
+    r_el = new_run._r
+    back_p.remove(r_el)
+    back_p.insert(0, r_el)
+    new_run.add_picture(str(img_path), width=Cm(21.0))
+
+
+def _reposition_register_before_back_cover(doc) -> None:
+    """If the Observations Register heading + table sit after the back-cover
+    paragraph, move them to immediately before the back-cover paragraph so
+    the back cover remains the final page."""
+    body = doc.element.body
+    children = list(body)
+    back_idx = None
+    for i, ch in enumerate(children):
+        if ch.tag == qn("w:p") and _is_back_cover_paragraph(ch):
+            back_idx = i
+            break
+    if back_idx is None:
+        return
+    # Find the register heading paragraph (text == 'Observations Register').
+    reg_heading_idx = None
+    for i in range(back_idx + 1, len(children)):
+        ch = children[i]
+        if ch.tag != qn("w:p"):
+            continue
+        txt = "".join(t.text or "" for t in ch.iter(qn("w:t"))).strip().lower()
+        if txt == "observations register":
+            reg_heading_idx = i
+            break
+    if reg_heading_idx is None:
+        return
+    # Move every child from reg_heading_idx to end (excluding the trailing
+    # sectPr if present) to sit immediately before the back-cover paragraph.
+    back_el = children[back_idx]
+    to_move = []
+    for ch in children[reg_heading_idx:]:
+        if ch.tag == qn("w:sectPr"):
+            continue
+        to_move.append(ch)
+    for ch in to_move:
+        back_el.addprevious(ch)
+
+
+def _apply_body_typography(doc) -> None:
+    """Set Calibri 10pt + line spacing 1.15 on every run inside the body
+    region (between cover end and back cover). Leaves cover and back cover
+    untouched."""
+    body = doc.element.body
+    children = list(body)
+    start, end = _find_body_range(doc)
+    for ch in children[start:end]:
+        # Walk paragraphs whether they sit at body level or inside tables.
+        for p_el in ch.iter(qn("w:p")):
+            for r_el in p_el.iter(qn("w:r")):
+                rPr = r_el.find(qn("w:rPr"))
+                if rPr is None:
+                    from docx.oxml import OxmlElement
+                    rPr = OxmlElement("w:rPr")
+                    r_el.insert(0, rPr)
+                rFonts = rPr.find(qn("w:rFonts"))
+                if rFonts is None:
+                    from docx.oxml import OxmlElement
+                    rFonts = OxmlElement("w:rFonts")
+                    rPr.append(rFonts)
+                for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
+                    rFonts.set(qn(attr), _BODY_FONT)
+                sz = rPr.find(qn("w:sz"))
+                if sz is None:
+                    from docx.oxml import OxmlElement
+                    sz = OxmlElement("w:sz")
+                    rPr.append(sz)
+                # Preserve larger sizes if already set (e.g. heading levels);
+                # only force normalisation when the current size is at or
+                # below the body baseline.
+                try:
+                    current_half_pt = int(sz.get(qn("w:val")) or "20")
+                except Exception:
+                    current_half_pt = 20
+                if current_half_pt <= int(_BODY_FONT_PT * 2):
+                    sz.set(qn("w:val"), str(int(_BODY_FONT_PT * 2)))
+
+
+_GRID_BORDER_COLOR = "BFBFBF"  # light grey
+_GRID_BORDER_VAL = "dotted"
+_GRID_BORDER_SZ = "4"  # eighths of a point => 0.5pt
+
+
+def _set_table_borders_dotted_grey(table) -> None:
+    """Replace the table's border set with dotted light-grey 0.5pt on all
+    sides and inside H/V. Restrained, McKinsey-style grid."""
+    from docx.oxml import OxmlElement
+    tbl = table._tbl
+    tblPr = tbl.find(qn("w:tblPr"))
+    if tblPr is None:
+        tblPr = OxmlElement("w:tblPr")
+        tbl.insert(0, tblPr)
+    borders = tblPr.find(qn("w:tblBorders"))
+    if borders is not None:
+        tblPr.remove(borders)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        b = OxmlElement(f"w:{edge}")
+        b.set(qn("w:val"), _GRID_BORDER_VAL)
+        b.set(qn("w:sz"), _GRID_BORDER_SZ)
+        b.set(qn("w:space"), "0")
+        b.set(qn("w:color"), _GRID_BORDER_COLOR)
+        borders.append(b)
+    tblPr.append(borders)
+    # Also clear any per-cell border overrides that would otherwise win.
+    for row in table.rows:
+        for cell in row.cells:
+            tcPr = cell._tc.find(qn("w:tcPr"))
+            if tcPr is None:
+                continue
+            tcBorders = tcPr.find(qn("w:tcBorders"))
+            if tcBorders is not None:
+                tcPr.remove(tcBorders)
+
+
+def _apply_dotted_grid_to_all_tables(doc) -> None:
+    for t in doc.tables:
+        try:
+            _set_table_borders_dotted_grey(t)
+        except Exception:
+            continue
+
+
+_REGISTER_HEADER_FILL = "1F3864"  # deep navy
+_REGISTER_HEADER_FG = "FFFFFF"
+_REGISTER_ALT_FILL = "F2F2F2"     # light grey for zebra striping
+_REGISTER_COL_WIDTHS_CM = (0.6, 1.6, 1.3, 2.9, 3.4, 2.7, 2.5)  # sums to 15.0cm (A4 printable ~15.9)
+_REGISTER_PHOTO_WIDTH_CM = 2.2
+
+
+def _set_cell_vertical_align(cell, val: str = "top") -> None:
+    from docx.oxml import OxmlElement
+    tc = cell._tc
+    tcPr = tc.find(qn("w:tcPr"))
+    if tcPr is None:
+        tcPr = OxmlElement("w:tcPr")
+        tc.insert(0, tcPr)
+    vAlign = tcPr.find(qn("w:vAlign"))
+    if vAlign is None:
+        vAlign = OxmlElement("w:vAlign")
+        tcPr.append(vAlign)
+    vAlign.set(qn("w:val"), val)
+
+
+def _set_cell_width_cm(cell, cm: float) -> None:
+    from docx.oxml import OxmlElement
+    tc = cell._tc
+    tcPr = tc.find(qn("w:tcPr"))
+    if tcPr is None:
+        tcPr = OxmlElement("w:tcPr")
+        tc.insert(0, tcPr)
+    tcW = tcPr.find(qn("w:tcW"))
+    if tcW is None:
+        tcW = OxmlElement("w:tcW")
+        tcPr.append(tcW)
+    # dxa = twentieths of a point; 1cm ≈ 567 dxa
+    tcW.set(qn("w:w"), str(int(cm * 567)))
+    tcW.set(qn("w:type"), "dxa")
+
+
+def _mark_row_as_header(row) -> None:
+    """Set w:tblHeader so this row repeats at the top of each page."""
+    from docx.oxml import OxmlElement
+    trPr = row._tr.find(qn("w:trPr"))
+    if trPr is None:
+        trPr = OxmlElement("w:trPr")
+        row._tr.insert(0, trPr)
+    if trPr.find(qn("w:tblHeader")) is None:
+        trPr.append(OxmlElement("w:tblHeader"))
+    # Also prevent the row from breaking across pages.
+    if trPr.find(qn("w:cantSplit")) is None:
+        trPr.append(OxmlElement("w:cantSplit"))
+
+
+def _set_table_layout_fixed(table) -> None:
+    """Force fixed table layout so set column widths are honoured."""
+    from docx.oxml import OxmlElement
+    tblPr = table._tbl.find(qn("w:tblPr"))
+    if tblPr is None:
+        return
+    layout = tblPr.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        tblPr.append(layout)
+    layout.set(qn("w:type"), "fixed")
+
+
+def _style_register_cell_text(cell, *, bold: bool = False, size_pt: float = 9.0,
+                              color_hex: str | None = None) -> None:
+    from docx.shared import Pt
+    for p in cell.paragraphs:
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        for run in p.runs:
+            run.font.size = Pt(size_pt)
+            if bold:
+                run.bold = True
+            if color_hex:
+                from docx.shared import RGBColor
+                run.font.color.rgb = RGBColor.from_string(color_hex)
+
+
+def _render_status_badge(cell, status: str, ix) -> None:
+    """Render a compact, restrained status badge in ``cell``: a small
+    coloured square + bold black label, with the cell itself unshaded.
+    Reads colour from ``ix.palette`` (background hex) so the badge tracks
+    whatever palette the template uses."""
+    from docx.shared import Pt, RGBColor
+    # Wipe the cell, leave the background unshaded (let zebra/clear win).
+    for p in list(cell.paragraphs):
+        p._element.getparent().remove(p._element)
+    p = cell.add_paragraph()
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    # Resolve a colour for the dot.
+    palette = getattr(ix, "palette", {})
+    bg = None
+    if status in palette:
+        bg, _fg = palette[status]
+    if not bg:
+        bg = "808080"
+    # Lozenge using a Unicode bullet for the dot.
+    dot = p.add_run("●  ")
+    dot.font.size = Pt(11)
+    dot.font.color.rgb = RGBColor.from_string(bg)
+    label = p.add_run(status)
+    label.font.size = Pt(9)
+    label.bold = True
+    label.font.color.rgb = RGBColor.from_string("262626")
+
+
+def _strip_empty_paragraphs_before_register(doc) -> None:
+    """Remove blank paragraphs sitting immediately above the Observations
+    Register heading so the register doesn't get pushed onto its own near-
+    empty page by trailing template whitespace."""
+    body = doc.element.body
+    children = list(body)
+    reg_idx = None
+    for i, ch in enumerate(children):
+        if ch.tag != qn("w:p"):
+            continue
+        txt = "".join(t.text or "" for t in ch.iter(qn("w:t"))).strip().lower()
+        if txt == "observations register":
+            reg_idx = i
+            break
+    if reg_idx is None:
+        return
+    to_remove = []
+    for j in range(reg_idx - 1, -1, -1):
+        ch = children[j]
+        if ch.tag != qn("w:p"):
+            break
+        txt = "".join(t.text or "" for t in ch.iter(qn("w:t"))).strip()
+        if txt:
+            break
+        to_remove.append(ch)
+    for el in to_remove:
+        if el.getparent() is body:
+            body.remove(el)
+
+
+def _append_observations_register(
+    doc: Document, ix, site_address: str, site_obs: list[ParsedObs],
+) -> None:
+    """Append a verbatim, professionally-formatted register of every
+    observation for this site, in xlsx order. One row per ParsedObs.
+    Header row repeats across page breaks; zebra striping for readability;
+    fixed column widths."""
+    if not site_obs:
+        return
+    doc.add_paragraph()
+    doc.add_heading("Observations Register", level=2)
+
+    headers = ["#", "Status", "CCVS", "Observation", "Finding", "Recommendation", "Photo"]
+    table = doc.add_table(rows=1, cols=len(headers))
+    table.style = "Table Grid"
+    _set_table_layout_fixed(table)
+
+    # Header row
+    hdr_row = table.rows[0]
+    _mark_row_as_header(hdr_row)
+    for i, hd in enumerate(headers):
+        c = hdr_row.cells[i]
+        c.text = hd
+        _set_cell_width_cm(c, _REGISTER_COL_WIDTHS_CM[i])
+        _set_cell_shading(c, _REGISTER_HEADER_FILL)
+        _set_cell_vertical_align(c, "center")
+        _style_register_cell_text(c, bold=True, size_pt=10.0,
+                                  color_hex=_REGISTER_HEADER_FG)
+
+    # Data rows
+    for i, o in enumerate(site_obs, start=1):
+        row = table.add_row()
+        status = o.status or ""
+        cells_text = [
+            (str(i), False),
+            (status, False),
+            (o.ccvs_code or "", False),
+            (_amp(o.observation_text or ""), False),
+            (_amp(o.finding or ""), False),
+            (_amp(o.recommendation or o.action_description or ""), False),
+            ("", False),
+        ]
+        zebra = (i % 2 == 0)
+        for j, (txt, _bold) in enumerate(cells_text):
+            cell = row.cells[j]
+            cell.text = txt
+            _set_cell_width_cm(cell, _REGISTER_COL_WIDTHS_CM[j])
+            _set_cell_vertical_align(cell, "top")
+            _style_register_cell_text(cell, size_pt=9.0)
+            if zebra:
+                _set_cell_shading(cell, _REGISTER_ALT_FILL)
+        # Status badge — short coloured chip at top of the cell rather than
+        # full-row shading. Status cell stays zebra-shaded (or unshaded) so
+        # it doesn't dominate the row visually.
+        if status:
+            _render_status_badge(row.cells[1], status, ix)
+        # Photo
+        if o.photo_image:
+            _wipe_photo_cell(row.cells[6])
+            _embed_photo_at_width(row.cells[6], o.photo_image, _REGISTER_PHOTO_WIDTH_CM)
+
+
 def _append_unmatched_appendix(
     doc: Document, ix, site_address: str,
     appendix: list[MappingResult], active_to_global: list[int],
@@ -1980,6 +2565,69 @@ def _replace_amp_in_text(xml: str) -> str:
     return t_re.sub(_sub, xml)
 
 
+def _build_uniform_footer_xml(prepared_by: str) -> bytes:
+    """Build a complete footerN.xml body with Date | Prepared by | Page X of Y."""
+    today = date.today().strftime("%d %b %Y")
+    pb = (prepared_by or "Alan Richardson").replace("&", "&amp;").replace("<", "&lt;")
+    today_x = today.replace("&", "&amp;")
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:p>'
+        '<w:pPr>'
+        '<w:jc w:val="center"/>'
+        '<w:rPr>'
+        '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>'
+        '<w:color w:val="595959"/>'
+        '<w:sz w:val="18"/>'
+        '</w:rPr>'
+        '</w:pPr>'
+        f'<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        f'<w:t xml:space="preserve">Date: {today_x}    •    Prepared by: {pb}    •    Page </w:t></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:fldChar w:fldCharType="begin"/></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:fldChar w:fldCharType="end"/></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:t xml:space="preserve"> of </w:t></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:fldChar w:fldCharType="begin"/></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:instrText xml:space="preserve"> NUMPAGES </w:instrText></w:r>'
+        '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:color w:val="595959"/><w:sz w:val="18"/></w:rPr>'
+        '<w:fldChar w:fldCharType="end"/></w:r>'
+        '</w:p>'
+        '</w:ftr>'
+    )
+    return xml.encode("utf-8")
+
+
+def _apply_uniform_footer(docx_bytes: bytes, prepared_by: str) -> bytes:
+    """Rewrite every word/footerN.xml part with a uniform footer:
+    'Date: <today>  •  Prepared by: <name>  •  Page X of Y'."""
+    in_buf = BytesIO(docx_bytes)
+    parts: dict[str, bytes] = {}
+    with zipfile.ZipFile(in_buf, "r") as zin:
+        for name in zin.namelist():
+            parts[name] = zin.read(name)
+    new_footer = _build_uniform_footer_xml(prepared_by)
+    changed = False
+    for name in list(parts):
+        if name.startswith("word/footer") and name.endswith(".xml"):
+            if parts[name] != new_footer:
+                parts[name] = new_footer
+                changed = True
+    if not changed:
+        return docx_bytes
+    out_buf = BytesIO()
+    with zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        for name, data in parts.items():
+            zout.writestr(name, data)
+    return out_buf.getvalue()
+
+
 def _raw_xml_cleanup(docx_bytes: bytes, body_replacements: dict[str, str]) -> bytes:
     today = date.today().strftime("%d %b %Y")
     in_buf = BytesIO(docx_bytes)
@@ -2161,14 +2809,20 @@ async def build(
     xlsx_bytes: bytes,
     prepared_by: str | None = None,
     enrich_findings: bool | None = None,
+    photos_dir=None,
 ) -> tuple[str, bytes]:
     """Build one or more audit reports from a Site_Visit_Report-format xlsx.
+
+    ``photos_dir`` (optional) is a sibling folder of JPGs/PNGs whose names
+    match the ``photo_refs`` column in the xlsx. When provided, photos
+    referenced by name are loaded from disk and embedded alongside any
+    images embedded directly in the xlsx.
 
     Returns ``(".docx", bytes)`` for a single-site upload, or
     ``(".zip", bytes)`` containing one .docx per site for multi-site uploads.
     """
     ix = get_index()
-    obs = parse_xlsx(xlsx_bytes)
+    obs = parse_xlsx(xlsx_bytes, photos_dir=photos_dir)
     if not obs:
         raise ValueError("xlsx contained no observation rows")
 
