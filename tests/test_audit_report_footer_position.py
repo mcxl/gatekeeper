@@ -8,6 +8,10 @@ from docx.shared import Cm
 
 from pims.services.audit_report_from_xlsx import _adjust_body_footer_position
 
+# python-docx rounds EMU values to whole twips on serialization; allow a
+# tolerance of one twip (635 EMU) when comparing.
+_TOL_EMU = 635
+
 
 def test_body_section_gets_2cm_bottom_margin_and_075cm_footer():
     """The function must lift the body section's bottom margin to 2.0 cm
@@ -24,8 +28,8 @@ def test_body_section_gets_2cm_bottom_margin_and_075cm_footer():
 
     # Section 1 (body) updated
     sec1 = doc.sections[1]
-    assert sec1.bottom_margin == Cm(2.0)
-    assert sec1.footer_distance == Cm(0.75)
+    assert abs(sec1.bottom_margin - Cm(2.0)) <= _TOL_EMU
+    assert abs(sec1.footer_distance - Cm(0.75)) <= _TOL_EMU
 
 
 def test_cover_section_margins_untouched():
@@ -54,5 +58,5 @@ def test_multiple_body_sections_all_adjusted():
     doc.add_section()
     _adjust_body_footer_position(doc)
     for i in (1, 2, 3):
-        assert doc.sections[i].bottom_margin == Cm(2.0)
-        assert doc.sections[i].footer_distance == Cm(0.75)
+        assert abs(doc.sections[i].bottom_margin - Cm(2.0)) <= _TOL_EMU
+        assert abs(doc.sections[i].footer_distance - Cm(0.75)) <= _TOL_EMU
