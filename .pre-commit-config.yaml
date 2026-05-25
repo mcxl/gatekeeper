@@ -1,12 +1,12 @@
 # REQUIRED setup after clone (one-time, per working tree):
-#   pip install pre-commit flake8
+#   pip install pre-commit flake8 pytest
 #   pre-commit install
 # The second command writes .git/hooks/pre-commit. Without it this config
 # is inert — committing this YAML alone does NOT activate the hook.
-# Runs on every `git commit` and blocks if flake8 fails.
-# Uses the system flake8 (language: system) to avoid pre-commit building
-# its own venv — sidesteps a Windows permission issue with the default
-# repo-based flake8 install. Config honours the repo's .flake8 file.
+# Runs on every `git commit` and blocks if any hook fails.
+# Uses system-language entries (language: system) to avoid pre-commit
+# building its own venv — sidesteps a Windows permission issue with the
+# default repo-based install. flake8 config honours the repo's .flake8 file.
 repos:
   - repo: local
     hooks:
@@ -17,3 +17,20 @@ repos:
         types: [python]
         pass_filenames: false
         args: ["."]
+
+      # SSA Format Contract guard. Pinned constants in
+      # pims/services/ssa_format_constants.py MUST match the rules in
+      # docs/SSA_FORMAT_CONTRACT.md. The contract test asserts every
+      # constant; if drift slips in, this hook blocks the commit.
+      #
+      # See ~/.claude/skills/ssa-audit-format/SKILL.md (or
+      # docs/skills/ssa-audit-format/SKILL.md) for the change procedure
+      # when you legitimately want to update a rule.
+      #
+      # Runs on every commit (51 assertions, ~0.3s total).
+      - id: ssa-format-contract
+        name: SSA Audit Format Contract
+        entry: python -m pytest tests/test_audit_report_format_contract.py -q --no-header
+        language: system
+        pass_filenames: false
+        always_run: true
