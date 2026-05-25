@@ -2362,7 +2362,7 @@ def _style_observations_register_borders(doc) -> None:
 _REGISTER_HEADER_FILL = "1F3864"  # deep navy
 _REGISTER_HEADER_FG = "FFFFFF"
 _REGISTER_ALT_FILL = "F2F2F2"     # light grey for zebra striping
-_REGISTER_COL_WIDTHS_CM = (0.6, 1.6, 1.3, 2.9, 3.4, 2.7, 2.5)  # sums to 15.0cm (A4 printable ~15.9)
+_REGISTER_COL_WIDTHS_CM = (0.5, 2.4, 1.8, 3.5, 3.8, 1.5, 2.5)  # sums to 16.0cm (A4 printable ~16.5)
 _REGISTER_PHOTO_WIDTH_CM = 2.2
 
 
@@ -2497,6 +2497,26 @@ def _strip_empty_paragraphs_before_register(doc) -> None:
             body.remove(el)
 
 
+def _add_register_section_heading(doc, text: str) -> None:
+    """Insert the 'Observations Register' (or similarly named) section
+    heading: Aptos 16pt bold with comfortable spacing before and after
+    so it stands apart from the preceding photos block and the table that
+    follows it."""
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    p = doc.add_paragraph()
+    pf = p.paragraph_format
+    pf.space_before = Pt(18)
+    pf.space_after = Pt(12)
+    pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = p.add_run(text)
+    run.font.name = _BODY_FONT  # Aptos
+    run.font.size = Pt(16)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)  # deep navy, matches table header fill
+
+
 def _append_observations_register(
     doc: Document, ix, site_address: str, site_obs: list[ParsedObs],
 ) -> None:
@@ -2506,8 +2526,7 @@ def _append_observations_register(
     fixed column widths."""
     if not site_obs:
         return
-    doc.add_paragraph()
-    doc.add_heading("Observations Register", level=2)
+    _add_register_section_heading(doc, "Observations Register")
 
     headers = ["#", "Status", "CCVS", "Observation", "Finding", "Recommendation", "Photo"]
     table = doc.add_table(rows=1, cols=len(headers))
