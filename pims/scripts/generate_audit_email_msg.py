@@ -29,35 +29,26 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from pims.services import ssa_format_constants as _fmt  # noqa: E402
 
-# Fixed To: line for the RPD client. Uses the "Display Name <email>"
-# form so Outlook shows the friendly name when the operator opens the
-# draft. Comma-separated per RFC 5322 (Outlook accepts comma or
-# semicolon, but the email stdlib emits comma).
-RPD_TO_RECIPIENTS = (
-    "Matthew McCarthy <matt@rpd.net.au>, "
-    "Nick Vuckovic <nick@rpd.net.au>"
-)
-DEFAULT_GREETING_TARGET = "Matt and Nick"
+# Re-exported for backward compatibility (other modules import these names
+# from this script). Source of truth is ssa_format_constants.
+RPD_TO_RECIPIENTS = _fmt.EMAIL_RECIPIENTS_RPD
+DEFAULT_GREETING_TARGET = _fmt.EMAIL_GREETING_TARGET
 
-_FOLDER_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(RPD|SDG)-(\d{2})$")
+_FOLDER_RE = re.compile(_fmt.FOLDER_NAME_REGEX)
 
 
 def _simplify_summary_to_ncr_only(body: str) -> str:
     """Strip the Observations / Conditional / Compliant bullets from the
     Summary of findings block; keep only the Non-conformances (NCR) line.
-
-    Operator's directive: the email body should surface NCRs only —
-    the other counts add noise."""
+    Per format contract R8."""
+    drop_prefixes = _fmt.EMAIL_SUMMARY_DROP_LINES_STARTING_WITH
     lines = body.split("\n")
     out: list[str] = []
     for line in lines:
         stripped = line.lstrip()
-        if (
-            stripped.startswith("• Observations recorded:")
-            or stripped.startswith("• Conditional:")
-            or stripped.startswith("• Compliant:")
-        ):
+        if any(stripped.startswith(p) for p in drop_prefixes):
             continue
         out.append(line)
     return "\n".join(out)
@@ -81,11 +72,13 @@ def _compose_subject_and_body(
 def _resolve_report_name(xlsx_path: Path, audit_date: str) -> str:
     """Best-effort guess of the sibling PDF name (matches
     generate_audit_report's new convention) so the body's 'Attachment: '
-    line is correct. Recipients prefer PDF; the sibling .docx is still
-    produced and can be attached manually if needed."""
+    line is correct. Per format contract R8/R9."""
     m = _FOLDER_RE.match(xlsx_path.parent.name)
     if m:
-        return f"RPD_SSA_Audit_Report_{m.group(1)}-{m.group(3)}.pdf"
+        return _fmt.REPORT_PDF_NAME_TEMPLATE.format(
+            date=m.group(1), nn=m.group(3),
+        )
+    # Non-canonical folder fallback: use audit_date or 'unknown'
     return f"RPD_SSA_Audit_Report_{audit_date or 'unknown'}.pdf"
 
 
@@ -104,7 +97,7 @@ def _build_eml_bytes(
     msg = EmailMessage(policy=_SMTP_POLICY)
     msg["To"] = to
     msg["Subject"] = subject
-    msg["X-Unsent"] = "1"
+    msg["X-Unsent"] = _fmt.EMAIL_X_UNSENT_HEADER
     msg.set_content(body, subtype="plain", charset="utf-8")
     return bytes(msg)
 
@@ -156,7 +149,9 @@ def main() -> int:
 
     subject, body = _compose_subject_and_body(obs, report_path)
 
-    eml_name = f"Email_Draft_{stamp}_{_slug(site)}.eml"
+    eml_name = _fmt.EMAIL_EML_NAME_TEMPLATE.format(
+        stamp=stamp, site_slug=_slug(site),
+    )
     eml_path = out_dir / eml_name
 
     _save_eml(eml_path, subject, body)

@@ -30,14 +30,13 @@ from docx.shared import Cm
 
 PHOTO_WIDTH_CM = 2.5
 
-# Client code -> human-readable name shown in the running header. The
-# folder naming convention ``YYYY-MM-DD-<CLIENT>-NN`` uses the 3-letter
-# code; this map expands it for display. Used by _build_running_header
-# and by the CLI script generate_audit_report.py.
-CLIENT_DISPLAY_NAMES: dict[str, str] = {
-    "RPD": "Robertson's Remedial and Painting",
-}
-DEFAULT_CLIENT_DISPLAY_NAME = "Robertson's Remedial and Painting"
+# Format-locked constants live in a single module so the operator can
+# audit them in one place. CLIENT_DISPLAY_NAMES and DEFAULT_CLIENT_DISPLAY_NAME
+# are re-exported here for backward compatibility with code that imports
+# them from this module.
+from pims.services import ssa_format_constants as _fmt  # noqa: E402
+CLIENT_DISPLAY_NAMES = _fmt.CLIENT_DISPLAY_NAMES
+DEFAULT_CLIENT_DISPLAY_NAME = _fmt.DEFAULT_CLIENT_DISPLAY_NAME
 
 from pims.services import ccvs_section_map  # noqa: E402
 from pims.services.template_index import (  # noqa: E402
@@ -1940,8 +1939,8 @@ _COVER_END_ANCHORS = (
     "executive summary",
 )
 
-_BODY_FONT = "Aptos"
-_BODY_FONT_PT = 10.0
+_BODY_FONT = _fmt.BODY_FONT_NAME
+_BODY_FONT_PT = _fmt.BODY_FONT_PT
 
 
 def _is_back_cover_paragraph(p_el) -> bool:
@@ -2141,16 +2140,7 @@ def _set_table_no_borders(table) -> None:
 
 def _adjust_body_footer_position(doc) -> None:
     """Move the footer lower on the page and create a vertical gap between
-    body content and footer text.
-
-    Template default for the body section was bottom=709 twips, footer=708
-    twips, which means the body's bottom edge sits at the same height as
-    the footer text — no visual breathing room, and the footer sits higher
-    on the page than it should.
-
-    Fix: bottom margin -> 2.0 cm (body ends higher); footer distance -> 0.75
-    cm (footer drops closer to page edge). Net gap between last body line
-    and footer ~= 1.25 cm.
+    body content and footer text. Per format contract R4.
 
     Cover section (section 0) is untouched — its margins are template-driven
     and shouldn't change."""
@@ -2158,8 +2148,8 @@ def _adjust_body_footer_position(doc) -> None:
     for i, section in enumerate(doc.sections):
         if i == 0:
             continue
-        section.bottom_margin = Cm(2.0)
-        section.footer_distance = Cm(0.75)
+        section.bottom_margin = Cm(_fmt.BODY_BOTTOM_MARGIN_CM)
+        section.footer_distance = Cm(_fmt.FOOTER_DISTANCE_CM)
 
 
 def _populate_header_with_branded_table(
@@ -2179,15 +2169,17 @@ def _populate_header_with_branded_table(
         hdr_el.remove(child)
     hdr_el.append(OxmlElement("w:p"))
 
-    tbl = header.add_table(rows=1, cols=2, width=Cm(16))
+    tbl = header.add_table(
+        rows=1, cols=2, width=Cm(_fmt.HEADER_TABLE_WIDTH_CM),
+    )
     tbl.autofit = False
     # Set both column widths AND cell widths (Word respects whichever it
     # finds first; setting both prevents the cells stacking vertically when
     # the table's intrinsic width isn't honoured).
-    tbl.columns[0].width = Cm(13)
-    tbl.columns[1].width = Cm(3)
-    tbl.rows[0].cells[0].width = Cm(13)
-    tbl.rows[0].cells[1].width = Cm(3)
+    tbl.columns[0].width = Cm(_fmt.HEADER_TEXT_COL_CM)
+    tbl.columns[1].width = Cm(_fmt.HEADER_LOGO_COL_CM)
+    tbl.rows[0].cells[0].width = Cm(_fmt.HEADER_TEXT_COL_CM)
+    tbl.rows[0].cells[1].width = Cm(_fmt.HEADER_LOGO_COL_CM)
 
     # Force fixed table layout so column widths aren't auto-resized.
     tbl_el = tbl._tbl
@@ -2205,8 +2197,7 @@ def _populate_header_with_branded_table(
     if tblW is None:
         tblW = OxmlElement("w:tblW")
         tblPr.append(tblW)
-    # 16 cm in twips (1/20 of a point, dxa unit). 1 cm = 567 twips.
-    tblW.set(qn("w:w"), "9072")
+    tblW.set(qn("w:w"), str(_fmt.HEADER_TABLE_WIDTH_TWIPS))
     tblW.set(qn("w:type"), "dxa")
 
     _set_table_no_borders(tbl)
@@ -2217,8 +2208,8 @@ def _populate_header_with_branded_table(
     left_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = left_p.add_run(header_text)
     run.font.name = _BODY_FONT
-    run.font.size = Pt(10)
-    run.font.color.rgb = RGBColor(0x40, 0x40, 0x40)
+    run.font.size = Pt(_fmt.HEADER_TEXT_FONT_PT)
+    run.font.color.rgb = RGBColor(*_fmt.HEADER_TEXT_COLOR_RGB)
 
     # Right cell — logo
     right_cell = tbl.rows[0].cells[1]
@@ -2226,7 +2217,9 @@ def _populate_header_with_branded_table(
     right_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     if logo_path.exists():
         try:
-            right_p.add_run().add_picture(str(logo_path), width=Cm(2.5))
+            right_p.add_run().add_picture(
+                str(logo_path), width=Cm(_fmt.HEADER_LOGO_WIDTH_CM),
+            )
         except Exception:
             pass  # unloadable image -> degrade to text-only header
 
@@ -2262,7 +2255,7 @@ def _build_running_header(
         )
     logo_path = Path(logo_path) if not isinstance(logo_path, Path) else logo_path
 
-    header_text = f"{client_display_name} – Site Safety Audit Report"
+    header_text = f"{client_display_name}{_fmt.HEADER_TITLE_SUFFIX}"
 
     for i, section in enumerate(doc.sections):
         if i == 0:
@@ -2288,9 +2281,9 @@ def _build_running_header(
             )
 
 
-_GRID_BORDER_COLOR = "BFBFBF"  # light grey
-_GRID_BORDER_VAL = "dotted"
-_GRID_BORDER_SZ = "4"  # eighths of a point => 0.5pt
+_GRID_BORDER_COLOR = _fmt.BORDER_COLOR_LIGHT_GREY
+_GRID_BORDER_VAL = "dotted"  # legacy; no longer applied (kept for back-compat)
+_GRID_BORDER_SZ = _fmt.BORDER_SIZE_HALF_PT
 
 
 def _set_table_borders(
@@ -2387,11 +2380,11 @@ def _style_observations_register_borders(doc) -> None:
             return
 
 
-_REGISTER_HEADER_FILL = "1F3864"  # deep navy
-_REGISTER_HEADER_FG = "FFFFFF"
-_REGISTER_ALT_FILL = "F2F2F2"     # light grey for zebra striping
-_REGISTER_COL_WIDTHS_CM = (1.0, 1.75, 1.75, 2.5, 3.0, 3.5, 3.0)  # sums to 16.5cm (A4 printable ~16.5) - operator spec
-_REGISTER_PHOTO_WIDTH_CM = 2.2
+_REGISTER_HEADER_FILL = _fmt.REGISTER_HEADER_FILL_HEX
+_REGISTER_HEADER_FG = _fmt.REGISTER_HEADER_FG_HEX
+_REGISTER_ALT_FILL = _fmt.REGISTER_ALT_FILL_HEX
+_REGISTER_COL_WIDTHS_CM = _fmt.REGISTER_COL_WIDTHS_CM
+_REGISTER_PHOTO_WIDTH_CM = _fmt.REGISTER_PHOTO_WIDTH_CM
 
 
 def _set_cell_vertical_align(cell, val: str = "top") -> None:
@@ -2527,22 +2520,20 @@ def _strip_empty_paragraphs_before_register(doc) -> None:
 
 def _add_register_section_heading(doc, text: str) -> None:
     """Insert the 'Observations Register' (or similarly named) section
-    heading: Aptos 16pt bold with comfortable spacing before and after
-    so it stands apart from the preceding photos block and the table that
-    follows it."""
+    heading per format contract R7."""
     from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     p = doc.add_paragraph()
     pf = p.paragraph_format
-    pf.space_before = Pt(18)
-    pf.space_after = Pt(12)
+    pf.space_before = Pt(_fmt.REGISTER_HEADING_SPACE_BEFORE_PT)
+    pf.space_after = Pt(_fmt.REGISTER_HEADING_SPACE_AFTER_PT)
     pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run(text)
-    run.font.name = _BODY_FONT  # Aptos
-    run.font.size = Pt(16)
-    run.font.bold = True
-    run.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)  # deep navy, matches table header fill
+    run.font.name = _BODY_FONT
+    run.font.size = Pt(_fmt.REGISTER_HEADING_FONT_PT)
+    run.font.bold = _fmt.REGISTER_HEADING_BOLD
+    run.font.color.rgb = RGBColor(*_fmt.REGISTER_HEADING_COLOR_RGB)
 
 
 def _append_observations_register(
@@ -2554,9 +2545,9 @@ def _append_observations_register(
     fixed column widths."""
     if not site_obs:
         return
-    _add_register_section_heading(doc, "Observations Register")
+    _add_register_section_heading(doc, _fmt.REGISTER_HEADING_TEXT)
 
-    headers = ["#", "Status", "CCVS", "Observation", "Finding", "Recommendation", "Photo"]
+    headers = list(_fmt.REGISTER_HEADERS)
     table = doc.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     _set_table_layout_fixed(table)

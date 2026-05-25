@@ -41,11 +41,13 @@ if _env_file.exists():
             os.environ[_k] = _v
 
 from pims.services import audit_report_from_xlsx  # noqa: E402
+from pims.services import ssa_format_constants as _fmt  # noqa: E402
 
 
 # Folder name canonical form: ``YYYY-MM-DD-<CLIENT>-NN`` where CLIENT is
-# RPD or SDG. NN is the audit sub-id.
-_FOLDER_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(RPD|SDG)-(\d{2})$")
+# RPD or SDG. NN is the audit sub-id. Pattern lives in the format-locked
+# constants module.
+_FOLDER_RE = re.compile(_fmt.FOLDER_NAME_REGEX)
 
 
 def _parse_folder_id(folder_name: str) -> tuple[str | None, str | None, str | None]:
@@ -107,9 +109,9 @@ def _compose_output_name(
             file=sys.stderr,
         )
     if ext == ".docx":
-        return f"RPD_SSA_Audit_Report_{audit_date}-{nn}{ext}"
+        return _fmt.REPORT_DOCX_NAME_TEMPLATE.format(date=audit_date, nn=nn)
     # Multi-site zip case
-    return f"RPD_SSA_Audit_Reports_{audit_date}-{nn}{ext}"
+    return _fmt.REPORT_ZIP_NAME_TEMPLATE.format(date=audit_date, nn=nn)
 
 
 def main() -> int:
