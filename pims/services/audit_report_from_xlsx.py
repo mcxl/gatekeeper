@@ -2129,16 +2129,94 @@ def _set_table_no_borders(table) -> None:
     tblPr.append(borders)
 
 
+def _populate_header_with_branded_table(
+    header, header_text: str, logo_path, OxmlElement,
+    Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+) -> None:
+    """Replace ``header``'s content with our branded 2-cell borderless
+    table: title text left, logo right. Cell widths set at BOTH column AND
+    cell level so Word respects them on render."""
+    try:
+        header.is_linked_to_previous = False
+    except Exception:
+        pass
+
+    hdr_el = header._element
+    for child in list(hdr_el):
+        hdr_el.remove(child)
+    hdr_el.append(OxmlElement("w:p"))
+
+    tbl = header.add_table(rows=1, cols=2, width=Cm(16))
+    tbl.autofit = False
+    # Set both column widths AND cell widths (Word respects whichever it
+    # finds first; setting both prevents the cells stacking vertically when
+    # the table's intrinsic width isn't honoured).
+    tbl.columns[0].width = Cm(13)
+    tbl.columns[1].width = Cm(3)
+    tbl.rows[0].cells[0].width = Cm(13)
+    tbl.rows[0].cells[1].width = Cm(3)
+
+    # Force fixed table layout so column widths aren't auto-resized.
+    tbl_el = tbl._tbl
+    tblPr = tbl_el.find(qn("w:tblPr"))
+    if tblPr is None:
+        tblPr = OxmlElement("w:tblPr")
+        tbl_el.insert(0, tblPr)
+    tblLayout = tblPr.find(qn("w:tblLayout"))
+    if tblLayout is None:
+        tblLayout = OxmlElement("w:tblLayout")
+        tblPr.append(tblLayout)
+    tblLayout.set(qn("w:type"), "fixed")
+    # Set total table width explicitly.
+    tblW = tblPr.find(qn("w:tblW"))
+    if tblW is None:
+        tblW = OxmlElement("w:tblW")
+        tblPr.append(tblW)
+    # 16 cm in twips (1/20 of a point, dxa unit). 1 cm = 567 twips.
+    tblW.set(qn("w:w"), "9072")
+    tblW.set(qn("w:type"), "dxa")
+
+    _set_table_no_borders(tbl)
+
+    # Left cell — title text
+    left_cell = tbl.rows[0].cells[0]
+    left_p = left_cell.paragraphs[0]
+    left_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = left_p.add_run(header_text)
+    run.font.name = _BODY_FONT
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(0x40, 0x40, 0x40)
+
+    # Right cell — logo
+    right_cell = tbl.rows[0].cells[1]
+    right_p = right_cell.paragraphs[0]
+    right_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    if logo_path.exists():
+        try:
+            right_p.add_run().add_picture(str(logo_path), width=Cm(2.5))
+        except Exception:
+            pass  # unloadable image -> degrade to text-only header
+
+
 def _build_running_header(
     doc, client_display_name: str, logo_path=None,
 ) -> None:
-    """Stamp a branded running header on every section: a 2-cell borderless
-    table with '<client> – Site Safety Audit Report' on the left and the
-    AuditCo logo on the right.
+    """Stamp the branded running header policy across all sections:
 
-    First-page suppression: sets
-    ``section.different_first_page_header_footer = True`` so the cover
-    (page 1) renders header-free while subsequent pages carry the header.
+    - Section 0 (cover):
+        - ``different_first_page_header_footer = True`` so page 1 uses
+          the template's first-page header (cover design preserved).
+        - Default header populated with our branded content for any
+          overflow page (rare).
+    - Section 1+ (body):
+        - ``different_first_page_header_footer = False`` so EVERY page
+          in the body section uses our default header. This stops the
+          first body page from inheriting the cover's first-page header
+          (which contains the cover's anchored design shapes — the
+          'orange bleed' onto page 2).
+        - First-page header explicitly populated with our content too,
+          as a belt-and-suspenders against Word's "inherit from previous
+          section" default when titlePg is set.
     """
     from pathlib import Path
     from docx.shared import Cm, Pt, RGBColor
@@ -2153,50 +2231,28 @@ def _build_running_header(
 
     header_text = f"{client_display_name} – Site Safety Audit Report"
 
-    for section in doc.sections:
-        section.different_first_page_header_footer = True
+    for i, section in enumerate(doc.sections):
+        if i == 0:
+            # Cover section: keep template's first-page design intact.
+            section.different_first_page_header_footer = True
+        else:
+            # Body section: same header on every page; don't inherit
+            # from the cover section's first-page header.
+            section.different_first_page_header_footer = False
 
-        header = section.header
-        # Unlink from previous so this section's header is editable
-        # (no-op on section 0; required on subsequent sections).
-        try:
-            header.is_linked_to_previous = False
-        except Exception:
-            pass
+        _populate_header_with_branded_table(
+            section.header, header_text, logo_path, OxmlElement,
+            Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+        )
 
-        # Wipe existing header content so the template's baked-in default
-        # header (if any) doesn't stack with ours.
-        hdr_el = header._element
-        for child in list(hdr_el):
-            hdr_el.remove(child)
-        # Headers MUST contain at least one paragraph element to be valid.
-        hdr_el.append(OxmlElement("w:p"))
-
-        tbl = header.add_table(rows=1, cols=2, width=Cm(16))
-        tbl.autofit = False
-        tbl.columns[0].width = Cm(13)
-        tbl.columns[1].width = Cm(3)
-        _set_table_no_borders(tbl)
-
-        # Left cell — title text
-        left_cell = tbl.rows[0].cells[0]
-        # Clear default empty paragraph content
-        left_p = left_cell.paragraphs[0]
-        left_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        run = left_p.add_run(header_text)
-        run.font.name = _BODY_FONT
-        run.font.size = Pt(10)
-        run.font.color.rgb = RGBColor(0x40, 0x40, 0x40)
-
-        # Right cell — logo
-        right_cell = tbl.rows[0].cells[1]
-        right_p = right_cell.paragraphs[0]
-        right_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        if logo_path.exists():
-            try:
-                right_p.add_run().add_picture(str(logo_path), width=Cm(2.5))
-            except Exception:
-                pass  # unloadable image -> degrade to text-only header
+        # For body sections, also explicitly populate first_page_header
+        # so it never inherits the cover's anchored shapes (defence
+        # against any Word version that still consults titlePg).
+        if i > 0:
+            _populate_header_with_branded_table(
+                section.first_page_header, header_text, logo_path,
+                OxmlElement, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
+            )
 
 
 _GRID_BORDER_COLOR = "BFBFBF"  # light grey
