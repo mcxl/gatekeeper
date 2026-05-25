@@ -374,7 +374,7 @@ def parse_xlsx(xlsx_bytes: bytes, photos_dir=None) -> list[ParsedObs]:
         photo_image = row_to_image.get(r)
         if photo_image is None:
             photo_image = _resolve_photo_for_refs(photo_refs_val, photo_lookup)
-        out.append(ParsedObs(  # noqa: filled then positional fallback below
+        out.append(ParsedObs(
             row_idx=r,
             site_address=site,
             audit_date=cell("audit_date"),
@@ -532,15 +532,15 @@ async def probe_planning_tier(ix: TemplateIndex, site_obs: list[ParsedObs]) -> s
         raw = await _anthropic_call(system, user, max_tokens=256)
         data = json.loads(_strip_fences(raw))
         h = float(data.get("tier_high_score") or 0)
-        l = float(data.get("tier_low_score") or 0)
+        lo = float(data.get("tier_low_score") or 0)
         rec = data.get("recommended_tier") or ""
-        if max(h, l) < MIN_TIER_CONFIDENCE:
+        if max(h, lo) < MIN_TIER_CONFIDENCE:
             return PLANNING_LOW
         if rec == ">$250K":
             return PLANNING_HIGH
         if rec == "<$250K":
             return PLANNING_LOW
-        return PLANNING_HIGH if h >= l else PLANNING_LOW
+        return PLANNING_HIGH if h >= lo else PLANNING_LOW
     except Exception as e:
         log.warning(f"tier probe failed, defaulting to <$250K: {e}")
         return PLANNING_LOW
@@ -675,7 +675,8 @@ async def executive_summary(
         return await _anthropic_call(system, user, max_tokens=512)
     except Exception as e:
         log.warning(f"exec summary failed, using fallback: {e}")
-        ncr = counts.get("NCR", 0); cond = counts.get("Conditional", 0)
+        ncr = counts.get("NCR", 0)
+        cond = counts.get("Conditional", 0)
         return (
             f"This audit was conducted at {site_address} on {audit_date}. "
             f"{ncr} non-conformances and {cond} conditional findings were identified "

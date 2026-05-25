@@ -22,9 +22,8 @@ def test_body_section_gets_2cm_bottom_margin_and_075cm_footer():
     doc.add_section()
     _adjust_body_footer_position(doc)
 
-    # Section 0 (cover) untouched
-    sec0 = doc.sections[0]
-    # We don't assert sec0's values — only that we didn't crash on it.
+    # Section 0 (cover) untouched (no assertion — we just verify we
+    # didn't crash on it; explicit check is in the next test below).
 
     # Section 1 (body) updated
     sec1 = doc.sections[1]

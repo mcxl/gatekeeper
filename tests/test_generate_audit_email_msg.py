@@ -6,7 +6,6 @@ from __future__ import annotations
 import email
 from pathlib import Path
 
-import pytest
 
 from pims.scripts.generate_audit_email_msg import (
     DEFAULT_GREETING_TARGET,

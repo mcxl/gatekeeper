@@ -10,7 +10,6 @@ from __future__ import annotations
 import sys
 import types
 
-import pytest
 
 from pims.scripts.generate_audit_report import _render_pdf_sibling
 

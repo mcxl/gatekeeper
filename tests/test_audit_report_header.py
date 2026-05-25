@@ -12,10 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from docx import Document
 from docx.oxml.ns import qn
-from docx.shared import Cm
 
 from pims.services.audit_report_from_xlsx import (
     CLIENT_DISPLAY_NAMES,
