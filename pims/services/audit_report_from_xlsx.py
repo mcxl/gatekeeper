@@ -2362,7 +2362,7 @@ def _style_observations_register_borders(doc) -> None:
 _REGISTER_HEADER_FILL = "1F3864"  # deep navy
 _REGISTER_HEADER_FG = "FFFFFF"
 _REGISTER_ALT_FILL = "F2F2F2"     # light grey for zebra striping
-_REGISTER_COL_WIDTHS_CM = (0.5, 2.4, 1.8, 3.5, 3.8, 1.5, 2.5)  # sums to 16.0cm (A4 printable ~16.5)
+_REGISTER_COL_WIDTHS_CM = (1.0, 1.75, 1.75, 2.5, 3.0, 3.5, 3.0)  # sums to 16.5cm (A4 printable ~16.5) - operator spec
 _REGISTER_PHOTO_WIDTH_CM = 2.2
 
 
