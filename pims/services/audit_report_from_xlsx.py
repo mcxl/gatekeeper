@@ -1499,6 +1499,11 @@ def _build_site_doc(
     # Report (left) + AuditCo logo (right). Suppressed on cover page.
     _build_running_header(doc, client_display_name)
 
+    # Push the body section's footer lower on the page (and lift its bottom
+    # margin) so the footer text doesn't render right against the last body
+    # line.
+    _adjust_body_footer_position(doc)
+
     # Default policy: every body-level table renders with INVISIBLE
     # borders (operator preference — printed gridlines look unprofessional).
     # doc.tables excludes header/footer tables, so the borderless header
@@ -2132,6 +2137,29 @@ def _set_table_no_borders(table) -> None:
         b.set(qn("w:val"), "nil")
         borders.append(b)
     tblPr.append(borders)
+
+
+def _adjust_body_footer_position(doc) -> None:
+    """Move the footer lower on the page and create a vertical gap between
+    body content and footer text.
+
+    Template default for the body section was bottom=709 twips, footer=708
+    twips, which means the body's bottom edge sits at the same height as
+    the footer text — no visual breathing room, and the footer sits higher
+    on the page than it should.
+
+    Fix: bottom margin -> 2.0 cm (body ends higher); footer distance -> 0.75
+    cm (footer drops closer to page edge). Net gap between last body line
+    and footer ~= 1.25 cm.
+
+    Cover section (section 0) is untouched — its margins are template-driven
+    and shouldn't change."""
+    from docx.shared import Cm
+    for i, section in enumerate(doc.sections):
+        if i == 0:
+            continue
+        section.bottom_margin = Cm(2.0)
+        section.footer_distance = Cm(0.75)
 
 
 def _populate_header_with_branded_table(
