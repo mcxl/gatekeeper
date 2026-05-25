@@ -1499,10 +1499,15 @@ def _build_site_doc(
     # Report (left) + AuditCo logo (right). Suppressed on cover page.
     _build_running_header(doc, client_display_name)
 
-    # Unify every body-level table's gridlines to dotted light-grey (McKinsey-
-    # style). doc.tables excludes header/footer tables, so the borderless
-    # header table is untouched.
-    _apply_dotted_grid_to_all_tables(doc)
+    # Default policy: every body-level table renders with INVISIBLE
+    # borders (operator preference — printed gridlines look unprofessional).
+    # doc.tables excludes header/footer tables, so the borderless header
+    # table is untouched.
+    _make_all_table_borders_invisible(doc)
+
+    # Exception: the Observations Register table re-enables solid light-
+    # grey borders so its row structure stays readable.
+    _style_observations_register_borders(doc)
 
     # Save to bytes.
     buf = BytesIO()
@@ -2260,9 +2265,16 @@ _GRID_BORDER_VAL = "dotted"
 _GRID_BORDER_SZ = "4"  # eighths of a point => 0.5pt
 
 
-def _set_table_borders_dotted_grey(table) -> None:
-    """Replace the table's border set with dotted light-grey 0.5pt on all
-    sides and inside H/V. Restrained, McKinsey-style grid."""
+def _set_table_borders(
+    table, *, val: str, sz: str = "4", color: str = "BFBFBF",
+) -> None:
+    """Replace the table's border set with a uniform edge style.
+
+    ``val``: Word border type — ``"nil"`` for invisible, ``"single"`` for
+    solid hairline, ``"dotted"`` for dotted, etc.
+    ``sz``: border weight in eighths of a point (4 = 0.5pt).
+    ``color``: hex RGB without ``#``.
+    """
     from docx.oxml import OxmlElement
     tbl = table._tbl
     tblPr = tbl.find(qn("w:tblPr"))
@@ -2275,13 +2287,13 @@ def _set_table_borders_dotted_grey(table) -> None:
     borders = OxmlElement("w:tblBorders")
     for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
         b = OxmlElement(f"w:{edge}")
-        b.set(qn("w:val"), _GRID_BORDER_VAL)
-        b.set(qn("w:sz"), _GRID_BORDER_SZ)
+        b.set(qn("w:val"), val)
+        b.set(qn("w:sz"), sz)
         b.set(qn("w:space"), "0")
-        b.set(qn("w:color"), _GRID_BORDER_COLOR)
+        b.set(qn("w:color"), color)
         borders.append(b)
     tblPr.append(borders)
-    # Also clear any per-cell border overrides that would otherwise win.
+    # Clear any per-cell border overrides that would otherwise win.
     for row in table.rows:
         for cell in row.cells:
             tcPr = cell._tc.find(qn("w:tcPr"))
@@ -2292,12 +2304,59 @@ def _set_table_borders_dotted_grey(table) -> None:
                 tcPr.remove(tcBorders)
 
 
-def _apply_dotted_grid_to_all_tables(doc) -> None:
+def _set_table_borders_invisible(table) -> None:
+    """All edges + interior dividers set to 'nil' so nothing prints."""
+    _set_table_borders(table, val="nil")
+
+
+def _set_table_borders_light_grey(table) -> None:
+    """Solid 0.5pt light-grey (BFBFBF) borders. Used for the Observations
+    Register so its row structure is visually readable while staying
+    subtle."""
+    _set_table_borders(table, val="single", sz="4", color="BFBFBF")
+
+
+def _make_all_table_borders_invisible(doc) -> None:
+    """Strip all printable gridlines from every body-level table. Run
+    BEFORE any per-table style overrides (e.g. the Observations Register
+    re-enables its own light-grey borders after this pass)."""
     for t in doc.tables:
         try:
-            _set_table_borders_dotted_grey(t)
+            _set_table_borders_invisible(t)
         except Exception:
             continue
+
+
+def _style_observations_register_borders(doc) -> None:
+    """Find the Observations Register table (the table that immediately
+    follows a heading paragraph whose text starts with 'Observations
+    Register') and re-apply light-grey borders. Falls back to the LAST
+    body-level table on the page if the heading isn't found."""
+    body = doc.element.body
+    children = list(body)
+    target_tbl = None
+    for i, ch in enumerate(children):
+        if ch.tag != qn("w:p"):
+            continue
+        text = "".join(t.text or "" for t in ch.iter(qn("w:t"))).strip()
+        if text.lower().startswith("observations register"):
+            # Find the next w:tbl sibling.
+            for sib in children[i + 1:]:
+                if sib.tag == qn("w:tbl"):
+                    target_tbl = sib
+                    break
+            break
+    if target_tbl is None:
+        # Fallback: last body-level table (the register is appended last).
+        if doc.tables:
+            target_tbl = doc.tables[-1]._tbl
+    if target_tbl is None:
+        return
+    # Resolve the python-docx Table wrapper for the raw tbl element.
+    for t in doc.tables:
+        if t._tbl is target_tbl:
+            _set_table_borders_light_grey(t)
+            return
 
 
 _REGISTER_HEADER_FILL = "1F3864"  # deep navy
