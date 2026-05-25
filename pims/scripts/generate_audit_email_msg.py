@@ -43,26 +43,50 @@ DEFAULT_GREETING_TARGET = "Matt and Nick"
 _FOLDER_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(RPD|SDG)-(\d{2})$")
 
 
+def _simplify_summary_to_ncr_only(body: str) -> str:
+    """Strip the Observations / Conditional / Compliant bullets from the
+    Summary of findings block; keep only the Non-conformances (NCR) line.
+
+    Operator's directive: the email body should surface NCRs only —
+    the other counts add noise."""
+    lines = body.split("\n")
+    out: list[str] = []
+    for line in lines:
+        stripped = line.lstrip()
+        if (
+            stripped.startswith("• Observations recorded:")
+            or stripped.startswith("• Conditional:")
+            or stripped.startswith("• Compliant:")
+        ):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 def _compose_subject_and_body(
     obs, report_path: Path, greeting_target: str = DEFAULT_GREETING_TARGET,
 ) -> tuple[str, str]:
     """Build (subject, body) from observations using the existing email
-    template, then rewrite the placeholder greeting for the fixed RPD
-    recipients."""
+    template, then:
+    - rewrite the placeholder greeting for the fixed RPD recipients
+    - strip the Summary section down to the NCR line only
+    """
     from pims.scripts.generate_audit_email_draft import build_email_body
     subject, body = build_email_body(obs, report_path)
     body = body.replace("Hi [Client Name],", f"Hi {greeting_target},")
+    body = _simplify_summary_to_ncr_only(body)
     return subject, body
 
 
 def _resolve_report_name(xlsx_path: Path, audit_date: str) -> str:
-    """Best-effort guess of the sibling docx name (matches
+    """Best-effort guess of the sibling PDF name (matches
     generate_audit_report's new convention) so the body's 'Attachment: '
-    line is correct."""
+    line is correct. Recipients prefer PDF; the sibling .docx is still
+    produced and can be attached manually if needed."""
     m = _FOLDER_RE.match(xlsx_path.parent.name)
     if m:
-        return f"RPD_SSA_Audit_Report_{m.group(1)}-{m.group(3)}.docx"
-    return f"RPD_SSA_Audit_Report_{audit_date or 'unknown'}.docx"
+        return f"RPD_SSA_Audit_Report_{m.group(1)}-{m.group(3)}.pdf"
+    return f"RPD_SSA_Audit_Report_{audit_date or 'unknown'}.pdf"
 
 
 def _build_eml_bytes(

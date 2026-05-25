@@ -15,6 +15,7 @@ from pims.scripts.generate_audit_email_msg import (
     _compose_subject_and_body,
     _resolve_report_name,
     _save_eml,
+    _simplify_summary_to_ncr_only,
 )
 
 
@@ -65,7 +66,19 @@ def test_resolve_report_name_canonical_folder(tmp_path):
     xlsx = folder / "Site_Visit_Report_2026-05-22.xlsx"
     xlsx.write_bytes(b"x")
     name = _resolve_report_name(xlsx, "2026-05-22")
-    assert name == "RPD_SSA_Audit_Report_2026-05-22-03.docx"
+    assert name == "RPD_SSA_Audit_Report_2026-05-22-03.pdf"
+
+
+def test_resolve_report_name_returns_pdf_not_docx(tmp_path):
+    """Operator preference: email Attachment line references the PDF
+    (recipients prefer PDF over docx)."""
+    folder = tmp_path / "2026-05-22-RPD-03"
+    folder.mkdir()
+    xlsx = folder / "x.xlsx"
+    xlsx.write_bytes(b"x")
+    name = _resolve_report_name(xlsx, "2026-05-22")
+    assert name.endswith(".pdf")
+    assert not name.endswith(".docx")
 
 
 def test_resolve_report_name_noncanonical_falls_back(tmp_path):
@@ -74,7 +87,7 @@ def test_resolve_report_name_noncanonical_falls_back(tmp_path):
     xlsx = folder / "x.xlsx"
     xlsx.write_bytes(b"x")
     name = _resolve_report_name(xlsx, "2026-05-22")
-    assert name == "RPD_SSA_Audit_Report_2026-05-22.docx"
+    assert name == "RPD_SSA_Audit_Report_2026-05-22.pdf"
 
 
 def test_resolve_report_name_no_audit_date(tmp_path):
@@ -108,9 +121,54 @@ def test_compose_preserves_subject_format():
 
 def test_compose_includes_attachment_line():
     obs = [_FakeObs()]
-    report = Path("RPD_SSA_Audit_Report_2026-05-22-03.docx")
+    report = Path("RPD_SSA_Audit_Report_2026-05-22-03.pdf")
     _subject, body = _compose_subject_and_body(obs, report)
-    assert "Attachment: RPD_SSA_Audit_Report_2026-05-22-03.docx" in body
+    assert "Attachment: RPD_SSA_Audit_Report_2026-05-22-03.pdf" in body
+
+
+# ---------- _simplify_summary_to_ncr_only ----------
+
+def test_simplify_summary_drops_observations_conditional_compliant():
+    body = (
+        "Summary of findings:\n"
+        "  • Observations recorded: 6\n"
+        "  • Non-conformances (NCR): 0\n"
+        "  • Conditional: 0\n"
+        "  • Compliant: 6\n"
+        "\n"
+        "No non-conformances were identified...\n"
+    )
+    out = _simplify_summary_to_ncr_only(body)
+    assert "• Observations recorded:" not in out
+    assert "• Conditional:" not in out
+    assert "• Compliant:" not in out
+    assert "• Non-conformances (NCR): 0" in out
+    assert "No non-conformances" in out  # surrounding text preserved
+
+
+def test_simplify_summary_preserves_ncr_line_with_any_count():
+    for n in (0, 1, 5, 99):
+        body = (
+            f"Summary of findings:\n"
+            f"  • Observations recorded: 6\n"
+            f"  • Non-conformances (NCR): {n}\n"
+            f"  • Conditional: 0\n"
+            f"  • Compliant: 6\n"
+        )
+        out = _simplify_summary_to_ncr_only(body)
+        assert f"• Non-conformances (NCR): {n}" in out
+
+
+def test_compose_full_body_has_only_ncr_in_summary():
+    """End-to-end: _compose_subject_and_body applies the simplification."""
+    obs = [_FakeObs(status="NCR")] * 2 + [_FakeObs(status="Compliant")] * 4
+    _s, body = _compose_subject_and_body(obs, Path("x.pdf"))
+    # Summary block contains the NCR line
+    assert "Non-conformances (NCR): 2" in body
+    # And does NOT contain the noise lines
+    assert "Observations recorded:" not in body
+    assert "• Conditional:" not in body
+    assert "• Compliant:" not in body
 
 
 def test_compose_includes_signature_block():
