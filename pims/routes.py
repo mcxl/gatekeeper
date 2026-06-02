@@ -2766,6 +2766,7 @@ async def upload_observations_xlsx(
                 "monitoring_note": _cell(excel_row, "monitoring_note"),
                 "legal_ref": _cell(excel_row, "legal_ref"),
                 "photo_refs": _cell(excel_row, "photo_refs"),
+                "photo_url": _cell(excel_row, "photo_url"),
                 "prepared_by": _cell(excel_row, "prepared_by"),
                 "source_pdf": _cell(excel_row, "source_pdf"),
                 "section": _cell(excel_row, "section"),
@@ -2816,7 +2817,11 @@ async def upload_observations_xlsx(
             """
             row_photo = photo_map.get(row_num)
             if row_photo is None:
-                return None, None
+                # No embedded image — fall back to a photo_url cell. The
+                # exporter can upload photos to storage and pass public
+                # URLs directly, keeping the workbook small (no embeds).
+                cell_url = _cell_text(row.get("photo_url"))
+                return (cell_url or None, None)
             ref_token = _cell_text(row.get("photo_refs"))
             if ref_token:
                 cleaned = _sanitise_photo_filename(ref_token.split(",")[0])
@@ -3035,7 +3040,10 @@ async def upload_observations_xlsx(
                 if is_current_audit
                 else (_cell_text(row.get("source_pdf")) or fallback_source),
                 "needs_review": needs_review,
-                "staging": True,
+                # Current-audit (already human-reviewed) observations go
+                # straight to the Live board; historical/PDF imports stay
+                # in staging for review.
+                "staging": not is_current_audit,
                 "enriched": True,
                 "action_required": conformance_status in {"NCR", "Conditional"},
                 "imported_at": now_utc,
