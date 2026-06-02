@@ -90,18 +90,16 @@ VALID_CONFORMANCE_STATUS = {
     "info": "Info",
 }
 
-VALID_CCVS = {
-    "WAH-H6", "WAH-H9",
-    "IRA-H6", "IRA-H9",
-    "SIL-H6", "SIL-H9",
-    "STR-H6", "STR-H9",
-    "MOB-H6", "MOB-M4",
-    "CHM-M3", "CHM-H6",
-    "ENE-M4", "ENE-H6",
-    "SYS-L1", "SYS-L2",
-    "SYS-M3", "SYS-M4",
-    "SYS-H6",
-}
+def _is_valid_ccvs(code: str | None) -> bool:
+    """True iff ``code`` is in the canonical 25-stream x 6-tier taxonomy.
+
+    Delegates to pims.services.ssa_ccvs_taxonomy (single source of truth,
+    150 codes). Replaces a prior hard-coded ~19-code allow-list that
+    silently nulled legitimate streams (WFA, SCF, ELE, TRF, CHM-L...) on
+    upload, flagging those rows needs_review with a blank CCVS.
+    """
+    from pims.services.ssa_ccvs_taxonomy import is_valid_code
+    return is_valid_code(code or "")
 
 # NOTE: ccvs_category is derived deterministically from ccvs_code via
 # pims.services.ssa_ccvs_taxonomy.category_for() — single source of
@@ -1195,7 +1193,7 @@ async def approve_staging_rpd(
             "staging_id":  staging_id,
             "message":     "Record promoted to pims_observations.",
         }
-        if ccvs and ccvs not in VALID_CCVS:
+        if ccvs and not _is_valid_ccvs(ccvs):
             response["ccvs_warning"] = f"CCVS code '{ccvs}' is not in the approved RPD taxonomy."
 
         return response
@@ -2867,7 +2865,7 @@ async def upload_observations_xlsx(
             ccvs_raw = _cell_text(row.get("ccvs_code")).upper()
             ccvs_invalid = False
             ccvs_code = ccvs_raw or None
-            if ccvs_code and ccvs_code not in VALID_CCVS:
+            if ccvs_code and not _is_valid_ccvs(ccvs_code):
                 ccvs_code = None
                 ccvs_invalid = True
 
@@ -2958,6 +2956,11 @@ async def upload_observations_xlsx(
                 "observation_text": f"eq.{observation_text}",
             }
             dup_params["site_address"] = "is.null" if site_address is None else f"eq.{site_address}"
+            # CCVS is part of the dedup key: observations with identical
+            # wording but different CCVS streams (e.g. a scaffold tag noted
+            # under SCF-M3 / SCF-M4 / SCF-M5) are distinct findings and must
+            # not collapse into one row.
+            dup_params["ccvs_code"] = "is.null" if ccvs_code is None else f"eq.{ccvs_code}"
             dup_resp = await client.get(
                 f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
                 headers=headers_repr,
