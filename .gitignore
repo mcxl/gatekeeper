@@ -32,6 +32,7 @@ patch_*.py
 
 # PIMS audit-report runtime cache
 pims/data/
+pims/audits/whatsapp_watcher.log*
 
 # PIMS screenshots and report spreadsheets
 pims/Screenshot *.png
@@ -83,6 +84,17 @@ data/*_analysis.jsonl
 # Malformed path-literal directories (accidental creates)
 C:Users*/
 .venv-test/
+
+# IDE / Claude / snapshot transient artifacts
+.snapshots/
+pims/.snapshots/
+.vscode/
+pims/.claude/worktrees/
+pims/.claude/settings.local.json
+pims_freestyler_amd.html
+
+# Runtime log file — appended to during enrichment runs, grows monotonically
+src/data/findings_log.jsonl
 
 # Track skills inside .claude/ but keep other .claude/ contents ignored
 !.claude/skills/
