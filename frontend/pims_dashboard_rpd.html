@@ -3262,7 +3262,7 @@ function renderAllObsMobile(obs) {
     };
 
     const XLSX_UPLOAD_MAX_ROWS = 500;
-    const XLSX_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+    const XLSX_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
     const XLSX_REQUIRED_HEADERS = ['site_address', 'audit_date', 'observation_text'];
     const XLSX_STATUS_MAP = {
       ncr: 'NCR',
@@ -3640,7 +3640,7 @@ function renderAllObsMobile(obs) {
         return;
       }
       if (file.size > XLSX_UPLOAD_MAX_BYTES) {
-        showToast('File exceeds 5MB limit.', 'error');
+        showToast('File exceeds 10MB limit.', 'error');
         return;
       }
 
