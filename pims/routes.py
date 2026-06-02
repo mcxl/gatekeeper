@@ -78,7 +78,7 @@ IMAGE_TIMEOUT = httpx.Timeout(5.0, connect=3.0, read=5.0)
 # 5.0 = default for write + pool; connect and read set explicitly.
 IMAGE_CONCURRENCY = 5
 MAX_IMG_BYTES = 10 * 1024 * 1024  # 10 MB hard cap per image
-MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_FILE_BYTES = 10 * 1024 * 1024
 MAX_UPLOAD_ROWS = 500
 _ALLOWED_IMG_HOST = "nebdpofqglfyfyqqodni.supabase.co"
 _ALLOWED_IMG_PREFIX = "/storage/v1/object/public/pims-photos/"
@@ -2709,7 +2709,7 @@ async def upload_observations_xlsx(
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(content) > MAX_UPLOAD_FILE_BYTES:
-        raise HTTPException(status_code=413, detail="File exceeds 5MB limit")
+        raise HTTPException(status_code=413, detail="File exceeds 10MB limit")
 
     try:
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
