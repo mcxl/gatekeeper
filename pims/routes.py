@@ -2806,6 +2806,36 @@ async def upload_observations_xlsx(
     )
 
     async with httpx.AsyncClient(timeout=20) as client:
+        async def _resolve_row_photo(
+            row_num: int, row: dict, audit_date_value: str,
+        ) -> tuple[str | None, str | None]:
+            """Upload this row's embedded photo (if any) to pims-photos.
+
+            Returns (public_url, stored_filename), or (None, None) when the
+            row carries no embedded image. The photo_refs filename token
+            (e.g. "IMG_2450.PNG") drives the storage filename so reviewers
+            can correlate.
+            """
+            row_photo = photo_map.get(row_num)
+            if row_photo is None:
+                return None, None
+            ref_token = _cell_text(row.get("photo_refs"))
+            if ref_token:
+                cleaned = _sanitise_photo_filename(ref_token.split(",")[0])
+                stem = cleaned.rsplit(".", 1)[0] if "." in cleaned else cleaned
+                stored_filename = f"{stem}.{row_photo['ext']}"
+            else:
+                stored_filename = f"row{row_num}.{row_photo['ext']}"
+            url = await _upload_xlsx_photo(
+                client,
+                RPD_SUPABASE_URL,
+                RPD_SUPABASE_SERVICE_KEY,
+                audit_date_value,
+                stored_filename,
+                row_photo,
+            )
+            return url, stored_filename
+
         for row in parsed_rows:
             row_num = int(row["_row"])
             observation_text = _cell_text(row.get("observation_text"))
@@ -2922,7 +2952,7 @@ async def upload_observations_xlsx(
                 continue
 
             dup_params = {
-                "select": "id",
+                "select": "id,photo_url",
                 "limit": "1",
                 "audit_date": f"eq.{audit_date_value}",
                 "observation_text": f"eq.{observation_text}",
@@ -2934,7 +2964,28 @@ async def upload_observations_xlsx(
                 params=dup_params,
             )
             dup_resp.raise_for_status()
-            if dup_resp.json():
+            dup_rows = dup_resp.json()
+            if dup_rows:
+                # Duplicate observation — normally skipped. But if the
+                # existing row has no photo and this workbook row carries an
+                # embedded image, attach it so a re-upload backfills photos
+                # onto already-staged rows (the staging xlsx embeds photos
+                # the original insert may have lacked).
+                existing = dup_rows[0]
+                if not existing.get("photo_url"):
+                    photo_url_value, stored_filename = await _resolve_row_photo(
+                        row_num, row, audit_date_value,
+                    )
+                    if photo_url_value:
+                        patch_resp = await client.patch(
+                            f"{RPD_SUPABASE_URL}/rest/v1/pims_observations",
+                            headers=headers_minimal,
+                            params={"id": f"eq.{existing['id']}"},
+                            json={"photo_url": photo_url_value, "filename": stored_filename},
+                        )
+                        if patch_resp.status_code in (200, 204):
+                            updated += 1
+                            continue
                 skipped += 1
                 continue
 
@@ -2950,25 +3001,9 @@ async def upload_observations_xlsx(
             # capture the public URL. The xlsx may also carry a photo_refs
             # filename token (e.g. "IMG_2450.PNG") from the iPhone — prefer
             # that for the storage filename so reviewers can correlate.
-            photo_url_value: str | None = None
-            stored_filename: str | None = None
-            row_photo = photo_map.get(row_num)
-            if row_photo is not None:
-                ref_token = _cell_text(row.get("photo_refs"))
-                if ref_token:
-                    cleaned = _sanitise_photo_filename(ref_token.split(",")[0])
-                    stem = cleaned.rsplit(".", 1)[0] if "." in cleaned else cleaned
-                    stored_filename = f"{stem}.{row_photo['ext']}"
-                else:
-                    stored_filename = f"row{row_num}.{row_photo['ext']}"
-                photo_url_value = await _upload_xlsx_photo(
-                    client,
-                    RPD_SUPABASE_URL,
-                    RPD_SUPABASE_SERVICE_KEY,
-                    audit_date_value,
-                    stored_filename,
-                    row_photo,
-                )
+            photo_url_value, stored_filename = await _resolve_row_photo(
+                row_num, row, audit_date_value,
+            )
 
             insert_row = {
                 "site_address": site_address,
