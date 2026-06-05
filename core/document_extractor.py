@@ -2,7 +2,7 @@
 """
 core/document_extractor.py — Text extraction from uploaded files and images.
 
-Consolidated from core/extract.py + BUILD_COMPLETE_APP spec.
+Consolidated from core/extract.py + docs/archive/BUILD_COMPLETE_APP.md spec.
 
 Supports: PDF, DOCX, DOC, TXT, JPG, PNG, HEIC, WEBP
 

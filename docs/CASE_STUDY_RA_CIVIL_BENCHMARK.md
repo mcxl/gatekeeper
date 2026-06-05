@@ -63,7 +63,7 @@
 
 The Withers Road benchmark document is not a standalone risk assessment — it's a combined WHS control pack containing four linked deliverables: HRCW register, SWMS matrix, hold point schedule, and risk register. The standalone RA can produce the right hazards, the right HRCW assessment, and the right hold points, but it cannot produce the trade-package structure, the SWMS matrix, or the activity-grouped risk register that a civil infrastructure project requires.
 
-This is not a deficiency in the RA pipeline. It is evidence that civil infrastructure projects need a **separate product mode** — the combined WHS control pack described in `GATEKEEPER_IMPROVEMENT_PLAN.md`.
+This is not a deficiency in the RA pipeline. It is evidence that civil infrastructure projects need a **separate product mode** — the combined WHS control pack described in `docs/archive/GATEKEEPER_IMPROVEMENT_PLAN.md`.
 
 The benchmark-led methodology successfully identified this boundary:
 1. The first slice (matrix content) showed the content gap
