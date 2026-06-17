@@ -64,7 +64,6 @@ from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
-from api.procore import router as procore_router
 from api.pims_auth import (
     COOKIE_NAME,
     check_env,
@@ -154,7 +153,15 @@ from api.control_pack_routes import router as control_pack_router
 app.include_router(upload_router)
 app.include_router(intake_router)
 app.include_router(control_pack_router)
-app.include_router(procore_router, prefix="/procore")
+# Legacy Stage 2 Procore route — disabled by default. The canonical
+# integration is /v1/procore/webhook. Set PROCORE_LEGACY_ROUTE_ENABLED=true
+# to re-register the deprecated /procore route (rollback only). api/procore.py
+# stays on disk for direct test imports; the import here is lazy so the module
+# is not loaded (nor the route exposed) unless explicitly enabled.
+if os.getenv("PROCORE_LEGACY_ROUTE_ENABLED", "").lower() == "true":
+    from api.procore import router as procore_router
+
+    app.include_router(procore_router, prefix="/procore")
 
 app.add_middleware(
     CORSMiddleware,

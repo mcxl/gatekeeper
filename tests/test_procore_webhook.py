@@ -390,6 +390,17 @@ class TestWebhookEndpoint:
                                   headers={"Content-Type": "application/json"})
         assert r.status_code == 400
 
+    def test_legacy_procore_route_not_registered_by_default(self):
+        # T1: the deprecated /procore route is disabled unless
+        # PROCORE_LEGACY_ROUTE_ENABLED=true. A default deployment must 404,
+        # so the legacy route is not a reachable surface. The canonical
+        # integration is /v1/procore/webhook.
+        from fastapi.testclient import TestClient
+        from api.main import app
+        r = TestClient(app).post("/procore/webhook", content=b"{}",
+                                 headers={"Content-Type": "application/json"})
+        assert r.status_code == 404
+
 
 # ── API client ──────────────────────────────────────────────────────────────
 
