@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -19,8 +20,17 @@ _ARTIFACT_STORE = _DATA_DIR / "procore_review_artifacts.jsonl"
 _LOCK = threading.Lock()
 
 
+def _local_jsonl_enabled() -> bool:
+    """Local JSONL persistence is off by default (production-safe); the durable
+    record is the Supabase audit trail. Enable with PROCORE_LOCAL_JSONL_ENABLED=true."""
+    return os.getenv("PROCORE_LOCAL_JSONL_ENABLED", "false").strip().lower() == "true"
+
+
 def store_artifact(artifact: dict) -> None:
     """Append a full review artifact to the store."""
+    if not _local_jsonl_enabled():
+        log.debug("Local JSONL disabled; skipping artifact store write")
+        return
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     with _LOCK:
         with open(_ARTIFACT_STORE, "a", encoding="utf-8") as f:
