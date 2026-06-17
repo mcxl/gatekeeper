@@ -31,6 +31,15 @@ def test_append_only_triggers():
     assert "before update on private.procore_audit" in sql
     assert "before delete on private.procore_audit" in sql
     assert "append-only" in sql
+    assert "set search_path = ''" in sql
+
+
+def test_controlled_delete_guard():
+    sql = _sql()
+    assert "app.procore_audit_delete_allowed" in sql
+    assert "current_setting('app.procore_audit_delete_allowed', true)" in sql
+    assert "set_config('app.procore_audit_delete_allowed', 'on', true)" in sql
+    assert "set_config('app.procore_audit_delete_allowed', 'off', true)" in sql
 
 
 def test_retention_and_deletion_functions():
