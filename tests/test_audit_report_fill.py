@@ -86,6 +86,9 @@ def test_worst_status_returns_highest_severity():
 # ---------------------------------------------------------------------------
 
 def test_match_obs_to_line_item_uses_text_similarity():
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     items = idx.items
     obs = {
@@ -105,6 +108,9 @@ def test_match_obs_to_line_item_uses_text_similarity():
 
 
 def test_match_obs_to_line_item_returns_none_for_empty_text():
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     assert arpt._match_obs_to_line_item(
         {"id": "x", "conformance_status": "NCR"},
@@ -117,6 +123,9 @@ def test_match_obs_to_line_item_returns_none_for_empty_text():
 
 
 def test_match_obs_to_line_item_filters_inactive_planning_tier():
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     # Construct an obs whose text most closely mirrors an inactive-tier
     # planning item. Even if it would be the best match, the inactive
@@ -136,6 +145,9 @@ def test_match_obs_to_line_item_filters_inactive_planning_tier():
 
 
 def test_match_observations_to_line_items_aggregates_by_header_table_idx():
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     # Two obs targeting the same conceptual item should aggregate.
     obs1 = {
@@ -271,6 +283,9 @@ def test_canonical_template_narrative_cell_is_row0_col0():
 
 
 def test_sections_ordered_constant_covers_template_sections():
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     sections = {li.section for li in idx.items}
     assert sections == set(SECTIONS_ORDERED), (
@@ -325,6 +340,9 @@ def test_match_obs_to_line_item_prefers_ccvs_prefix_over_ccvs_category():
     wins. Real example: harness obs tagged ccvs_category='Worker
     competency and PPE' but ccvs_code='WAH-H6' (the right home is
     General work at height)."""
+    if not arpt.TEMPLATE_PATH.exists():
+        import pytest
+        pytest.skip("canonical template not present")
     idx = get_index()
     obs = {
         "id": "o1",
