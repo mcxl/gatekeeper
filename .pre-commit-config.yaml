@@ -7,6 +7,12 @@
 # Uses system-language entries (language: system) to avoid pre-commit
 # building its own venv — sidesteps a Windows permission issue with the
 # default repo-based install. flake8 config honours the repo's .flake8 file.
+#
+# Stages: flake8 + SSA contract run at `pre-commit` (commit time);
+# conventional-commit-msg at `commit-msg`; the full test suite at `pre-push`.
+# `default_install_hook_types` lets a plain `pre-commit install` wire all three.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
 repos:
   - repo: local
     hooks:
@@ -34,3 +40,24 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      # Conventional Commits guard. Rejects commit messages whose subject
+      # is not `type(scope): summary`. Merge/revert/fixup commits are exempt.
+      # Runs at the commit-msg stage (after the editor closes).
+      - id: conventional-commit-msg
+        name: Conventional commit message
+        entry: python scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]
+        always_run: true
+
+      # Full test suite at push time. Commits stay fast (lint + contract);
+      # this blocks publishing a red branch before it ever reaches CI.
+      # `-x` stops at the first failure so a red push aborts quickly.
+      - id: full-test-suite
+        name: Full test suite (pre-push)
+        entry: python -m pytest tests/ -x -q
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
