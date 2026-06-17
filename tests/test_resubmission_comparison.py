@@ -247,6 +247,12 @@ class TestCompareReviews:
 # ── Review store ────────────────────────────────────────────────────────────
 
 class TestReviewStore:
+    @pytest.fixture(autouse=True)
+    def _enable_local_jsonl(self, monkeypatch):
+        # These tests exercise the local JSONL store/find roundtrip, which is
+        # gated off by default (T5); enable it for this class.
+        monkeypatch.setenv("PROCORE_LOCAL_JSONL_ENABLED", "true")
+
     def setup_method(self):
         clear_store()
 
