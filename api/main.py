@@ -1332,7 +1332,12 @@ def _verify_procore_request(headers, body: bytes) -> bool:
     return False
 
 
-async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str) -> dict:
+async def _process_procore_v1_webhook(
+    payload: dict,
+    event,
+    correlation_id: str,
+    audit_delivery_key: str = "",
+) -> dict:
     """Background pipeline: gate -> fetch -> extract -> review -> store ->
     compare -> comment. Returns a result dict. Failures are recorded and
     alerted, never raised to the webhook caller (which already received 202).
@@ -1432,6 +1437,9 @@ async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str)
 
         # Phase 1B: post comment back to Procore if live and configured
         comment_posted = False
+        writeback_enabled = (
+            _os.getenv("PROCORE_LIVE_WRITEBACK_ENABLED", "false").strip().lower() == "true"
+        )
         try:
             from core.procore.api_client import (
                 format_review_as_comment,
@@ -1443,9 +1451,6 @@ async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str)
             # PROCORE_LIVE_WRITEBACK_ENABLED=true. The write-back resource is
             # UNVERIFIED (deprecated submittal_logs path) pending Procore
             # confirmation — see docs/procore/action_06_submittal_logs_terminology.md.
-            writeback_enabled = (
-                _os.getenv("PROCORE_LIVE_WRITEBACK_ENABLED", "false").strip().lower() == "true"
-            )
             if writeback_enabled and is_live_configured() and retrieval_mode == "live_api":
                 comment_text = format_review_as_comment(review_artifact, att.filename)
                 post_submittal_comment(event.project_id, event.resource_id, comment_text)
@@ -1464,6 +1469,22 @@ async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str)
         }
         if comparison:
             result["comparison"] = comparison
+
+        # Metadata-only audit row (no raw SWMS text/comment body). No-op if
+        # Supabase is unconfigured or migration 008 has not been applied yet.
+        try:
+            from core.procore.audit import record_review_audit
+            record_review_audit(
+                event=event,
+                review_artifact=review_artifact,
+                delivery_key=audit_delivery_key,
+                correlation_id=correlation_id,
+                retrieval_mode=retrieval_mode,
+                writeback_enabled=writeback_enabled,
+                comment_posted=comment_posted,
+            )
+        except Exception as audit_err:
+            logger.warning(f"Procore audit write skipped: {audit_err}")
 
         # Durable status row on completion (no-op when Supabase unconfigured).
         try:
@@ -1529,7 +1550,8 @@ async def procore_webhook_endpoint(request: Request, background_tasks: Backgroun
     # present so every delivery is de-duplicated; durable via Supabase when
     # configured, in-memory otherwise.
     correlation_id = f"procore-{event.delivery_id}" if event.delivery_id else "procore"
-    if not reserve_delivery(delivery_key(event.delivery_id, body), correlation_id):
+    audit_delivery_key = delivery_key(event.delivery_id, body)
+    if not reserve_delivery(audit_delivery_key, correlation_id):
         return JSONResponse(content={"status": "already_processed", "delivery_id": event.delivery_id})
 
     # Log payload for replay/debugging (after reservation).
@@ -1538,7 +1560,13 @@ async def procore_webhook_endpoint(request: Request, background_tasks: Backgroun
     # Heavy pipeline (fetch -> review -> store -> compare -> comment) runs
     # asynchronously: respond 202 fast per Procore webhook guidance. The
     # outcome and any failure are recorded + alerted inside the background task.
-    background_tasks.add_task(_process_procore_v1_webhook, payload, event, correlation_id)
+    background_tasks.add_task(
+        _process_procore_v1_webhook,
+        payload,
+        event,
+        correlation_id,
+        audit_delivery_key,
+    )
     return JSONResponse(
         content={"status": "accepted", "delivery_id": event.delivery_id,
                  "correlation_id": correlation_id},
