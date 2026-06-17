@@ -14,10 +14,13 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+import httpx
 
 log = logging.getLogger(__name__)
 
@@ -110,9 +113,76 @@ def is_duplicate(delivery_id: str) -> bool:
 
 
 def reset_idempotency() -> None:
-    """Reset the idempotency store. For testing only."""
+    """Reset the in-memory idempotency store. For testing only."""
     with _LOCK:
         _IDEMPOTENCY_STORE.clear()
+
+
+# ── Durable idempotency (T3) ─────────────────────────────────────────────────
+
+def delivery_key(delivery_id: str, raw_body: bytes) -> str:
+    """Stable idempotency key for a delivery.
+
+    Prefers the Procore delivery id; falls back to a SHA-256 of the raw body
+    when no delivery id is present, so every delivery is still de-duplicated
+    (the current payloads only expose ``metadata.delivery_id``).
+    """
+    if delivery_id:
+        return delivery_id
+    return "sha256:" + hashlib.sha256(raw_body).hexdigest()
+
+
+def _supabase_configured() -> bool:
+    return bool(os.getenv("SUPABASE_URL", "") and os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""))
+
+
+def _reserve_supabase(key: str, correlation_id: str) -> bool:
+    """Atomically reserve a delivery key via the Supabase RPC.
+
+    Returns True when newly reserved, False when already seen. Raises on
+    transport/HTTP error so the caller can fall back to the in-memory store.
+    """
+    base = os.getenv("SUPABASE_URL", "")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    url = f"{base}/rest/v1/rpc/reserve_procore_webhook_delivery"
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.post(
+            url,
+            headers=headers,
+            json={"p_delivery_key": key, "p_correlation_id": correlation_id},
+        )
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+def reserve_delivery(key: str, correlation_id: str = "") -> bool:
+    """Reserve a delivery key before any side effect runs.
+
+    Returns True if newly reserved (proceed), False if this is a duplicate.
+    Durable via Supabase when configured; otherwise an in-memory fallback that
+    is NOT durable across restarts — logged so the degradation is visible.
+    """
+    if _supabase_configured():
+        try:
+            return _reserve_supabase(key, correlation_id)
+        except Exception as exc:  # pragma: no cover - network/parse errors
+            log.warning(
+                "Durable idempotency reserve failed (%s); using in-memory fallback", exc
+            )
+    else:
+        log.info(
+            "Supabase not configured; Procore idempotency is in-memory only (not durable)"
+        )
+    with _LOCK:
+        if key in _IDEMPOTENCY_STORE:
+            return False
+        _IDEMPOTENCY_STORE.add(key)
+        return True
 
 
 def extract_submittal_attachments(event: WebhookEvent) -> list[SubmittalAttachment]:

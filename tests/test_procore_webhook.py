@@ -42,6 +42,21 @@ def _load_fixture(name: str) -> dict:
         return json.load(f)
 
 
+@pytest.fixture(autouse=True)
+def _in_memory_idempotency(monkeypatch):
+    # Default to the in-memory idempotency path for deterministic offline tests;
+    # the durable-path tests opt back in by setting SUPABASE_SERVICE_ROLE_KEY.
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+    # Neutralise the durable status writer so background tasks never hit Supabase.
+    import core.job_state as js
+
+    async def _noop_record_state(*a, **k):
+        return None
+
+    monkeypatch.setattr(js, "record_state", _noop_record_state)
+
+
 # ── Signature validation ────────────────────────────────────────────────────
 
 class TestSignatureValidation:
@@ -333,7 +348,15 @@ class TestWebhookEndpoint:
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
-    def test_valid_submittal_reviewed(self):
+    @pytest.fixture(autouse=True)
+    def _bypass_auth(self, monkeypatch):
+        # These tests exercise review logic, not auth. Run with auth bypassed;
+        # fail-closed auth behaviour is covered in TestWebhookAuth (T2).
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "false")
+
+    def test_valid_submittal_accepted_202(self):
+        # T4: heavy review runs async; the endpoint returns 202 quickly.
+        # Review-content assertions live in TestProcorePipeline.
         from fastapi.testclient import TestClient
         from api.main import app
         client = TestClient(app)
@@ -341,13 +364,8 @@ class TestWebhookEndpoint:
         payload["_simulated_swms_text"] = "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
         r = client.post("/v1/procore/webhook", content=json.dumps(payload),
                         headers={"Content-Type": "application/json"})
-        assert r.status_code == 200
-        body = r.json()
-        assert body["status"] == "reviewed"
-        assert body["review"]["review_version"] == "2.0"
-        assert body["review"]["requires_human_review"] is True
-        assert body["review"]["workflow_state"] in ALLOWED_WORKFLOW_STATES
-        assert "suppressed_issue_count" in body["review"]
+        assert r.status_code == 202
+        assert r.json()["status"] == "accepted"
 
     def test_duplicate_processed_once(self):
         from fastapi.testclient import TestClient
@@ -357,31 +375,40 @@ class TestWebhookEndpoint:
         payload["_simulated_swms_text"] = "text"
         r1 = client.post("/v1/procore/webhook", content=json.dumps(payload),
                          headers={"Content-Type": "application/json"})
-        assert r1.json()["status"] == "reviewed"
+        assert r1.status_code == 202
+        assert r1.json()["status"] == "accepted"
         r2 = client.post("/v1/procore/webhook", content=json.dumps(payload),
                          headers={"Content-Type": "application/json"})
         assert r2.json()["status"] == "already_processed"
 
-    def test_missing_rule_pack(self):
+    def test_missing_rule_pack_accepted_202(self):
+        # T10/T4: a project with no rule pack is still accepted (202); the
+        # baseline review runs in the background (see TestProcorePipeline for the
+        # project_review_status=UNAVAILABLE assertion).
         from fastapi.testclient import TestClient
         from api.main import app
         client = TestClient(app)
         payload = _load_fixture("submittal_created")
         payload["project_id"] = 99999
         payload["metadata"]["delivery_id"] = "evt-no-pack"
-        payload["_simulated_swms_text"] = "text"
+        payload["_simulated_swms_text"] = (
+            "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+        )
         r = client.post("/v1/procore/webhook", content=json.dumps(payload),
                         headers={"Content-Type": "application/json"})
-        assert r.json()["status"] == "no_rule_pack"
+        assert r.status_code == 202
+        assert r.json()["status"] == "accepted"
 
-    def test_non_submittal_ignored(self):
+    def test_non_submittal_accepted_202(self):
+        # Cheap gating now happens in the background; the endpoint still 202s.
         from fastapi.testclient import TestClient
         from api.main import app
         client = TestClient(app)
         payload = {"event_type": "budget.updated", "metadata": {"delivery_id": "evt-b"}}
         r = client.post("/v1/procore/webhook", content=json.dumps(payload),
                         headers={"Content-Type": "application/json"})
-        assert r.json()["status"] == "ignored"
+        assert r.status_code == 202
+        assert r.json()["status"] == "accepted"
 
     def test_invalid_json_400(self):
         from fastapi.testclient import TestClient
@@ -389,6 +416,257 @@ class TestWebhookEndpoint:
         r = TestClient(app).post("/v1/procore/webhook", content=b"bad",
                                   headers={"Content-Type": "application/json"})
         assert r.status_code == 400
+
+    def test_legacy_procore_route_not_registered_by_default(self):
+        # T1: the deprecated /procore route is disabled unless
+        # PROCORE_LEGACY_ROUTE_ENABLED=true. A default deployment must 404,
+        # so the legacy route is not a reachable surface. The canonical
+        # integration is /v1/procore/webhook.
+        from fastapi.testclient import TestClient
+        from api.main import app
+        r = TestClient(app).post("/procore/webhook", content=b"{}",
+                                 headers={"Content-Type": "application/json"})
+        assert r.status_code == 404
+
+
+# ── Webhook auth (T2) ────────────────────────────────────────────────────────
+
+class TestWebhookAuth:
+    """T2: fail-closed, scheme-agnostic auth on /v1/procore/webhook."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_idempotency()
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        from api.main import app
+        return TestClient(app)
+
+    def test_fail_closed_unverified_rejects_with_no_side_effects(self, monkeypatch):
+        # Default posture: auth required + scheme unverified -> reject all,
+        # before any side effect runs.
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "unverified")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+
+        import core.procore.webhook_handler as wh
+        import core.procore.prescreen_reviewer as pr
+        import core.procore.api_client as ac
+        calls = []
+        monkeypatch.setattr(wh, "log_payload", lambda *a, **k: calls.append("log_payload"))
+        monkeypatch.setattr(pr, "run_prescreen_review", lambda *a, **k: calls.append("review"))
+        monkeypatch.setattr(ac, "fetch_attachment", lambda *a, **k: calls.append("fetch"))
+        monkeypatch.setattr(ac, "post_submittal_comment", lambda *a, **k: calls.append("comment"))
+
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        r = self._client().post("/v1/procore/webhook", content=json.dumps(payload),
+                                headers={"Content-Type": "application/json"})
+        assert r.status_code == 401
+        assert calls == []  # no side effects executed before rejection
+
+    def test_no_secret_rejects(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.delenv("PROCORE_WEBHOOK_SECRET", raising=False)
+        r = self._client().post("/v1/procore/webhook", content=b"{}",
+                                headers={"Content-Type": "application/json"})
+        assert r.status_code == 401
+
+    def test_bad_bearer_rejects(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        r = self._client().post("/v1/procore/webhook", content=b"{}",
+                                headers={"Content-Type": "application/json",
+                                         "Authorization": "Bearer wrong"})
+        assert r.status_code == 401
+
+    def test_valid_bearer_proceeds(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = (
+            "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+        )
+        r = self._client().post(
+            "/v1/procore/webhook", content=json.dumps(payload),
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer s3cr3t"})
+        assert r.status_code == 202
+        assert r.json()["status"] == "accepted"
+
+    def test_valid_hmac_proceeds(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "hmac_sha256")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        monkeypatch.setenv("PROCORE_SIGNATURE_HEADER", "X-Procore-Signature")
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload).encode()
+        sig = hmac.new(b"s3cr3t", body, hashlib.sha256).hexdigest()
+        r = self._client().post(
+            "/v1/procore/webhook", content=body,
+            headers={"Content-Type": "application/json",
+                     "X-Procore-Signature": sig})
+        assert r.status_code == 202
+
+
+# ── Durable idempotency (T3) ─────────────────────────────────────────────────
+
+class TestWebhookIdempotency:
+    """T3: durable reservation before side effects; body-hash fallback."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch):
+        reset_idempotency()
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "false")
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        from api.main import app
+        return TestClient(app)
+
+    def test_no_delivery_id_dedupes_via_body_hash(self):
+        # A payload with no delivery_id must still de-duplicate on the body hash
+        # (previously such events were never de-duplicated).
+        payload = _load_fixture("submittal_created")
+        payload.get("metadata", {}).pop("delivery_id", None)
+        payload.pop("delivery_id", None)
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload)
+        client = self._client()
+        r1 = client.post("/v1/procore/webhook", content=body,
+                         headers={"Content-Type": "application/json"})
+        r2 = client.post("/v1/procore/webhook", content=body,
+                         headers={"Content-Type": "application/json"})
+        assert r1.json()["status"] == "accepted"
+        assert r2.json()["status"] == "already_processed"
+
+    def test_reservation_runs_before_log_payload(self, monkeypatch):
+        # On a duplicate, log_payload must NOT run again — reservation precedes it.
+        import core.procore.webhook_handler as wh
+        logged = []
+        real = wh.log_payload
+        monkeypatch.setattr(wh, "log_payload", lambda e: (logged.append(1), real(e))[1])
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload)
+        client = self._client()
+        client.post("/v1/procore/webhook", content=body,
+                    headers={"Content-Type": "application/json"})
+        client.post("/v1/procore/webhook", content=body,
+                    headers={"Content-Type": "application/json"})
+        assert len(logged) == 1  # logged once; duplicate rejected before logging
+
+    def test_durable_path_used_when_supabase_configured(self, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+        seen = set()
+
+        def fake_rpc(key, cid):
+            if key in seen:
+                return False
+            seen.add(key)
+            return True
+
+        monkeypatch.setattr(wh, "_reserve_supabase", fake_rpc)
+        assert wh.reserve_delivery("k1") is True
+        assert wh.reserve_delivery("k1") is False
+
+    def test_durable_falls_back_to_memory_on_error(self, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+
+        def boom(key, cid):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(wh, "_reserve_supabase", boom)
+        reset_idempotency()
+        assert wh.reserve_delivery("k2") is True   # fell back to memory
+        assert wh.reserve_delivery("k2") is False  # memory de-dupes
+
+
+# ── Async pipeline (T4) ──────────────────────────────────────────────────────
+
+class TestProcorePipeline:
+    """T4: the background pipeline returns the review outcome and surfaces
+    failures (alert + recorded) instead of raising to the caller."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_idempotency()
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _run(self, payload):
+        import asyncio
+        from api.main import _process_procore_v1_webhook
+        event = parse_event(payload)
+        return asyncio.run(_process_procore_v1_webhook(payload, event, "corr-test"))
+
+    def test_pipeline_reviews_valid_submittal(self):
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = (
+            "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+        )
+        result = self._run(payload)
+        assert result["status"] == "reviewed"
+        assert result["review"]["review_version"] == "2.0"
+        assert result["review"]["requires_human_review"] is True
+
+    def test_pipeline_baseline_without_rule_pack_is_unavailable(self):
+        payload = _load_fixture("submittal_created")
+        payload["project_id"] = 99999
+        payload["metadata"]["delivery_id"] = "evt-no-pack-pipe"
+        payload["_simulated_swms_text"] = "Scaffold SWMS with harness. Follow SWMS.\n"
+        result = self._run(payload)
+        assert result["status"] == "reviewed"
+        assert result["review"]["project_id"] == "99999"
+        assert result["review"]["project_review_status"] == "UNAVAILABLE"
+
+    def test_pipeline_ignores_non_submittal(self):
+        result = self._run({"event_type": "budget.updated",
+                            "metadata": {"delivery_id": "evt-ignore"}})
+        assert result["status"] == "ignored"
+
+    def test_pipeline_failure_is_alerted_not_raised(self, monkeypatch):
+        import core.procore.prescreen_reviewer as pr
+        import core.procore.alerts as alerts
+        alerted = []
+        monkeypatch.setattr(alerts, "alert_failure",
+                            lambda msg, cid="": alerted.append((msg, cid)))
+
+        def boom(*a, **k):
+            raise RuntimeError("review engine down")
+
+        monkeypatch.setattr(pr, "run_prescreen_review", boom)
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        result = self._run(payload)  # must not raise
+        assert result["status"] == "failed"
+        assert "review engine down" in result["error"]
+        assert len(alerted) == 1
 
 
 # ── API client ──────────────────────────────────────────────────────────────

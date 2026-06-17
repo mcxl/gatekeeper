@@ -43,7 +43,7 @@ sentry_sdk.init(
     integrations=[FastApiIntegration(), StarletteIntegration()],
 )
 
-from fastapi import Depends, FastAPI, File, Form, Query, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -64,7 +64,6 @@ from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
-from api.procore import router as procore_router
 from api.pims_auth import (
     COOKIE_NAME,
     check_env,
@@ -154,7 +153,15 @@ from api.control_pack_routes import router as control_pack_router
 app.include_router(upload_router)
 app.include_router(intake_router)
 app.include_router(control_pack_router)
-app.include_router(procore_router, prefix="/procore")
+# Legacy Stage 2 Procore route — disabled by default. The canonical
+# integration is /v1/procore/webhook. Set PROCORE_LEGACY_ROUTE_ENABLED=true
+# to re-register the deprecated /procore route (rollback only). api/procore.py
+# stays on disk for direct test imports; the import here is lazy so the module
+# is not loaded (nor the route exposed) unless explicitly enabled.
+if os.getenv("PROCORE_LEGACY_ROUTE_ENABLED", "").lower() == "true":
+    from api.procore import router as procore_router
+
+    app.include_router(procore_router, prefix="/procore")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1282,12 +1289,199 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
 import os as _os
 from pathlib import Path as _Path
 
-_PROCORE_WEBHOOK_SECRET = _os.getenv("PROCORE_WEBHOOK_SECRET", "")
 _PROCORE_RULE_PACKS_DIR = _Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
 
 
+def _verify_procore_request(headers, body: bytes) -> bool:
+    """Fail-closed, scheme-agnostic verification of an inbound Procore webhook.
+
+    The verification scheme is selected by env so Procore's confirmed scheme
+    becomes a config swap, not a code change. Returns True only when the
+    request authenticates under the configured scheme.
+
+    Env:
+    - PROCORE_REQUIRE_AUTH (default "true"): when not "true", auth is bypassed
+      (dev/test only).
+    - PROCORE_AUTH_SCHEME (default "unverified"): "hmac_sha256",
+      "authorization_bearer", or "unverified". "unverified"/unknown -> False
+      (fail closed). Procore's real scheme is UNVERIFIED pending Procore
+      confirmation (see docs/procore/action_02_signature_header_reconciliation.md).
+    - PROCORE_WEBHOOK_SECRET: shared secret for the selected scheme.
+    - PROCORE_SIGNATURE_HEADER (default "X-Procore-Signature"): header carrying
+      the signature for hmac_sha256 (UNVERIFIED — confirm before go-live).
+    """
+    if _os.getenv("PROCORE_REQUIRE_AUTH", "true").strip().lower() != "true":
+        return True
+
+    scheme = _os.getenv("PROCORE_AUTH_SCHEME", "unverified").strip().lower()
+    secret = _os.getenv("PROCORE_WEBHOOK_SECRET", "")
+    if not secret:
+        return False
+
+    if scheme == "hmac_sha256":
+        from core.procore.webhook_handler import validate_signature
+        header_name = _os.getenv("PROCORE_SIGNATURE_HEADER", "X-Procore-Signature")
+        return validate_signature(body, headers.get(header_name, ""), secret)
+
+    if scheme == "authorization_bearer":
+        import hmac as _hmac
+        expected = f"Bearer {secret}"
+        return _hmac.compare_digest(headers.get("Authorization", ""), expected)
+
+    # "unverified" or any unknown scheme -> fail closed.
+    return False
+
+
+async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str) -> dict:
+    """Background pipeline: gate -> fetch -> extract -> review -> store ->
+    compare -> comment. Returns a result dict. Failures are recorded and
+    alerted, never raised to the webhook caller (which already received 202).
+
+    BackgroundTasks is interim async hardening; certification-grade durability
+    may later require a worker/queue (see
+    docs/procore/STAGE3_CERTIFICATION_PLAN_V2.md pre-flight).
+    """
+    from core.procore.webhook_handler import extract_submittal_attachments, log_review
+    from core.procore.prescreen_reviewer import run_prescreen_review
+    from core.procore import alerts
+
+    try:
+        # Phase 1: only handle submittal events
+        if "submittal" not in event.event_type:
+            return {"status": "ignored", "reason": "not a submittal event"}
+
+        attachments = extract_submittal_attachments(event)
+        if not attachments:
+            return {"status": "no_pdf", "reason": "No PDF attachments found in submittal"}
+
+        # Load project rule pack (empty fallback keeps baseline review running).
+        _PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
+        rule_pack_path = _PROCORE_RULE_PACKS_DIR / f"project_{event.project_id}.json"
+        if rule_pack_path.exists():
+            with open(rule_pack_path, encoding="utf-8") as f:
+                rule_pack = json.load(f)
+        else:
+            rule_pack = {"project_id": event.project_id}
+
+        att = attachments[0]
+        swms_text = ""
+        retrieval_mode = "none"
+
+        # Phase 1B: try live Procore API retrieval first
+        try:
+            from core.procore.api_client import fetch_attachment, is_live_configured
+            if is_live_configured() and att.url:
+                pdf_bytes = fetch_attachment(event.project_id, att.url)
+                from core.intake_extractor import extract_from_pdf
+                extraction = extract_from_pdf(pdf_bytes, source_label=att.filename)
+                if extraction.text_extraction_succeeded:
+                    swms_text = extraction.raw_text
+                    retrieval_mode = "live_api"
+                    logger.info(f"Live retrieval: {len(swms_text)} chars from {att.filename}")
+        except Exception as live_err:
+            logger.warning(f"Live Procore retrieval failed: {live_err}")
+
+        # Phase 1A fallback: simulated/fixture text
+        if not swms_text:
+            swms_text = payload.get("_simulated_swms_text", "")
+            if swms_text:
+                retrieval_mode = "simulated"
+
+        if not swms_text:
+            fixture_path = payload.get("_fixture_pdf_text_path", "")
+            if fixture_path and _Path(fixture_path).exists():
+                swms_text = _Path(fixture_path).read_text(encoding="utf-8")
+                retrieval_mode = "fixture"
+
+        if not swms_text:
+            return {"status": "no_text", "attachment": att.filename,
+                    "reason": f"Could not extract text from {att.filename}."}
+
+        # Run pre-screen review
+        review_artifact = run_prescreen_review(
+            swms_text, rule_pack,
+            job_id=f"procore-{event.project_id}-{event.resource_id}",
+            document_reference=att.filename,
+            source_surface="submittals",
+            source_item_id=str(event.resource_id),
+        )
+
+        # Log review and store full artifact for Phase 3 comparison
+        log_review(review_artifact, event)
+        try:
+            from core.procore.review_store import store_artifact
+            store_artifact(review_artifact)
+        except Exception:
+            logger.warning("Failed to store review artifact for comparison")
+
+        # Phase 3: resubmission comparison
+        comparison = None
+        try:
+            from core.procore.review_store import find_previous_artifact
+            from core.procore.resubmission_comparison import compare_reviews
+            previous = find_previous_artifact(
+                project_id=str(event.project_id),
+                source_surface="submittals",
+                source_item_id=str(event.resource_id),
+                exclude_run_id=review_artifact.get("review_run_id", ""),
+            )
+            if previous:
+                comparison = compare_reviews(review_artifact, previous, current_swms_text=swms_text)
+        except Exception as cmp_err:
+            logger.warning(f"Resubmission comparison failed: {cmp_err}")
+
+        # Phase 1B: post comment back to Procore if live and configured
+        comment_posted = False
+        try:
+            from core.procore.api_client import (
+                format_review_as_comment,
+                is_live_configured,
+                post_submittal_comment,
+            )
+            if is_live_configured() and retrieval_mode == "live_api":
+                comment_text = format_review_as_comment(review_artifact, att.filename)
+                post_submittal_comment(event.project_id, event.resource_id, comment_text)
+                comment_posted = True
+        except Exception as comment_err:
+            logger.warning(f"Procore comment post failed: {comment_err}")
+
+        result = {
+            "status": "reviewed",
+            "delivery_id": event.delivery_id,
+            "project_id": event.project_id,
+            "attachment": att.filename,
+            "retrieval_mode": retrieval_mode,
+            "comment_posted": comment_posted,
+            "review": review_artifact,
+        }
+        if comparison:
+            result["comparison"] = comparison
+
+        # Durable status row on completion (no-op when Supabase unconfigured).
+        try:
+            from core.job_state import record_state
+            await record_state(correlation_id, "procore_webhook", "complete",
+                               {"delivery_id": event.delivery_id,
+                                "status_recommendation": review_artifact.get("status_recommendation", "")})
+        except Exception:
+            pass
+        return result
+
+    except Exception as exc:
+        # Failure surface: record + alert, never raise (caller already got 202).
+        logger.error(f"Procore pipeline failed: {exc}\n{traceback.format_exc()}")
+        alerts.alert_failure(f"Procore review pipeline failed: {exc}", correlation_id)
+        try:
+            from core.job_state import record_state
+            await record_state(correlation_id, "procore_webhook", "failed",
+                               {"error": str(exc), "delivery_id": event.delivery_id})
+        except Exception:
+            pass
+        return {"status": "failed", "error": str(exc)}
+
+
 @app.post("/v1/procore/webhook")
-async def procore_webhook_endpoint(request: Request):
+async def procore_webhook_endpoint(request: Request, background_tasks: BackgroundTasks):
     """
     POST /v1/procore/webhook
 
@@ -1298,26 +1492,22 @@ async def procore_webhook_endpoint(request: Request):
     Phase 1: Submittals surface only.
     """
     from core.procore.webhook_handler import (
-        extract_submittal_attachments,
-        is_duplicate,
+        delivery_key,
         log_payload,
-        log_review,
         parse_event,
-        validate_signature,
+        reserve_delivery,
     )
-    from core.procore.prescreen_reviewer import run_prescreen_review
 
-    # Read raw body for signature validation
+    # Read raw body for verification.
     body = await request.body()
 
-    # Validate webhook signature if secret is configured
-    if _PROCORE_WEBHOOK_SECRET:
-        sig = request.headers.get("X-Procore-Signature", "")
-        if not validate_signature(body, sig, _PROCORE_WEBHOOK_SECRET):
-            return JSONResponse(
-                content={"error": "Invalid webhook signature"},
-                status_code=401,
-            )
+    # Fail-closed, scheme-agnostic webhook auth — MUST run before any side
+    # effect (payload logging, idempotency, fetch, review, comment).
+    if not _verify_procore_request(request.headers, body):
+        return JSONResponse(
+            content={"error": "Unauthorized Procore webhook"},
+            status_code=401,
+        )
 
     try:
         payload = json.loads(body)
@@ -1326,137 +1516,26 @@ async def procore_webhook_endpoint(request: Request):
 
     event = parse_event(payload)
 
-    # Log payload for replay/debugging
-    log_payload(event)
-
-    # Idempotency check
-    if event.delivery_id and is_duplicate(event.delivery_id):
+    # Durable idempotency reservation — BEFORE any side effect (logging, fetch,
+    # review, comment). Falls back to SHA-256(body) when no delivery_id is
+    # present so every delivery is de-duplicated; durable via Supabase when
+    # configured, in-memory otherwise.
+    correlation_id = f"procore-{event.delivery_id}" if event.delivery_id else "procore"
+    if not reserve_delivery(delivery_key(event.delivery_id, body), correlation_id):
         return JSONResponse(content={"status": "already_processed", "delivery_id": event.delivery_id})
 
-    # Phase 1: only handle submittal events
-    if "submittal" not in event.event_type:
-        return JSONResponse(content={"status": "ignored", "reason": "not a submittal event"})
+    # Log payload for replay/debugging (after reservation).
+    log_payload(event)
 
-    # Extract PDF attachments
-    attachments = extract_submittal_attachments(event)
-    if not attachments:
-        return JSONResponse(content={
-            "status": "no_pdf",
-            "reason": "No PDF attachments found in submittal",
-        })
-
-    # Load project rule pack
-    _PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
-    rule_pack_path = _PROCORE_RULE_PACKS_DIR / f"project_{event.project_id}.json"
-    if not rule_pack_path.exists():
-        return JSONResponse(content={
-            "status": "no_rule_pack",
-            "reason": f"No project rule pack found for project {event.project_id}",
-            "project_id": event.project_id,
-        })
-
-    with open(rule_pack_path, encoding="utf-8") as f:
-        rule_pack = json.load(f)
-
-    att = attachments[0]
-    swms_text = ""
-    retrieval_mode = "none"
-
-    # Phase 1B: try live Procore API retrieval first
-    try:
-        from core.procore.api_client import fetch_attachment, is_live_configured
-        if is_live_configured() and att.url:
-            pdf_bytes = fetch_attachment(event.project_id, att.url)
-            from core.intake_extractor import extract_from_pdf
-            extraction = extract_from_pdf(pdf_bytes, source_label=att.filename)
-            if extraction.text_extraction_succeeded:
-                swms_text = extraction.raw_text
-                retrieval_mode = "live_api"
-                logger.info(f"Live retrieval: {len(swms_text)} chars from {att.filename}")
-    except Exception as live_err:
-        logger.warning(f"Live Procore retrieval failed: {live_err}")
-
-    # Phase 1A fallback: simulated/fixture text
-    if not swms_text:
-        swms_text = payload.get("_simulated_swms_text", "")
-        if swms_text:
-            retrieval_mode = "simulated"
-
-    if not swms_text:
-        fixture_path = payload.get("_fixture_pdf_text_path", "")
-        if fixture_path and _Path(fixture_path).exists():
-            swms_text = _Path(fixture_path).read_text(encoding="utf-8")
-            retrieval_mode = "fixture"
-
-    if not swms_text:
-        return JSONResponse(content={
-            "status": "no_text",
-            "reason": f"Could not extract text from {att.filename}. "
-                      "Configure PROCORE_ACCESS_TOKEN for live retrieval, "
-                      "or provide _simulated_swms_text for testing.",
-            "attachment": att.filename,
-        })
-
-    # Run pre-screen review
-    review_artifact = run_prescreen_review(
-        swms_text, rule_pack,
-        job_id=f"procore-{event.project_id}-{event.resource_id}",
-        document_reference=att.filename,
-        source_surface="submittals",
-        source_item_id=str(event.resource_id),
+    # Heavy pipeline (fetch -> review -> store -> compare -> comment) runs
+    # asynchronously: respond 202 fast per Procore webhook guidance. The
+    # outcome and any failure are recorded + alerted inside the background task.
+    background_tasks.add_task(_process_procore_v1_webhook, payload, event, correlation_id)
+    return JSONResponse(
+        content={"status": "accepted", "delivery_id": event.delivery_id,
+                 "correlation_id": correlation_id},
+        status_code=202,
     )
-
-    # Log review and store full artifact for Phase 3 comparison
-    log_review(review_artifact, event)
-    try:
-        from core.procore.review_store import store_artifact
-        store_artifact(review_artifact)
-    except Exception:
-        logger.warning("Failed to store review artifact for comparison")
-
-    # Phase 3: resubmission comparison
-    comparison = None
-    try:
-        from core.procore.review_store import find_previous_artifact
-        from core.procore.resubmission_comparison import compare_reviews
-        previous = find_previous_artifact(
-            project_id=str(event.project_id),
-            source_surface="submittals",
-            source_item_id=str(event.resource_id),
-            exclude_run_id=review_artifact.get("review_run_id", ""),
-        )
-        if previous:
-            comparison = compare_reviews(review_artifact, previous, current_swms_text=swms_text)
-    except Exception as cmp_err:
-        logger.warning(f"Resubmission comparison failed: {cmp_err}")
-
-    # Phase 1B: post comment back to Procore if live and configured
-    comment_posted = False
-    try:
-        from core.procore.api_client import (
-            format_review_as_comment,
-            is_live_configured,
-            post_submittal_comment,
-        )
-        if is_live_configured() and retrieval_mode == "live_api":
-            comment_text = format_review_as_comment(review_artifact, att.filename)
-            post_submittal_comment(event.project_id, event.resource_id, comment_text)
-            comment_posted = True
-    except Exception as comment_err:
-        logger.warning(f"Procore comment post failed: {comment_err}")
-
-    response_content = {
-        "status": "reviewed",
-        "delivery_id": event.delivery_id,
-        "project_id": event.project_id,
-        "attachment": att.filename,
-        "retrieval_mode": retrieval_mode,
-        "comment_posted": comment_posted,
-        "review": review_artifact,
-    }
-    if comparison:
-        response_content["comparison"] = comparison
-    return JSONResponse(content=response_content)
 
 
 # ============================================================
