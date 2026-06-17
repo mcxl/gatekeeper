@@ -328,11 +328,58 @@ class TestVocabulary:
 class TestPayloadLogging:
     def test_log_creates_file(self, tmp_path, monkeypatch):
         import core.procore.webhook_handler as wh
+        monkeypatch.setenv("PROCORE_LOCAL_JSONL_ENABLED", "true")
         monkeypatch.setattr(wh, "_PAYLOAD_LOG", tmp_path / "payloads.jsonl")
         monkeypatch.setattr(wh, "_DATA_DIR", tmp_path)
         event = parse_event(_load_fixture("submittal_created"))
         log_payload(event)
         assert (tmp_path / "payloads.jsonl").exists()
+
+
+# ── Local JSONL gate (T5) ────────────────────────────────────────────────────
+
+class TestLocalJsonlGate:
+    """T5: local JSONL writes are gated off by default (production-safe)."""
+
+    def test_log_payload_disabled_writes_nothing(self, tmp_path, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.delenv("PROCORE_LOCAL_JSONL_ENABLED", raising=False)
+        monkeypatch.setattr(wh, "_DATA_DIR", tmp_path)
+        monkeypatch.setattr(wh, "_PAYLOAD_LOG", tmp_path / "payloads.jsonl")
+        wh.log_payload(parse_event(_load_fixture("submittal_created")))
+        assert not (tmp_path / "payloads.jsonl").exists()
+
+    def test_log_review_disabled_writes_nothing(self, tmp_path, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.delenv("PROCORE_LOCAL_JSONL_ENABLED", raising=False)
+        monkeypatch.setattr(wh, "_DATA_DIR", tmp_path)
+        monkeypatch.setattr(wh, "_REVIEW_LOG", tmp_path / "reviews.jsonl")
+        wh.log_review({"status_recommendation": "Escalate"},
+                      parse_event(_load_fixture("submittal_created")))
+        assert not (tmp_path / "reviews.jsonl").exists()
+
+    def test_enabled_writes_payload_and_review(self, tmp_path, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.setenv("PROCORE_LOCAL_JSONL_ENABLED", "true")
+        monkeypatch.setattr(wh, "_DATA_DIR", tmp_path)
+        monkeypatch.setattr(wh, "_PAYLOAD_LOG", tmp_path / "payloads.jsonl")
+        monkeypatch.setattr(wh, "_REVIEW_LOG", tmp_path / "reviews.jsonl")
+        event = parse_event(_load_fixture("submittal_created"))
+        wh.log_payload(event)
+        wh.log_review({"status_recommendation": "Escalate"}, event)
+        assert (tmp_path / "payloads.jsonl").exists()
+        assert (tmp_path / "reviews.jsonl").exists()
+
+    def test_store_artifact_gated(self, tmp_path, monkeypatch):
+        import core.procore.review_store as rs
+        monkeypatch.setattr(rs, "_DATA_DIR", tmp_path)
+        monkeypatch.setattr(rs, "_ARTIFACT_STORE", tmp_path / "artifacts.jsonl")
+        monkeypatch.delenv("PROCORE_LOCAL_JSONL_ENABLED", raising=False)
+        rs.store_artifact({"review_run_id": "r1"})
+        assert not (tmp_path / "artifacts.jsonl").exists()
+        monkeypatch.setenv("PROCORE_LOCAL_JSONL_ENABLED", "true")
+        rs.store_artifact({"review_run_id": "r1"})
+        assert (tmp_path / "artifacts.jsonl").exists()
 
 
 # ── API endpoint ────────────────────────────────────────────────────────────

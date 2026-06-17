@@ -203,8 +203,21 @@ def extract_submittal_attachments(event: WebhookEvent) -> list[SubmittalAttachme
     return result
 
 
+def _local_jsonl_enabled() -> bool:
+    """Whether local JSONL persistence under src/data is enabled.
+
+    Default off (production-safe): the durable record is the Supabase audit
+    trail (migration 008). Local JSONL is dev convenience only; enable with
+    PROCORE_LOCAL_JSONL_ENABLED=true.
+    """
+    return os.getenv("PROCORE_LOCAL_JSONL_ENABLED", "false").strip().lower() == "true"
+
+
 def log_payload(event: WebhookEvent) -> None:
     """Append the raw payload to the payload log for replay/debugging."""
+    if not _local_jsonl_enabled():
+        log.debug("Local JSONL disabled; skipping payload log write")
+        return
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     record = {
         "logged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -220,6 +233,9 @@ def log_payload(event: WebhookEvent) -> None:
 
 def log_review(review_artifact: dict, event: WebhookEvent) -> None:
     """Append the review artifact to the review log."""
+    if not _local_jsonl_enabled():
+        log.debug("Local JSONL disabled; skipping review log write")
+        return
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     record = {
         "logged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
