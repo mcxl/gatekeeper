@@ -47,19 +47,21 @@ create index if not exists idx_procore_audit_company_created
 create index if not exists idx_procore_audit_created
     on private.procore_audit (created_at);
 
--- Append-only: block UPDATE always; block DELETE for non-admin/owner roles.
--- The retention/deletion functions below are SECURITY DEFINER and run as the
--- function owner, so they pass the DELETE guard while ad-hoc deletes do not.
+-- Append-only: block UPDATE always; block DELETE unless a controlled purge
+-- function has enabled the transaction-local delete guard.
+-- The retention/deletion functions below set a transaction-local guard before
+-- deleting, so controlled purges do not depend on the migration owner's role.
 create or replace function private.prevent_procore_audit_mutation()
 returns trigger
 language plpgsql
 security definer
+set search_path = ''
 as $$
 begin
     if tg_op = 'UPDATE' then
         raise exception 'private.procore_audit is append-only; UPDATE not permitted.';
     end if;
-    if current_user not in ('audit_admin', 'postgres') then
+    if coalesce(current_setting('app.procore_audit_delete_allowed', true), '') <> 'on' then
         raise exception 'private.procore_audit is append-only; DELETE not permitted.';
     end if;
     return old;
@@ -129,10 +131,16 @@ as $$
 declare
     v_deleted integer;
 begin
+    perform set_config('app.procore_audit_delete_allowed', 'on', true);
     delete from private.procore_audit
     where created_at < now() - (retention_days || ' days')::interval;
+    perform set_config('app.procore_audit_delete_allowed', 'off', true);
     get diagnostics v_deleted = row_count;
     return v_deleted;
+exception
+    when others then
+        perform set_config('app.procore_audit_delete_allowed', 'off', true);
+        raise;
 end;
 $$;
 
@@ -146,9 +154,15 @@ as $$
 declare
     v_deleted integer;
 begin
+    perform set_config('app.procore_audit_delete_allowed', 'on', true);
     delete from private.procore_audit where company_id = p_company_id;
+    perform set_config('app.procore_audit_delete_allowed', 'off', true);
     get diagnostics v_deleted = row_count;
     return v_deleted;
+exception
+    when others then
+        perform set_config('app.procore_audit_delete_allowed', 'off', true);
+        raise;
 end;
 $$;
 
