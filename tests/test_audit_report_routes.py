@@ -13,6 +13,17 @@ from pathlib import Path
 
 import pytest
 
+from pims.audit_report_docx import TEMPLATE_PATH as _TEMPLATE_PATH
+
+# Render-route tests below invoke generate_audit_report_rpd(), which gates on
+# the canonical template existing (pims/routes.py: TEMPLATE_PATH.exists() -> 503).
+# That .docx is gitignored, so skip those tests when it is absent (e.g. in CI).
+# The offline schema tests do not render and keep running.
+requires_template = pytest.mark.skipif(
+    not _TEMPLATE_PATH.exists(),
+    reason="canonical template not present",
+)
+
 
 # --- Helpers ----------------------------------------------------------------
 
@@ -159,6 +170,7 @@ def test_request_model_rejects_missing_inspection_datetime(patched_routes):
         )
 
 
+@requires_template
 def test_request_happy_path_threads_fields_into_site_data(patched_routes, monkeypatch):
     """Happy path: prepared_by and inspection_datetime from the request
     reach every constructed SiteData."""
@@ -256,6 +268,7 @@ def _happy_path_with_datetime(patched_routes, monkeypatch, dt_string: str) -> li
     return captured["sites"]
 
 
+@requires_template
 def test_inspection_datetime_winter_returns_AEST(patched_routes, monkeypatch):
     """Backend must accept a winter-dated string that carries the AEST suffix
     (the frontend's en-AU + timeZoneName:'short' derives AEST in July)."""
@@ -265,6 +278,7 @@ def test_inspection_datetime_winter_returns_AEST(patched_routes, monkeypatch):
     assert sites[0].inspection_datetime.endswith("AEST")
 
 
+@requires_template
 def test_inspection_datetime_summer_returns_AEDT(patched_routes, monkeypatch):
     """Backend must accept a summer-dated string that carries the AEDT suffix
     (the frontend's en-AU + timeZoneName:'short' derives AEDT in January)."""
@@ -336,6 +350,7 @@ def _capture_sites(patched_routes, monkeypatch, **kwargs) -> list:
     return captured["sites"]
 
 
+@requires_template
 def test_report_issue_date_missing_defaults_to_today_iso(patched_routes, monkeypatch):
     """When the request omits report_issue_date, the route fills it with
     today() as an ISO YYYY-MM-DD string."""
@@ -347,6 +362,7 @@ def test_report_issue_date_missing_defaults_to_today_iso(patched_routes, monkeyp
     )
 
 
+@requires_template
 def test_report_issue_date_empty_string_defaults_to_today_iso(patched_routes, monkeypatch):
     """An empty string is treated the same as missing — the route falls
     back to today()."""
@@ -355,6 +371,7 @@ def test_report_issue_date_empty_string_defaults_to_today_iso(patched_routes, mo
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", sites[0].report_issue_date)
 
 
+@requires_template
 def test_report_issue_date_null_defaults_to_today_iso(patched_routes, monkeypatch):
     """Pydantic JSON `null` (Python None) is accepted; route falls back."""
     import re
@@ -362,6 +379,7 @@ def test_report_issue_date_null_defaults_to_today_iso(patched_routes, monkeypatc
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", sites[0].report_issue_date)
 
 
+@requires_template
 def test_report_issue_date_invalid_string_passes_through(patched_routes, monkeypatch):
     """The route does not validate the date string format — an invalid
     value passes through to SiteData verbatim. The renderer's
@@ -372,6 +390,7 @@ def test_report_issue_date_invalid_string_passes_through(patched_routes, monkeyp
     assert sites[0].report_issue_date == "not-a-date"
 
 
+@requires_template
 def test_report_issue_date_explicit_iso_round_trip(patched_routes, monkeypatch):
     """An explicit ISO string round-trips byte-identical onto SiteData."""
     sites = _capture_sites(
@@ -380,6 +399,7 @@ def test_report_issue_date_explicit_iso_round_trip(patched_routes, monkeypatch):
     assert sites[0].report_issue_date == "2026-05-12"
 
 
+@requires_template
 def test_report_issue_date_explicit_formatted_round_trip(patched_routes, monkeypatch):
     """An already-formatted 'DD Month YYYY' string round-trips verbatim
     (the renderer's _format_audit_date will return empty and the caller
