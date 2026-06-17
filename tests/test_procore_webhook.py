@@ -716,6 +716,74 @@ class TestProcorePipeline:
         assert len(alerted) == 1
 
 
+# ── Live write-back gate (P0) ────────────────────────────────────────────────
+
+class TestWriteBackGate:
+    """P0: live Procore write-back is gated behind PROCORE_LIVE_WRITEBACK_ENABLED.
+    No comment is posted by default, even with live creds + live_api retrieval."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_idempotency()
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _run_live(self, monkeypatch, flag):
+        """Drive the pipeline through the live_api path; return (result, posted)."""
+        import asyncio
+        import core.procore.api_client as ac
+        import core.intake_extractor as ie
+        from api.main import _process_procore_v1_webhook
+
+        posted = []
+        monkeypatch.setattr(ac, "is_live_configured", lambda: True)
+        monkeypatch.setattr(ac, "fetch_attachment", lambda pid, url: b"%PDF-1.4 fake")
+        monkeypatch.setattr(ac, "format_review_as_comment", lambda artifact, fn="": "comment-body")
+        monkeypatch.setattr(
+            ac, "post_submittal_comment",
+            lambda pid, rid, text: posted.append((pid, rid)))
+
+        class _Extract:
+            text_extraction_succeeded = True
+            raw_text = "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+
+        monkeypatch.setattr(ie, "extract_from_pdf", lambda b, source_label="": _Extract())
+
+        if flag is None:
+            monkeypatch.delenv("PROCORE_LIVE_WRITEBACK_ENABLED", raising=False)
+        else:
+            monkeypatch.setenv("PROCORE_LIVE_WRITEBACK_ENABLED", flag)
+
+        payload = _load_fixture("submittal_created")
+        event = parse_event(payload)
+        result = asyncio.run(_process_procore_v1_webhook(payload, event, "corr"))
+        return result, posted
+
+    def test_default_unset_posts_no_comment(self, monkeypatch):
+        result, posted = self._run_live(monkeypatch, None)
+        # live path was exercised, but write-back is off by default
+        assert result["retrieval_mode"] == "live_api"
+        assert posted == []
+        assert result["comment_posted"] is False
+
+    def test_flag_false_posts_no_comment(self, monkeypatch):
+        result, posted = self._run_live(monkeypatch, "false")
+        assert result["retrieval_mode"] == "live_api"
+        assert posted == []
+        assert result["comment_posted"] is False
+
+    def test_flag_true_can_post_comment(self, monkeypatch):
+        result, posted = self._run_live(monkeypatch, "true")
+        assert result["retrieval_mode"] == "live_api"
+        assert len(posted) == 1
+        assert posted[0][0] == 12345  # project_id
+        assert result["comment_posted"] is True
+
+
 # ── API client ──────────────────────────────────────────────────────────────
 
 class TestApiClient:

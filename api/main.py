@@ -1438,7 +1438,15 @@ async def _process_procore_v1_webhook(payload: dict, event, correlation_id: str)
                 is_live_configured,
                 post_submittal_comment,
             )
-            if is_live_configured() and retrieval_mode == "live_api":
+            # Live write-back is OFF by default. Even with live credentials and a
+            # successful live_api retrieval, no comment is posted unless
+            # PROCORE_LIVE_WRITEBACK_ENABLED=true. The write-back resource is
+            # UNVERIFIED (deprecated submittal_logs path) pending Procore
+            # confirmation — see docs/procore/action_06_submittal_logs_terminology.md.
+            writeback_enabled = (
+                _os.getenv("PROCORE_LIVE_WRITEBACK_ENABLED", "false").strip().lower() == "true"
+            )
+            if writeback_enabled and is_live_configured() and retrieval_mode == "live_api":
                 comment_text = format_review_as_comment(review_artifact, att.filename)
                 post_submittal_comment(event.project_id, event.resource_id, comment_text)
                 comment_posted = True
