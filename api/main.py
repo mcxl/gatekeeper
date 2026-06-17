@@ -1344,11 +1344,12 @@ async def procore_webhook_endpoint(request: Request):
     Phase 1: Submittals surface only.
     """
     from core.procore.webhook_handler import (
+        delivery_key,
         extract_submittal_attachments,
-        is_duplicate,
         log_payload,
         log_review,
         parse_event,
+        reserve_delivery,
     )
     from core.procore.prescreen_reviewer import run_prescreen_review
 
@@ -1370,12 +1371,16 @@ async def procore_webhook_endpoint(request: Request):
 
     event = parse_event(payload)
 
-    # Log payload for replay/debugging
-    log_payload(event)
-
-    # Idempotency check
-    if event.delivery_id and is_duplicate(event.delivery_id):
+    # Durable idempotency reservation — BEFORE any side effect (logging, fetch,
+    # review, comment). Falls back to SHA-256(body) when no delivery_id is
+    # present so every delivery is de-duplicated; durable via Supabase when
+    # configured, in-memory otherwise.
+    correlation_id = f"procore-{event.delivery_id}" if event.delivery_id else "procore"
+    if not reserve_delivery(delivery_key(event.delivery_id, body), correlation_id):
         return JSONResponse(content={"status": "already_processed", "delivery_id": event.delivery_id})
+
+    # Log payload for replay/debugging (after reservation).
+    log_payload(event)
 
     # Phase 1: only handle submittal events
     if "submittal" not in event.event_type:

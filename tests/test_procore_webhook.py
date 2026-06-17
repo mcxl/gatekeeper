@@ -42,6 +42,13 @@ def _load_fixture(name: str) -> dict:
         return json.load(f)
 
 
+@pytest.fixture(autouse=True)
+def _in_memory_idempotency(monkeypatch):
+    # Default to the in-memory idempotency path for deterministic offline tests;
+    # the durable-path tests opt back in by setting SUPABASE_SERVICE_ROLE_KEY.
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+
 # ── Signature validation ────────────────────────────────────────────────────
 
 class TestSignatureValidation:
@@ -508,6 +515,89 @@ class TestWebhookAuth:
             headers={"Content-Type": "application/json",
                      "X-Procore-Signature": sig})
         assert r.status_code == 200
+
+
+# ── Durable idempotency (T3) ─────────────────────────────────────────────────
+
+class TestWebhookIdempotency:
+    """T3: durable reservation before side effects; body-hash fallback."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch):
+        reset_idempotency()
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "false")
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        from api.main import app
+        return TestClient(app)
+
+    def test_no_delivery_id_dedupes_via_body_hash(self):
+        # A payload with no delivery_id must still de-duplicate on the body hash
+        # (previously such events were never de-duplicated).
+        payload = _load_fixture("submittal_created")
+        payload.get("metadata", {}).pop("delivery_id", None)
+        payload.pop("delivery_id", None)
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload)
+        client = self._client()
+        r1 = client.post("/v1/procore/webhook", content=body,
+                         headers={"Content-Type": "application/json"})
+        r2 = client.post("/v1/procore/webhook", content=body,
+                         headers={"Content-Type": "application/json"})
+        assert r1.json()["status"] == "reviewed"
+        assert r2.json()["status"] == "already_processed"
+
+    def test_reservation_runs_before_log_payload(self, monkeypatch):
+        # On a duplicate, log_payload must NOT run again — reservation precedes it.
+        import core.procore.webhook_handler as wh
+        logged = []
+        real = wh.log_payload
+        monkeypatch.setattr(wh, "log_payload", lambda e: (logged.append(1), real(e))[1])
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload)
+        client = self._client()
+        client.post("/v1/procore/webhook", content=body,
+                    headers={"Content-Type": "application/json"})
+        client.post("/v1/procore/webhook", content=body,
+                    headers={"Content-Type": "application/json"})
+        assert len(logged) == 1  # logged once; duplicate rejected before logging
+
+    def test_durable_path_used_when_supabase_configured(self, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+        seen = set()
+
+        def fake_rpc(key, cid):
+            if key in seen:
+                return False
+            seen.add(key)
+            return True
+
+        monkeypatch.setattr(wh, "_reserve_supabase", fake_rpc)
+        assert wh.reserve_delivery("k1") is True
+        assert wh.reserve_delivery("k1") is False
+
+    def test_durable_falls_back_to_memory_on_error(self, monkeypatch):
+        import core.procore.webhook_handler as wh
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+
+        def boom(key, cid):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(wh, "_reserve_supabase", boom)
+        reset_idempotency()
+        assert wh.reserve_delivery("k2") is True   # fell back to memory
+        assert wh.reserve_delivery("k2") is False  # memory de-dupes
 
 
 # ── API client ──────────────────────────────────────────────────────────────
