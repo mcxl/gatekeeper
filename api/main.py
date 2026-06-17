@@ -1355,15 +1355,17 @@ async def procore_webhook_endpoint(request: Request):
     # Load project rule pack
     _PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
     rule_pack_path = _PROCORE_RULE_PACKS_DIR / f"project_{event.project_id}.json"
-    if not rule_pack_path.exists():
-        return JSONResponse(content={
-            "status": "no_rule_pack",
-            "reason": f"No project rule pack found for project {event.project_id}",
-            "project_id": event.project_id,
-        })
-
-    with open(rule_pack_path, encoding="utf-8") as f:
-        rule_pack = json.load(f)
+    if rule_pack_path.exists():
+        with open(rule_pack_path, encoding="utf-8") as f:
+            rule_pack = json.load(f)
+    else:
+        # No project rule pack: still run the baseline/structural review with an
+        # empty fallback pack carrying the project_id. Baseline WHS checks must
+        # always run; the rule pack only ADDS project-specific criteria, it must
+        # not gate review. project_review_status resolves to UNAVAILABLE and the
+        # artifact's project_id stays populated (run_prescreen_review reads it
+        # from the pack — see core/procore/prescreen_reviewer.py).
+        rule_pack = {"project_id": event.project_id}
 
     att = attachments[0]
     swms_text = ""

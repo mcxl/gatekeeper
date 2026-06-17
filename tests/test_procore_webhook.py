@@ -362,17 +362,28 @@ class TestWebhookEndpoint:
                          headers={"Content-Type": "application/json"})
         assert r2.json()["status"] == "already_processed"
 
-    def test_missing_rule_pack(self):
+    def test_missing_rule_pack_runs_baseline_review(self):
+        # T10: a project with no rule pack still receives the baseline/structural
+        # review (not an early "no_rule_pack" exit). project_id is preserved on
+        # the artifact and project_review_status resolves to UNAVAILABLE.
         from fastapi.testclient import TestClient
         from api.main import app
         client = TestClient(app)
         payload = _load_fixture("submittal_created")
         payload["project_id"] = 99999
         payload["metadata"]["delivery_id"] = "evt-no-pack"
-        payload["_simulated_swms_text"] = "text"
+        payload["_simulated_swms_text"] = (
+            "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+        )
         r = client.post("/v1/procore/webhook", content=json.dumps(payload),
                         headers={"Content-Type": "application/json"})
-        assert r.json()["status"] == "no_rule_pack"
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "reviewed"
+        review = body["review"]
+        assert review["project_id"] == "99999"
+        assert review["project_review_status"] == "UNAVAILABLE"
+        assert review["requires_human_review"] is True
 
     def test_non_submittal_ignored(self):
         from fastapi.testclient import TestClient
