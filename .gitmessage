@@ -1,0 +1,11 @@
+# <type>(<scope>): <summary>        <- <=72 chars, imperative mood ("add", not "added")
+#
+# Why: explain the reason for the change, not the what (the diff shows what).
+#
+#
+# Refs: #issue / ticket
+#
+# ---------------------------------------------------------------------------
+# type:  feat  fix  docs  test  chore  refactor  perf  ci  build  style  revert
+# scope: optional, e.g. (procore), (ssa), (ci)
+# Rules: one logical change per commit; tests + lint green before committing.
