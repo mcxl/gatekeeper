@@ -19,6 +19,9 @@ def patched_routes(monkeypatch):
         from pims import routes
     except ModuleNotFoundError as e:
         pytest.skip(f"pims.routes unavailable: {e}")
+    from pims.audit_report_docx import TEMPLATE_PATH
+    if not TEMPLATE_PATH.exists():
+        pytest.skip(f"canonical template not present: {TEMPLATE_PATH.name}")
     return routes
 
 

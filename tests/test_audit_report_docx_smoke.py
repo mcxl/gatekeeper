@@ -63,6 +63,8 @@ def test_renderer_is_single_site_only(checklist_xlsx):
     """Stage B 2026-05-13: build_audit_report_docx mutates pre-existing
     template tables in place, so multi-site-in-one-doc would silently
     overwrite. Single-site contract is enforced at the boundary."""
+    if not arpt.TEMPLATE_PATH.exists():
+        pytest.skip("Canonical template not present")
     sites = [
         arpt.SiteData(address="A", project_value=100_000, client="Client A",
                       observations=[], open_actions=[]),
@@ -74,6 +76,8 @@ def test_renderer_is_single_site_only(checklist_xlsx):
 
 
 def test_build_fails_on_null_project_value(checklist_xlsx):
+    if not arpt.TEMPLATE_PATH.exists():
+        pytest.skip("Canonical template not present")
     sites = [arpt.SiteData(address="X", project_value=None, client="Acme",
                            observations=[])]
     with pytest.raises(ValueError):
