@@ -333,6 +333,12 @@ class TestWebhookEndpoint:
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
+    @pytest.fixture(autouse=True)
+    def _bypass_auth(self, monkeypatch):
+        # These tests exercise review logic, not auth. Run with auth bypassed;
+        # fail-closed auth behaviour is covered in TestWebhookAuth (T2).
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "false")
+
     def test_valid_submittal_reviewed(self):
         from fastapi.testclient import TestClient
         from api.main import app
@@ -411,6 +417,97 @@ class TestWebhookEndpoint:
         r = TestClient(app).post("/procore/webhook", content=b"{}",
                                  headers={"Content-Type": "application/json"})
         assert r.status_code == 404
+
+
+# ── Webhook auth (T2) ────────────────────────────────────────────────────────
+
+class TestWebhookAuth:
+    """T2: fail-closed, scheme-agnostic auth on /v1/procore/webhook."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_idempotency()
+        rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+        rule_packs_dir.mkdir(parents=True, exist_ok=True)
+        (rule_packs_dir / "project_12345.json").write_text(
+            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+        yield
+        (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        from api.main import app
+        return TestClient(app)
+
+    def test_fail_closed_unverified_rejects_with_no_side_effects(self, monkeypatch):
+        # Default posture: auth required + scheme unverified -> reject all,
+        # before any side effect runs.
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "unverified")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+
+        import core.procore.webhook_handler as wh
+        import core.procore.prescreen_reviewer as pr
+        import core.procore.api_client as ac
+        calls = []
+        monkeypatch.setattr(wh, "log_payload", lambda *a, **k: calls.append("log_payload"))
+        monkeypatch.setattr(pr, "run_prescreen_review", lambda *a, **k: calls.append("review"))
+        monkeypatch.setattr(ac, "fetch_attachment", lambda *a, **k: calls.append("fetch"))
+        monkeypatch.setattr(ac, "post_submittal_comment", lambda *a, **k: calls.append("comment"))
+
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        r = self._client().post("/v1/procore/webhook", content=json.dumps(payload),
+                                headers={"Content-Type": "application/json"})
+        assert r.status_code == 401
+        assert calls == []  # no side effects executed before rejection
+
+    def test_no_secret_rejects(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.delenv("PROCORE_WEBHOOK_SECRET", raising=False)
+        r = self._client().post("/v1/procore/webhook", content=b"{}",
+                                headers={"Content-Type": "application/json"})
+        assert r.status_code == 401
+
+    def test_bad_bearer_rejects(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        r = self._client().post("/v1/procore/webhook", content=b"{}",
+                                headers={"Content-Type": "application/json",
+                                         "Authorization": "Bearer wrong"})
+        assert r.status_code == 401
+
+    def test_valid_bearer_proceeds(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "authorization_bearer")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = (
+            "SWMS - Scaffold Bay 3\nErect scaffold with harness.\nFollow SWMS.\n"
+        )
+        r = self._client().post(
+            "/v1/procore/webhook", content=json.dumps(payload),
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer s3cr3t"})
+        assert r.status_code == 200
+        assert r.json()["status"] == "reviewed"
+
+    def test_valid_hmac_proceeds(self, monkeypatch):
+        monkeypatch.setenv("PROCORE_REQUIRE_AUTH", "true")
+        monkeypatch.setenv("PROCORE_AUTH_SCHEME", "hmac_sha256")
+        monkeypatch.setenv("PROCORE_WEBHOOK_SECRET", "s3cr3t")
+        monkeypatch.setenv("PROCORE_SIGNATURE_HEADER", "X-Procore-Signature")
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = "text"
+        body = json.dumps(payload).encode()
+        sig = hmac.new(b"s3cr3t", body, hashlib.sha256).hexdigest()
+        r = self._client().post(
+            "/v1/procore/webhook", content=body,
+            headers={"Content-Type": "application/json",
+                     "X-Procore-Signature": sig})
+        assert r.status_code == 200
 
 
 # ── API client ──────────────────────────────────────────────────────────────

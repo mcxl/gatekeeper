@@ -1289,8 +1289,47 @@ async def render_ra_both_endpoint(request: dict, user: dict = Depends(get_curren
 import os as _os
 from pathlib import Path as _Path
 
-_PROCORE_WEBHOOK_SECRET = _os.getenv("PROCORE_WEBHOOK_SECRET", "")
 _PROCORE_RULE_PACKS_DIR = _Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+
+
+def _verify_procore_request(headers, body: bytes) -> bool:
+    """Fail-closed, scheme-agnostic verification of an inbound Procore webhook.
+
+    The verification scheme is selected by env so Procore's confirmed scheme
+    becomes a config swap, not a code change. Returns True only when the
+    request authenticates under the configured scheme.
+
+    Env:
+    - PROCORE_REQUIRE_AUTH (default "true"): when not "true", auth is bypassed
+      (dev/test only).
+    - PROCORE_AUTH_SCHEME (default "unverified"): "hmac_sha256",
+      "authorization_bearer", or "unverified". "unverified"/unknown -> False
+      (fail closed). Procore's real scheme is UNVERIFIED pending Procore
+      confirmation (see docs/procore/action_02_signature_header_reconciliation.md).
+    - PROCORE_WEBHOOK_SECRET: shared secret for the selected scheme.
+    - PROCORE_SIGNATURE_HEADER (default "X-Procore-Signature"): header carrying
+      the signature for hmac_sha256 (UNVERIFIED — confirm before go-live).
+    """
+    if _os.getenv("PROCORE_REQUIRE_AUTH", "true").strip().lower() != "true":
+        return True
+
+    scheme = _os.getenv("PROCORE_AUTH_SCHEME", "unverified").strip().lower()
+    secret = _os.getenv("PROCORE_WEBHOOK_SECRET", "")
+    if not secret:
+        return False
+
+    if scheme == "hmac_sha256":
+        from core.procore.webhook_handler import validate_signature
+        header_name = _os.getenv("PROCORE_SIGNATURE_HEADER", "X-Procore-Signature")
+        return validate_signature(body, headers.get(header_name, ""), secret)
+
+    if scheme == "authorization_bearer":
+        import hmac as _hmac
+        expected = f"Bearer {secret}"
+        return _hmac.compare_digest(headers.get("Authorization", ""), expected)
+
+    # "unverified" or any unknown scheme -> fail closed.
+    return False
 
 
 @app.post("/v1/procore/webhook")
@@ -1310,21 +1349,19 @@ async def procore_webhook_endpoint(request: Request):
         log_payload,
         log_review,
         parse_event,
-        validate_signature,
     )
     from core.procore.prescreen_reviewer import run_prescreen_review
 
-    # Read raw body for signature validation
+    # Read raw body for verification.
     body = await request.body()
 
-    # Validate webhook signature if secret is configured
-    if _PROCORE_WEBHOOK_SECRET:
-        sig = request.headers.get("X-Procore-Signature", "")
-        if not validate_signature(body, sig, _PROCORE_WEBHOOK_SECRET):
-            return JSONResponse(
-                content={"error": "Invalid webhook signature"},
-                status_code=401,
-            )
+    # Fail-closed, scheme-agnostic webhook auth — MUST run before any side
+    # effect (payload logging, idempotency, fetch, review, comment).
+    if not _verify_procore_request(request.headers, body):
+        return JSONResponse(
+            content={"error": "Unauthorized Procore webhook"},
+            status_code=401,
+        )
 
     try:
         payload = json.loads(body)
