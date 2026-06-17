@@ -39,3 +39,21 @@ jobs:
 
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
+
+      - name: Generate SBOM (CycloneDX)
+        # Never fails the job; the dedicated scan below is the vuln gate.
+        continue-on-error: true
+        run: pip-audit -r requirements.txt --format cyclonedx-json --output sbom.json
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+          if-no-files-found: warn
+
+      - name: Vulnerability scan (pip-audit)
+        # Fails CI on known-vuln pinned deps. Document any unavoidable, no-fix
+        # advisory with `--ignore-vuln <id>` and a reason here — never blanket-ignore.
+        run: pip-audit -r requirements.txt
