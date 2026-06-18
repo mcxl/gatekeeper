@@ -7,14 +7,17 @@
 
 ## Status Update - 2026-06-18
 
-This plan has now advanced beyond the original read-only planning state. `main` includes PRs #26-#29:
+This plan has now advanced beyond the original read-only planning state. `main` includes PRs #26-#30, and Supabase migrations 007/008 have been applied and verified:
 
 - **PR #26:** live write-back is gated by `PROCORE_LIVE_WRITEBACK_ENABLED=false` by default.
 - **PR #27:** migration 008 is hardened with pinned `search_path` and a controlled delete guard.
 - **PR #28:** PDF/JWT dependency smoke coverage exists for the upgraded extraction/auth dependencies.
 - **PR #29:** metadata-only Procore audit payload builder and graceful Supabase RPC wiring are implemented.
+- **PR #30:** Stage 3 evidence was refreshed after hardening and merged at `5e258a1`.
+- **Supabase apply:** project `rpd-pims` / `nebdpofqglfyfyqqodni` records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit`.
+- **Supabase verification:** `private.procore_webhook_deliveries` and `private.procore_audit` exist with RLS enabled; public RPCs exist for reserve/audit/purge/company delete; audit update/delete triggers exist; RPC execute is allowed for `service_role` and denied for `anon`/`authenticated`; direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role`.
 
-The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; migrations 007/008 remain `UNAPPLIED`; production env/migration application remains `OPS-GATED`.
+The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; production env rollout remains `OPS-GATED`; Supabase runtime smoke remains optional and requires explicit approval because it writes synthetic rows.
 
 ---
 
@@ -147,22 +150,22 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 >
 > SWMS document content is processed transiently by the Anthropic API for the review step. The applicable data-processing terms (including a Zero-Data-Retention arrangement) are **[status — Alan to confirm; ZDR is an open action item, `PROCORE_TECHNICAL_FEASIBILITY_REPORT.md:135,169`]** and must be locked before this statement is submitted.
 
-**Engineering status for this language:** local JSONL persistence is gated off by default (`PROCORE_LOCAL_JSONL_ENABLED=false`), and PR #29 added metadata-only audit payload/RPC wiring. The statement is still conditional on applying migrations 007/008 after Supabase preflight and confirming final retention/ZDR terms.
+**Engineering status for this language:** local JSONL persistence is gated off by default (`PROCORE_LOCAL_JSONL_ENABLED=false`), PR #29 added metadata-only audit payload/RPC wiring, and migrations 007/008 are applied and verified in Supabase. The statement is still conditional on confirming final retention/ZDR terms.
 
 ---
 
 ## Deliverable 6 — Implementation Tickets / Current Status
 
-> Current status after PRs #24-#29. Several confirmation-independent tickets are implemented; the final T2/T7/T8 production wiring still depends on Procore answers and ops-controlled Supabase migration application.
+> Current status after PRs #24-#30 and verified Supabase migration apply. Several confirmation-independent tickets are implemented; the final T2/T7/T8 production wiring still depends on Procore answers and production env rollout.
 
 | ID | Title | Scope (evidence) | Depends on | Acceptance |
 |---|---|---|---|---|
 | T1 | Disable legacy `/procore` route registration | Implemented in PR #24; legacy route disabled by default behind `PROCORE_LEGACY_ROUTE_ENABLED` | Done | `POST /procore/webhook` returns 404 by default; direct-import legacy tests remain supported |
 | T2 | Fail-closed webhook auth (**scheme-agnostic**) | Implemented in PR #24; default `PROCORE_AUTH_SCHEME=unverified` rejects before side effects | Final scheme UNVERIFIED | Candidate HMAC/Bearer verifiers exist; production scheme/header must be set only after Procore confirms |
-| T3 | Durable idempotency | Implemented in PR #24; Supabase reserve RPC with raw-body hash fallback | Migrations UNAPPLIED; payload key UNVERIFIED | Duplicate processing is guarded; migration 007 must be applied after ops preflight |
+| T3 | Durable idempotency | Implemented in PR #24; Supabase reserve RPC with raw-body hash fallback; migration 007 applied as `20260618025557` | Real payload key location UNVERIFIED; optional runtime smoke not run | Duplicate processing is guarded; verified RPC exists with service-role execute only |
 | T4 | Async 202 + dead-letter/failure surface | Implemented in PR #24; `/v1` returns 202 and runs background pipeline with failure alerting | Done | Failures recorded/alerted; worker/queue can remain a later durability upgrade |
 | T5 | Gate local JSONL in production | Implemented in PR #25; `PROCORE_LOCAL_JSONL_ENABLED=false` by default | Done | No local Procore-derived JSONL files in production default |
-| T6 | Supabase audit tables w/ immutability + retention | Implemented in PR #25 and hardened in PR #27 | Migrations UNAPPLIED; ops preflight required | Migration 008 has private table, RLS, service-role RPCs, pinned trigger search path, controlled retention/delete guard |
+| T6 | Supabase audit tables w/ immutability + retention | Implemented in PR #25, hardened in PR #27, applied as `20260618025643` | Optional runtime smoke not run; retention windows/ZDR still require final confirmation | Migration 008 has private table, RLS, service-role RPCs, pinned trigger search path, controlled retention/delete guard |
 | T7 | OAuth / DMSA token model | Not implemented; static token model remains interim | Procore grant/scopes UNVERIFIED | Replace `PROCORE_ACCESS_TOKEN` with confirmed OAuth/DMSA model before certification |
 | T8 | Advisory comment quality gate + write-back idempotency | Partially implemented: PR #26 gated live write-back; PR #29 added metadata-only audit builder/RPC wiring | Write-back resource/path UNVERIFIED | Final endpoint/path, write-back idempotency, and comment quality gate still require Procore confirmation |
 | T9 | SBOM / vulnerability scan in CI | Implemented in PR #25; PR #28 added PDF/JWT dependency smoke coverage | Done | CI fails on vulnerable pinned deps; SBOM artifact produced; extraction/auth smoke coverage exists |
@@ -170,7 +173,7 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 
 ---
 
-## Residual UNVERIFIED items (must resolve before submission)
+## Residual UNVERIFIED / Explicit-Approval Items (must resolve before submission)
 
 1. Webhook signature/auth scheme — Procore confirmation (D2 Q1).
 2. Write-back resource + REST path/version — Procore confirmation (D2 Q3); do **not** invent. Live write-back is safely gated off by default, but the final resource is still `UNVERIFIED`.
@@ -179,7 +182,7 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 5. `tests/test_procore_webhook.py` line citations in action_01 — not re-opened this pass; re-pin on edit.
 6. Anthropic ZDR status — Alan (`report:135,169`).
 7. Retention windows (12 mo / 30 day) — Alan to set.
-8. Supabase migrations 007/008 — `UNAPPLIED`; apply only after project/schema/service-role preflight.
+8. Optional Supabase runtime smoke — not run; requires explicit approval because it writes synthetic delivery/audit rows.
 
 ---
 
