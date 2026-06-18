@@ -1,9 +1,9 @@
 # Procore Track A - Evidence Checkpoint
 
 **Date:** 2026-06-18
-**Current `main` HEAD:** `0d6160f` (merged PR #29)
+**Current `main` HEAD:** `5e258a1` (merged PR #30)
 **Source of truth / plan:** `docs/procore/STAGE3_CERTIFICATION_PLAN_V2.md`
-**Scope:** Track A plus the confirmation-independent post-review hardening through PRs #26-#29.
+**Scope:** Track A plus the confirmation-independent post-review hardening through PR #30 and the verified Supabase migration apply.
 
 This report replaces the older Track A review snapshot that stopped at PR #24/#25 and `1447c27`. It is an evidence checkpoint for Stage 3 certification readiness. It does not claim the Procore-gated items are complete.
 
@@ -31,7 +31,7 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 ### PR #27 - migration 008 hardened before apply
 - `private.prevent_procore_audit_mutation()` now pins `search_path`.
 - Audit retention/customer deletion no longer depends on the migration owner being `postgres` or `audit_admin`; controlled delete functions use a transaction-local guard.
-- Migration 008 remains **UNAPPLIED**.
+- Migration 008 was applied after PR #30 alongside migration 007.
 
 ### PR #28 - PDF/JWT dependency smoke tests
 - Added smoke coverage for real PDF extraction and textless-PDF fallback when `pypdf` is installed.
@@ -44,6 +44,15 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 - Audit payload excludes raw SWMS text, review prose, amendment reasons, comment body, attachment bytes, and full webhook payloads.
 - Audit write degrades to no-op when Supabase is unconfigured or migration 008/RPC is absent.
 - This is partial T8: audit-row wiring is done; final write-back resource/path is still Procore-gated.
+
+### PR #30 + Supabase migration apply - evidence refresh and live schema state
+- PR #30 refreshed the Stage 3 evidence after PRs #26-#29 and was merged at `5e258a1`.
+- Supabase project `rpd-pims` / `nebdpofqglfyfyqqodni` now records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:5`, `docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:17-18`).
+- Verified private tables now exist with RLS enabled: `private.procore_webhook_deliveries` and `private.procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:40-44`).
+- Verified public RPC execute is allowed for `service_role` and denied for `anon`/`authenticated` on reserve/audit/purge/company-delete RPCs (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:73-119`).
+- Verified audit triggers exist: `no_update_procore_audit` and `no_delete_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:137-155`).
+- Verified direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:172-178`).
+- Supabase runtime smoke has **not** been run yet; it remains an optional explicit-approval checkpoint because it writes synthetic rows (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:7`).
 
 ---
 
@@ -82,9 +91,7 @@ Do **not** use an unqualified "no data retained" claim. The correct position is 
 5. PM/SM directed visibility or two-tier comment support, if required.
 
 ### Ops-gated
-1. Supabase migration preflight: verify project URL, schema state, existing functions/tables, and service-role access.
-2. Apply migrations `007_procore_webhook_deliveries.sql` and `008_procore_audit.sql` only after the preflight is clean.
-3. Set production env safely:
+1. Set production env safely:
    - `PROCORE_REQUIRE_AUTH=true`
    - `PROCORE_AUTH_SCHEME` set only after Procore confirms the scheme
    - `PROCORE_WEBHOOK_SECRET` / configured signing secret
@@ -92,6 +99,7 @@ Do **not** use an unqualified "no data retained" claim. The correct position is 
    - `PROCORE_LIVE_WRITEBACK_ENABLED=false` until write-back resource is verified
    - `PROCORE_LOCAL_JSONL_ENABLED=false`
    - `SUPABASE_SERVICE_ROLE_KEY` for durable idempotency/audit
+2. Optional Supabase runtime smoke requires explicit approval because it writes synthetic delivery/audit rows.
 
 ### Still not complete
 1. T7 OAuth/DMSA token model; static `PROCORE_ACCESS_TOKEN` remains a non-certification-ready interim model.
@@ -106,13 +114,13 @@ Do **not** use an unqualified "no data retained" claim. The correct position is 
 Procore Submittal event
 -> /v1/procore/webhook
 -> fail-closed scheme-agnostic auth                  [scheme UNVERIFIED]
--> durable idempotency reservation, pre-side-effect  [migrations UNAPPLIED until ops preflight]
+-> durable idempotency reservation, pre-side-effect  [migrations applied; payload key UNVERIFIED]
 -> 202 Accepted
 -> async pipeline: fetch -> extract -> review -> compare -> optional comment
    -> live write-back gated off by default
    -> failures recorded + alerted
-   -> metadata-only audit RPC attempted, no-op if Supabase/RPC absent
+   -> metadata-only audit RPC attempted through verified Supabase RPC
 -> human Safety Manager decides in Procore
 ```
 
-The confirmation-independent foundation is now in place. The remaining work is deliberately blocked on Procore answers and controlled Supabase operations, not more speculative implementation.
+The confirmation-independent foundation is now in place. The remaining work is deliberately blocked on Procore answers, production env rollout, and any explicitly approved synthetic Supabase runtime smoke, not more speculative implementation.
