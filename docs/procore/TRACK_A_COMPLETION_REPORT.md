@@ -66,7 +66,7 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 
 Use the precise claim:
 
-> Procore remains the system of record. Safe Method retains minimal audit metadata only: event/delivery identifiers, company/project identifiers, document hash, rule-pack/library versions, status fields, counts, and write-back metadata. Safe Method does not retain raw SWMS text, full Procore document content, full webhook payload bodies, attachment bytes, comment bodies, or OAuth tokens/secrets in the audit record.
+> Procore remains the system of record. Safe Method retains minimal audit metadata only: event/delivery identifiers, company/project identifiers, a document fingerprint/hash generated from extracted SWMS review text, rule-pack/library versions, status fields, finding and hard-fail counts, and write-back metadata. Safe Method does not retain raw SWMS text, full Procore document content, full webhook payload bodies, attachment bytes, finding prose, comment bodies, or OAuth tokens/secrets in the audit record.
 
 Do **not** use an unqualified "no data retained" claim. The correct position is minimal metadata retained in Supabase audit tables, with raw document content processed transiently for review.
 
