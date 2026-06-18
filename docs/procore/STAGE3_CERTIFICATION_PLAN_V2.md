@@ -14,8 +14,8 @@ This plan has now advanced beyond the original read-only planning state. `main` 
 - **PR #28:** PDF/JWT dependency smoke coverage exists for the upgraded extraction/auth dependencies.
 - **PR #29:** metadata-only Procore audit payload builder and graceful Supabase RPC wiring are implemented.
 - **PR #30:** Stage 3 evidence was refreshed after hardening and merged at `5e258a1`.
-- **Supabase apply:** project `rpd-pims` / `nebdpofqglfyfyqqodni` records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit`.
-- **Supabase verification:** `private.procore_webhook_deliveries` and `private.procore_audit` exist with RLS enabled; public RPCs exist for reserve/audit/purge/company delete; audit update/delete triggers exist; RPC execute is allowed for `service_role` and denied for `anon`/`authenticated`; direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role`.
+- **Supabase apply:** project `rpd-pims` / `nebdpofqglfyfyqqodni` records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:5`, `docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:17-18`).
+- **Supabase verification:** private tables exist with RLS enabled (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:40-44`); public RPC execute is allowed for `service_role` and denied for `anon`/`authenticated` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:73-119`); audit update/delete triggers exist (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:137-155`); direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:172-178`).
 
 The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; production env rollout remains `OPS-GATED`; Supabase runtime smoke remains optional and requires explicit approval because it writes synthetic rows.
 
@@ -150,7 +150,7 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 >
 > SWMS document content is processed transiently by the Anthropic API for the review step. The applicable data-processing terms (including a Zero-Data-Retention arrangement) are **[status — Alan to confirm; ZDR is an open action item, `PROCORE_TECHNICAL_FEASIBILITY_REPORT.md:135,169`]** and must be locked before this statement is submitted.
 
-**Engineering status for this language:** local JSONL persistence is gated off by default (`PROCORE_LOCAL_JSONL_ENABLED=false`), PR #29 added metadata-only audit payload/RPC wiring, and migrations 007/008 are applied and verified in Supabase. The statement is still conditional on confirming final retention/ZDR terms.
+**Engineering status for this language:** local JSONL persistence is gated off by default (`PROCORE_LOCAL_JSONL_ENABLED=false`), PR #29 added metadata-only audit payload/RPC wiring, and migrations 007/008 are applied and verified in Supabase (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:17-18`, `docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:40-44`). The statement is still conditional on confirming final retention/ZDR terms.
 
 ---
 

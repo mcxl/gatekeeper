@@ -47,10 +47,12 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 
 ### PR #30 + Supabase migration apply - evidence refresh and live schema state
 - PR #30 refreshed the Stage 3 evidence after PRs #26-#29 and was merged at `5e258a1`.
-- Supabase project `rpd-pims` / `nebdpofqglfyfyqqodni` now records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit`.
-- Verified objects now exist: `private.procore_webhook_deliveries`, `private.procore_audit`, `public.reserve_procore_webhook_delivery(text, text)`, `public.record_procore_audit(jsonb)`, `public.purge_procore_audit()`, and `public.delete_procore_audit_for_company(bigint)`.
-- Verified controls: both private tables have RLS enabled; `no_update_procore_audit` and `no_delete_procore_audit` triggers exist; public RPC execute is allowed for `service_role` and denied for `anon`/`authenticated`; direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role`.
-- Supabase runtime smoke has **not** been run yet; it remains an optional explicit-approval checkpoint because it writes synthetic rows.
+- Supabase project `rpd-pims` / `nebdpofqglfyfyqqodni` now records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:5`, `docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:17-18`).
+- Verified private tables now exist with RLS enabled: `private.procore_webhook_deliveries` and `private.procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:40-44`).
+- Verified public RPC execute is allowed for `service_role` and denied for `anon`/`authenticated` on reserve/audit/purge/company-delete RPCs (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:73-119`).
+- Verified audit triggers exist: `no_update_procore_audit` and `no_delete_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:137-155`).
+- Verified direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:172-178`).
+- Supabase runtime smoke has **not** been run yet; it remains an optional explicit-approval checkpoint because it writes synthetic rows (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:7`).
 
 ---
 
