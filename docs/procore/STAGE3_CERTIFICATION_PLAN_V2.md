@@ -5,6 +5,17 @@
 **Source of truth:** [STAGE3_CERTIFICATION_REVIEW.md](STAGE3_CERTIFICATION_REVIEW.md) (verdict: ACCEPT WITH CHANGES)
 **Rule:** every claim carries `file:line` (verified against current HEAD) or an official docs URL; gaps marked `UNVERIFIED`.
 
+## Status Update - 2026-06-18
+
+This plan has now advanced beyond the original read-only planning state. `main` includes PRs #26-#29:
+
+- **PR #26:** live write-back is gated by `PROCORE_LIVE_WRITEBACK_ENABLED=false` by default.
+- **PR #27:** migration 008 is hardened with pinned `search_path` and a controlled delete guard.
+- **PR #28:** PDF/JWT dependency smoke coverage exists for the upgraded extraction/auth dependencies.
+- **PR #29:** metadata-only Procore audit payload builder and graceful Supabase RPC wiring are implemented.
+
+The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; migrations 007/008 remain `UNAPPLIED`; production env/migration application remains `OPS-GATED`.
+
 ---
 
 ## Deliverable 1 — Stale `file:line` Correction Table
@@ -130,44 +141,45 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 
 **Safe Method — Procore integration data-handling statement (draft):**
 
-> Procore remains the system of record. Safe Method does not create a permanent copy of customer project data. For each SWMS review, Safe Method retains a **minimal audit record** in its managed database (Supabase): the Procore event/delivery identifier, a SHA-256 hash of the payload, project and company identifiers, the rule-pack version and the criteria checked, structured finding summaries and the advisory status recommendation, write-back metadata, and human-override records. Safe Method **does not retain** the raw SWMS document text, full Procore document content, full webhook payload bodies, or any OAuth tokens/secrets in that audit record.
+> Procore remains the system of record. Safe Method does not create a permanent copy of customer project data. For each SWMS review, Safe Method retains a **minimal audit record** in its managed database (Supabase): the Procore event/delivery identifier, project and company identifiers, a document fingerprint/hash generated from the extracted SWMS review text (not from the full webhook payload), rule-pack/library versions, review status fields, finding and hard-fail counts, write-back metadata, and human-override records. Safe Method **does not retain** the raw SWMS document text, full Procore document content, full webhook payload bodies, finding prose, comment bodies, or any OAuth tokens/secrets in that audit record.
 >
 > Audit records are stored in a database with append-only (no-update/no-delete) controls and are retained for **[12 months — Alan to confirm]**, after which they are purged. Idempotency/delivery records are retained for **[30 days — Alan to confirm]** (covering Procore's documented retry window) and then purged. Customers may request deletion of their records by company or project identifier; Safe Method will action the request and confirm completion.
 >
 > SWMS document content is processed transiently by the Anthropic API for the review step. The applicable data-processing terms (including a Zero-Data-Retention arrangement) are **[status — Alan to confirm; ZDR is an open action item, `PROCORE_TECHNICAL_FEASIBILITY_REPORT.md:135,169`]** and must be locked before this statement is submitted.
 
-**Engineering precondition for this language to be true:** local JSONL persistence (`webhook_handler.py:136-165`, `review_store.py:22-27`, written at `main.py:1330,1410,1413`) must be removed or gated off in production (Phase 4). Until then, the statement above is aspirational, not factual.
+**Engineering status for this language:** local JSONL persistence is gated off by default (`PROCORE_LOCAL_JSONL_ENABLED=false`), and PR #29 added metadata-only audit payload/RPC wiring. The statement is still conditional on applying migrations 007/008 after Supabase preflight and confirming final retention/ZDR terms.
 
 ---
 
-## Deliverable 6 — Implementation Tickets (draft, for later approval)
+## Deliverable 6 — Implementation Tickets / Current Status
 
-> Not implemented. Each ticket is bounded, pytest-gated, manually committed (no auto-push) per `CLAUDE.md`. **Only the final wiring of T2 (auth scheme) and T8 (write-back resource) depends on Phase 1 Procore answers; all others are Track A and can start now.**
+> Current status after PRs #24-#29. Several confirmation-independent tickets are implemented; the final T2/T7/T8 production wiring still depends on Procore answers and ops-controlled Supabase migration application.
 
 | ID | Title | Scope (evidence) | Depends on | Acceptance |
 |---|---|---|---|---|
-| T1 | Disable legacy `/procore` route registration | comment/guard `main.py:67,157`; keep `api/procore.py` for tests; env flag `ENABLE_LEGACY_PROCORE_ROUTE` (action_05) | — | `POST /procore/webhook` → 404; legacy direct-import tests still pass |
-| T2 | Fail-closed webhook auth (**scheme-agnostic**) | pluggable `verify(headers, body) -> bool` replacing optional check `main.py:1314-1320`; reject before any side-effect (currently `log_payload` at `:1330` runs first); state replay/forgery mitigations (HTTPS-only, secret rotation) | Track A now; scheme config from Phase 1 | no secret/bad sig → 401; `log_payload`/`fetch_attachment`/`run_prescreen_review`/`post_submittal_comment` not called; verifier swappable by config |
-| T3 | Durable idempotency | replace in-memory `webhook_handler.py:27,103-109`; Supabase `procore_webhook_deliveries` + reserve RPC (action_03); **derived fallback key = SHA-256(raw body)** when no `delivery_id`/`ulid` (current reads `metadata` only, `webhook_handler.py:93`) | T2 | duplicate → single processing; survives restart; reservation before side-effects; works with no delivery_id |
-| T4 | Async 202 + dead-letter/failure surface | extract `_process_procore_v1_webhook` from `main.py:1367-1459`; use `BackgroundTasks` as interim async (pattern only — do **not** import deprecated `api/procore.py` helpers into canonical `/v1`); durable status row post-202; **extract Slack/failure logic into a canonical `core/procore/alerts.py`** rather than reusing `api/procore.py:32,87` directly | T3 | 202 returns fast; failed async job recorded + alerted; `/v1` has no import dependency on deprecated `api/procore.py`; operator can see failures |
-| T5 | Remove/gate local JSONL in production | gate `webhook_handler.py:136-165`, `review_store.py:22-27` behind non-prod flag | T6 | no Procore-derived files written on disk in prod |
-| T6 | Supabase audit tables w/ immutability + retention | new `procore_audit` + delivery tables; reuse triggers (`004_job_states_immutable.sql`); retention purge job | — | UPDATE/DELETE rejected; retention window enforced; deletion-by-company works |
-| T7 | OAuth / DMSA token model | replace static `api_client.py:27,36-48`; secret-store; refresh/rotation | Phase 1 (grant) | no static prod token; least-privilege scopes; rotation documented |
-| T8 | Advisory comment quality gate + write-back idempotency | `ReviewArtifactV1`/`StoredAuditArtifactV1`/`ProcoreAdvisoryCommentV1`; deterministic gate; goldens; **once-per-`review_run_id` write-back guard** (no duplicate comment on Procore 12h retry); verified write-back path | Phase 1 (write-back resource) | banned approval words blocked; evidence refs required; no duplicate comment on replay; goldens pass |
-| T9 | SBOM / vulnerability scan in CI | add `pip-audit` (+ SBOM, e.g. cyclonedx) step to `.github/workflows/ci.yml:37-41` (currently flake8+pytest only; none present — verified) | — | CI fails on known-vuln dep; SBOM artifact produced |
-| T10 | Baseline review must not be gated by rule pack | replace the `no_rule_pack` early return (`api/main.py:1351-1356`) with an **empty fallback rule pack carrying `project_id=event.project_id`**, then run baseline/structural review anyway (engine already supports pack-less, `prescreen_reviewer.py:455-457`); pack only adds project-specific criteria | — | project with no pack still receives baseline WHS + structural review; artifact carries `project_id=event.project_id` (**not blanked**); `project_review_status=UNAVAILABLE` returned and stored, not blocked |
+| T1 | Disable legacy `/procore` route registration | Implemented in PR #24; legacy route disabled by default behind `PROCORE_LEGACY_ROUTE_ENABLED` | Done | `POST /procore/webhook` returns 404 by default; direct-import legacy tests remain supported |
+| T2 | Fail-closed webhook auth (**scheme-agnostic**) | Implemented in PR #24; default `PROCORE_AUTH_SCHEME=unverified` rejects before side effects | Final scheme UNVERIFIED | Candidate HMAC/Bearer verifiers exist; production scheme/header must be set only after Procore confirms |
+| T3 | Durable idempotency | Implemented in PR #24; Supabase reserve RPC with raw-body hash fallback | Migrations UNAPPLIED; payload key UNVERIFIED | Duplicate processing is guarded; migration 007 must be applied after ops preflight |
+| T4 | Async 202 + dead-letter/failure surface | Implemented in PR #24; `/v1` returns 202 and runs background pipeline with failure alerting | Done | Failures recorded/alerted; worker/queue can remain a later durability upgrade |
+| T5 | Gate local JSONL in production | Implemented in PR #25; `PROCORE_LOCAL_JSONL_ENABLED=false` by default | Done | No local Procore-derived JSONL files in production default |
+| T6 | Supabase audit tables w/ immutability + retention | Implemented in PR #25 and hardened in PR #27 | Migrations UNAPPLIED; ops preflight required | Migration 008 has private table, RLS, service-role RPCs, pinned trigger search path, controlled retention/delete guard |
+| T7 | OAuth / DMSA token model | Not implemented; static token model remains interim | Procore grant/scopes UNVERIFIED | Replace `PROCORE_ACCESS_TOKEN` with confirmed OAuth/DMSA model before certification |
+| T8 | Advisory comment quality gate + write-back idempotency | Partially implemented: PR #26 gated live write-back; PR #29 added metadata-only audit builder/RPC wiring | Write-back resource/path UNVERIFIED | Final endpoint/path, write-back idempotency, and comment quality gate still require Procore confirmation |
+| T9 | SBOM / vulnerability scan in CI | Implemented in PR #25; PR #28 added PDF/JWT dependency smoke coverage | Done | CI fails on vulnerable pinned deps; SBOM artifact produced; extraction/auth smoke coverage exists |
+| T10 | Baseline review must not be gated by rule pack | Implemented in PR #24 | Done | Missing rule pack still produces baseline structural review with `project_review_status=UNAVAILABLE` |
 
 ---
 
 ## Residual UNVERIFIED items (must resolve before submission)
 
 1. Webhook signature/auth scheme — Procore confirmation (D2 Q1).
-2. Write-back resource + REST path/version — Procore confirmation (D2 Q3); do **not** invent.
+2. Write-back resource + REST path/version — Procore confirmation (D2 Q3); do **not** invent. Live write-back is safely gated off by default, but the final resource is still `UNVERIFIED`.
 3. OAuth grant + DMSA support + scopes — Procore confirmation (D2 Q4).
 4. `delivery_id`/`ulid` location in real payloads — Procore confirmation (D2 Q2); current code reads `metadata` only (`webhook_handler.py:93`).
 5. `tests/test_procore_webhook.py` line citations in action_01 — not re-opened this pass; re-pin on edit.
 6. Anthropic ZDR status — Alan (`report:135,169`).
 7. Retention windows (12 mo / 30 day) — Alan to set.
+8. Supabase migrations 007/008 — `UNAPPLIED`; apply only after project/schema/service-role preflight.
 
 ---
 
