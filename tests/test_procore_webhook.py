@@ -45,8 +45,10 @@ def _load_fixture(name: str) -> dict:
 @pytest.fixture(autouse=True)
 def _in_memory_idempotency(monkeypatch):
     # Default to the in-memory idempotency path for deterministic offline tests;
-    # the durable-path tests opt back in by setting SUPABASE_SERVICE_ROLE_KEY.
-    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    # empty values also prevent api.main's load_dotenv() from restoring real
+    # credentials after this fixture has isolated the test environment.
+    monkeypatch.setenv("SUPABASE_URL", "")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     # Neutralise the durable status writer so background tasks never hit Supabase.
     import core.job_state as js
