@@ -1292,6 +1292,15 @@ from pathlib import Path as _Path
 _PROCORE_RULE_PACKS_DIR = _Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
 
 
+def _procore_extraction_quality(text: str, warnings=()) -> str:
+    """Map the live flat-text extractor result to the review contract."""
+    if len(text.strip()) < 100:
+        return "poor"
+    if warnings:
+        return "degraded"
+    return "good"
+
+
 def _verify_procore_request(headers, body: bytes) -> bool:
     """Fail-closed, scheme-agnostic verification of an inbound Procore webhook.
 
@@ -1359,18 +1368,20 @@ async def _process_procore_v1_webhook(
         if not attachments:
             return {"status": "no_pdf", "reason": "No PDF attachments found in submittal"}
 
-        # Load project rule pack (empty fallback keeps baseline review running).
-        _PROCORE_RULE_PACKS_DIR.mkdir(parents=True, exist_ok=True)
+        # Load project rule pack fail-closed (baseline review always continues).
+        from core.procore.rule_pack import load_rule_pack
         rule_pack_path = _PROCORE_RULE_PACKS_DIR / f"project_{event.project_id}.json"
-        if rule_pack_path.exists():
-            with open(rule_pack_path, encoding="utf-8") as f:
-                rule_pack = json.load(f)
-        else:
-            rule_pack = {"project_id": event.project_id}
+        rule_pack_result = load_rule_pack(rule_pack_path)
+        rule_pack = (
+            rule_pack_result.pack
+            if rule_pack_result.should_evaluate
+            else {"project_id": event.project_id}
+        )
 
         att = attachments[0]
         swms_text = ""
         retrieval_mode = "none"
+        extraction_quality = "poor"
 
         # Phase 1B: try live Procore API retrieval first
         try:
@@ -1382,6 +1393,10 @@ async def _process_procore_v1_webhook(
                 if extraction.text_extraction_succeeded:
                     swms_text = extraction.raw_text
                     retrieval_mode = "live_api"
+                    extraction_quality = _procore_extraction_quality(
+                        swms_text,
+                        getattr(extraction, "warnings", ()),
+                    )
                     logger.info(f"Live retrieval: {len(swms_text)} chars from {att.filename}")
         except Exception as live_err:
             logger.warning(f"Live Procore retrieval failed: {live_err}")
@@ -1391,12 +1406,14 @@ async def _process_procore_v1_webhook(
             swms_text = payload.get("_simulated_swms_text", "")
             if swms_text:
                 retrieval_mode = "simulated"
+                extraction_quality = _procore_extraction_quality(swms_text)
 
         if not swms_text:
             fixture_path = payload.get("_fixture_pdf_text_path", "")
             if fixture_path and _Path(fixture_path).exists():
                 swms_text = _Path(fixture_path).read_text(encoding="utf-8")
                 retrieval_mode = "fixture"
+                extraction_quality = _procore_extraction_quality(swms_text)
 
         if not swms_text:
             return {"status": "no_text", "attachment": att.filename,
@@ -1409,7 +1426,15 @@ async def _process_procore_v1_webhook(
             document_reference=att.filename,
             source_surface="submittals",
             source_item_id=str(event.resource_id),
+            extraction_quality=extraction_quality,
+            project_review_status=rule_pack_result.status,
         )
+        if rule_pack_result.errors:
+            logger.warning(
+                "Project rule pack rejected: status=%s errors=%s",
+                rule_pack_result.status,
+                "; ".join(rule_pack_result.errors),
+            )
 
         # Log review and store full artifact for Phase 3 comparison
         log_review(review_artifact, event)
@@ -1451,7 +1476,9 @@ async def _process_procore_v1_webhook(
             # PROCORE_LIVE_WRITEBACK_ENABLED=true. The write-back resource is
             # UNVERIFIED (deprecated submittal_logs path) pending Procore
             # confirmation — see docs/procore/action_06_submittal_logs_terminology.md.
-            if writeback_enabled and is_live_configured() and retrieval_mode == "live_api":
+            if (writeback_enabled and is_live_configured()
+                    and retrieval_mode == "live_api"
+                    and review_artifact.get("project_review_status") == "AVAILABLE"):
                 comment_text = format_review_as_comment(review_artifact, att.filename)
                 post_submittal_comment(event.project_id, event.resource_id, comment_text)
                 comment_posted = True

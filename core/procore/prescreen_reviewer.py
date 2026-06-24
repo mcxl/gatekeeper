@@ -21,6 +21,7 @@ from core.procore.webhook_handler import (
     MAX_REQUIRED_AMENDMENTS,
     REVIEW_DISCLAIMER,
 )
+from core.procore.predicate_dispatch import evaluate_criteria
 
 _log = logging.getLogger(__name__)
 
@@ -366,6 +367,15 @@ def _sort_amendments(amendments: list[dict]) -> list[dict]:
 
 def _assess_project_review_status(rule_pack: dict) -> str:
     """Determine project review availability."""
+    if rule_pack.get("pack_schema_version") == "1.1":
+        status = rule_pack.get("status")
+        if status == "active":
+            return "AVAILABLE"
+        if status == "draft":
+            return "DRAFT"
+        if status in ("superseded", "archived"):
+            return "PACK_INACTIVE"
+        return "INVALID"
     rules = rule_pack.get("rules", [])
     expectations = rule_pack.get("structural_expectations", [])
     if rules and expectations:
@@ -373,6 +383,43 @@ def _assess_project_review_status(rule_pack: dict) -> str:
     if rules or expectations:
         return "PARTIAL"
     return "UNAVAILABLE"
+
+
+def _evaluation_to_amendment(evaluation: dict) -> dict:
+    """Translate one non-aligned V1.1 result into the legacy issue contract."""
+    criterion_id = evaluation["criterion_id"]
+    result = evaluation["criterion_result"]
+    evidence = evaluation.get("evidence_refs", [])
+    return {
+        "title": f"Project criterion {criterion_id}: {result.replace('_', ' ').title()}",
+        "reason": (
+            f"{evaluation['requirement']} "
+            f"Result: {result}; reason: {evaluation['reason_code']}."
+        ),
+        "evidence_ref": "; ".join(evidence) if evidence else evaluation["reason_code"],
+        "severity": evaluation["severity"],
+        "basis": evaluation["basis"],
+        "project_rule": evaluation["requirement"],
+        "criterion_result": result,
+        "reason_code": evaluation["reason_code"],
+        "issue_key": f"project_rule:{criterion_id}",
+    }
+
+
+def _derive_review_confidence(
+    extraction_quality: str,
+    evaluations: list[dict],
+) -> str:
+    """Describe evaluation certainty, independently of finding severity."""
+    if extraction_quality == "poor":
+        return "LOW"
+    if extraction_quality == "degraded":
+        return "MEDIUM"
+    if any(row.get("evaluation_confidence") == "low" for row in evaluations):
+        return "LOW"
+    if any(row.get("evaluation_confidence") == "medium" for row in evaluations):
+        return "MEDIUM"
+    return "HIGH"
 
 
 # ── Main review function ────────────────────────────────────────────────────
@@ -384,6 +431,8 @@ def run_prescreen_review(
     document_reference: str = "",
     source_surface: str = "submittals",
     source_item_id: str = "",
+    extraction_quality: str | None = None,
+    project_review_status: str | None = None,
 ) -> dict:
     """Run a bounded pre-screen review of SWMS text against a project rule pack.
 
@@ -396,6 +445,8 @@ def run_prescreen_review(
     project_id = project_rule_pack.get("project_id", "")
     rules = project_rule_pack.get("rules", [])
     expectations = project_rule_pack.get("structural_expectations", [])
+    if extraction_quality is None:
+        extraction_quality = "poor" if len(swms_text.strip()) < 100 else "good"
 
     # Structural checks
     seq_status, _ = _check_structural_sequence(swms_text)
@@ -408,9 +459,24 @@ def run_prescreen_review(
         if s == "ISSUES FOUND"
     )
 
-    # Project rule checks
-    all_amendments = _check_project_rules(swms_text, rules)
-    project_mismatches = _check_structural_expectations(swms_text, expectations)
+    # V1.1 evaluations are canonical; legacy issue fields remain derived for
+    # comments, audit and resubmission comparison.
+    criterion_evaluations: list[dict] = []
+    if project_rule_pack.get("pack_schema_version") == "1.1":
+        criterion_evaluations = evaluate_criteria(
+            swms_text,
+            project_rule_pack,
+            extraction_quality,
+        )
+        all_amendments = [
+            _evaluation_to_amendment(evaluation)
+            for evaluation in criterion_evaluations
+            if evaluation["criterion_result"] != "aligned"
+        ]
+        project_mismatches = []
+    else:
+        all_amendments = _check_project_rules(swms_text, rules)
+        project_mismatches = _check_structural_expectations(swms_text, expectations)
 
     # Normalize all basis values
     for a in all_amendments:
@@ -425,18 +491,10 @@ def run_prescreen_review(
     for i, a in enumerate(visible, 1):
         a["priority"] = i
 
-    # Determine confidence
-    mandatory_count = sum(1 for a in all_amendments if a.get("severity") in ("mandatory", "high"))
-    if mandatory_count >= 3 or structural_issue_count >= 3:
-        confidence = "HIGH"
-    elif mandatory_count >= 1 or structural_issue_count >= 1:
-        confidence = "MEDIUM"
-    else:
-        confidence = "HIGH"
-
-    # Check for LOW confidence signals
-    if not swms_text.strip() or len(swms_text.strip()) < 100:
-        confidence = "LOW"
+    confidence = _derive_review_confidence(
+        extraction_quality,
+        criterion_evaluations,
+    )
 
     # Workflow state with explicit precedence
     workflow_state, status = resolve_workflow_state(
@@ -452,7 +510,11 @@ def run_prescreen_review(
     else:
         summary = f"{total_issues} issue(s) detected — recommend return for amendment."
 
-    project_review_status = _assess_project_review_status(project_rule_pack)
+    project_review_status = (
+        project_review_status
+        if project_review_status is not None
+        else _assess_project_review_status(project_rule_pack)
+    )
     if project_review_status == "UNAVAILABLE":
         summary += " Note: no project rule pack — structural review only."
 
@@ -481,6 +543,8 @@ def run_prescreen_review(
         "suppressed_issue_count": suppressed,
         "_all_amendments": sorted_amendments,  # full internal inventory for comparison
         "rule_pack_version": project_rule_pack.get("pack_version", ""),
+        "criterion_evaluations": criterion_evaluations,
+        "extraction_quality": extraction_quality,
         "rule_library_version": _get_library_version(),
         "project_specific_mismatches": project_mismatches,
         "structural_findings": {

@@ -42,6 +42,42 @@ def _load_fixture(name: str) -> dict:
         return json.load(f)
 
 
+def _v11_active_pack() -> dict:
+    return {
+        "pack_schema_version": "1.1",
+        "pack_version": "1.1-test",
+        "project_id": 12345,
+        "project_name": "Test Project",
+        "status": "active",
+        "approved_by": "Test Safety Manager",
+        "approved_at": "2026-06-24T00:00:00Z",
+        "source_basis": "test fixture",
+        "source_type": "manual",
+        "baseline_protected": True,
+        "criteria": [
+            {
+                "criterion_id": "R01",
+                "requirement": "Reference a rescue plan.",
+                "severity": "mandatory",
+                "basis": "project_rule",
+                "machine_evaluable": True,
+                "predicate": {
+                    "predicate_type": "term_present",
+                    "terms": ["rescue plan"],
+                },
+            },
+        ],
+    }
+
+
+def _write_runtime_pack(pack: dict) -> Path:
+    rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
+    rule_packs_dir.mkdir(parents=True, exist_ok=True)
+    path = rule_packs_dir / "project_12345.json"
+    path.write_text(json.dumps(pack), encoding="utf-8")
+    return path
+
+
 @pytest.fixture(autouse=True)
 def _in_memory_idempotency(monkeypatch):
     # Default to the in-memory idempotency path for deterministic offline tests;
@@ -293,6 +329,50 @@ class TestPrescreenReviewRefined:
         assert "pre-screening support only" in r["review_disclaimer"]
 
 
+class TestRulePackV11ArtifactCompatibility:
+    def test_canonical_evaluation_derives_stable_legacy_amendment(self):
+        result = run_prescreen_review(
+            "A detailed SWMS without the configured rescue wording. " * 3,
+            _v11_active_pack(),
+            extraction_quality="good",
+        )
+        assert len(result["criterion_evaluations"]) == 1
+        assert result["criterion_evaluations"][0]["criterion_result"] == "missing"
+        assert result["_all_amendments"][0]["issue_key"] == "project_rule:R01"
+        assert result["required_amendments"][0]["criterion_result"] == "missing"
+
+    def test_review_confidence_comes_from_extraction_not_finding_count(self):
+        text = "A detailed SWMS without the configured rescue wording. " * 3
+        good = run_prescreen_review(
+            text,
+            _v11_active_pack(),
+            extraction_quality="good",
+        )
+        degraded = run_prescreen_review(
+            text,
+            _v11_active_pack(),
+            extraction_quality="degraded",
+        )
+        poor = run_prescreen_review(
+            text,
+            _v11_active_pack(),
+            extraction_quality="poor",
+        )
+        assert good["review_confidence"] == "HIGH"
+        assert degraded["review_confidence"] == "MEDIUM"
+        assert poor["review_confidence"] == "LOW"
+
+
+class TestProcoreExtractionQuality:
+    def test_quality_mapping(self):
+        from api.main import _procore_extraction_quality
+
+        detailed = "A detailed extracted SWMS statement. " * 4
+        assert _procore_extraction_quality(detailed) == "good"
+        assert _procore_extraction_quality(detailed, ["pdf_truncated"]) == "degraded"
+        assert _procore_extraction_quality("Short text.") == "poor"
+
+
 # ── LOW confidence behavior ─────────────────────────────────────────────────
 
 class TestLowConfidence:
@@ -393,7 +473,7 @@ class TestWebhookEndpoint:
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         (rule_packs_dir / "project_12345.json").write_text(
-            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+            json.dumps(_v11_active_pack()), encoding="utf-8")
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
@@ -489,7 +569,7 @@ class TestWebhookAuth:
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         (rule_packs_dir / "project_12345.json").write_text(
-            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+            json.dumps(_v11_active_pack()), encoding="utf-8")
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
@@ -581,7 +661,7 @@ class TestWebhookIdempotency:
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         (rule_packs_dir / "project_12345.json").write_text(
-            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+            json.dumps(_v11_active_pack()), encoding="utf-8")
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
@@ -664,7 +744,7 @@ class TestProcorePipeline:
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         (rule_packs_dir / "project_12345.json").write_text(
-            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+            json.dumps(_v11_active_pack()), encoding="utf-8")
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
@@ -693,6 +773,39 @@ class TestProcorePipeline:
         assert result["status"] == "reviewed"
         assert result["review"]["project_id"] == "99999"
         assert result["review"]["project_review_status"] == "UNAVAILABLE"
+
+    def test_pipeline_rejects_legacy_pack_but_runs_baseline(self):
+        _write_runtime_pack(_load_fixture("project_rule_pack_12345"))
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = (
+            "A detailed scaffold SWMS with edge protection and task sequencing. " * 3
+        )
+        result = self._run(payload)
+        assert result["status"] == "reviewed"
+        assert result["review"]["project_review_status"] == "INVALID"
+        assert result["review"]["criterion_evaluations"] == []
+
+    def test_draft_pack_requires_flag_and_non_production_environment(self, monkeypatch):
+        draft = _v11_active_pack()
+        draft["status"] = "draft"
+        draft.pop("approved_by")
+        draft.pop("approved_at")
+        _write_runtime_pack(draft)
+        payload = _load_fixture("submittal_created")
+        payload["_simulated_swms_text"] = (
+            "A detailed scaffold SWMS without rescue plan wording. " * 3
+        )
+
+        monkeypatch.setenv("PROCORE_ALLOW_DRAFT_RULE_PACKS", "true")
+        monkeypatch.setenv("ENVIRONMENT", "test")
+        allowed = self._run(payload)
+        assert allowed["review"]["project_review_status"] == "DRAFT"
+        assert len(allowed["review"]["criterion_evaluations"]) == 1
+
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        denied = self._run(payload)
+        assert denied["review"]["project_review_status"] == "PACK_INACTIVE"
+        assert denied["review"]["criterion_evaluations"] == []
 
     def test_pipeline_ignores_non_submittal(self):
         result = self._run({"event_type": "budget.updated",
@@ -730,7 +843,7 @@ class TestWriteBackGate:
         rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
         rule_packs_dir.mkdir(parents=True, exist_ok=True)
         (rule_packs_dir / "project_12345.json").write_text(
-            json.dumps(_load_fixture("project_rule_pack_12345")), encoding="utf-8")
+            json.dumps(_v11_active_pack()), encoding="utf-8")
         yield
         (rule_packs_dir / "project_12345.json").unlink(missing_ok=True)
 
@@ -784,6 +897,23 @@ class TestWriteBackGate:
         assert len(posted) == 1
         assert posted[0][0] == 12345  # project_id
         assert result["comment_posted"] is True
+
+    @pytest.mark.parametrize("pack_status", ["archived", "superseded"])
+    def test_inactive_pack_cannot_post_comment(self, monkeypatch, pack_status):
+        pack = _v11_active_pack()
+        pack["status"] = pack_status
+        _write_runtime_pack(pack)
+        result, posted = self._run_live(monkeypatch, "true")
+        assert result["review"]["project_review_status"] == "PACK_INACTIVE"
+        assert posted == []
+        assert result["comment_posted"] is False
+
+    def test_invalid_pack_cannot_post_comment(self, monkeypatch):
+        _write_runtime_pack(_load_fixture("project_rule_pack_12345"))
+        result, posted = self._run_live(monkeypatch, "true")
+        assert result["review"]["project_review_status"] == "INVALID"
+        assert posted == []
+        assert result["comment_posted"] is False
 
 
 # ── API client ──────────────────────────────────────────────────────────────
