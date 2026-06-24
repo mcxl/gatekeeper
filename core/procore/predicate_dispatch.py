@@ -108,7 +108,7 @@ def _term_absent(
         evidence_sufficiency="insufficient",
         confidence="medium",
         evidence_refs=[],
-        reason_code="term_absent_confirmed",
+        reason_code="term_absent_unconfirmed",
         requires_human_confirmation=True,
     )
 

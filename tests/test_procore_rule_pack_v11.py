@@ -1,9 +1,12 @@
 """Focused contract tests for RulePackV1.1 evaluation."""
 
+import json
+
 import pytest
 
 from core.procore.criterion_evaluation import validate_criterion_evaluation
 from core.procore.predicate_dispatch import evaluate_criteria, evaluate_criterion
+from core.procore.rule_pack import load_rule_pack, validate_rule_pack
 
 
 def _criterion(
@@ -53,7 +56,7 @@ def test_term_present_truth_table(
     ("quality", "text", "result", "reason"),
     [
         ("good", "Use scaffold access.", "aligned", "term_absent_confirmed"),
-        ("degraded", "Use scaffold access.", "partial", "term_absent_confirmed"),
+        ("degraded", "Use scaffold access.", "partial", "term_absent_unconfirmed"),
         ("poor", "Use scaffold access.", "unclear", "extraction_quality_low"),
         ("good", "Do not use a ladder as work platform.", "missing", "prohibited_term_present"),
         ("degraded", "Use a ladder as work platform.", "missing", "prohibited_term_present"),
@@ -329,3 +332,69 @@ def test_unknown_extraction_quality_rejected():
     criterion = _criterion("term_present", terms=["rescue plan"])
     with pytest.raises(ValueError, match="Unsupported extraction_quality"):
         evaluate_criterion("Text", criterion, "excellent")
+
+
+def _pack(*, status="draft", criteria=None, **extra):
+    return {
+        "pack_schema_version": "1.1",
+        "pack_version": "1.0",
+        "project_id": 12345,
+        "status": status,
+        "source_basis": "test fixture",
+        "source_type": "manual",
+        "baseline_protected": True,
+        "criteria": criteria if criteria is not None else [
+            _criterion("term_present", terms=["rescue plan"]),
+        ],
+        **extra,
+    }
+
+
+def test_empty_pack_fails_closed():
+    assert validate_rule_pack(_pack(criteria=[]))
+
+
+def test_active_pack_requires_approval_metadata(tmp_path):
+    path = tmp_path / "pack.json"
+    path.write_text(json.dumps(_pack(status="active")), encoding="utf-8")
+    result = load_rule_pack(path)
+    assert result.status == "INVALID"
+    assert result.should_evaluate is False
+
+
+def test_draft_pack_without_approval_is_valid_only_under_dual_gate(tmp_path):
+    path = tmp_path / "pack.json"
+    path.write_text(json.dumps(_pack()), encoding="utf-8")
+    allowed = load_rule_pack(path, environment="test", allow_draft=True)
+    denied = load_rule_pack(path, environment="production", allow_draft=True)
+    assert (allowed.status, allowed.should_evaluate) == ("DRAFT", True)
+    assert (denied.status, denied.should_evaluate) == ("PACK_INACTIVE", False)
+
+
+def test_schema_rejects_aligned_result_for_non_absence_predicate():
+    criterion = _criterion("term_present", terms=["rescue plan"])
+    evaluation = evaluate_criterion(
+        "A rescue plan exists.",
+        criterion,
+        "good",
+    ).to_dict()
+    evaluation.update({
+        "criterion_result": "aligned",
+        "evidence_sufficiency": "sufficient",
+        "evaluation_confidence": "high",
+        "reason_code": "term_absent_confirmed",
+        "requires_human_confirmation": False,
+    })
+    assert validate_criterion_evaluation(evaluation)
+
+
+def test_confirmed_absence_reason_is_reserved_for_aligned_result():
+    criterion = _criterion("term_absent", terms=["ladder as work platform"])
+    evaluation = evaluate_criterion(
+        "No matching prohibited wording.",
+        criterion,
+        "degraded",
+    ).to_dict()
+    assert evaluation["reason_code"] == "term_absent_unconfirmed"
+    evaluation["reason_code"] = "term_absent_confirmed"
+    assert validate_criterion_evaluation(evaluation)
