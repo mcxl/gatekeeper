@@ -57,9 +57,13 @@ def validate_rule_pack(pack: dict[str, Any]) -> list[str]:
         for error in _validator().iter_errors(pack)
     ]
 
+    criteria = pack.get("criteria", [])
+    if not isinstance(criteria, list):
+        criteria = []
+
     criterion_ids = [
         criterion.get("criterion_id")
-        for criterion in pack.get("criteria", [])
+        for criterion in criteria
         if isinstance(criterion, dict)
     ]
     duplicates = sorted({

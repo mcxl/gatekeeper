@@ -6,6 +6,7 @@ import pytest
 
 from core.procore.criterion_evaluation import validate_criterion_evaluation
 from core.procore.predicate_dispatch import evaluate_criteria, evaluate_criterion
+from core.procore.prescreen_reviewer import run_prescreen_review
 from core.procore.rule_pack import load_rule_pack, validate_rule_pack
 
 
@@ -352,6 +353,33 @@ def _pack(*, status="draft", criteria=None, **extra):
 
 def test_empty_pack_fails_closed():
     assert validate_rule_pack(_pack(criteria=[]))
+
+
+def test_non_list_criteria_fails_closed_without_raising(tmp_path):
+    path = tmp_path / "pack.json"
+    path.write_text(json.dumps(_pack(criteria="invalid")), encoding="utf-8")
+
+    result = load_rule_pack(path, environment="test", allow_draft=True)
+
+    assert result.status == "INVALID"
+    assert result.should_evaluate is False
+    assert any("criteria" in error for error in result.errors)
+
+
+def test_external_verification_basis_survives_amendment_derivation():
+    criterion = _criterion(
+        "external_reference_present",
+        reference_terms=["hot work permit"],
+    )
+    criterion["basis"] = "external_verification"
+    review = run_prescreen_review(
+        "No permit reference is present.",
+        _pack(criteria=[criterion]),
+        extraction_quality="good",
+    )
+
+    assert review["criterion_evaluations"][0]["basis"] == "external_verification"
+    assert review["_all_amendments"][0]["basis"] == "external_verification"
 
 
 def test_active_pack_requires_approval_metadata(tmp_path):

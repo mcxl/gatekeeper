@@ -100,6 +100,7 @@ ALLOWED_BASIS = frozenset({
     "project_rule",
     "structural_defect",
     "hrcw_gap",
+    "external_verification",
     "reviewer_judgment",
 })
 
@@ -108,6 +109,7 @@ _BASIS_RELIABILITY_RANK = {
     "project_rule": 1,
     "hrcw_gap": 2,
     "structural_defect": 3,
+    "external_verification": 4,
     "reviewer_judgment": 4,
 }
 
@@ -131,6 +133,8 @@ def _normalize_basis(raw: str) -> str:
         "issue_gate_check": "issue_gate_check",
         "structural_defect": "structural_defect",
         "structural defect": "structural_defect",
+        "external_verification": "external_verification",
+        "external verification": "external_verification",
         "reviewer_judgment": "reviewer_judgment",
         "reviewer judgment": "reviewer_judgment",
     }
