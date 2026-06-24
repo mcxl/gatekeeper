@@ -16,6 +16,7 @@ from core.procore.resubmission_comparison import (
     _match_issues,
     compare_reviews,
 )
+from core.procore.prescreen_reviewer import run_prescreen_review
 from core.procore.review_store import clear_store, find_previous_artifact, store_artifact
 from core.procore.webhook_handler import ALLOWED_STATUSES, ALLOWED_WORKFLOW_STATES
 
@@ -171,6 +172,38 @@ class TestCompareReviews:
         result = compare_reviews(curr, prev)
         assert result["rule_pack_changed"] is True
         assert any("rule pack" in w.lower() for w in result["comparison_warnings"])
+
+    def test_v11_stable_criterion_key_matches_across_resubmission(self):
+        fixture = (
+            Path(__file__).parent
+            / "fixtures"
+            / "procore"
+            / "project_rule_pack_12345.json"
+        )
+        pack = json.loads(fixture.read_text(encoding="utf-8"))
+        previous = run_prescreen_review(
+            "A detailed scaffold SWMS without rescue or stop-work wording. " * 3,
+            pack,
+            source_item_id="456",
+            extraction_quality="good",
+        )
+        current = run_prescreen_review(
+            "An amended scaffold SWMS still without rescue or stop-work wording. " * 3,
+            pack,
+            source_item_id="456",
+            extraction_quality="good",
+        )
+        result = compare_reviews(
+            current,
+            previous,
+            current_swms_text="amended scaffold SWMS",
+            previous_swms_text="original scaffold SWMS",
+        )
+        still_open_keys = {
+            issue["issue_key"]
+            for issue in result["still_open_issues"]
+        }
+        assert "project_rule:R01A" in still_open_keys
 
     def test_scope_reduction_flagged(self):
         prev = _make_artifact(run_id="run-1",

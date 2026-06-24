@@ -70,6 +70,23 @@ def _v11_active_pack() -> dict:
     }
 
 
+def _legacy_rule_pack() -> dict:
+    return {
+        "pack_version": "1.0",
+        "project_id": 12345,
+        "rules": [
+            {
+                "rule_id": "R01",
+                "category": "fall_prevention",
+                "requirement": "Reference a rescue plan.",
+                "severity": "mandatory",
+                "basis": "project rule",
+            },
+        ],
+        "structural_expectations": [],
+    }
+
+
 def _write_runtime_pack(pack: dict) -> Path:
     rule_packs_dir = Path(__file__).parent.parent / "src" / "data" / "procore_rule_packs"
     rule_packs_dir.mkdir(parents=True, exist_ok=True)
@@ -284,7 +301,7 @@ class TestPrescreenReviewRefined:
 
     def test_project_review_status_available(self):
         r = run_prescreen_review(self.swms_text, self.rule_pack)
-        assert r["project_review_status"] == "AVAILABLE"
+        assert r["project_review_status"] == "DRAFT"
 
     def test_project_review_status_unavailable(self):
         r = run_prescreen_review(self.swms_text, {"rules": [], "structural_expectations": []})
@@ -775,7 +792,7 @@ class TestProcorePipeline:
         assert result["review"]["project_review_status"] == "UNAVAILABLE"
 
     def test_pipeline_rejects_legacy_pack_but_runs_baseline(self):
-        _write_runtime_pack(_load_fixture("project_rule_pack_12345"))
+        _write_runtime_pack(_legacy_rule_pack())
         payload = _load_fixture("submittal_created")
         payload["_simulated_swms_text"] = (
             "A detailed scaffold SWMS with edge protection and task sequencing. " * 3
@@ -909,11 +926,42 @@ class TestWriteBackGate:
         assert result["comment_posted"] is False
 
     def test_invalid_pack_cannot_post_comment(self, monkeypatch):
-        _write_runtime_pack(_load_fixture("project_rule_pack_12345"))
+        _write_runtime_pack(_legacy_rule_pack())
         result, posted = self._run_live(monkeypatch, "true")
         assert result["review"]["project_review_status"] == "INVALID"
         assert posted == []
         assert result["comment_posted"] is False
+
+
+class TestPilotRulePackFixture:
+    def test_fixture_is_valid_draft_without_invented_approval(self, tmp_path):
+        from core.procore.rule_pack import load_rule_pack, validate_rule_pack
+
+        pack = _load_fixture("project_rule_pack_12345")
+        assert validate_rule_pack(pack) == []
+        assert pack["status"] == "draft"
+        assert "approved_by" not in pack
+        assert "approved_at" not in pack
+
+        path = tmp_path / "pack.json"
+        path.write_text(json.dumps(pack), encoding="utf-8")
+        allowed = load_rule_pack(path, environment="test", allow_draft=True)
+        denied = load_rule_pack(path, environment="production", allow_draft=True)
+        assert (allowed.status, allowed.should_evaluate) == ("DRAFT", True)
+        assert (denied.status, denied.should_evaluate) == ("PACK_INACTIVE", False)
+
+    def test_fixture_emits_one_row_per_atomic_criterion(self):
+        pack = _load_fixture("project_rule_pack_12345")
+        result = run_prescreen_review(
+            "Scaffold design drawings. Rescue plan. Stop work if controls fail. " * 3,
+            pack,
+            extraction_quality="good",
+        )
+        assert len(result["criterion_evaluations"]) == len(pack["criteria"])
+        assert len({
+            row["criterion_id"]
+            for row in result["criterion_evaluations"]
+        }) == len(pack["criteria"])
 
 
 # ── API client ──────────────────────────────────────────────────────────────

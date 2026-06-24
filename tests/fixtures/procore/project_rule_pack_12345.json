@@ -1,50 +1,134 @@
 {
-  "pack_version": "1.0",
+  "pack_schema_version": "1.1",
+  "pack_version": "1.1-pilot-draft",
   "project_id": 12345,
   "project_name": "Mixed Use Development - Parramatta",
   "principal_contractor": "SD Group",
-  "status": "active",
-  "rules": [
+  "status": "draft",
+  "source_basis": "Pilot project checklist and risk requirements",
+  "source_type": "composite",
+  "source_name": "Project rule pack 12345 pilot fixture",
+  "baseline_protected": true,
+  "criteria": [
     {
-      "rule_id": "R01",
-      "category": "fall_prevention",
-      "requirement": "All SWMS involving work at height must include a rescue plan with named rescue provider and response time.",
+      "criterion_id": "R01A",
+      "requirement": "Work-at-height SWMS must reference a rescue plan.",
       "severity": "mandatory",
-      "basis": "project rule"
+      "basis": "project_rule",
+      "machine_evaluable": true,
+      "predicate": {
+        "predicate_type": "term_present",
+        "terms": [
+          "rescue plan",
+          "rescue procedure"
+        ]
+      }
     },
     {
-      "rule_id": "R02",
-      "category": "scaffold",
-      "requirement": "Scaffold SWMS must reference scaffold design drawings or engineer certification.",
+      "criterion_id": "R01B",
+      "requirement": "The rescue plan must name the rescue provider and expected response time.",
       "severity": "mandatory",
-      "basis": "project rule"
+      "basis": "reviewer_judgment",
+      "machine_evaluable": false,
+      "predicate": {
+        "predicate_type": "human_only"
+      }
     },
     {
-      "rule_id": "R03",
-      "category": "permits",
-      "requirement": "Hot work permit required for any cutting, welding, or grinding within 10m of combustible materials.",
+      "criterion_id": "R02",
+      "requirement": "Scaffold SWMS must reference design drawings or engineer certification.",
       "severity": "mandatory",
-      "basis": "project rule"
+      "basis": "external_verification",
+      "machine_evaluable": true,
+      "predicate": {
+        "predicate_type": "external_reference_present",
+        "reference_terms": [
+          "scaffold design",
+          "design drawings",
+          "engineer certification"
+        ]
+      }
     },
     {
-      "rule_id": "R04",
-      "category": "ladder_restriction",
-      "requirement": "Ladders not permitted as a work platform. Access ladders permitted for transfer only.",
+      "criterion_id": "R03",
+      "requirement": "Hot work activities must reference the project hot work permit.",
       "severity": "mandatory",
-      "basis": "project rule"
+      "basis": "external_verification",
+      "machine_evaluable": true,
+      "predicate": {
+        "predicate_type": "external_reference_present",
+        "reference_terms": [
+          "hot work permit"
+        ]
+      }
     },
     {
-      "rule_id": "R05",
-      "category": "hrcw_declaration",
-      "requirement": "SWMS must declare all applicable HRCW categories. Undeclared HRCW is grounds for return.",
+      "criterion_id": "R04",
+      "requirement": "Ladders must not be described as a work platform.",
       "severity": "mandatory",
-      "basis": "project rule"
+      "basis": "project_rule",
+      "machine_evaluable": true,
+      "predicate": {
+        "predicate_type": "term_absent",
+        "terms": [
+          "ladder as work platform",
+          "working from ladder"
+        ]
+      }
+    },
+    {
+      "criterion_id": "R05",
+      "requirement": "A competent reviewer must confirm that every applicable HRCW category is declared.",
+      "severity": "mandatory",
+      "basis": "hrcw_gap",
+      "machine_evaluable": false,
+      "predicate": {
+        "predicate_type": "human_only"
+      }
+    },
+    {
+      "criterion_id": "S01",
+      "requirement": "A competent reviewer must confirm that the method sequence is chronologically credible.",
+      "severity": "high",
+      "basis": "reviewer_judgment",
+      "machine_evaluable": false,
+      "predicate": {
+        "predicate_type": "human_only"
+      }
+    },
+    {
+      "criterion_id": "S02",
+      "requirement": "A competent reviewer must confirm that physical controls lead administrative controls.",
+      "severity": "high",
+      "basis": "reviewer_judgment",
+      "machine_evaluable": false,
+      "predicate": {
+        "predicate_type": "human_only"
+      }
+    },
+    {
+      "criterion_id": "S03",
+      "requirement": "A competent reviewer must confirm that hold points name the approval authority.",
+      "severity": "high",
+      "basis": "reviewer_judgment",
+      "machine_evaluable": false,
+      "predicate": {
+        "predicate_type": "human_only"
+      }
+    },
+    {
+      "criterion_id": "S04",
+      "requirement": "Stop-work triggers must be tied to the dominant failure mode.",
+      "severity": "high",
+      "basis": "project_rule",
+      "machine_evaluable": true,
+      "predicate": {
+        "predicate_type": "stop_work_trigger",
+        "trigger_terms": [
+          "stop work",
+          "stop-work"
+        ]
+      }
     }
-  ],
-  "structural_expectations": [
-    "Method sequence must be chronologically credible",
-    "Controls must lead with physical hazard controls, not admin",
-    "Hold points must name the approval authority",
-    "Stop work triggers must be tied to the dominant failure mode"
   ]
 }
