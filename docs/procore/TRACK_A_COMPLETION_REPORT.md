@@ -1,9 +1,9 @@
 # Procore Track A - Evidence Checkpoint
 
-**Date:** 2026-06-18
-**Current `main` HEAD:** `5e258a1` (merged PR #30)
+**Date:** 2026-06-25
+**Current `main` HEAD:** `05d20a2` (merged PR #32)
 **Source of truth / plan:** `docs/procore/STAGE3_CERTIFICATION_PLAN_V2.md`
-**Scope:** Track A plus the confirmation-independent post-review hardening through PR #30 and the verified Supabase migration apply.
+**Scope:** Track A plus the confirmation-independent hardening through PR #32, including RulePackV1.1 and the verified Supabase migration apply.
 
 This report replaces the older Track A review snapshot that stopped at PR #24/#25 and `1447c27`. It is an evidence checkpoint for Stage 3 certification readiness. It does not claim the Procore-gated items are complete.
 
@@ -54,6 +54,15 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 - Verified direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:172-178`).
 - Supabase runtime smoke has **not** been run yet; it remains an optional explicit-approval checkpoint because it writes synthetic rows (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:7`).
 
+### PR #32 - RulePackV1.1 deterministic project-criteria review
+- Added a closed Draft 2020-12 `RulePackV1.1` schema with required provenance, status, baseline protection, atomic criteria, machine-evaluability declarations, and seven non-executable predicate types (`core/procore/rule_pack_v1_1.json:1-77`, `core/procore/rule_pack_v1_1.json:91-177`).
+- Added fail-closed validation/loading. Missing, invalid, inactive, and production-disallowed draft packs do not evaluate; baseline review continues. Draft evaluation requires both `PROCORE_ALLOW_DRAFT_RULE_PACKS=true` and a non-production environment (`core/procore/rule_pack.py:49-78`, `core/procore/rule_pack.py:85-145`).
+- Every permitted criterion produces one canonical evaluation containing criterion result, evidence sufficiency, extraction quality, evaluation confidence, evidence references, reason code, and human-confirmation state (`core/procore/criterion_evaluation.py:20-31`, `core/procore/predicate_dispatch.py:303-313`).
+- Criterion results are bounded to `aligned`, `partial`, `missing`, `unclear`, or `unsupported`; keyword presence cannot produce `aligned` (`core/procore/rule_pack_v1_1.json:345-371`, `tests/test_procore_rule_pack_v11.py:94-123`). Human-only criteria produce `unsupported` and require human confirmation (`tests/test_procore_rule_pack_v11.py:265-274`).
+- `criterion_evaluations` is canonical while existing amendment, comment, audit, and resubmission contracts remain compatible; stable issue keys use `project_rule:{criterion_id}` (`core/procore/prescreen_reviewer.py:392-410`, `core/procore/prescreen_reviewer.py:544-550`).
+- Live write-back additionally requires `project_review_status=AVAILABLE`, preventing missing, invalid, inactive, or draft packs from triggering a Procore comment (`api/main.py:1479-1483`).
+- The pilot fixture is a **draft test fixture**, not a deployed customer pack. No production project rule pack is currently checked in.
+
 ---
 
 ## 2. Verification Status
@@ -68,6 +77,10 @@ This report replaces the older Track A review snapshot that stopped at PR #24/#2
 | GitHub CI | Passed before merging PRs #26, #27, #28, #29 |
 | flake8 | Clean on changed files for each PR |
 | pip-audit | Clean after dependency bumps from PR #25 |
+| `pytest tests/test_procore_rule_pack_v11.py --collect-only -q` | 47 RulePackV1.1 tests collected after PR #32 review fixes |
+| RulePack + webhook + resubmission focused regression | 158 passed before PR #32 review-fix commit |
+| Full suite pre-push hook + GitHub CI | Passed for PR #32, including review-fix commit `5a436d5` |
+| `pip-audit -r requirements.txt` | No known vulnerabilities after `pypdf==6.13.3` |
 
 ---
 
@@ -100,6 +113,7 @@ Do **not** use an unqualified "no data retained" claim. The correct position is 
    - `PROCORE_LOCAL_JSONL_ENABLED=false`
    - `SUPABASE_SERVICE_ROLE_KEY` for durable idempotency/audit
 2. Optional Supabase runtime smoke requires explicit approval because it writes synthetic delivery/audit rows.
+3. Create, approve, and deploy a real customer/project RulePackV1.1 before pilot use. Active packs require genuine `approved_by` and `approved_at`; do not promote the draft fixture or invent approval metadata.
 
 ### Still not complete
 1. T7 OAuth/DMSA token model; static `PROCORE_ACCESS_TOKEN` remains a non-certification-ready interim model.
@@ -117,6 +131,10 @@ Procore Submittal event
 -> durable idempotency reservation, pre-side-effect  [migrations applied; payload key UNVERIFIED]
 -> 202 Accepted
 -> async pipeline: fetch -> extract -> review -> compare -> optional comment
+   -> unconditional baseline/structural review
+   -> optional validated RulePackV1.1 criteria
+      -> one explicit result per atomic criterion
+      -> draft packs blocked in production
    -> live write-back gated off by default
    -> failures recorded + alerted
    -> metadata-only audit RPC attempted through verified Supabase RPC
