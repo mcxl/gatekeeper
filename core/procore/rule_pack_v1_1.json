@@ -1,0 +1,531 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://safemethod.com.au/schemas/rule-pack/v1.1.json",
+  "title": "RulePackV1.1",
+  "type": "object",
+  "required": [
+    "pack_schema_version",
+    "pack_version",
+    "project_id",
+    "status",
+    "source_basis",
+    "source_type",
+    "baseline_protected",
+    "criteria"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "pack_schema_version": {
+      "const": "1.1"
+    },
+    "pack_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "project_id": {
+      "type": ["integer", "string"]
+    },
+    "project_name": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "principal_contractor": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "status": {
+      "enum": ["draft", "active", "superseded", "archived"]
+    },
+    "approved_by": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_basis": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "source_type": {
+      "enum": [
+        "checklist",
+        "risk_register",
+        "whs_management_plan",
+        "manual",
+        "composite"
+      ]
+    },
+    "source_name": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "baseline_protected": {
+      "const": true
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/Criterion"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "status": {
+        "const": "active"
+      }
+    },
+    "required": ["status"]
+  },
+  "then": {
+    "required": ["approved_by", "approved_at"]
+  },
+  "$defs": {
+    "Criterion": {
+      "type": "object",
+      "required": [
+        "criterion_id",
+        "requirement",
+        "severity",
+        "basis",
+        "machine_evaluable",
+        "predicate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,48}$"
+        },
+        "requirement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "severity": {
+          "enum": ["mandatory", "high", "advisory"]
+        },
+        "basis": {
+          "enum": [
+            "issue_gate_check",
+            "project_rule",
+            "hrcw_gap",
+            "external_verification",
+            "reviewer_judgment"
+          ]
+        },
+        "source_clause": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "machine_evaluable": {
+          "type": "boolean"
+        },
+        "predicate": {
+          "$ref": "#/$defs/Predicate"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["machine_evaluable", "predicate"],
+          "properties": {
+            "machine_evaluable": {
+              "const": true
+            },
+            "predicate": {
+              "properties": {
+                "predicate_type": {
+                  "enum": [
+                    "term_present",
+                    "term_absent",
+                    "term_co_present",
+                    "stop_work_trigger",
+                    "hrcw_class_present",
+                    "external_reference_present"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "required": ["machine_evaluable", "predicate"],
+          "properties": {
+            "machine_evaluable": {
+              "const": false
+            },
+            "predicate": {
+              "properties": {
+                "predicate_type": {
+                  "const": "human_only"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PlainTerms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      }
+    },
+    "Predicate": {
+      "type": "object",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "terms"],
+          "properties": {
+            "predicate_type": {
+              "const": "term_present"
+            },
+            "terms": {
+              "$ref": "#/$defs/PlainTerms"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "terms"],
+          "properties": {
+            "predicate_type": {
+              "const": "term_absent"
+            },
+            "terms": {
+              "$ref": "#/$defs/PlainTerms"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "terms", "match_mode"],
+          "properties": {
+            "predicate_type": {
+              "const": "term_co_present"
+            },
+            "terms": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "match_mode": {
+              "enum": ["any", "all"]
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "trigger_terms"],
+          "properties": {
+            "predicate_type": {
+              "const": "stop_work_trigger"
+            },
+            "trigger_terms": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "hrcw_classes"],
+          "properties": {
+            "predicate_type": {
+              "const": "hrcw_class_present"
+            },
+            "hrcw_classes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{1,63}$"
+              }
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type", "reference_terms"],
+          "properties": {
+            "predicate_type": {
+              "const": "external_reference_present"
+            },
+            "reference_terms": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["predicate_type"],
+          "properties": {
+            "predicate_type": {
+              "const": "human_only"
+            }
+          }
+        }
+      ]
+    },
+    "CriterionEvaluation": {
+      "type": "object",
+      "required": [
+        "criterion_id",
+        "requirement",
+        "severity",
+        "basis",
+        "predicate_type",
+        "machine_evaluable",
+        "criterion_result",
+        "evidence_sufficiency",
+        "extraction_quality",
+        "evaluation_confidence",
+        "workflow_recommendation",
+        "evidence_refs",
+        "reason_code",
+        "requires_human_confirmation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "type": "string"
+        },
+        "requirement": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": ["mandatory", "high", "advisory"]
+        },
+        "basis": {
+          "enum": [
+            "issue_gate_check",
+            "project_rule",
+            "hrcw_gap",
+            "external_verification",
+            "reviewer_judgment"
+          ]
+        },
+        "predicate_type": {
+          "type": "string"
+        },
+        "machine_evaluable": {
+          "type": "boolean"
+        },
+        "criterion_result": {
+          "enum": [
+            "aligned",
+            "partial",
+            "missing",
+            "unclear",
+            "unsupported"
+          ]
+        },
+        "evidence_sufficiency": {
+          "enum": [
+            "sufficient",
+            "insufficient",
+            "absent",
+            "unverifiable",
+            "not_applicable"
+          ]
+        },
+        "extraction_quality": {
+          "enum": ["good", "degraded", "poor"]
+        },
+        "evaluation_confidence": {
+          "enum": ["high", "medium", "low", "not_applicable"]
+        },
+        "workflow_recommendation": {
+          "enum": ["proceed", "review_required", "escalate", "hold"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason_code": {
+          "enum": [
+            "keyword_match",
+            "no_match",
+            "term_absent_confirmed",
+            "term_absent_unconfirmed",
+            "prohibited_term_present",
+            "partial_keyword_match",
+            "hrcw_classes_confirmed",
+            "partial_hrcw_match",
+            "external_ref_present_unverified",
+            "stop_work_phrase_found",
+            "extraction_quality_low",
+            "human_judgment_required",
+            "predicate_unrecognised"
+          ]
+        },
+        "requires_human_confirmation": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "criterion_result": {
+                "const": "unsupported"
+              }
+            },
+            "required": ["criterion_result"]
+          },
+          "then": {
+            "required": [
+              "predicate_type",
+              "evidence_sufficiency",
+              "extraction_quality",
+              "evaluation_confidence",
+              "reason_code",
+              "requires_human_confirmation"
+            ],
+            "properties": {
+              "evidence_sufficiency": {
+                "const": "not_applicable"
+              },
+              "evaluation_confidence": {
+                "const": "not_applicable"
+              },
+              "reason_code": {
+                "enum": [
+                  "human_judgment_required",
+                  "predicate_unrecognised"
+                ]
+              },
+              "requires_human_confirmation": {
+                "const": true
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "evidence_sufficiency": {
+                "enum": [
+                  "sufficient",
+                  "insufficient",
+                  "absent",
+                  "unverifiable"
+                ]
+              },
+              "evaluation_confidence": {
+                "enum": ["high", "medium", "low"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "criterion_result": {
+                "const": "aligned"
+              }
+            },
+            "required": ["criterion_result"]
+          },
+          "then": {
+            "properties": {
+              "predicate_type": {
+                "const": "term_absent"
+              },
+              "evidence_sufficiency": {
+                "const": "sufficient"
+              },
+              "extraction_quality": {
+                "const": "good"
+              },
+              "evaluation_confidence": {
+                "const": "high"
+              },
+              "reason_code": {
+                "const": "term_absent_confirmed"
+              },
+              "requires_human_confirmation": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason_code": {
+                "const": "term_absent_confirmed"
+              }
+            },
+            "required": ["reason_code"]
+          },
+          "then": {
+            "required": [
+              "predicate_type",
+              "criterion_result",
+              "evidence_sufficiency",
+              "extraction_quality",
+              "evaluation_confidence",
+              "requires_human_confirmation"
+            ],
+            "properties": {
+              "predicate_type": {
+                "const": "term_absent"
+              },
+              "criterion_result": {
+                "const": "aligned"
+              },
+              "evidence_sufficiency": {
+                "const": "sufficient"
+              },
+              "extraction_quality": {
+                "const": "good"
+              },
+              "evaluation_confidence": {
+                "const": "high"
+              },
+              "requires_human_confirmation": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
