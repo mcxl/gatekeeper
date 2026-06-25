@@ -5,19 +5,20 @@
 **Source of truth:** [STAGE3_CERTIFICATION_REVIEW.md](STAGE3_CERTIFICATION_REVIEW.md) (verdict: ACCEPT WITH CHANGES)
 **Rule:** every claim carries `file:line` (verified against current HEAD) or an official docs URL; gaps marked `UNVERIFIED`.
 
-## Status Update - 2026-06-18
+## Status Update - 2026-06-25
 
-This plan has now advanced beyond the original read-only planning state. `main` includes PRs #26-#30, and Supabase migrations 007/008 have been applied and verified:
+This plan has now advanced beyond the original read-only planning state. `main` includes PRs #26-#32, and Supabase migrations 007/008 have been applied and verified:
 
 - **PR #26:** live write-back is gated by `PROCORE_LIVE_WRITEBACK_ENABLED=false` by default.
 - **PR #27:** migration 008 is hardened with pinned `search_path` and a controlled delete guard.
 - **PR #28:** PDF/JWT dependency smoke coverage exists for the upgraded extraction/auth dependencies.
 - **PR #29:** metadata-only Procore audit payload builder and graceful Supabase RPC wiring are implemented.
 - **PR #30:** Stage 3 evidence was refreshed after hardening and merged at `5e258a1`.
+- **PR #32:** RulePackV1.1 was implemented and merged at `05d20a2`. It provides a closed schema, fail-closed pack loading, deterministic criterion evaluations, stable issue mapping, production draft blocking, and write-back gating on `project_review_status=AVAILABLE`.
 - **Supabase apply:** project `rpd-pims` / `nebdpofqglfyfyqqodni` records `20260618025557 / 007_procore_webhook_deliveries` and `20260618025643 / 008_procore_audit` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:5`, `docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:17-18`).
 - **Supabase verification:** private tables exist with RLS enabled (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:40-44`); public RPC execute is allowed for `service_role` and denied for `anon`/`authenticated` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:73-119`); audit update/delete triggers exist (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:137-155`); direct `private` schema `USAGE` is denied for `anon`/`authenticated`/`service_role` (`docs/procore/SUPABASE_MIGRATION_APPLY_EVIDENCE_2026-06-18.md:172-178`).
 
-The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; production env rollout remains `OPS-GATED`; Supabase runtime smoke remains optional and requires explicit approval because it writes synthetic rows.
+The remaining blockers are still real: Procore auth/signature scheme, OAuth/DMSA grant/scopes, write-back resource/path/API version, and `delivery_id`/`ulid` payload location remain `UNVERIFIED`; production env rollout remains `OPS-GATED`; Supabase runtime smoke remains optional and requires explicit approval because it writes synthetic rows. RulePackV1.1 is implemented, but a real customer/project pack still requires human-authored criteria, genuine approval provenance, and controlled deployment.
 
 ---
 
@@ -118,23 +119,34 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 - **Phase 5 — Advisory output quality gate.** Define `ReviewArtifactV1` / `StoredAuditArtifactV1` / `ProcoreAdvisoryCommentV1`; deterministic gate (banned approval words per `webhook_handler.py:30-44`, evidence refs, confidence, overclaim); golden tests. *Exit:* gate blocks non-compliant comments; goldens pass.
 - **Phase 6 — Certification artifact pack.** Workflow + mapping diagrams, API list, payload summary, rate-limit/error matrix, SBOM/vuln evidence, support/SLA, customer-validation plan. *Exit:* every Section III field has an artifact.
 - **Phase 7 — Sandbox demo + evidence capture.** Recorded end-to-end: configure hook → submit SWMS → 202 → advisory write-back. *Exit:* video + screenshots captured.
-- **Phase 8 — V1.1 Project Rule Pack ingestion.** Upload/extraction/approval UI + versioning (behind certification). *Exit:* deferred — see Deliverable 4.
+- **Phase 8 — Future rule-pack ingestion workflow.** Checklist/risk-register upload, criteria extraction, and approval UI remain behind certification. This is separate from the implemented RulePackV1.1 evaluation contract. *Exit:* deferred — see Deliverable 4.
 
 ---
 
-## Deliverable 4 — Project Rule Pack: V1 vs V1.1 split
+## Deliverable 4 — RulePackV1.1 contract vs future ingestion workflow
 
-**Move to V1.1 (post-certification):** company SWMS checklist / risk-register **upload**, criteria **extraction**, and the **human approval UI/workflow**.
+**Implemented in V1:** RulePackV1.1 is the static, hand-authored project-criteria contract. It is loaded from `src/data/procore_rule_packs/project_{id}.json` (`api/main.py:1371-1375`), validated fail-closed (`core/procore/rule_pack.py:49-78`), and evaluated only when its lifecycle status permits (`core/procore/rule_pack.py:85-145`).
 
-**Keep in V1:** static, hand-authored, **versioned JSON rule packs** per project — already wired: `api/main.py:1348-1359` loads `src/data/procore_rule_packs/project_{id}.json` and returns `no_rule_pack` if absent; `run_prescreen_review` already emits `rule_pack_version` + `project_specific_mismatches` (`prescreen_reviewer.py:483-485`).
+The implemented contract:
+- preserves unconditional baseline/structural review;
+- requires `baseline_protected=true`;
+- records pack version, source basis/type/name, lifecycle status, and approval metadata for active packs;
+- limits customer configuration to seven closed, non-executable predicates;
+- requires one atomic criterion per requirement;
+- emits one result per criterion: `aligned`, `partial`, `missing`, `unclear`, or `unsupported`;
+- separates criterion result, evidence sufficiency, extraction quality, evaluation confidence, and human-confirmation state;
+- preserves existing comment, audit, and resubmission compatibility through derived amendments and stable `project_rule:{criterion_id}` keys.
+
+**Deferred until after certification:** company checklist/risk-register **upload**, automated criteria **extraction**, and the **human approval UI/workflow**. These are ingestion and governance features, not prerequisites for the static RulePackV1.1 evaluator.
 
 **Why this is better for certification and retention:**
 1. **Smaller retained-data surface.** Ingestion would require storing/processing customer checklist + risk-register documents — exactly the kind of customer data the "minimal retention" story needs to avoid during the certification window.
 2. **Fewer moving parts to certify.** No upload pipeline, no extraction model, no approval workflow to security-review before the assessment.
-3. **Still evidences project-specific review.** A static versioned pack already lets each finding cite `criterion_id` + version, satisfying "reviewed against project-specific criteria" without the machinery.
-4. **Baseline protection is simpler to prove** when packs are static, hand-authored JSON (no extraction can silently inject a weakening rule). Baseline WHS checks run as a separate non-configurable pass; mark them `baseline_protected=true` so no pack can suppress them.
+3. **Evidences project-specific review.** Canonical `criterion_evaluations` retain criterion ID, requirement, basis, result, evidence references, reason code, and confidence without requiring an upload pipeline.
+4. **Baseline protection is explicit.** The schema requires `baseline_protected=true`; project criteria add to the baseline and cannot suppress it.
+5. **Unknown logic fails closed.** Unknown predicates fail schema validation, and invalid/inactive packs fall back to baseline-only review.
 
-**Refinement 10 — design bug to fix in V1 (T10): baseline review is wrongly gated behind the project rule pack.** `/v1` returns `no_rule_pack` and stops **before any review runs** (`api/main.py:1351-1356`), yet the engine already supports pack-less structural review (`prescreen_reviewer.py:455-457`, "structural review only"). So today a project without a pack receives **zero** WHS review — contradicting "baseline checks always run." Baseline WHS must run regardless of pack presence; the pack should only *add* project-specific criteria. This also reinforces the V1.1 deferral: baseline value does not depend on the ingestion machinery.
+**Current deployment state:** the pilot fixture is `draft` and test-only. No production project pack is checked in. Production pilot activation requires genuine approval provenance and an operational deployment decision; draft packs cannot evaluate in production.
 
 ---
 
@@ -170,6 +182,7 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 | T8 | Advisory comment quality gate + write-back idempotency | Partially implemented: PR #26 gated live write-back; PR #29 added metadata-only audit builder/RPC wiring | Write-back resource/path UNVERIFIED | Final endpoint/path, write-back idempotency, and comment quality gate still require Procore confirmation |
 | T9 | SBOM / vulnerability scan in CI | Implemented in PR #25; PR #28 added PDF/JWT dependency smoke coverage | Done | CI fails on vulnerable pinned deps; SBOM artifact produced; extraction/auth smoke coverage exists |
 | T10 | Baseline review must not be gated by rule pack | Implemented in PR #24 | Done | Missing rule pack still produces baseline structural review with `project_review_status=UNAVAILABLE` |
+| T11 | Deterministic RulePackV1.1 contract | Implemented in PR #32 | Customer pack creation/approval remains OPS-GATED | Closed schema; one result per criterion; no executable customer logic; drafts blocked in production; invalid/inactive packs run baseline only |
 
 ---
 
@@ -183,6 +196,7 @@ Each phase lists objective, key evidence, and exit gate. Per `CLAUDE.md`, any ph
 6. Anthropic ZDR status — Alan (`report:135,169`).
 7. Retention windows (12 mo / 30 day) — Alan to set.
 8. Optional Supabase runtime smoke — not run; requires explicit approval because it writes synthetic delivery/audit rows.
+9. Production RulePackV1.1 content and approval — no real customer/project pack is deployed; the checked-in pilot fixture remains draft and test-only.
 
 ---
 
@@ -261,24 +275,27 @@ Extends the locked copy rules (`PROCORE_TECHNICAL_FEASIBILITY_REPORT.md:159-160`
 
 Note: the engine's status vocabulary already bans approval words (`webhook_handler.py:30-44`); this lint extends that discipline to prose artifacts (deck, video script, listing).
 
-### G. Static Rule-Pack Provenance Fields
+### G. Implemented RulePackV1.1 Provenance And Lifecycle
 
-Recommended metadata for V1 static JSON rule packs (`src/data/procore_rule_packs/project_{id}.json`, loaded at `api/main.py:1348-1359`). **This adds no upload/extraction UI** — it only makes hand-authored static packs evidence-grade for certification.
+RulePackV1.1 is now implemented for static JSON packs at `src/data/procore_rule_packs/project_{id}.json` (`api/main.py:1371-1375`). The schema requires pack version, project ID, lifecycle status, source basis/type, baseline protection, and at least one atomic criterion (`core/procore/rule_pack_v1_1.json:6-77`). Active packs additionally require genuine `approved_by` and `approved_at` values (`core/procore/rule_pack_v1_1.json:79-89`).
 
 ```json
 {
+  "pack_schema_version": "1.1",
   "project_id": "<int>",
   "pack_version": "<semver or date>",
+  "status": "draft | active | superseded | archived",
   "source_basis": "<plain-English basis for these criteria>",
-  "source_type": "checklist | risk_register | manual",
+  "source_type": "checklist | risk_register | whs_management_plan | manual | composite",
   "source_name": "<document/register name>",
-  "approved_by": "<PM/SM/WHS manager>",
-  "approved_at": "<ISO-8601>",
+  "approved_by": "<required only when active>",
+  "approved_at": "<required only when active; ISO-8601>",
   "baseline_protected": true,
-  "...": "existing criteria fields unchanged"
+  "criteria": ["one or more atomic Criterion objects"]
 }
 ```
-`run_prescreen_review` already emits `rule_pack_version` (`prescreen_reviewer.py:483`); these fields make the *provenance* of each pack auditable.
+
+Draft evaluation requires both `PROCORE_ALLOW_DRAFT_RULE_PACKS=true` and `ENVIRONMENT` set to `development`, `test`, `testing`, or `local` (`core/procore/rule_pack.py:81-82`, `core/procore/rule_pack.py:127-139`). Production defaults fail closed.
 
 ---
 
