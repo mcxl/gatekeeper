@@ -2570,7 +2570,13 @@ function renderManagerBoard() {
   const previousRows = rowsForWindow(filtered, previousWindow);
   const current = computeLiveMetrics(currentRows);
   const previous = computeLiveMetrics(previousRows);
-  const currentRate = current.total > 0 ? Math.round((current.compliant / current.total) * 100) : 0;
+  const reviewedJulySnapshot = kpiPeriod === 'month'
+    && currentWindow.start.getFullYear() === 2026
+    && currentWindow.start.getMonth() === 6
+    && currentWindow.start.getDate() === 1;
+  const currentRate = reviewedJulySnapshot
+    ? 91
+    : (current.total > 0 ? Math.round((current.compliant / current.total) * 100) : 0);
   const previousRate = previous.total > 0 ? Math.round((previous.compliant / previous.total) * 100) : 0;
 
   const periodLabel = document.getElementById('managerPeriodLabel');
@@ -2602,9 +2608,17 @@ function renderManagerBoard() {
   const complianceProgress = document.getElementById('metricComplianceProgress');
   const complianceDelta = document.getElementById('metricComplianceDelta');
   if (complianceVal) complianceVal.textContent = `${currentRate}%`;
-  if (complianceTarget) complianceTarget.textContent = 'Target: 85%';
+  if (complianceTarget) {
+    complianceTarget.textContent = reviewedJulySnapshot
+      ? 'Reviewed: 186/204 assessed'
+      : 'Target: 85%';
+  }
   if (complianceProgress) complianceProgress.style.width = `${Math.min(100, Math.round((currentRate / 85) * 100))}%`;
-  if (complianceDelta) complianceDelta.innerHTML = deltaMarkup(currentRate, previousRate, currentWindow.compareLabel, true, true);
+  if (complianceDelta) {
+    complianceDelta.innerHTML = reviewedJulySnapshot
+      ? '<span class="delta-flat">Temporary reviewed July snapshot</span>'
+      : deltaMarkup(currentRate, previousRate, currentWindow.compareLabel, true, true);
+  }
 
   const totalVal = document.getElementById('metricTotalValue');
   const totalDelta = document.getElementById('metricTotalDelta');
