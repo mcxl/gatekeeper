@@ -39,8 +39,9 @@ function dashboardHtmlWithoutExternalStartup() {
 }
 
 test('July Month shows the reviewed 91% compliance snapshot as the main value', async ({ page }) => {
-  await page.addInitScript(() => {
-    const RealDate = Date;
+  await page.setContent(dashboardHtmlWithoutExternalStartup());
+  await page.evaluate(() => {
+    const RealDate = window.Date;
     const fixedNow = new RealDate('2026-07-28T12:00:00+10:00');
     class FixedDate extends RealDate {
       constructor(...args) {
@@ -52,10 +53,6 @@ test('July Month shows the reviewed 91% compliance snapshot as the main value', 
       }
     }
     window.Date = FixedDate;
-  });
-
-  await page.setContent(dashboardHtmlWithoutExternalStartup());
-  await page.evaluate(() => {
     filtered = [];
     kpiPeriod = 'month';
     renderManagerBoard();
@@ -64,4 +61,33 @@ test('July Month shows the reviewed 91% compliance snapshot as the main value', 
   await expect(page.locator('#metricComplianceValue')).toHaveText('91%');
   await expect(page.locator('#metricComplianceTarget')).toContainText('186/204');
   await expect(page.locator('#metricComplianceDelta')).toContainText('reviewed July snapshot');
+});
+
+test('current month explains a zero compliance rate with its assessed counts', async ({ page }) => {
+  await page.setContent(dashboardHtmlWithoutExternalStartup());
+  await page.evaluate(() => {
+    const RealDate = window.Date;
+    const fixedNow = new RealDate('2026-08-31T12:00:00+10:00');
+    class FixedDate extends RealDate {
+      constructor(...args) {
+        super(...(args.length ? args : [fixedNow]));
+      }
+
+      static now() {
+        return fixedNow.valueOf();
+      }
+    }
+    window.Date = FixedDate;
+    filtered = Array.from({ length: 9 }, (_, index) => ({
+      observation_date: `2026-08-${String(11 + (index % 3)).padStart(2, '0')}`,
+      conformance_status: 'NCR',
+    }));
+    kpiPeriod = 'month';
+    renderManagerBoard();
+  });
+
+  await expect(page.locator('#metricComplianceValue')).toHaveText('0%');
+  await expect(page.locator('#metricComplianceTarget')).toHaveText(
+    'Target: 85% · 0 of 9 compliant · 9 NCR',
+  );
 });

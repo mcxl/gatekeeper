@@ -2679,7 +2679,9 @@ function renderManagerBoard() {
   if (complianceTarget) {
     complianceTarget.textContent = reviewedJulySnapshot
       ? 'Reviewed: 186/204 assessed'
-      : 'Target: 85%';
+      : (current.total > 0
+        ? `Target: 85% · ${current.compliant} of ${current.total} compliant · ${current.ncr} NCR`
+        : 'Target: 85% · No live observations in this period');
   }
   if (complianceProgress) complianceProgress.style.width = `${Math.min(100, Math.round((currentRate / 85) * 100))}%`;
   if (complianceDelta) {
