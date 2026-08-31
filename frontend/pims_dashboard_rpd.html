@@ -421,11 +421,16 @@ table.dt tbody tr.row-ncr:hover td { background: rgba(220,38,38,0.2); }
   border-radius: 6px;
   letter-spacing: 0.3px;
 }
+.ccvs-category-label { margin-left:5px; font-family:var(--font); font-size:10px; font-weight:500; opacity:.9; }
+.ccvs-confidence-label { margin-left:5px; font-family:var(--font); font-size:9px; font-weight:700; opacity:.9; }
+.ccvs-unassigned { display:inline-flex; padding:3px 7px; border-radius:999px; background:#475569; color:#f8fafc; font-size:10px; font-weight:700; }
+.photo-ref-label { color:var(--text-secondary); font-size:10px; word-break:break-word; }
+.photo-missing { color:var(--text-light); font-size:10px; }
 
 /* ── Due labels ── */
 .due-immediate { color: var(--red-text); font-weight: 700; font-size: 11px; }
 .due-next      { color: var(--amber-text); font-weight: 600; font-size: 11px; }
-.due-ongoing   { color: var(--blue); font-size: 11px; }
+.due-ongoing   { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; background:#dbeafe; color:#1e3a8a; font-weight:700; font-size:11px; }
 .due-na        { color: var(--text-light); font-size: 11px; }
 
 /* ── Progress bar ── */
@@ -1576,8 +1581,8 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
     </div>
     <div class="dt-desktop" style="padding:12px 14px 0 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <div class="period-toggle" style="margin:0;">
-        <button class="period-btn active" id="openActionsScopeWeek" onclick="setOpenActionsScope('week')">Last 14 Days</button>
-        <button class="period-btn" id="openActionsScopeAll" onclick="setOpenActionsScope('all')">All Open</button>
+        <button class="period-btn" id="openActionsScopeWeek" onclick="setOpenActionsScope('week')">Last 14 Days</button>
+        <button class="period-btn active" id="openActionsScopeAll" onclick="setOpenActionsScope('all')">All Open</button>
       </div>
       <input
         id="actionsSiteFilterInput"
@@ -1597,6 +1602,7 @@ const SUPABASE_ANON = '__SUPABASE_ANON__';
             <th>CCVS</th>
             <th>Action Required</th>
             <th>Responsible</th>
+            <th>Project Manager</th>
             <th>Due</th>
             <th style="padding-right:20px">Close-out</th>
           </tr>
@@ -1855,13 +1861,14 @@ let tabDefaultResolved = false;
 let kpiPeriod = 'month';
 let activeCcvsTooltip = null;
 const PAGE_SIZE = 25;
-const ALL_OBS_PAGE_SIZE = 10;
-let openActionsScope = 'week'; // 'week' | 'all'
+const ALL_OBS_PAGE_SIZE = 50;
+let openActionsScope = 'all'; // 'week' | 'all'
 let managerSiteSearch = '';
 let siteBreakdownScope = 'week'; // 'week' | 'all'
 let dqFilterMissingCcvs = false;
 let liveObsPage = 1;
 let historicalObsPage = 1;
+const derivedSequenceById = new Map();
 
 // ── Helpers ──
 function badge(status) {
@@ -1870,7 +1877,7 @@ function badge(status) {
 }
 function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
   const normalized = String(code || '').trim();
-  if (!normalized) return '<span style="color:var(--text-light)">—</span>';
+  if (!normalized) return '<span class="ccvs-unassigned">Unassigned</span>';
 
   const info = CCVS_INFO[normalized] || {};
   const conformanceStatus = typeof conformanceStatusOrCount === 'string'
@@ -1900,18 +1907,19 @@ function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
   const tooltipId = `ccvsTip-${ccvsCodeToId(normalized)}-${Math.random().toString(36).slice(2, 8)}`;
   const compareLabel = detail.compareLabel || 'period';
   const category = detail.category || info.category || 'General';
+  const confidence = detail.confidence || 'Not recorded';
 
   return `
     <div class="ccvs-badge-wrap">
-      <button class="ccvs-code-btn tone-${tone}" onclick="toggleCcvsTooltip(event, '${tooltipId}')">
-        ${esc(normalized)} <span class="ccvs-info-dot">i</span>
+      <button class="ccvs-code-btn tone-${tone}" onclick="toggleCcvsTooltip(event, '${tooltipId}')" title="${esc(category)} · Confidence: ${esc(confidence)}">
+        <span>${esc(normalized)}</span><span class="ccvs-category-label">${esc(category)}</span><span class="ccvs-confidence-label">${esc(confidence)}</span><span class="ccvs-info-dot">i</span>
       </button>
       <div class="ccvs-tooltip" id="${tooltipId}">
         <div class="ccvs-tip-head">
           <span class="ccvs-tip-code">${esc(normalized)}</span>
           <span class="ccvs-tip-pill ${riskClass(risk)}">${risk} risk</span>
         </div>
-        <div class="ccvs-tip-meta">${esc(category)}</div>
+        <div class="ccvs-tip-meta">Category: ${esc(category)} · Confidence: ${esc(confidence)}</div>
         <div class="ccvs-tip-stats">
           <div class="ccvs-tip-stat">NCR<strong>${ncr}</strong></div>
           <div class="ccvs-tip-stat">Cond<strong>${conditional}</strong></div>
@@ -1925,8 +1933,67 @@ function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
     </div>`;
 }
 
-function ccvs(code, conformanceStatus = null) {
-  return renderCcvsBadge(code, conformanceStatus);
+function ccvs(code, conformanceStatus = null, detail = {}) {
+  return renderCcvsBadge(code, conformanceStatus, detail);
+}
+
+function seqFor(o) {
+  if (o && o.seq_no !== null && o.seq_no !== undefined && String(o.seq_no).trim() !== '') return esc(o.seq_no);
+  return esc(derivedSequenceById.get(o?.id) ?? '—');
+}
+
+function buildDerivedSequenceMap() {
+  derivedSequenceById.clear();
+  const groups = new Map();
+  allObs.forEach(o => {
+    const auditKey = o.audit_id || `${o.pims_audits?.audit_ref || o.pims_audits?.site_name || o.site_address || 'unknown'}|${o.pims_audits?.audit_date || o.audit_date || ''}`;
+    if (!groups.has(auditKey)) groups.set(auditKey, []);
+    groups.get(auditKey).push(o);
+  });
+  groups.forEach(rows => {
+    rows.sort((a, b) => {
+      const dateCmp = String(a.observation_date || a.audit_date || '').localeCompare(String(b.observation_date || b.audit_date || ''));
+      if (dateCmp) return dateCmp;
+      const createdCmp = String(a.created_at || '').localeCompare(String(b.created_at || ''));
+      if (createdCmp) return createdCmp;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+    rows.forEach((o, index) => {
+      if (o.seq_no === null || o.seq_no === undefined || String(o.seq_no).trim() === '') derivedSequenceById.set(o.id, index + 1);
+    });
+  });
+}
+
+function photoUrlFor(o) {
+  const candidate = String(o?.photo_url || '').trim();
+  if (/^https?:\/\//i.test(candidate)) return candidate;
+  const refs = String(o?.photo_refs || '').match(/https?:\/\/[^\s,;]+/i);
+  return refs ? refs[0] : '';
+}
+
+function photoCell(o) {
+  const url = photoUrlFor(o);
+  if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="Observation photo" style="width:60px;height:60px;object-fit:cover;border-radius:4px;"></a>`;
+  const refs = String(o?.photo_refs || o?.photo_id || '').trim();
+  return refs ? `<span class="photo-ref-label" title="${esc(refs)}">${esc(refs)}</span>` : '<span class="photo-missing">No photo recorded</span>';
+}
+
+const PROJECT_MANAGER_BY_ADDRESS = {
+  '1729mountstpyrmont': 'Yas N',
+  '3943milsonpointrdcremornepoint': 'David O',
+  '2elizabethbaycreselizabethbay': 'Jim G',
+  '1329russelstreetlilyfield': 'David O',
+  '9698hampdenrdrussellea': 'David O / DO',
+};
+
+function normalizedAddress(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function projectManagerFor(o) {
+  if (o?.pims_audits?.project_manager || o?.project_manager) return o.pims_audits?.project_manager || o.project_manager;
+  const addressKey = normalizedAddress(o?.site_address || o?.pims_audits?.site_address || o?.pims_audits?.site_name);
+  return PROJECT_MANAGER_BY_ADDRESS[addressKey] || 'Not recorded';
 }
 
 function dueLabel(d) {
@@ -1959,12 +2026,13 @@ async function loadData() {
   try {
     const [aRes, oRes] = await Promise.all([
       db.from('pims_audits').select('*').order('audit_date', { ascending: false }),
-      db.from('pims_observations').select('*, pims_audits!left(site_name,audit_date,audit_ref,principal_contractor)').order('created_at', { ascending: false }),
+      db.from('pims_observations').select('*, pims_audits!left(site_name,audit_date,audit_ref,principal_contractor,project_manager)').order('created_at', { ascending: false }),
     ]);
     if (aRes.error) throw aRes.error;
     if (oRes.error) throw oRes.error;
     allAudits = aRes.data;
     allObs    = oRes.data;
+    buildDerivedSequenceMap();
     populateFilters();
     applyFilters();
     setStatus('ok');
@@ -2703,28 +2771,24 @@ function renderActions() {
   }
   const scopeLabel = openActionsScope === 'week' ? ' (last 14 days)' : '';
   document.getElementById('openActionsCount').textContent = `${actions.length} open${scopeLabel}`;
-  if (!actions.length) { tbody.innerHTML='<tr><td colspan="9" class="empty-state">No open actions for current filters</td></tr>'; return; }
+  if (!actions.length) { tbody.innerHTML='<tr><td colspan="10" class="empty-state">No open actions for current filters</td></tr>'; return; }
   actions.forEach(o => {
     const tr = document.createElement('tr');
     if (o.conformance_status==='NCR') tr.className='row-ncr';
     tr.innerHTML = `
-      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no}</td>
+      <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${seqFor(o)}</td>
       <td style="text-align:center;">
-        ${o.photo_url
-          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
-               <img src="${esc(o.photo_url)}"
-                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
-             </a>`
-          : `<span style="color:var(--text-light)">—</span>`}
+        ${photoCell(o)}
       </td>
       <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
       <td>${badge(o.conformance_status)}</td>
-      <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+      <td>${ccvs(o.ccvs_code, o.conformance_status, { category: o.ccvs_category, confidence: o.ccvs_confidence })}</td>
       <td style="max-width:420px;white-space:normal;line-height:1.4;">
         <div class="finding-clamp">${esc(o.action_description || '—')}</div>
         <button type="button" class="finding-toggle" onclick="toggleFindingClamp(this)" style="margin-top:4px;padding:2px 8px;font-size:0.7rem;font-weight:600;color:#2563eb;background:transparent;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;">Show more</button>
       </td>
       <td style="color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
+      <td style="color:var(--text-muted)">${esc(projectManagerFor(o))}</td>
       <td>${dueLabel(o.due_category)}</td>
       <td style="padding-right:20px;white-space:nowrap;">
         ${badge(o.closeout_status)}
@@ -2833,14 +2897,9 @@ function renderAllObs() {
     if (o.needs_review) tr.classList.add('row-review');
     if (currentTab === 'live') {
       tr.innerHTML = `
-        <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${o.seq_no ?? '—'}</td>
+        <td style="padding-left:20px;font-weight:700;color:var(--text-muted)">${seqFor(o)}</td>
       <td style="text-align:center;">
-        ${o.photo_url
-          ? `<a href="${esc(o.photo_url)}" target="_blank" rel="noopener">
-               <img src="${esc(o.photo_url)}"
-                    style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
-             </a>`
-          : `<span style="color:var(--text-light)">—</span>`}
+        ${photoCell(o)}
       </td>
         <td style="font-size:11px;white-space:nowrap;color:var(--text-muted)">${fmtDateDMY(o.observation_date || o.audit_date)}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.site_address)||'No site address'}</td>
@@ -2849,7 +2908,7 @@ function renderAllObs() {
           <button type="button" class="finding-toggle" onclick="toggleFindingClamp(this)" style="margin-top:4px;padding:2px 8px;font-size:0.7rem;font-weight:600;color:#2563eb;background:transparent;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;">Show more</button>
         </td>
         <td>${badge(o.conformance_status)}</td>
-        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status, { category: o.ccvs_category, confidence: o.ccvs_confidence })}</td>
         <td>${o.action_required ? '<span class="badge badge-open">Yes</span>' : '<span style="color:var(--text-light)">No</span>'}</td>
         <td style="max-width:180px;color:var(--text-muted)">${esc(o.responsible)||'—'}</td>
         <td style="max-width:220px;color:var(--text-light)">
@@ -2868,7 +2927,7 @@ function renderAllObs() {
         <td style="max-width:140px;color:var(--text-muted)">${esc(o.section || o.ccvs_code || o.ccvs_category)||'—'}</td>
         <td style="max-width:340px">${trunc(o.observation_text,140)}</td>
         <td>${badge(o.conformance_status)}</td>
-        <td>${ccvs(o.ccvs_code, o.conformance_status)}</td>
+        <td>${ccvs(o.ccvs_code, o.conformance_status, { category: o.ccvs_category, confidence: o.ccvs_confidence })}</td>
         <td style="max-width:220px;color:var(--text-muted)">${trunc(o.action_description,90)}</td>
         <td style="max-width:240px;color:var(--text-muted)">${trunc(o.recommendation || o.action_description,90)}</td>
         <td style="max-width:180px;color:var(--text-light)">${trunc(o.legal_ref || o.legal_reference,70)}</td>
@@ -3211,15 +3270,17 @@ function renderActionsMobile(actions) {
   el.innerHTML = actions.map(o => `
     <div class="m-card${o.conformance_status==='NCR'?' row-ncr':''}">
       <div class="m-card-top">
-        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''}</span>
+        <span class="m-card-seq">#${seqFor(o)} &nbsp; ${esc(o.photo_id)||''}</span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
-          ${ccvs(o.ccvs_code, o.conformance_status)}
+          ${ccvs(o.ccvs_code, o.conformance_status, { category: o.ccvs_category, confidence: o.ccvs_confidence })}
         </div>
       </div>
+      <div class="m-card-photo">${photoCell(o)}</div>
       <div class="m-card-action">${esc(o.action_description)||'—'}</div>
       <div class="m-card-meta">
         <span class="m-card-meta-item">👤 ${esc(o.responsible)||'—'}</span>
+        <span class="m-card-meta-item">PM: ${esc(projectManagerFor(o))}</span>
         <span class="m-card-meta-item">${dueLabel(o.due_category)}</span>
         <span class="m-card-meta-item">${badge(o.closeout_status)}</span>
       </div>
@@ -3241,12 +3302,13 @@ function renderAllObsMobile(obs) {
   el.innerHTML = obs.map(o => `
     <div class="m-card">
       <div class="m-card-top">
-        <span class="m-card-seq">#${o.seq_no} &nbsp; ${esc(o.photo_id)||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
+        <span class="m-card-seq">#${seqFor(o)} &nbsp; ${esc(o.photo_id)||''} &nbsp; <span style="font-weight:400;color:var(--text-light)">${o.observation_date||''}</span></span>
         <div class="m-card-badges">
           ${badge(o.conformance_status)}
-          ${o.ccvs_code ? ccvs(o.ccvs_code, o.conformance_status) : ''}
+          ${ccvs(o.ccvs_code, o.conformance_status, { category: o.ccvs_category, confidence: o.ccvs_confidence })}
         </div>
       </div>
+      <div class="m-card-photo">${photoCell(o)}</div>
       <div class="m-card-action">${trunc(o.observation_text, 140)}</div>
       ${o.action_description ? `<div class="m-card-meta"><span class="m-card-meta-item" style="color:var(--red-text)">⚡ ${trunc(o.action_description,80)}</span></div>` : ''}
       ${o.monitoring_note ? `<div class="m-card-monitoring">${trunc(o.monitoring_note,100)}</div>` : ''}
