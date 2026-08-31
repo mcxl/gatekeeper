@@ -91,3 +91,13 @@ test('current month explains a zero compliance rate with its assessed counts', a
     'Target: 85% · 0 of 9 compliant · 9 NCR',
   );
 });
+
+test('missing CCVS confidence uses a compact NR label with full tooltip text', async ({ page }) => {
+  await page.setContent(dashboardHtmlWithoutExternalStartup());
+
+  const badgeHtml = await page.evaluate(() => renderCcvsBadge('SYS-H6', 'NCR', { category: 'Systems' }));
+
+  expect(badgeHtml).toContain('>NR<');
+  expect(badgeHtml).not.toContain('>Not recorded<');
+  expect(badgeHtml).toContain('Confidence: Not recorded');
+});

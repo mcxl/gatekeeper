@@ -1908,11 +1908,12 @@ function renderCcvsBadge(code, conformanceStatusOrCount = null, detail = {}) {
   const compareLabel = detail.compareLabel || 'period';
   const category = detail.category || info.category || 'General';
   const confidence = detail.confidence || 'Not recorded';
+  const confidenceLabel = confidence === 'Not recorded' ? 'NR' : confidence;
 
   return `
     <div class="ccvs-badge-wrap">
       <button class="ccvs-code-btn tone-${tone}" onclick="toggleCcvsTooltip(event, '${tooltipId}')" title="${esc(category)} · Confidence: ${esc(confidence)}">
-        <span>${esc(normalized)}</span><span class="ccvs-category-label">${esc(category)}</span><span class="ccvs-confidence-label">${esc(confidence)}</span><span class="ccvs-info-dot">i</span>
+        <span>${esc(normalized)}</span><span class="ccvs-category-label">${esc(category)}</span><span class="ccvs-confidence-label" title="Confidence: ${esc(confidence)}">${esc(confidenceLabel)}</span><span class="ccvs-info-dot">i</span>
       </button>
       <div class="ccvs-tooltip" id="${tooltipId}">
         <div class="ccvs-tip-head">
