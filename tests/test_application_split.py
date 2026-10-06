@@ -1,9 +1,12 @@
 """Application split route retirement tests."""
 
 import pytest
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 
+import api.main as main_module
+import api.pims_auth as pims_auth
+import pims.routes as pims_routes
 from api.application_split import (
     RPD_PIMS_API_ROUTES,
     RPD_PIMS_PAGE_ROUTES,
@@ -100,6 +103,7 @@ def client():
 def test_route_contracts_are_explicit():
     assert STANDALONE_WHS_ROUTES == WHS_ROUTES
     assert RPD_PIMS_PAGE_ROUTES == {
+        ("GET", "/pims"),
         ("GET", "/pims-rpd"),
         ("GET", "/pims-login/rpd"),
     }
@@ -181,15 +185,37 @@ def test_wrong_method_remains_unchanged(client, monkeypatch):
 
 
 def test_standalone_flag_unset_restores_same_handler(client, monkeypatch):
-    baseline = client.post("/render/docx", json={})
+    render_calls = []
+    state_calls = []
 
-    monkeypatch.setenv("GATEKEEPER_STANDALONE_WHS_RETIRED", "true")
-    assert client.post("/render/docx", json={}).status_code == 410
+    def fake_render(request, jurisdiction):
+        render_calls.append((request, jurisdiction))
+        return b"test-docx", "test.docx"
 
-    monkeypatch.delenv("GATEKEEPER_STANDALONE_WHS_RETIRED")
-    restored = client.post("/render/docx", json={})
-    assert restored.status_code == baseline.status_code == 401
-    assert restored.json() == baseline.json()
+    async def fake_record_state(*args):
+        state_calls.append(args)
+
+    app.dependency_overrides[main_module.get_current_user] = lambda: {"sub": "test"}
+    monkeypatch.setattr(main_module, "_render_tasks_to_docx", fake_render)
+    monkeypatch.setattr(main_module, "record_state", fake_record_state)
+    request = {"tasks": [], "validate": False}
+
+    try:
+        monkeypatch.setenv("GATEKEEPER_STANDALONE_WHS_RETIRED", "true")
+        retired = client.post("/render/docx", json=request)
+        assert retired.status_code == 410
+        assert render_calls == []
+
+        monkeypatch.delenv("GATEKEEPER_STANDALONE_WHS_RETIRED")
+        restored = client.post("/render/docx", json=request)
+    finally:
+        app.dependency_overrides.pop(main_module.get_current_user, None)
+
+    assert restored.status_code == 200
+    assert restored.content == b"test-docx"
+    assert restored.headers["content-disposition"] == 'attachment; filename="test.docx"'
+    assert render_calls == [(request, "AU")]
+    assert [call[2] for call in state_calls] == ["received", "complete"]
 
 
 @pytest.mark.parametrize(
@@ -214,7 +240,7 @@ def test_shared_routes_are_unchanged(client, monkeypatch, method, path):
     assert with_retirement.status_code != 410
 
 
-@pytest.mark.parametrize("path", ["/pims-rpd", "/pims-login/rpd"])
+@pytest.mark.parametrize("path", ["/pims", "/pims-rpd", "/pims-login/rpd"])
 def test_rpd_pages_use_fixed_redirect(client, monkeypatch, path):
     target = "https://audit-concierge.example.test/rpd"
     monkeypatch.setenv("GATEKEEPER_RPD_PIMS_RETIRED", "true")
@@ -230,7 +256,7 @@ def test_rpd_pages_use_fixed_redirect(client, monkeypatch, path):
     assert response.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("path", ["/pims-rpd/", "/pims-login/rpd/"])
+@pytest.mark.parametrize("path", ["/pims/", "/pims-rpd/", "/pims-login/rpd/"])
 def test_rpd_page_trailing_slash_uses_fixed_redirect(client, monkeypatch, path):
     target = "https://audit-concierge.example.test/rpd"
     monkeypatch.setenv("GATEKEEPER_RPD_PIMS_RETIRED", "true")
@@ -245,6 +271,32 @@ def test_rpd_page_trailing_slash_uses_fixed_redirect(client, monkeypatch, path):
     assert response.status_code == 307
     assert response.headers["location"] == target
     assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("path", ["/pims", "/pims/"])
+def test_rpd_flag_unset_restores_pims_dashboard(
+    client,
+    monkeypatch,
+    path,
+):
+    baseline = client.get(path)
+    assert baseline.status_code == 200
+
+    monkeypatch.setenv("GATEKEEPER_RPD_PIMS_RETIRED", "true")
+    monkeypatch.setenv(
+        "AUDIT_CONCIERGE_URL",
+        "https://audit-concierge.example.test/rpd",
+    )
+    retired = client.get(path, follow_redirects=False)
+
+    monkeypatch.delenv("GATEKEEPER_RPD_PIMS_RETIRED")
+    restored = client.get(path)
+
+    assert retired.status_code == 307
+    assert retired.headers["location"] == "https://audit-concierge.example.test/rpd"
+    assert retired.headers["cache-control"] == "no-store"
+    assert restored.status_code == baseline.status_code
+    assert restored.content == baseline.content
 
 
 def test_rpd_api_trailing_slash_returns_direct_gone(client, monkeypatch):
@@ -332,6 +384,178 @@ def test_shared_pims_namespace_is_unchanged(
     assert with_retirement.status_code == baseline.status_code
     assert with_retirement.content == baseline.content
     assert with_retirement.status_code != 410
+
+
+def test_rpd_retirement_preserves_successful_sdgroup_observation(
+    client,
+    monkeypatch,
+):
+    calls = {"audit": [], "insert": [], "enrich": [], "photo": []}
+
+    async def fake_get_or_create_audit(url, key, audit_ref):
+        calls["audit"].append((url, key, audit_ref))
+        return "audit-id"
+
+    async def fake_insert_staging(
+        url,
+        key,
+        audit_id,
+        request,
+        enrichment,
+        seq_no,
+    ):
+        calls["insert"].append(
+            (url, key, audit_id, request.audit_ref, enrichment, seq_no)
+        )
+        return "00000000-0000-0000-0000-000000000007"
+
+    async def fake_enrich_and_update(**kwargs):
+        calls["enrich"].append(kwargs)
+
+    async def fake_upload_photo_background(**kwargs):
+        calls["photo"].append(kwargs)
+
+    monkeypatch.setattr(pims_routes, "SDG_PIMS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        pims_routes,
+        "SDG_SUPABASE_URL",
+        "https://sdg-supabase.example.test",
+    )
+    monkeypatch.setattr(pims_routes, "SDG_SUPABASE_SERVICE_KEY", "test-key")
+    monkeypatch.setattr(
+        pims_routes,
+        "get_or_create_audit",
+        fake_get_or_create_audit,
+    )
+    monkeypatch.setattr(pims_routes, "insert_staging", fake_insert_staging)
+    monkeypatch.setattr(pims_routes, "enrich_and_update", fake_enrich_and_update)
+    monkeypatch.setattr(
+        pims_routes,
+        "upload_photo_background",
+        fake_upload_photo_background,
+    )
+    monkeypatch.setenv("GATEKEEPER_RPD_PIMS_RETIRED", "true")
+    payload = {
+        "audit_ref": "2026-10-06_Test_Site",
+        "seq_no": 7,
+        "observation_text": "Guardrail was compliant.",
+        "filename": "site.jpg",
+        "photo_base64": "cGhvdG8=",
+    }
+
+    response = client.post(
+        "/pims/observation/sdgroup",
+        json=payload,
+        headers={"X-PIMS-Token": "test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "00000000-0000-0000-0000-000000000007"
+    assert response.json()["seq_no"] == 7
+    assert calls["audit"] == [
+        ("https://sdg-supabase.example.test", "test-key", payload["audit_ref"])
+    ]
+    assert len(calls["insert"]) == 1
+    assert len(calls["enrich"]) == 1
+    assert len(calls["photo"]) == 1
+
+
+def test_rpd_retirement_preserves_successful_sdgroup_pdf_promotion(
+    client,
+    monkeypatch,
+):
+    observation_id = "00000000-0000-0000-0000-000000000008"
+    site_id = "00000000-0000-0000-0000-000000000009"
+    backend = "https://sdg-supabase.example.test"
+    calls = {"get": [], "resolve": [], "patch": []}
+
+    class FakeResponse:
+        def __init__(self, body):
+            self.status_code = 200
+            self.text = ""
+            self._body = body
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._body
+
+    class FakeAsyncClient:
+        def __init__(self, **kwargs):
+            assert kwargs == {"timeout": 15}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+        async def get(self, url, **kwargs):
+            calls["get"].append((url, kwargs))
+            return FakeResponse(
+                [
+                    {
+                        "id": observation_id,
+                        "site_address": "1 Test Street",
+                        "site_id": None,
+                        "staging": True,
+                    }
+                ]
+            )
+
+        async def patch(self, url, **kwargs):
+            calls["patch"].append((url, kwargs))
+            return FakeResponse(
+                [
+                    {
+                        "id": observation_id,
+                        "site_id": site_id,
+                        "staging": False,
+                    }
+                ]
+            )
+
+    async def fake_resolve(address, **kwargs):
+        calls["resolve"].append((address, kwargs))
+        return site_id
+
+    monkeypatch.setattr(pims_auth, "_SECRET", "test-session-secret")
+    monkeypatch.setattr(pims_routes, "SDG_SUPABASE_URL", backend)
+    monkeypatch.setattr(pims_routes, "SDG_SUPABASE_SERVICE_KEY", "test-key")
+    monkeypatch.setattr(pims_routes.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        pims_routes,
+        "resolve_or_create_site_id",
+        fake_resolve,
+    )
+    monkeypatch.setenv("GATEKEEPER_RPD_PIMS_RETIRED", "true")
+    session = pims_auth.make_session_cookie("sdgroup")
+
+    client.cookies.set("pims_sess", session)
+    response = client.post(
+        f"/pims/pdf-observation/sdgroup/{observation_id}/promote",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["observation"] == {
+        "id": observation_id,
+        "site_id": site_id,
+        "staging": False,
+    }
+    assert response.json()["site_id_resolved"] == site_id
+    assert calls["get"][0][0] == f"{backend}/rest/v1/pims_observations"
+    assert len(calls["resolve"]) == 1
+    resolve_address, resolve_kwargs = calls["resolve"][0]
+    assert resolve_address == "1 Test Street"
+    assert resolve_kwargs["supabase_url"] == backend
+    assert resolve_kwargs["supabase_key"] == "test-key"
+    assert isinstance(resolve_kwargs["client"], FakeAsyncClient)
+    assert calls["patch"][0][0] == f"{backend}/rest/v1/pims_observations"
+    assert calls["patch"][0][1]["json"] == {
+        "staging": False,
+        "site_id": site_id,
+    }
 
 
 def test_rpd_flag_unset_restores_page_and_api_handlers(client, monkeypatch):

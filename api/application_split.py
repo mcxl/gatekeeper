@@ -50,6 +50,7 @@ STANDALONE_WHS_ROUTES = frozenset(
 
 RPD_PIMS_PAGE_ROUTES = frozenset(
     {
+        ("GET", "/pims"),
         ("GET", "/pims-rpd"),
         ("GET", "/pims-login/rpd"),
     }
