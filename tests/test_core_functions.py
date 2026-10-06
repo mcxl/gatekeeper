@@ -205,7 +205,8 @@ class TestGetCurrentUser:
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="fake.token")
         with patch("core.auth.get_jwks", new_callable=AsyncMock) as mock_jwks:
             mock_jwks.return_value = {"keys": []}
-            with patch("core.auth.jwt.decode") as mock_decode:
+            with patch("core.auth._verification_key", return_value=("key", "ES256")), \
+                    patch("core.auth.jwt.decode") as mock_decode:
                 mock_decode.return_value = {"email": "test@test.com"}
                 with pytest.raises(HTTPException) as exc_info:
                     await get_current_user(creds)
@@ -215,12 +216,13 @@ class TestGetCurrentUser:
     @pytest.mark.anyio
     async def test_expired_jwt_raises_401(self):
         """Expired token raises 401."""
-        from jose import JWTError
+        from jwt import InvalidTokenError
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="expired.token")
         with patch("core.auth.get_jwks", new_callable=AsyncMock) as mock_jwks:
             mock_jwks.return_value = {"keys": []}
-            with patch("core.auth.jwt.decode") as mock_decode:
-                mock_decode.side_effect = JWTError("Signature has expired")
+            with patch("core.auth._verification_key", return_value=("key", "ES256")), \
+                    patch("core.auth.jwt.decode") as mock_decode:
+                mock_decode.side_effect = InvalidTokenError("Signature has expired")
                 with pytest.raises(HTTPException) as exc_info:
                     await get_current_user(creds)
                 assert exc_info.value.status_code == 401

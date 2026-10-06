@@ -143,7 +143,6 @@ def source_for_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def get_rows(session: requests.Session, url: str, key: str) -> list[dict[str, Any]]:
-    sites = ",".join(a["site"] for a in AUDITS.values())
     # Fetch all observations for the three sites, then apply normalized matching
     # locally so punctuation differences do not affect the scope.
     response = session.get(

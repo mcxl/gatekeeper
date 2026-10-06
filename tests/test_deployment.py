@@ -86,7 +86,7 @@ def main():
     try:
         with open(os.path.join(_ROOT, "requirements.txt"), "r") as f:
             reqs = f.read().lower()
-        needed = ["python-jose", "passlib", "httpx", "aiofiles", "fastapi", "uvicorn", "python-dotenv"]
+        needed = ["pyjwt", "passlib", "httpx", "aiofiles", "fastapi", "uvicorn", "python-dotenv"]
         found = [pkg for pkg in needed if pkg in reqs]
         ok = len(found) == len(needed)
         results.append(("Check 5: Requirements", ok, f"{len(found)}/{len(needed)}: {', '.join(found)}"))

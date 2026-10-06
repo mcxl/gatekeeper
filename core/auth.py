@@ -3,7 +3,7 @@
 core/auth.py — Supabase authentication via REST API.
 
 Uses httpx to call Supabase Auth API directly (avoids heavy supabase-py SDK).
-JWT verification done locally with python-jose using JWKS (ES256).
+JWT verification done locally with PyJWT using JWKS (ES256).
 """
 
 import logging
@@ -12,7 +12,7 @@ import os
 import httpx
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,45 @@ async def get_jwks() -> dict:
     return _jwks_cache
 
 
+def _verification_key(token: str, jwks: dict) -> tuple:
+    """Select one trusted JWK and bind its key type to a fixed algorithm."""
+    header = jwt.get_unverified_header(token)
+    kid = header.get("kid")
+    keys = jwks.get("keys", [])
+    if not isinstance(keys, list):
+        raise jwt.InvalidTokenError("Invalid JWKS")
+    matches = [
+        key for key in keys
+        if isinstance(key, dict) and (kid is None or key.get("kid") == kid)
+    ]
+    if len(matches) != 1:
+        raise jwt.InvalidTokenError("Unknown or ambiguous signing key")
+    key = matches[0]
+    if key.get("kty") == "EC" and key.get("crv") == "P-256":
+        algorithm = "ES256"
+    elif key.get("kty") == "oct":
+        algorithm = "HS256"
+    else:
+        raise jwt.InvalidTokenError("Unsupported signing key type")
+    if key.get("alg", algorithm) != algorithm or header.get("alg") != algorithm:
+        raise jwt.InvalidTokenError("Signing algorithm does not match trusted key")
+    if key.get("use", "sig") != "sig":
+        raise jwt.InvalidTokenError("Signing key is not for signatures")
+    if "key_ops" in key:
+        operations = key["key_ops"]
+        if (
+            not isinstance(operations, list)
+            or not all(isinstance(operation, str) for operation in operations)
+            or len(set(operations)) != len(operations)
+            or "verify" not in operations
+        ):
+            raise jwt.InvalidTokenError("Signing key does not permit verification")
+    try:
+        return jwt.PyJWK.from_dict(key, algorithm=algorithm).key, algorithm
+    except (ValueError, TypeError, KeyError) as error:
+        raise jwt.InvalidTokenError("Invalid signing key") from error
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
@@ -132,10 +171,11 @@ async def get_current_user(
     token = credentials.credentials
     try:
         jwks = await get_jwks()
+        key, algorithm = _verification_key(token, jwks)
         payload = jwt.decode(
             token,
-            jwks,
-            algorithms=["ES256", "HS256"],
+            key,
+            algorithms=[algorithm],
             audience="authenticated",
             options={"verify_aud": True},
         )
@@ -151,7 +191,7 @@ async def get_current_user(
             "email": payload.get("email"),
             "full_name": meta.get("full_name", ""),
         }
-    except JWTError as e:
+    except jwt.PyJWTError as e:
         logger.error(f"JWT decode failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
