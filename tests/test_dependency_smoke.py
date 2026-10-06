@@ -1,6 +1,6 @@
 """Smoke tests for dependency-sensitive PDF extraction and JWT verification.
 
-These guard the Procore certification risk from the cryptography/python-jose
+These guard the Procore certification risk from the cryptography/PyJWT
 and pypdf bumps without needing network calls or fixture files on disk.
 """
 
@@ -125,10 +125,10 @@ class TestPdfDependencySmoke:
 class TestJwtDependencySmoke:
     def test_get_current_user_decodes_real_es256_jwt(self, monkeypatch):
         pytest.importorskip("cryptography")
-        pytest.importorskip("jose")
+        pytest.importorskip("jwt")
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric import ec
-        from jose import jwt
+        import jwt
         import core.auth as auth
 
         private_key = ec.generate_private_key(ec.SECP256R1())
