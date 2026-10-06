@@ -64,6 +64,7 @@ from slowapi.errors import RateLimitExceeded
 
 from api.upload_routes import router as upload_router
 from api.intake_routes import router as intake_router
+from api.application_split import ApplicationSplitMiddleware
 from api.pims_auth import (
     COOKIE_NAME,
     check_env,
@@ -79,6 +80,7 @@ from core.logging_config import get_correlation_id, log_event, set_correlation_i
 
 app = FastAPI(title="Gatekeeper SWMS Generator", version="1.0")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(ApplicationSplitMiddleware)
 
 
 @app.middleware("http")
