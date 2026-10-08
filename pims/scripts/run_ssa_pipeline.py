@@ -1442,6 +1442,13 @@ def run_once(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="run_ssa_pipeline")
     ap.add_argument("folder", type=Path, help="audit evidence folder")
+    ap.add_argument(
+        "--check", action="store_true",
+        help=(
+            "run preflight checks on the audit folder and exit "
+            "without building any deliverables"
+        ),
+    )
     ap.add_argument("--prepared-by", default="Alan Richardson")
     ap.add_argument("--ignore-freeze", action="store_true")
     ap.add_argument(
@@ -1521,6 +1528,20 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s | %(message)s",
     )
+
+    if args.check:
+        from pims.services.ssa_quality import format_results, run_preflight
+        results, hard_pass = run_preflight(args.folder)
+        print(format_results(results))
+        print()
+        info_fails = [r for r in results if not r.passed and r.informational]
+        hard_fails = [r for r in results if not r.passed and not r.informational]
+        if hard_pass:
+            extra = f" ({len(info_fails)} informational warning(s))" if info_fails else ""
+            print(f"OK - ready to build{extra}")
+            return 0
+        print(f"BLOCKED - {len(hard_fails)} required check(s) failed")
+        return 1
 
     try:
         phase_flags = (
@@ -1608,6 +1629,23 @@ def main(argv: list[str] | None = None) -> int:
     print(f"outputs:        {len(payload['outputs'])} files in {args.folder}")
     for name in payload["outputs"]:
         print(f"  - {name}")
+    # LibreOffice render smoke test on the report docx (soft-skip if
+    # soffice not installed). Runs once per CLI invocation; build_ssa_
+    # report_docx unit tests don't pay this cost.
+    report_name = next(
+        (n for n in payload.get("outputs", [])
+         if n.startswith("Site-Safety-Audit-Report-") and n.endswith(".docx")),
+        None,
+    )
+    if report_name:
+        from pims.services.ssa_quality import smoke_test_docx
+        smoke = smoke_test_docx(args.folder / report_name)
+        if not smoke.available:
+            print("libreoffice smoke: skipped (LibreOffice not found)")
+        elif smoke.success:
+            print("libreoffice smoke: passed")
+        else:
+            print(f"libreoffice smoke: FAILED - {smoke.failure_detail}")
     return 0
 
 

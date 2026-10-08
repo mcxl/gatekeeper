@@ -30,6 +30,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Iterable
 
+from pims.services.ssa_quality import make_docx_deterministic, validate_docx
+
 log = logging.getLogger(__name__)
 
 
@@ -1059,6 +1061,28 @@ def _cm_to_twips(cm: float) -> int:
     return int(round(cm * 567))
 
 
+def _insert_tblborders_in_schema_order(tblPr, borders) -> None:
+    """Insert ``<w:tblBorders>`` at the schema-correct position in ``<w:tblPr>``.
+
+    OOXML places tblBorders at position 11; ``<w:shd>``, ``<w:tblLayout>``,
+    ``<w:tblCellMar>``, ``<w:tblLook>`` etc. (positions 12-18) must come
+    after. Template tables always carry ``<w:tblLook>``, so a plain
+    ``tblPr.append(tblBorders)`` violates schema order. Word's recovery
+    prompt is tolerant of this; the OpenXmlValidator is not.
+    """
+    from docx.oxml.ns import qn
+    after_tblborders = {
+        qn("w:shd"), qn("w:tblLayout"), qn("w:tblCellMar"),
+        qn("w:tblLook"), qn("w:tblCaption"),
+        qn("w:tblDescription"), qn("w:tblPrChange"),
+    }
+    for i, child in enumerate(tblPr):
+        if child.tag in after_tblborders:
+            tblPr.insert(i, borders)
+            return
+    tblPr.append(borders)
+
+
 def _apply_all_cell_borders(tbl) -> None:
     """Apply Word's "All" border preset — single-line ½-pt borders on
     every cell edge inside and outside the table. Sets ``<w:tblBorders>``
@@ -1084,7 +1108,7 @@ def _apply_all_cell_borders(tbl) -> None:
         b.set(qn("w:space"), "0")
         b.set(qn("w:color"), "auto")
         borders.append(b)
-    tblPr.append(borders)
+    _insert_tblborders_in_schema_order(tblPr, borders)
 
 
 def _apply_table_format(
@@ -2905,6 +2929,28 @@ def build_ssa_report_docx(
 
     doc.save(tmp)
     os.replace(tmp, output_path)
+    # Deterministic post-pass: stable zip mtimes + strip non-deterministic
+    # OOXML metadata so re-runs over the same inputs are byte-identical.
+    import datetime as _dt
+    try:
+        _audit_date = _dt.datetime.strptime(audit_date_ddmmyyyy, "%d/%m/%Y").date()
+    except (ValueError, TypeError):
+        _audit_date = _dt.date(2000, 1, 1)
+    make_docx_deterministic(output_path, _audit_date)
+    # OOXML schema validation (soft-skip if dotnet missing). Errors are
+    # logged and surfaced via the diagnostics dict; the build does not
+    # abort on findings so callers retain control over hard-fail policy.
+    _validation = validate_docx(output_path)
+    diagnostics["oxml_validation_errors"] = (
+        [e.short() for e in _validation.errors] if _validation.available else None
+    )
+    if _validation.available and _validation.errors:
+        log.warning(
+            "OOXML schema validation: %d error(s) in %s",
+            len(_validation.errors), output_path.name,
+        )
+        for _e in _validation.errors[:5]:
+            log.warning("  %s", _e.short())
     return diagnostics
 
 
